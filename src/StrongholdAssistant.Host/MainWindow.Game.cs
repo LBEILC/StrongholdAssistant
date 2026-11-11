@@ -231,6 +231,8 @@ public partial class MainWindow
         Width = WindowGeometry.PanelWidth(_dock.Width, _uiScale, _collapsed);
         ResizeMode = _collapsed ? ResizeMode.NoResize : ResizeMode.CanResize;
         if (Browser.CoreWebView2 is not null) Browser.ZoomFactor = _uiScale;
+        // 覆盖模式（全屏或旁边放不下）盖在游戏上，不置顶会被游戏挡住，所以总是置顶；其余按用户的置顶设置
+        Topmost = _overlayMode || _api.Settings.AlwaysOnTop;
     }
 
     private void RefreshScale()

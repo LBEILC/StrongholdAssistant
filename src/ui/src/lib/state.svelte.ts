@@ -234,6 +234,14 @@ class AppState {
     const saved = await api.saveLineup(t)
     this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
   }
+  /** 导入备份后重新读阵容、本局状态和设置 */
+  async reloadData() {
+    ;[this.lineups, this.session, this.settings] = await Promise.all([api.lineups(), api.session(), api.settings()])
+  }
+  toggleOnTop() {
+    this.settings.alwaysOnTop = !this.settings.alwaysOnTop
+    this.saveSettings()
+  }
   toggleFocusOp(name: string) {
     const s = this.settings.focusOperators
     this.settings.focusOperators = s.includes(name) ? s.filter((n) => n !== name) : [...s, name]

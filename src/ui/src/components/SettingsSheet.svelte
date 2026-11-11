@@ -2,7 +2,7 @@
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { api, type GameTheme } from '../lib/api'
+  import { api, type BackupSummary, type GameTheme, type ImportMode } from '../lib/api'
   import Icon from './Icon.svelte'
 
   // 设置：游戏主题（商店识别要用）、商店标记、版本与更新、关于
@@ -27,6 +27,45 @@
     app.saveSettings()
   }
   const u = $derived(app.update)
+
+  // 数据：导出备份、选文件预览后按合并 / 替换导入
+  const modes: { id: ImportMode; name: string; note: string }[] = [
+    { id: 'merge', name: '合并', note: '加入备份里的阵容和关注，同一套阵容用备份里的；偏好设置不变' },
+    { id: 'replace', name: '替换', note: '阵容、关注和偏好设置都换成备份里的' },
+  ]
+  let picked = $state<{ token: string; summary: BackupSummary } | null>(null)
+  let mode = $state<ImportMode>('merge')
+  let busy = $state(false)
+  let dataMsg = $state<{ text: string; bad?: boolean } | null>(null)
+  async function run(f: () => Promise<void>) {
+    busy = true
+    dataMsg = null
+    try {
+      await f()
+    } catch (e) {
+      dataMsg = { text: (e as Error).message, bad: true }
+    } finally {
+      busy = false
+    }
+  }
+  const doExport = () =>
+    run(async () => {
+      const path = await api.exportData()
+      if (path) dataMsg = { text: `已导出到 ${path}` }
+    })
+  const doPick = () =>
+    run(async () => {
+      picked = await api.pickBackup()
+      mode = 'merge'
+    })
+  const doImport = () =>
+    run(async () => {
+      await api.importData(picked!.token, mode)
+      const n = picked!.summary.lineups
+      picked = null
+      await app.reloadData()
+      dataMsg = { text: `已导入 ${n} 套阵容` }
+    })
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
@@ -67,6 +106,42 @@
         <span class="lbl"><b>商店标记</b><small>在游戏商店里给追踪的干员打标记</small></span>
         <input type="checkbox" class="sw" checked={app.settings.shopMarkers} onchange={(e) => set('shopMarkers', e.currentTarget.checked)} />
       </label>
+    </section>
+
+    <section>
+      <h4>数据 <small>阵容、特别关注和偏好设置；换电脑、重装时用备份迁移</small></h4>
+      <p class="path">
+        <span>保存在 <code>{app.appInfo.dataDir}</code>，同一台电脑换新包不用导入。</span>
+        <button class="link" onclick={() => api.openDataFolder()}><Icon name="folder" size={13} />打开</button>
+      </p>
+      {#if picked}
+        {@const s = picked.summary}
+        <div class="imp">
+          <p>
+            备份来自 v{s.appVersion} · {new Date(s.exportedAt).toLocaleDateString()}：<b>{s.lineups}</b> 套阵容，关注
+            <b>{s.focusCovenants}</b> 个盟约、<b>{s.focusOperators}</b> 名干员
+          </p>
+          <div class="modes">
+            {#each modes as m (m.id)}
+              <button class:on={mode === m.id} onclick={() => (mode = m.id)}>
+                <span class="radio"></span>
+                <span class="mt"><b>{m.name}</b><small>{m.note}</small></span>
+              </button>
+            {/each}
+          </div>
+          <div class="impact">
+            <small>导入前会把当前数据备份到数据文件夹的 backups 里</small>
+            <button class="btn" disabled={busy} onclick={() => (picked = null)}>取消</button>
+            <button class="btn main" disabled={busy} onclick={doImport}>{busy ? '导入中…' : '导入'}</button>
+          </div>
+        </div>
+      {:else}
+        <div class="dataops">
+          <button class="btn" disabled={busy} onclick={doExport}><Icon name="download" size={14} />导出备份</button>
+          <button class="btn" disabled={busy} onclick={doPick}><Icon name="upload" size={14} />导入备份</button>
+        </div>
+      {/if}
+      {#if dataMsg}<p class="dmsg" class:bad={dataMsg.bad}>{dataMsg.text}</p>{/if}
     </section>
 
     <section>
@@ -172,8 +247,13 @@
     margin: 0 0 8px;
     font-size: 13px;
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px;
+    gap: 2px 8px;
+    white-space: nowrap;
+  }
+  h4 small {
+    white-space: normal;
   }
   h4 small {
     font-size: 11px;
@@ -352,6 +432,101 @@
     color: var(--mint);
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  .path {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 8px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--fg-3);
+  }
+  .path code {
+    font-family: var(--font-term);
+    color: var(--fg-2);
+    word-break: break-all;
+  }
+  .path .link {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .dataops {
+    display: flex;
+    gap: 6px;
+  }
+  .imp {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: var(--bg-1);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
+  .imp p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-2);
+  }
+  .imp p b {
+    color: var(--mint);
+  }
+  .modes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .modes button {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 8px;
+    text-align: left;
+    color: var(--fg-2);
+    background: var(--bg-2);
+  }
+  .modes button.on {
+    color: var(--fg-1);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
+  .modes .radio {
+    flex: none;
+    margin-top: 3px;
+  }
+  .mt {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .mt b {
+    font-size: 13px;
+  }
+  .mt small {
+    font-size: 11px;
+    color: var(--fg-4);
+  }
+  .impact {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .impact small {
+    flex: 1;
+    min-width: 10em;
+    font-size: 11px;
+    color: var(--fg-4);
+  }
+  .dmsg {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--mint);
+    word-break: break-all;
+  }
+  .dmsg.bad {
+    color: #f2b8ba;
   }
   .about {
     display: flex;

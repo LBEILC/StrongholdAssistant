@@ -9,6 +9,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(ReleaseBuild)' == 'true'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
   <ItemGroup>
     <Using Include="System.IO" />
     <Resource Include="../../branding/icon.ico" Link="icon.ico" />
@@ -17,6 +21,14 @@
     <Content Include="../../data/**/*" Link="data/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../ui/dist/**/*" Link="ui/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Maa 按程序目录定位原生库、插件；数据和网页也必须留在磁盘上。 -->
+  <Target Name="KeepExternalPackageFiles" BeforeTargets="_ComputeFilesToBundle">
+    <ItemGroup>
+      <ResolvedFileToPublish Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(RelativePath)', '^(runtimes|plugins|data|ui)[/\\]'))">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
   <Target Name="RequireBuiltUi" BeforeTargets="PrepareForBuild">
     <Error Condition="!Exists('$(MSBuildProjectDirectory)/../ui/dist/index.html')" Text="界面产物不存在，请先运行 npm --prefix src/ui run build" />
   </Target>

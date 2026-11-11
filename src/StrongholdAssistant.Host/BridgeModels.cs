@@ -14,6 +14,7 @@ public sealed record LineupDto(string Id, string Name, LineupMember[] Members, s
 public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[] Tracked);
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public bool AlwaysOnTop { get; init; }
     public string[] FocusCovenants { get; init; } = [];
     public string[] FocusOperators { get; init; } = [];
     public System.Text.Json.JsonElement UiScale { get; init; } = System.Text.Json.JsonSerializer.SerializeToElement("auto");

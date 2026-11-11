@@ -23,10 +23,15 @@
   import magic from 'remixicon/icons/Design/magic-line.svg?raw'
   import scan from 'remixicon/icons/Device/scan-line.svg?raw'
   import stop from 'remixicon/icons/Media/stop-fill.svg?raw'
+  import download from 'remixicon/icons/System/download-2-line.svg?raw'
+  import upload from 'remixicon/icons/System/upload-2-line.svg?raw'
+  import folder from 'remixicon/icons/Document/folder-open-line.svg?raw'
+  import pin from 'remixicon/icons/Map/pushpin-line.svg?raw'
+  import pinFill from 'remixicon/icons/Map/pushpin-fill.svg?raw'
   import heart from 'remixicon/icons/Health & Medical/heart-3-line.svg?raw'
   import heartFill from 'remixicon/icons/Health & Medical/heart-3-fill.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill }
+  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder }
   export type IconName = keyof typeof icons
 </script>
 

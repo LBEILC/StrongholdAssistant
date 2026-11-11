@@ -62,6 +62,7 @@ let settings: Settings = {
   shopMarkers: true,
   autoCheckUpdate: true,
   uiScale: 'auto',
+  alwaysOnTop: false,
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
 }
@@ -140,7 +141,12 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.1.0' }, 0),
+  appInfo: () => wait({ version: '0.1.0', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
+  openDataFolder: async () => {},
+  exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
+  pickBackup: () =>
+    wait({ token: 'mock', summary: { appVersion: '0.2.0', exportedAt: new Date(Date.now() - 3 * 86400_000).toISOString(), lineups: 6, focusCovenants: 2, focusOperators: 4 } }, 300),
+  importData: () => wait(undefined, 400),
   // 假数据：每次检查都发现 0.2.0，方便看界面
   checkUpdate: async () => {
     pushUpdate({ state: 'checking' })

@@ -48,12 +48,12 @@ public class LineupStore
         return [.. result.OrderByDescending(l => l.UpdatedAt)];
     }
 
-    public async Task SaveAsync(Lineup lineup)
+    public async Task SaveAsync(Lineup lineup, bool preserveUpdatedAt = false)
     {
         Directory.CreateDirectory(_dir);
         if (string.IsNullOrEmpty(lineup.Id))
             lineup.Id = Guid.NewGuid().ToString("N");
-        lineup.UpdatedAt = DateTime.UtcNow;
+        if (!preserveUpdatedAt) lineup.UpdatedAt = DateTime.UtcNow;
 
         var path = Path.Combine(_dir, $"{lineup.Id}.json");
         var json = JsonSerializer.Serialize(lineup, JsonOptions);

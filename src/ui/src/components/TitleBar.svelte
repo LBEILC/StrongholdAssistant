@@ -5,6 +5,7 @@
 
   // 标题栏：产品里是无边框窗口的拖动区
   const conn = $derived(app.connection)
+  const onTop = $derived(!!conn.overlay || app.settings.alwaysOnTop)
 </script>
 
 <div class="bar">
@@ -20,6 +21,18 @@
   {#if conn.overlay}
     <button class="wbtn" title="收起成细条" aria-label="收起成细条" onclick={() => app.setCollapsed(true)}><Icon name="contractLeft" size={15} /></button>
   {/if}
+  <!-- 覆盖模式盖在游戏上，宿主总是置顶，按钮只显示状态 -->
+  <button
+    class="wbtn"
+    class:pinned={onTop}
+    title={conn.overlay ? '覆盖模式下总是置顶' : onTop ? '已置顶，点击取消' : '置顶'}
+    aria-label={conn.overlay ? '覆盖模式下总是置顶' : onTop ? '取消置顶' : '置顶'}
+    aria-pressed={onTop}
+    disabled={conn.overlay}
+    onclick={() => app.toggleOnTop()}
+  >
+    <Icon name={onTop ? 'pinFill' : 'pin'} size={15} />
+  </button>
   <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.settingsOpen = true)}>
     <Icon name="settings" size={15} />
   </button>
@@ -141,6 +154,13 @@
   .wbtn:hover {
     color: var(--fg-1);
     background: var(--bg-3);
+  }
+  .wbtn.pinned {
+    color: var(--mint);
+  }
+  .wbtn:disabled {
+    cursor: default;
+    background: none;
   }
   .wbtn.close:hover {
     background: #c42b1c;

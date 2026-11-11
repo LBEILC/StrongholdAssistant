@@ -36,6 +36,7 @@ public partial class MainWindow : Window
 #endif
         var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
+        _api.DialogOwner = this;
         InitializeWindow();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(userDirectory, "WebView2"));
         // 页面加载前的底色和界面一致，避免白屏
@@ -100,7 +101,7 @@ public partial class MainWindow : Window
                 if (request.Method is "rescan" or "scanContinuous") await _initialization;
                 result = await _api.InvokeAsync(request.Method, request.Params);
             }
-            if (request.Method == "saveSettings") RefreshScale();
+            if (request.Method is "saveSettings" or "importData") RefreshScale();
             if (request.Method == "connection")
                 Trace.WriteLine($"connection()={JsonSerializer.Serialize(result, HostApi.JsonOptions)}");
             Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { id, result }, HostApi.JsonOptions));

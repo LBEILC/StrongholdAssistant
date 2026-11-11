@@ -24,9 +24,9 @@ foreach ($name in @('LICENSE','LICENSE.upstream','NOTICE','ASSETS.md')) {
 }
 # 与上游独立运行包一致，随包携带本机已安装的 x64 VC++ 运行库。
 foreach ($name in @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','msvcp140_atomic_wait.dll','msvcp140_codecvt_ids.dll','vcruntime140.dll','vcruntime140_1.dll','concrt140.dll')) {
-    Copy-Item -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name) -Destination $publish
+    Copy-Item -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name) -Destination (Join-Path $publish 'runtimes/win-x64/native')
 }
-Get-ChildItem -LiteralPath $publish -Filter '*.pdb' -Recurse | Remove-Item -Force
+Get-ChildItem -LiteralPath $publish -File -Recurse | Where-Object { $_.Extension -in @('.pdb', '.xml') -or $_.Name -eq 'createdump.exe' } | Remove-Item -Force
 # Maa 的包通过内容复制带入所有平台文件；只裁剪本次生成的发布目录。
 $unused = @(Get-ChildItem -LiteralPath (Join-Path $publish 'runtimes') -Directory | Where-Object Name -ne 'win-x64')
 $unused += Get-Item -LiteralPath (Join-Path $publish 'MaaAgentBinary') -ErrorAction SilentlyContinue

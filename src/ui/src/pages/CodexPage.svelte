@@ -5,8 +5,11 @@
   import TierBadge from '../components/TierBadge.svelte'
   import Icon from '../components/Icon.svelte'
 
-  // 图鉴：干员 / 装备网格，筛选常驻展开；点卡片在底部面板看详情（不靠悬停）
-  let kind = $state<'operator' | 'equipment'>('operator')
+  import GameText from '../components/GameText.svelte'
+
+  // 图鉴：干员 / 装备网格，筛选常驻展开；点卡片在底部面板看详情（不靠悬停）。
+  // 策略只有名字、发起者和一句效果，做成列表直接看全，本局策略排最前
+  let kind = $state<'operator' | 'equipment' | 'strategy'>('operator')
   let q = $state('')
   let tiers = $state<number[]>([])
   let bonds = $state<string[]>([])
@@ -44,6 +47,11 @@
       }))
       .filter((g) => (kind === 'operator' ? g.ops.length : g.eqs.length)),
   )
+  const strategies = $derived(
+    app.catalog.strategies
+      .filter((s) => !q || s.name.includes(q) || s.initiator.includes(q) || s.description.includes(q))
+      .sort((a, b) => Number(b.id === app.match.strategyId) - Number(a.id === app.match.strategyId)),
+  )
   const cur = $derived(app.detail)
   const filtered = $derived(tiers.length + bonds.length + (onlyTracked ? 1 : 0) + (onlyFocus ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
 </script>
@@ -54,15 +62,31 @@
     <div class="seg">
       <button class:on={kind === 'operator'} onclick={() => (kind = 'operator')}>干员 <em>{app.catalog.operators.length}</em></button>
       <button class:on={kind === 'equipment'} onclick={() => (kind = 'equipment')}>装备 <em>{app.catalog.equipment.length}</em></button>
+      <button class:on={kind === 'strategy'} onclick={() => (kind = 'strategy')}>策略 <em>{app.catalog.strategies.length}</em></button>
     </div>
     <div class="search">
       <span class="si"><Icon name="search" size={15} /></span>
-      <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : '搜索装备'} />
+      <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : kind === 'equipment' ? '搜索装备' : '搜索策略、发起者或效果'} />
       {#if filtered}
         <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; onlyTracked = false; onlyFocus = false; hideBanned = false; cat = null }}>清除筛选</button>
       {/if}
     </div>
   </div>
+  {#if kind === 'strategy'}
+    <div class="strats">
+      {#each strategies as s (s.id)}
+        <div class="strat" class:now={s.id === app.match.strategyId}>
+          <img src={asset.strategy(s.id)} alt="" loading="lazy" />
+          <div class="si2">
+            <div class="sn"><b>{s.name}</b><span>{s.initiator}</span>{#if s.id === app.match.strategyId}<em class="term">本局</em>{/if}</div>
+            <p><GameText text={s.description} /></p>
+          </div>
+        </div>
+      {:else}
+        <p class="none">没有符合条件的策略。</p>
+      {/each}
+    </div>
+  {:else}
   <div class="filters">
     <div class="chips">
       {#each [1, 2, 3, 4, 5, 6] as t (t)}
@@ -131,9 +155,68 @@
   {:else}
     <p class="none">没有符合条件的{kind === 'operator' ? '干员' : '装备'}。</p>
   {/each}
+  {/if}
 </div>
 
 <style>
+  .strats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .strat {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 7px 9px;
+    background: var(--hatch), var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .strat.now {
+    background: linear-gradient(90deg, var(--mint-tint), transparent 60%), var(--bg-1);
+    box-shadow: inset 2px 0 0 var(--mint), inset 0 0 0 1px rgb(34 227 178 / 0.3);
+  }
+  .strat img {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    background: var(--bg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .si2 {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sn {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .sn b {
+    font-size: 13px;
+    color: var(--fg-1);
+  }
+  .sn span {
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .sn em {
+    font-style: normal;
+    font-size: 9px;
+    padding: 1px 4px 0;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .si2 p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--fg-2);
+  }
   .special {
     font-size: 12px;
     font-weight: 700;
@@ -162,7 +245,7 @@
   }
   .seg {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     background: var(--bg-2);
     padding: 2px;
   }

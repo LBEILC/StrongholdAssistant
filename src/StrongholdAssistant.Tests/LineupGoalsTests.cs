@@ -82,11 +82,13 @@ public sealed class LineupGoalsTests : IDisposable
         var api = await CreateApi();
         Assert.Empty(api.Settings.FocusCovenants);
         Assert.Empty(api.Settings.FocusOperators);
-        var settings = api.Settings with { FocusCovenants = ["siracusa"], FocusOperators = ["卡达"] };
+        Assert.False(api.Settings.AlwaysOnTop);
+        var settings = api.Settings with { FocusCovenants = ["siracusa"], FocusOperators = ["卡达"], AlwaysOnTop = true };
         await api.InvokeAsync("saveSettings", [JsonSerializer.SerializeToElement(settings, HostApi.JsonOptions)]);
         var loaded = Assert.IsType<SettingsDto>(await (await CreateApi()).InvokeAsync("settings", []));
         Assert.Equal(settings.FocusCovenants, loaded.FocusCovenants);
         Assert.Equal(settings.FocusOperators, loaded.FocusOperators);
+        Assert.True(loaded.AlwaysOnTop);
         foreach (var invalid in new[]
         {
             settings with { FocusCovenants = ["不存在"] },

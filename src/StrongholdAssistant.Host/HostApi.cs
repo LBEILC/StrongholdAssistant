@@ -10,6 +10,8 @@ public sealed partial class HostApi
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _sessionPath;
+    public string DataDirectory { get; }
+    public System.Windows.Window? DialogOwner { get; set; }
     private readonly LineupStore _lineups;
     private readonly Dictionary<string, string> _ids;
     private readonly Dictionary<string, string> _names;
@@ -23,7 +25,8 @@ public sealed partial class HostApi
     private HostApi(string userDirectory, Dictionary<string, string> ids, List<Operator> operators,
         List<CovenantInfo> covenants, JsonElement catalog)
     {
-        _sessionPath = Path.Combine(userDirectory, "session.json");
+        DataDirectory = Path.GetFullPath(userDirectory);
+        _sessionPath = Path.Combine(DataDirectory, "session.json");
         _lineups = new LineupStore(Path.Combine(userDirectory, "lineups"));
         _ids = ids;
         _names = ids.ToDictionary(p => p.Value, p => p.Key);
@@ -143,15 +146,7 @@ public sealed partial class HostApi
 
     public async Task<LineupDto> SaveLineupAsync(LineupDto input)
     {
-        ValidateId(input.Id, allowEmpty: true);
-        if (input.Source is not ("user" or "planned") ||
-            input.Members.Select(m => m.Name).Distinct().Count() != input.Members.Length ||
-            input.Members.Any(m => !_operators.Any(o => o.Name == m.Name)))
-            throw new ArgumentException("阵容内容无效，请检查干员和来源。");
-        if (input.Goals is null || input.Goals.Any(g => !Catalog.GetProperty("covenants").EnumerateArray()
-                .Any(c => c.GetProperty("id").GetString() == g.Id
-                    && g.Level is 1 or 2 && g.Level <= c.GetProperty("thresholds").GetArrayLength())))
-            throw new ArgumentException("阵容的目标盟约无效。");
+        ValidateLineup(input);
         var lineup = input.Id.Length == 0 ? new Lineup() :
             (await _lineups.LoadAllAsync()).SingleOrDefault(l => l.Id == input.Id)
             ?? throw new ArgumentException("要保存的阵容不存在。");
@@ -170,6 +165,24 @@ public sealed partial class HostApi
         await _lineups.SaveAsync(lineup);
         await RefreshTrackingAsync();
         return ToDto(lineup);
+    }
+
+    private void ValidateLineup(LineupDto input)
+    {
+        if (input.Id is null || input.Name is null || input.Members is null
+            || input.Members.Any(m => m is null) || input.Goals?.Any(g => g is null) == true)
+            throw new ArgumentException("阵容内容无效，请检查干员和来源。");
+        ValidateId(input.Id, allowEmpty: true);
+        if (input.Source is not ("user" or "planned") ||
+            input.Members.Select(m => m.Name).Distinct().Count() != input.Members.Length ||
+            input.Members.Any(m => !_operators.Any(o => o.Name == m.Name)))
+            throw new ArgumentException("阵容内容无效，请检查干员和来源。");
+        if (input.Goals is null || input.Goals.Any(g => !Catalog.GetProperty("covenants").EnumerateArray()
+                .Any(c => c.GetProperty("id").GetString() == g.Id
+                    && g.Level is 1 or 2 && g.Level <= c.GetProperty("thresholds").GetArrayLength())))
+            throw new ArgumentException("阵容的目标盟约无效。");
+        foreach (var member in input.Members)
+            if (member.Transform is not null) _ = CovenantName(member.Transform);
     }
 
     private static void ValidateId(string id, bool allowEmpty = false)
@@ -205,6 +218,10 @@ public sealed partial class HostApi
             case "settings": return Settings;
             case "saveSettings": SaveSettings(Read<SettingsDto>(0)); return null;
             case "appInfo": return AppInfo();
+            case "openDataFolder": OpenDataFolder(); return null;
+            case "exportData": return await ExportDataAsync();
+            case "pickBackup": return await PickBackupAsync();
+            case "importData": await ImportDataAsync(Read<string>(0), Read<string>(1)); return null;
             case "openUrl": OpenUrl(Read<string>(0)); return null;
             case "checkUpdate": return await CheckUpdateAsync();
             case "applyUpdate": await ApplyUpdateAsync(); return null;

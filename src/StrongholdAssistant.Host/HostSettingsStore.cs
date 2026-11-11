@@ -20,6 +20,7 @@ public sealed class HostSettingsStore(string path)
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
+            AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
             FocusCovenants = json["focusCovenants"]?.Deserialize<string[]>() ?? [],
             FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? []
         };

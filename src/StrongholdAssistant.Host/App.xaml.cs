@@ -14,9 +14,15 @@ public partial class App : Application
     internal static readonly UpdateStartupNotification StartupResult = new(
         Environment.GetEnvironmentVariable(UpdateStartupNotification.ResultVariable));
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // 打包检查只读样图，不创建窗口、不激活已有实例，也不访问游戏。
+        if (e.Args.FirstOrDefault() == "--check-recognition")
+        {
+            Shutdown(await PackageRecognitionCheck.RunAsync(e.Args));
+            return;
+        }
         _instance = new Mutex(true, @"Local\StrongholdAssistant", out _ownsInstance);
         _activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activate");
         if (!_ownsInstance)

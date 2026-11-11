@@ -150,6 +150,8 @@ export interface Settings {
    * 数字为固定倍数，取 1、1.25、1.5、1.75、2。侧栏宽度范围也按同样倍数放大。
    */
   uiScale: 'auto' | number
+  /** 侧栏窗口置顶（总在其他窗口之上），默认 false。覆盖模式下宿主总是置顶，不看这一项 */
+  alwaysOnTop: boolean
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
@@ -157,7 +159,25 @@ export interface Settings {
 
 export interface AppInfo {
   version: string // 如 "0.1.0"；开发构建为 "0.0.0"
+  /** 数据文件夹的完整路径（%AppData%\StrongholdAssistant 展开后），只用来显示 */
+  dataDir: string
 }
+
+/** 备份文件的预览：导入前给用户确认 */
+export interface BackupSummary {
+  appVersion: string // 导出它的版本
+  exportedAt: string // ISO 时间
+  lineups: number
+  focusCovenants: number
+  focusOperators: number
+}
+
+/**
+ * 导入方式。merge：阵容按 id 合并（文件里的覆盖同 id 的，其余加进来），关注取并集，偏好设置保持当前的；
+ * replace：阵容、关注、偏好设置都换成文件里的。两种都不动本局状态（已持有、追踪），
+ * 目标阵容在导入后不存在时取消目标。
+ */
+export type ImportMode = 'merge' | 'replace'
 
 /** 自动更新的状态（检查、下载、校验都在宿主里做） */
 export interface UpdateStatus {
@@ -205,6 +225,20 @@ export interface Api {
   checkUpdate(): Promise<UpdateStatus>
   /** 下载并校验新版本，完成后宿主退出并替换文件、重新启动；失败时推送 failed */
   applyUpdate(): Promise<void>
+  /** 用资源管理器打开数据文件夹 */
+  openDataFolder(): Promise<void>
+  /**
+   * 弹出系统保存对话框导出备份（.json：我的阵容、特别关注、偏好设置；不含本局状态、窗口位置）。
+   * 默认文件名「卫戍协议助手-备份-YYYY-MM-DD.json」。用户取消返回 null，否则返回保存的完整路径。
+   */
+  exportData(): Promise<string | null>
+  /**
+   * 弹出系统打开对话框选备份文件并读取预览。用户取消返回 null。
+   * 文件不是有效备份时报错，错误文字直接给用户看。token 交给 importData 用，只在本次运行内有效。
+   */
+  pickBackup(): Promise<{ token: string; summary: BackupSummary } | null>
+  /** 导入 pickBackup 选的文件。导入前宿主先把当前数据导出到数据文件夹的 backups/ 里 */
+  importData(token: string, mode: ImportMode): Promise<void>
   /** 用系统默认浏览器打开外部链接（界面里不跳转） */
   openUrl(url: string): Promise<void>
   /** 后端推送：更新状态变化 */

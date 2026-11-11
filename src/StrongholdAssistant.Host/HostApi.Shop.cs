@@ -33,7 +33,7 @@ public sealed partial class HostApi
         _ => throw new ArgumentException("商店主题无效。")
     };
 
-    public void SaveSettings(SettingsDto settings)
+    private void ValidateSettings(SettingsDto settings)
     {
         if (settings.FocusCovenants is null || settings.FocusOperators is null
             || settings.FocusCovenants.Any(id => !_names.ContainsKey(id))
@@ -44,6 +44,12 @@ public sealed partial class HostApi
             && !(scale.ValueKind == System.Text.Json.JsonValueKind.Number
                 && scale.TryGetDouble(out var number) && double.IsFinite(number) && number >= 1 && number <= 2))
             throw new ArgumentException("界面缩放无效。");
+        _ = Theme(settings.GameTheme);
+    }
+
+    public void SaveSettings(SettingsDto settings)
+    {
+        ValidateSettings(settings);
         var theme = Theme(settings.GameTheme);
         SettingsStore.SaveSettings(settings);
         Settings = settings;
@@ -92,8 +98,9 @@ public sealed partial class HostApi
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
-    private static object AppInfo() => new
+    private object AppInfo() => new
     {
+        dataDir = DataDirectory,
         version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0]
     };
