@@ -92,7 +92,7 @@ public partial class MainWindow : Window
             if (request.Method == "windowCommand")
             {
                 windowCommand = request.Params[0].GetString();
-                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand")) throw new ArgumentException("窗口命令无效。");
+                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready")) throw new ArgumentException("窗口命令无效。");
                 result = null;
             }
             else
@@ -128,6 +128,7 @@ public partial class MainWindow : Window
         if (windowCommand == "close") Close();
         if (windowCommand == "collapse") SetCollapsed(true);
         if (windowCommand == "expand") SetCollapsed(false);
+        if (windowCommand == "ready") ShowUi();
         if (_api.UpdatePrepared)
         {
             try
@@ -143,6 +144,20 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    // 网页挂载完成：把骨架换成网页（两者都只有同样的标题栏），网页变为可见后自己播入场动画
+    private void ShowUi()
+    {
+        Browser.Visibility = Visibility.Visible;
+        Splash.Visibility = Visibility.Collapsed;
+    }
+
+    private void PostWindowEvent(string e) =>
+        Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { @event = "window", data = e }, HostApi.JsonOptions));
+
+    private void OnSplashDrag(object sender, System.Windows.Input.MouseButtonEventArgs e) => DragMove();
+    private void OnSplashMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void OnSplashClose(object sender, RoutedEventArgs e) => Close();
 
     protected override void OnClosed(EventArgs e)
     {

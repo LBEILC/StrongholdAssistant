@@ -245,10 +245,16 @@ export interface Api {
   onUpdate(cb: (u: UpdateStatus) => void): () => void
   /** 无边框窗口的按钮 */
   /**
-   * 窗口操作。collapse：覆盖模式下收成竖条（宽 48 DIP × 界面缩放，左边和上边位置不变，高度不变）；
+   * 窗口操作。ready：见 onWindow。collapse：覆盖模式下收成竖条（宽 48 DIP × 界面缩放，左边和上边位置不变，高度不变）；
    * expand：恢复原宽度。离开覆盖模式时宿主自动恢复原宽度，并推送 connection。
    */
-  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand'): Promise<void>
+  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready'): Promise<void>
+  /**
+   * 启动与关闭过渡。界面挂载后立刻发 windowCommand('ready')，宿主把原生骨架换成网页（网页之前是隐藏的，
+   * 隐藏页面里 requestAnimationFrame 不触发，所以不能等动画帧）；网页变为可见后自己播入场动画。
+   * 关闭时宿主先推送 'closing'，等界面播完退场（约 150ms）再隐藏窗口。
+   */
+  onWindow(cb: (e: 'closing') => void): () => void
   /** 后端推送：识别到新的开局信息 */
   onMatch(cb: (m: MatchInfo) => void): () => void
   /** 后端推送：游戏窗口找到 / 丢失 / 尺寸或全屏变化 */

@@ -18,7 +18,7 @@ declare global {
 const webview = window.chrome!.webview!
 let seq = 0
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>()
-const listeners: Record<string, Set<(d: any) => void>> = { match: new Set(), connection: new Set(), scan: new Set(), update: new Set() }
+const listeners: Record<string, Set<(d: any) => void>> = { match: new Set(), connection: new Set(), scan: new Set(), update: new Set(), window: new Set() }
 const listen = (event: string) => (cb: (d: any) => void) => {
   listeners[event].add(cb)
   return () => void listeners[event].delete(cb)
@@ -71,4 +71,5 @@ export const bridgeApi: Api = {
   onMatch: listen('match'),
   onConnection: listen('connection'),
   onScan: listen('scan'),
+  onWindow: listen('window'),
 }

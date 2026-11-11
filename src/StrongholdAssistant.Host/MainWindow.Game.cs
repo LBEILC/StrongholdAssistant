@@ -231,6 +231,7 @@ public partial class MainWindow
         Width = WindowGeometry.PanelWidth(_dock.Width, _uiScale, _collapsed);
         ResizeMode = _collapsed ? ResizeMode.NoResize : ResizeMode.CanResize;
         if (Browser.CoreWebView2 is not null) Browser.ZoomFactor = _uiScale;
+        Splash.LayoutTransform = new System.Windows.Media.ScaleTransform(_uiScale, _uiScale);
         // 覆盖模式（全屏或旁边放不下）盖在游戏上，不置顶会被游戏挡住，所以总是置顶；其余按用户的置顶设置
         Topmost = _overlayMode || _api.Settings.AlwaysOnTop;
     }
@@ -256,7 +257,12 @@ public partial class MainWindow
         if (_closing) return;
         _closing = true;
         if (_api is not null) await _api.StopContinuousAsync();
-        // 先藏起窗口再等后台收尾，收尾和释放 WebView2 时不会露出白底
+        // 网页先播退场（内容淡出到底色），再藏起窗口等后台收尾，收尾和释放 WebView2 时不会露出白底
+        if (Browser.Visibility == Visibility.Visible)
+        {
+            PostWindowEvent("closing");
+            await Task.Delay(170);
+        }
         Hide();
         _overlay.Hide();
         await _initialization;

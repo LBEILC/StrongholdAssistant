@@ -66,6 +66,8 @@ class AppState {
   folded = $state<Record<string, boolean>>(readFolded())
   /** 覆盖模式下收成竖条 */
   collapsed = $state(false)
+  /** 启动与关闭过渡：boot 等网页可见，in 入场，out 关闭前退场 */
+  phase = $state<'boot' | 'in' | 'out'>('boot')
 
   target = $derived(this.lineups.find((l) => l.id === this.session.targetLineupId) ?? null)
   banned = $derived(new Set(this.match.bannedOperators))
@@ -102,6 +104,7 @@ class AppState {
       this.continuous = !!s.continuous
     })
     api.onUpdate((u) => (this.update = u))
+    api.onWindow(() => (this.phase = 'out'))
     if (this.settings.autoCheckUpdate) this.checkUpdate()
   }
 

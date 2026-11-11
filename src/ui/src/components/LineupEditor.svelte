@@ -32,13 +32,24 @@
   })
   const progress = $derived(e ? goalProgress(e.goals, e.members, e.members.map((m) => m.name)) : [])
   let confirmDelete = $state(false)
+  // 名字可以不填：默认用前三个目标盟约起名，保存时补上
+  const autoName = $derived(
+    e?.goals
+      .slice(0, 3)
+      .map((g) => app.cov(g.id).name + (g.level === 2 ? ' II' : ''))
+      .join(' · ') || '未命名阵容',
+  )
+  const save = () => {
+    if (!e!.name.trim()) e!.name = autoName
+    app.saveEditing()
+  }
 </script>
 
 {#if e}
   <div class="scrim" transition:fade={{ duration: 160 }}></div>
   <aside class="ed" transition:fly={{ y: 400, duration: 260, easing: cubicOut }}>
     <header>
-      <input class="nm" bind:value={e.name} placeholder="阵容名称" />
+      <input class="nm" bind:value={e.name} placeholder="名称（不填就叫「{autoName}」）" />
       <button class="x" onclick={() => (app.editing = null)} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
 
@@ -107,7 +118,7 @@
       {/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={() => (app.editing = null)}>取消</button>
-      <button class="primary" disabled={!e.name.trim() || (!e.members.length && !e.goals.length)} onclick={() => app.saveEditing()}>保存</button>
+      <button class="primary" disabled={!e.members.length && !e.goals.length} title={!e.members.length && !e.goals.length ? '先选目标盟约或干员' : ''} onclick={save}>保存</button>
     </footer>
   </aside>
 {/if}

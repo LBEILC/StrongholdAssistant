@@ -33,7 +33,7 @@
 {#if app.collapsed}
   <CollapsedStrip />
 {:else}
-<div class="shell">
+<div class="shell {app.phase}">
   <TitleBar />
   <BondTracker />
   <Tabs />
@@ -65,6 +65,33 @@
 {/if}
 
 <style>
+  /* 启动：标题栏和原生骨架一致、不动，其余区块等宿主显示网页后依次淡入上移 */
+  .shell.boot > :global(:not(:first-child)) {
+    opacity: 0;
+  }
+  .shell.in > :global(:not(:first-child)) {
+    animation: rise 260ms var(--ease-out) both;
+  }
+  .shell.in > :global(:nth-child(3)) {
+    animation-delay: 50ms;
+  }
+  .shell.in > :global(:nth-child(n + 4)) {
+    animation-delay: 100ms;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  /* 关闭：标题栏留着，其余淡出到底色 */
+  .shell.out > :global(:not(:first-child)) {
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+      opacity 150ms ease-in,
+      transform 150ms ease-in;
+  }
   .shell {
     height: 100%;
     display: flex;

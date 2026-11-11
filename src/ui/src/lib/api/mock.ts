@@ -70,6 +70,7 @@ const updateListeners = new Set<(u: UpdateStatus) => void>()
 const pushUpdate = (u: UpdateStatus) => updateListeners.forEach((cb) => cb(u))
 
 const scanListeners = new Set<(s: ScanStatus) => void>()
+const windowListeners = new Set<(e: 'closing') => void>()
 const matchListeners = new Set<(m: MatchInfo) => void>()
 let continuousTimer = 0
 let continuousBefore = 0
@@ -137,6 +138,10 @@ export const mockApi: Api = {
     session = structuredClone(s)
   },
   windowCommand: async () => {},
+  onWindow: (cb) => {
+    windowListeners.add(cb)
+    return () => windowListeners.delete(cb)
+  },
   settings: () => wait(settings, 0),
   saveSettings: async (s) => {
     settings = structuredClone(s)
