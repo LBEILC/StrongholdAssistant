@@ -11,7 +11,7 @@
 
 <nav class="tabs">
   {#each tabs as t (t.id)}
-    <button class:on={app.tab === t.id} onclick={() => (app.tab = t.id)}>
+    <button class:on={app.tab === t.id} onclick={() => app.setTab(t.id)}>
       <span class="in"><span class="lb">{t.label}</span><span class="en term">{t.en}</span></span>
     </button>
   {/each}

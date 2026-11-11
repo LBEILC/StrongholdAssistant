@@ -1,0 +1,28 @@
+{
+  "schema": "sa-release-notes/1",
+  "version": "0.2.2",
+  "date": "2026-11-11",
+  "items": [
+    {
+      "kind": "improved",
+      "title": "启动更顺",
+      "detail": "先显示和界面一致的标题栏和「正在载入」，准备好后内容依次淡入。",
+      "highlight": true
+    },
+    {
+      "kind": "improved",
+      "title": "关闭更顺",
+      "detail": "关闭时内容先淡出再收起窗口。"
+    },
+    {
+      "kind": "improved",
+      "title": "阵容名称可以不填",
+      "detail": "不填会按目标盟约自动起名。"
+    },
+    {
+      "kind": "fixed",
+      "title": "新建阵容保存按钮",
+      "detail": "没填名称时保存按钮一直是灰的、也没有提示。"
+    }
+  ]
+}

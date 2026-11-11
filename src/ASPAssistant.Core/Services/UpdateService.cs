@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -19,7 +20,11 @@ public record UpdateInfo(
     string DownloadUrl,
     string AssetName,
     string? ChecksumsUrl,
-    string NotesUrl = "");
+    string NotesUrl = "")
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Notes { get; init; }
+}
 
 /// <summary>Thrown when the downloaded package does not match the published SHA-256.</summary>
 public class UpdateIntegrityException(string message) : Exception(message);
@@ -107,7 +112,11 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
                 asset.DownloadUrl,
                 asset.Name,
                 checksums?.DownloadUrl,
-                release.HtmlUrl ?? "");
+                release.HtmlUrl ?? "")
+            {
+                Notes = await ReadReleaseNotesAsync(release.Assets.FirstOrDefault(a => a.Name == "release-notes.json")?.DownloadUrl,
+                    latestVersion.ToString(), ct)
+            };
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {

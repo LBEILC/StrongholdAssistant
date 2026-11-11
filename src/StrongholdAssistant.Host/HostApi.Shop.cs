@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
@@ -20,7 +20,8 @@ public sealed partial class HostApi
 
     public ShopReader CreateShopReader(IOcrEngine engine)
     {
-        _shopReader = new ShopReader(engine, _operators.Where(o => o.Obtain is null).Select(o => o.Name).ToArray());
+        _shopReader = new ShopReader(engine, _operators.Where(o => o.Obtain is null).Select(o => o.Name)
+            .Concat(_equipmentNames).ToArray());
         _shopReader.Theme = Theme(Settings.GameTheme);
         return _shopReader;
     }
@@ -66,12 +67,14 @@ public sealed partial class HostApi
 
     private void RecomputeTracking()
     {
-        var names = (_trackingTarget?.Members.Select(m => m.Name) ?? []).Concat(_trackingSession.Tracked)
-            .Where(n => _operators.Any(o => o.Name == n)).Distinct().ToArray();
+        var names = _trackingSession.Tracked
+            .Where(n => _operators.Any(o => o.Name == n && o.Obtain is null))
+            .Concat(_trackingSession.TrackedEquipment)
+            .Distinct().ToArray();
         var goals = (_trackingTarget?.Goals ?? []).Select(g => CovenantName(g.Id)).ToHashSet();
         var secondary = _operators.Where(o => o.Obtain is null
             && o.CoreCovenants.Concat(o.AdditionalCovenants).Any(goals.Contains)
-            && !Match.BannedOperators.Contains(o.Name) && !_trackingSession.Owned.Contains(o.Name)
+            && !Match.BannedOperators.Contains(o.Name)
             && !names.Contains(o.Name)).Select(o => o.Name).ToArray();
         Volatile.Write(ref _trackedNames, names);
         Volatile.Write(ref _secondaryNames, secondary);
@@ -85,6 +88,7 @@ public sealed partial class HostApi
         foreach (var item in items)
         {
             item.IsTracked = names.Contains(item.Name);
+            item.IsKey = item.IsTracked && (_trackingTarget?.Members.Any(m => m.Name == item.Name && m.Key == true) ?? false);
             item.IsSecondary = secondary.Contains(item.Name);
         }
     }
@@ -105,3 +109,4 @@ public sealed partial class HostApi
             .InformationalVersion.Split('+')[0]
     };
 }
+

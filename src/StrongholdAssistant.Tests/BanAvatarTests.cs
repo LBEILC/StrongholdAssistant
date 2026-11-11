@@ -2,6 +2,7 @@ using ASPAssistant.Core.Data;
 using ASPAssistant.Core.Services;
 using StrongholdAssistant.Host;
 using Xunit.Abstractions;
+using System.Diagnostics;
 
 namespace StrongholdAssistant.Tests;
 
@@ -11,21 +12,52 @@ public sealed class BanAvatarTests(ITestOutputHelper output)
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
 
     [Fact]
-    public async Task CompleteVisibleAvatarsAreCorrectAndAtLeastFifteenAreRecognized()
+    public async Task RemainingSamplesKeepRejectingIncompleteAvatars()
     {
         using var ocr = new MaaOcrEngine(Data);
         await ocr.WarmUpAsync();
         var operators = await new JsonDataStore(Data).LoadOperatorsAsync();
         var reader = new BanAvatarRecognizer(ocr, operators, Path.Combine(Data, "operator_avatars"));
-        var result = await reader.RecognizeAsync(await File.ReadAllBytesAsync(
-            Path.Combine(AppContext.BaseDirectory, "TestData", "user-ban-4-1920x1080.png")));
+        var samples = Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "TestData"), "*.png")
+            .Where(p => Path.GetFileName(p).StartsWith("ban-sample-") || Path.GetFileName(p).StartsWith("user-ban-"))
+            .Where(p => Path.GetFileName(p) != "user-ban-4-1920x1080.png").Order().ToArray();
+        Assert.Equal(6, samples.Length);
+        foreach (var path in samples)
+        {
+            var bytes = await File.ReadAllBytesAsync(path);
+            var result = await reader.RecognizeAsync(bytes);
+            output.WriteLine($"{Path.GetFileName(path)} k={GameUiScale.Information(bytes):F5}");
+            output.WriteLine($"{Path.GetFileName(path)}：定位 {result.LocateMs:F1} ms，OCR {result.OcrMs:F1} ms，比对 {result.CompareMs:F1} ms；识别 {result.Names.Length} 人");
+            Assert.Empty(result.Names);
+        }
+    }
+
+    [Fact]
+    public async Task CompleteVisibleAvatarsRecognizeAllEighteenWithinOneSecond()
+    {
+        using var ocr = new MaaOcrEngine(Data);
+        await ocr.WarmUpAsync();
+        var operators = await new JsonDataStore(Data).LoadOperatorsAsync();
+        var timer = Stopwatch.StartNew();
+        var reader = new BanAvatarRecognizer(ocr, operators, Path.Combine(Data, "operator_avatars"));
+        output.WriteLine($"模板加载 {timer.Elapsed.TotalMilliseconds:F1} ms");
+        var screenshot = await File.ReadAllBytesAsync(
+            Path.Combine(AppContext.BaseDirectory, "TestData", "user-ban-4-1920x1080.png"));
+        timer.Restart();
+        var result = await reader.RecognizeAsync(screenshot);
+        double elapsedMs = timer.Elapsed.TotalMilliseconds;
+        output.WriteLine($"user-ban-4-1920x1080.png k={GameUiScale.Information(screenshot):F5} ms={elapsedMs:F1}");
         string[] truth = ["真言", "佩佩", "鸿雪", "森蚺", "异客", "至简", "泡泡", "莎草", "艾丝黛尔",
             "锏", "圣聆初雪", "凛御银灰", "灵知", "极光", "耶拉", "初雪", "雪猎", "角峰"];
         output.WriteLine($"定位 {result.LocateMs:F1} ms，OCR {result.OcrMs:F1} ms，比对 {result.CompareMs:F1} ms；{string.Join('、', result.Names)}");
         foreach (var slot in result.Slots)
             output.WriteLine($"{slot.Box} {slot.Name ?? "拒识"}（候选 {slot.Candidate}，分数 {slot.Score:F3}，分差 {slot.Margin:F3}）");
-        Assert.All(result.Names, name => Assert.Contains(name, truth));
-        Assert.True(result.Names.Length >= 15, $"仅认出 {result.Names.Length} 人");
+        Assert.Equal(truth, result.Slots.Select(s => s.Name));
+        // 016 修改前的 18 格基线；单一候选沿用识别器以得分作为分差的定义。
+        var margins = result.Slots.Select(s => s.Margin).Order().ToArray();
+        Assert.True(margins[0] >= .1013398550586983);
+        Assert.True((margins[8] + margins[9]) / 2 >= .3466745831556446);
+        Assert.InRange(elapsedMs, 0, 1000);
     }
 
     [Fact]

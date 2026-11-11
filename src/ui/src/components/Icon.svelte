@@ -30,8 +30,10 @@
   import pinFill from 'remixicon/icons/Map/pushpin-fill.svg?raw'
   import heart from 'remixicon/icons/Health & Medical/heart-3-line.svg?raw'
   import heartFill from 'remixicon/icons/Health & Medical/heart-3-fill.svg?raw'
+  import share from 'remixicon/icons/System/share-forward-line.svg?raw'
+  import paste from 'remixicon/icons/Document/clipboard-line.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder }
+  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste }
   export type IconName = keyof typeof icons
 </script>
 

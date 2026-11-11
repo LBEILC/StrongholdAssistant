@@ -72,12 +72,4 @@ public static class WindowGeometry
         return new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
     }
 
-    public static (double X, double Y) ShopMarkerPosition(
-        (double X, double Y, double Width, double Height) region, double widthDip, double heightDip, double markerSizeDip)
-    {
-        var x = (region.X + region.Width) * widthDip - markerSizeDip;
-        var y = region.Y * heightDip - markerSizeDip - 2;
-        return (Math.Clamp(x, 0, Math.Max(0, widthDip - markerSizeDip)),
-            Math.Clamp(y, 0, Math.Max(0, heightDip - markerSizeDip)));
-    }
 }

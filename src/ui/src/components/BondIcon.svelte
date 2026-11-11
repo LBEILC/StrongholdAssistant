@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import Icon from './Icon.svelte'
+  import { openMenu, covenantMenu } from '../lib/menu.svelte'
 
   interface Props {
     id: string
@@ -22,7 +23,7 @@
   const C = 2 * Math.PI * R
 </script>
 
-<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} title={cov.name}>
+<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={cov.name}>
   <span class="disc">
     {#if progress !== undefined}
       <svg class="ring" viewBox="0 0 100 100">

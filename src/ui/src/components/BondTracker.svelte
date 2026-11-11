@@ -1,65 +1,79 @@
 <script lang="ts">
+  import { flip } from 'svelte/animate'
+  import { scale } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
-  import BondIcon from './BondIcon.svelte'
+  import { openMenu, operatorMenu, equipmentMenu } from '../lib/menu.svelte'
   import Icon from './Icon.svelte'
 
-  // 常驻顶栏：目标阵容的盟约进度 + 还没买到的干员。任何页面都可见，取代参考项目的「追踪」标签。
-  // 商店阶段最常用：买到谁就点谁的头像标记已持有。
+  // 常驻顶栏：追踪列表 = 商店里会标记的干员和装备，任何页面都可见。
+  // 不做「待购」和盟约进度：干员会反复买卖，盟约有没有生效游戏里也看得到。点头像取消追踪
   const t = $derived(app.target)
-  const ownedCount = $derived(t ? t.members.length - app.missing.length : 0)
-  const goTarget = () => ((app.tab = 'lineup'), (app.lineupView = 'target'))
+  const keys = $derived(new Set(t?.members.filter((m) => m.key).map((m) => m.name) ?? []))
+  const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
+  const goTarget = () => (app.setTab('lineup'), (app.lineupView = 'target'))
+  const fx = { duration: 160, easing: cubicOut, start: 0.6 }
 </script>
 
-{#if t || !app.folded['hint.noTarget']}
+{#if t || total || !app.folded['hint.noTarget']}
 <section class="tracker">
-  {#if t}
+  {#if t || total}
     <div class="head">
-      <span class="lbl term">Target</span>
-      <button class="name" onclick={goTarget}>{t.name}</button>
+      <span class="lbl term">Track</span>
+      {#if t}
+        <button class="name" onclick={goTarget} title="目标阵容：{t.name}">{t.name}</button>
+      {:else}
+        <span class="name muted">单独追踪</span>
+      {/if}
       <span class="spacer"></span>
-      <span class="count"><b>{ownedCount}</b>/{t.members.length} 持有</span>
-      <span class="count trk">追踪 <b>{app.tracked.size}</b></span>
+      {#if app.untrackedInTarget}
+        <button class="re" onclick={() => app.trackTarget()} title="把目标名单里取消过的重新全部追踪">
+          <Icon name="refresh" size={12} />全部追踪<em>{app.untrackedInTarget}</em>
+        </button>
+      {/if}
+      <span class="count"><b>{total}</b> 项</span>
     </div>
     <div class="row">
-      {#each app.goalProgress as g (g.covenant.id)}
-        <div class="cell" class:active={g.active}>
-          <BondIcon
-            id={g.covenant.id}
-            size={34}
-            on={g.active}
-            incomplete={app.matchCovenant(g.covenant.id)?.incomplete}
-            progress={g.have / g.need}
-            onclick={() => (app.detail = { kind: 'covenant', id: g.covenant.id })}
-          />
-          <span class="n"><b>{g.have}</b>/{g.need}</span>
-        </div>
-      {:else}
-        <span class="nogoal">没有目标盟约，去编辑里选</span>
-      {/each}
-    </div>
-    <div class="buy">
-      <span class="bl">待购</span>
-      {#each app.missing as m (m.name)}
+      {#each app.trackedOps as n (n)}
         <button
           class="av"
-          class:banned={app.banned.has(m.name)}
-          class:key={m.key}
-          title="{m.name}{m.key ? '（关键）' : ''}：点一下标记已持有"
-          onclick={() => app.toggleOwned(m.name)}
+          class:banned={app.banned.has(n)}
+          class:key={keys.has(n)}
+          title="{n}{keys.has(n) ? '（关键）' : ''}：点一下取消追踪"
+          onclick={() => app.toggleTracked(n)}
+          oncontextmenu={(e) => openMenu(e, operatorMenu(n))}
+          animate:flip={{ duration: 200 }}
+          transition:scale={fx}
         >
-          <img src={asset.operator(m.name)} alt={m.name} />
+          <img src={asset.operator(n)} alt={n} />
+          <span class="x"><Icon name="close" size={14} /></span>
         </button>
-      {:else}
-        <span class="done">阵容已齐</span>
       {/each}
+      {#if app.trackedOps.length && app.session.trackedEquipment.length}<i class="div"></i>{/if}
+      {#each app.session.trackedEquipment as n (n)}
+        <button
+          class="av eq"
+          title="{n}：点一下取消追踪"
+          onclick={() => app.toggleTrackedEq(n)}
+          oncontextmenu={(e) => openMenu(e, equipmentMenu(n))}
+          animate:flip={{ duration: 200 }}
+          transition:scale={fx}
+        >
+          <img src={asset.equipment(n)} alt={n} />
+          <span class="x"><Icon name="close" size={14} /></span>
+        </button>
+      {/each}
+      {#if !total}
+        <span class="none">没有追踪的了，商店里不会标记。</span>
+      {/if}
     </div>
   {:else}
     <div class="empty">
-      还没有目标阵容。去
+      还没有追踪。去
       <button onclick={goTarget}>阵容</button>
-      规划或选一个，这里会显示盟约进度和待购干员。
-      <button class="x" title="不再提示" aria-label="不再提示" onclick={() => app.toggleFold('hint.noTarget')}><Icon name="close" size={13} /></button>
+      设个目标，或在详情、右键菜单里「追踪」，商店里会标记这些。
+      <button class="close" title="不再提示" aria-label="不再提示" onclick={() => app.toggleFold('hint.noTarget')}><Icon name="close" size={13} /></button>
     </div>
   {/if}
 </section>
@@ -69,7 +83,7 @@
   .tracker {
     flex: none;
     position: relative;
-    padding: 8px 10px 8px;
+    padding: 7px 10px 8px;
     background:
       var(--noise),
       linear-gradient(180deg, #16181a, #111214);
@@ -88,9 +102,10 @@
   }
   .head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    min-height: 20px;
   }
   .lbl {
     font-size: 9px;
@@ -104,127 +119,141 @@
     text-overflow: ellipsis;
     min-width: 0;
   }
-  .name:hover {
+  button.name:hover {
     color: var(--mint-hi);
+  }
+  .name.muted {
+    color: var(--fg-3);
+    font-weight: 400;
   }
   .spacer {
     flex: 1;
   }
+  .re {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .re em {
+    font-style: normal;
+    font-family: var(--font-term);
+    color: var(--gold);
+    margin-left: 1px;
+  }
+  .re:hover {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
   .count {
+    flex: none;
     font-size: 11px;
     color: var(--fg-3);
     white-space: nowrap;
   }
   .count b {
-    color: var(--fg-1);
+    color: var(--mint);
     font-family: var(--font-term);
     font-size: 13px;
   }
-  .count.trk b {
-    color: var(--mint);
-  }
+  /* 最多两行，再多就在顶栏里滚动，不把页面往下挤 */
   .row {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 5px 2px 2px 4px;
-    scrollbar-width: none;
-  }
-  .cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 44px;
-  }
-  .n {
-    font-family: var(--font-term);
-    font-size: 11px;
-    color: var(--fg-3);
-    line-height: 1;
-  }
-  .n b {
-    font-size: 13px;
-    color: var(--fg-2);
-  }
-  .active .n b {
-    color: var(--mint);
-  }
-  .buy {
-    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    margin-top: 8px;
-    min-height: 28px;
-    overflow-x: auto;
+    max-height: 68px;
+    overflow-y: auto;
     scrollbar-width: none;
-  }
-  .bl {
-    flex: none;
-    font-size: 11px;
-    color: var(--fg-3);
-    margin-right: 2px;
   }
   .av {
     position: relative;
     flex: none;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: var(--bg-3);
-    box-shadow: inset 0 0 0 1px var(--line);
+    box-shadow:
+      inset 0 0 0 1px var(--mint-lo),
+      0 0 5px rgb(34 227 178 / 0.18);
     overflow: hidden;
-    transition:
-      box-shadow var(--t-fast),
-      transform var(--t-fast) var(--ease-out);
   }
   .av img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  .av:hover {
-    transform: translateY(-1px);
-    box-shadow:
-      inset 0 0 0 1.5px var(--mint),
-      0 0 6px rgb(34 227 178 / 0.35);
+  .av.eq {
+    background: radial-gradient(circle at 50% 45%, #2c3034, var(--bg-2) 70%);
+  }
+  .av.eq img {
+    object-fit: contain;
+    padding: 3px;
+  }
+  /* 悬停：盖一层暗底和叉，表示点了就取消 */
+  .x {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgb(10 11 12 / 0.62);
+    box-shadow: inset 0 0 0 1.5px var(--red);
+    opacity: 0;
+    transition: opacity var(--t-fast);
+  }
+  .av:hover .x {
+    opacity: 1;
   }
   .av.banned img {
     filter: grayscale(1) brightness(0.45);
   }
-  .done {
-    font-size: 11px;
-    color: var(--mint);
-  }
-  .nogoal {
-    font-size: 11px;
-    color: var(--fg-4);
-    align-self: center;
+  .av.banned::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(-45deg, rgb(229 72 77 / 0.35) 0 2px, transparent 2px 6px);
   }
   .av.key::after {
-    /* 关键干员：右上角金色三角 */
+    /* 关键干员：左上角金色三角 */
     content: '';
     position: absolute;
     top: 0;
-    right: 0;
+    left: 0;
     width: 9px;
     height: 9px;
     background: var(--gold);
-    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+  .div {
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: var(--line);
+  }
+  .none {
+    font-size: 11px;
+    color: var(--fg-4);
+    line-height: 32px;
   }
   .empty {
     position: relative;
     font-size: 12px;
     color: var(--fg-3);
-    padding: 6px 24px 4px 0;
+    padding: 4px 24px 2px 0;
   }
-  .empty button:not(.x) {
+  .empty button:not(.close) {
     color: var(--mint);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
-  .x {
+  .close {
     position: absolute;
-    top: 2px;
+    top: 0;
     right: -4px;
     width: 22px;
     height: 22px;
@@ -232,7 +261,7 @@
     place-items: center;
     color: var(--fg-4);
   }
-  .x:hover {
+  .close:hover {
     color: var(--fg-1);
     background: var(--bg-3);
   }

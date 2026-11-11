@@ -65,8 +65,9 @@ public partial class MainWindow
         await _ocr.WarmUpAsync();
         _iconMatcher = new MaaBanIconMatcher(data);
         _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(_ocr),
-            _ocr, new ASPAssistant.Core.GameState.GameState(), () => _api.TrackedNames, iconMatcher: _iconMatcher,
-            intervalMs: 500);
+            _ocr, new ASPAssistant.Core.GameState.GameState(),
+            () => _api.TrackedNames.Concat(_api.SecondaryNames).Distinct().ToArray(), iconMatcher: _iconMatcher,
+            intervalMs: 800);
         _scanner.GameStateUpdated += state =>
         {
             var items = state.ShopItems.ToArray();
@@ -283,7 +284,7 @@ public partial class MainWindow
         var items = _api.Settings.ShopMarkers ? _shopItems : [];
         _overlay.UpdateShopItems(items);
         if (!_connectGame || _closing || _capturingInformation || _lastGameRect is null
-            || !items.Any(i => i.IsTracked || i.IsSecondary))
+            || (!items.Any(i => i.IsTracked || i.IsSecondary) && !_overlay.HasMarkers))
         {
             _overlay.Hide();
             return;

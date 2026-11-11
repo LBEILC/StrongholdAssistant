@@ -56,21 +56,16 @@
         {/each}
       </div>
       <div class="actions">
-        <button class="btn" class:on={app.owned.has(o.name)} onclick={() => app.toggleOwned(o.name)}>
-          {#if app.owned.has(o.name)}<Icon name="check" size={15} />已持有{:else}标记已持有{/if}
+        <button class="btn" class:on={app.tracked.has(o.name)} onclick={() => app.toggleTracked(o.name)}>
+          {#if app.tracked.has(o.name)}<Icon name="starFill" size={15} />追踪中{:else}<Icon name="star" size={15} />追踪{/if}
         </button>
         {#if app.target}
           <button class="btn" class:on={inTarget} onclick={() => app.toggleMember(o.name)}>
             {#if inTarget}<Icon name="check" size={15} />在目标里{:else}<Icon name="add" size={15} />加入目标{/if}
           </button>
         {/if}
-        {#if !inTarget}
-          <button class="btn" class:on={app.session.tracked.includes(o.name)} onclick={() => app.toggleTracked(o.name)}>
-            {#if app.session.tracked.includes(o.name)}<Icon name="starFill" size={15} />追踪中{:else}<Icon name="star" size={15} />追踪{/if}
-          </button>
-        {/if}
       </div>
-      <p class="note">{inTarget ? '目标里的干员会在商店里标记；已持有的计入目标盟约进度' : '加入目标或追踪后在商店里标记；已持有的计入目标盟约进度'}</p>
+      <p class="note">追踪的干员在商店里标记，顶栏点一下就能取消；加入目标会同时追踪</p>
       <div class="minor">
         <button class:fav={app.focusOps.has(o.name)} onclick={() => app.toggleFocusOp(o.name)}>
           <Icon name={app.focusOps.has(o.name) ? 'heartFill' : 'heart'} size={13} />{app.focusOps.has(o.name) ? '已特别关注' : '特别关注'}
@@ -80,7 +75,9 @@
         </button>
       </div>
     {:else if d.kind === 'equipment'}
-      {@const e = app.catalog.equipment.find((x) => x.name === d.name)!}
+      {@const e = app.eq(d.name)}
+      {@const inTarget = !!app.target?.equipment.includes(e.name)}
+      {@const trk = app.trackedEq.has(e.name)}
       <div class="hero">
         <span class="pic eqp" style:--c="var(--tier-{e.tier})"><img src={asset.equipment(e.name)} alt="" /></span>
         <div class="meta">
@@ -92,6 +89,17 @@
         <div class="trait"><span class="tt">普通</span><GameText text={e.normal} /></div>
         <div class="trait"><span class="tt">精锐</span><GameText text={e.elite} compare={e.normal} /></div>
       </div>
+      <div class="actions">
+        <button class="btn" class:on={trk} onclick={() => app.toggleTrackedEq(e.name)}>
+          {#if trk}<Icon name="starFill" size={15} />追踪中{:else}<Icon name="star" size={15} />追踪{/if}
+        </button>
+        {#if app.target}
+          <button class="btn" class:on={inTarget} onclick={() => app.toggleTargetEq(e.name)}>
+            {#if inTarget}<Icon name="check" size={15} />在目标里{:else}<Icon name="add" size={15} />加入目标{/if}
+          </button>
+        {/if}
+      </div>
+      <p class="note">追踪的装备在商店里标记，顶栏点一下就能取消；加入目标会同时追踪</p>
     {:else if d.kind === 'covenant'}
       {@const c = app.cov(d.id)}
       {@const mc = app.matchCovenant(c.id)}
@@ -113,7 +121,7 @@
         {/each}
         <div class="members">
           {#each members as o (o.name)}
-            <OpTile name={o.name} size={40} owned={app.owned.has(o.name)} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+            <OpTile name={o.name} size={40} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
           {/each}
         </div>
       </div>

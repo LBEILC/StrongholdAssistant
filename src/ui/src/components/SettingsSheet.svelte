@@ -4,6 +4,7 @@
   import { app } from '../lib/state.svelte'
   import { api, type BackupSummary, type GameTheme, type ImportMode } from '../lib/api'
   import Icon from './Icon.svelte'
+  import NotesList from './NotesList.svelte'
 
   // 设置：游戏主题（商店识别要用）、商店标记、版本与更新、关于
   const themes: { id: GameTheme; name: string; note: string }[] = [
@@ -149,7 +150,8 @@
       <div class="upd">
         {#if u.state === 'available'}
           <span class="msg new">发现新版本 <b>v{u.version}</b></span>
-          {#if u.notesUrl}<button class="link" onclick={() => api.openUrl(u.notesUrl!)}>更新内容</button>{/if}
+          <!-- 发现新版本后也能重新检查：可能又有了更新的版本 -->
+          <button class="btn icon" title="重新检查" aria-label="重新检查" onclick={() => app.checkUpdate()}><Icon name="refresh" size={14} /></button>
           <button class="btn main" onclick={() => app.applyUpdate()}>更新</button>
         {:else if u.state === 'downloading'}
           <span class="msg">正在下载 v{u.version}</span>
@@ -165,6 +167,19 @@
           </button>
         {/if}
       </div>
+      {#if u.state === 'available'}
+        <div class="newnotes">
+          {#if u.notes}
+            <p class="nh">v{u.version} 更新了这些 <span>{u.notes.date}</span></p>
+            <NotesList items={u.notes.items} />
+          {/if}
+          {#if u.notesUrl}<button class="link" onclick={() => api.openUrl(u.notesUrl!)}>{u.notes ? '在发版页查看' : '查看更新内容'}</button>{/if}
+        </div>
+      {/if}
+      <button class="logbtn" onclick={() => (app.changelogOpen = true)}>
+        <span><b>更新日志</b><small>每个版本更新了什么</small></span>
+        <Icon name="arrowRight" size={16} />
+      </button>
       <label class="row">
         <span class="lbl"><b>自动检查更新</b><small>启动时检查一次，从 GitHub Releases 获取</small></span>
         <input type="checkbox" class="sw" checked={app.settings.autoCheckUpdate} onchange={(e) => set('autoCheckUpdate', e.currentTarget.checked)} />
@@ -330,8 +345,60 @@
     gap: 10px;
     cursor: pointer;
   }
-  .upd + .row {
+  .row {
     margin-top: 10px;
+  }
+  .btn.icon {
+    padding: 0 8px;
+  }
+  .newnotes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: flex-start;
+  }
+  .newnotes :global(.notes) {
+    align-self: stretch;
+  }
+  .nh {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--fg-2);
+  }
+  .nh span {
+    font-weight: 400;
+    color: var(--fg-4);
+    margin-left: 4px;
+  }
+  .logbtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    color: var(--fg-3);
+    background: var(--bg-1);
+  }
+  .logbtn:hover {
+    color: var(--fg-1);
+    background: var(--bg-2);
+  }
+  .logbtn span {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .logbtn b {
+    font-size: 13px;
+    color: var(--fg-1);
+  }
+  .logbtn small {
+    font-size: 11px;
+    color: var(--fg-4);
   }
   .lbl {
     flex: 1;

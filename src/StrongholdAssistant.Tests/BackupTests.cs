@@ -13,7 +13,7 @@ public sealed class BackupTests : IDisposable
     private static string Json<T>(T value) => JsonSerializer.Serialize(value, HostApi.JsonOptions);
     private static Task<LineupDto> AddLineup(HostApi api, string name) => api.SaveLineupAsync(
         new("", name, [new("折光", "yan", true)], "user", "备注", DateTime.UtcNow)
-        { Goals = [new("yan", 1)] });
+        { Goals = [new("yan", 1)], Equipment = ["虹彩活血饮料"] });
 
     [Fact]
     public async Task ReplaceRoundTripPreservesLineupsSettingsSessionAndDock()

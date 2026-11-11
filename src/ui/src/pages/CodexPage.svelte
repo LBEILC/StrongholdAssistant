@@ -4,12 +4,28 @@
   import OpCard from '../components/OpCard.svelte'
   import TierBadge from '../components/TierBadge.svelte'
   import Icon from '../components/Icon.svelte'
+  import { openMenu, equipmentMenu } from '../lib/menu.svelte'
+  import Seg from '../components/Seg.svelte'
+  import { fly } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
 
   import GameText from '../components/GameText.svelte'
 
   // 图鉴：干员 / 装备网格，筛选常驻展开；点卡片在底部面板看详情（不靠悬停）。
   // 策略只有名字、发起者和一句效果，做成列表直接看全，本局策略排最前
-  let kind = $state<'operator' | 'equipment' | 'strategy'>('operator')
+  type Kind = 'operator' | 'equipment' | 'strategy'
+  let kind = $state<Kind>('operator')
+  const kinds: { id: Kind; label: string; count: number }[] = [
+    { id: 'operator', label: '干员', count: app.catalog.operators.length },
+    { id: 'equipment', label: '装备', count: app.catalog.equipment.length },
+    { id: 'strategy', label: '策略', count: app.catalog.strategies.length },
+  ]
+  // 切换时内容从切换方向滑入
+  let dir = $state(1)
+  const pick = (k: Kind) => {
+    dir = kinds.findIndex((x) => x.id === k) >= kinds.findIndex((x) => x.id === kind) ? 1 : -1
+    kind = k
+  }
   let q = $state('')
   let tiers = $state<number[]>([])
   let bonds = $state<string[]>([])
@@ -34,7 +50,11 @@
   const cats = [...new Set(app.catalog.equipment.flatMap((e) => e.categories))]
   const eqs = $derived(
     app.catalog.equipment.filter(
-      (e) => (!q || e.name.includes(q)) && (!tiers.length || tiers.includes(e.tier)) && (!cat || e.categories.includes(cat)),
+      (e) =>
+        (!q || e.name.includes(q)) &&
+        (!tiers.length || tiers.includes(e.tier)) &&
+        (!cat || e.categories.includes(cat)) &&
+        (!onlyTracked || app.trackedEq.has(e.name)),
     ),
   )
   // 按等阶分组；不可招募的特殊干员（如暴躁铁皮）单独放最后一组，t = 0
@@ -59,11 +79,7 @@
 <div class="page">
   <!-- 只让类型切换和搜索吸顶，筛选条件随页面滚走，免得占掉半屏 -->
   <div class="top">
-    <div class="seg">
-      <button class:on={kind === 'operator'} onclick={() => (kind = 'operator')}>干员 <em>{app.catalog.operators.length}</em></button>
-      <button class:on={kind === 'equipment'} onclick={() => (kind = 'equipment')}>装备 <em>{app.catalog.equipment.length}</em></button>
-      <button class:on={kind === 'strategy'} onclick={() => (kind = 'strategy')}>策略 <em>{app.catalog.strategies.length}</em></button>
-    </div>
+    <Seg items={kinds} value={kind} onchange={pick} height={26} />
     <div class="search">
       <span class="si"><Icon name="search" size={15} /></span>
       <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : kind === 'equipment' ? '搜索装备' : '搜索策略、发起者或效果'} />
@@ -72,6 +88,8 @@
       {/if}
     </div>
   </div>
+  {#key kind}
+  <div in:fly={{ x: 24 * dir, duration: 220, easing: cubicOut }}>
   {#if kind === 'strategy'}
     <div class="strats">
       {#each strategies as s (s.id)}
@@ -92,9 +110,9 @@
       {#each [1, 2, 3, 4, 5, 6] as t (t)}
         <button class="chip tier" class:on={tiers.includes(t)} style:--c="var(--tier-{t})" onclick={() => (tiers = toggle(tiers, t))}>{ROMAN[t]}</button>
       {/each}
+      <span class="sep"></span>
+      <button class="chip" class:on={onlyTracked} onclick={() => (onlyTracked = !onlyTracked)}>追踪中</button>
       {#if kind === 'operator'}
-        <span class="sep"></span>
-        <button class="chip" class:on={onlyTracked} onclick={() => (onlyTracked = !onlyTracked)}>追踪中</button>
         <button class="chip" class:on={onlyFocus} onclick={() => (onlyFocus = !onlyFocus)}>关注</button>
         <button class="chip" class:on={hideBanned} onclick={() => (hideBanned = !hideBanned)}>隐藏禁用</button>
       {/if}
@@ -140,11 +158,14 @@
           <button
             class="eq"
             class:selected={cur?.kind === 'equipment' && cur.name === e.name}
+            class:tracked={app.trackedEq.has(e.name)}
             style:--c="var(--tier-{e.tier})"
             style:--bg="url({asset.card('bg_black')})"
             onclick={() => (app.detail = { kind: 'equipment', name: e.name })}
+            oncontextmenu={(ev) => openMenu(ev, equipmentMenu(e.name))}
           >
             <span class="et"><TierBadge tier={e.tier} size={18} /></span>
+            {#if app.trackedEq.has(e.name)}<span class="trk">追踪</span>{/if}
             <img src={asset.equipment(e.name)} alt="" loading="lazy" />
             <span class="en">{e.name}</span>
             <span class="ec">{e.categories.join(' · ')}</span>
@@ -156,6 +177,8 @@
     <p class="none">没有符合条件的{kind === 'operator' ? '干员' : '装备'}。</p>
   {/each}
   {/if}
+  </div>
+  {/key}
 </div>
 
 <style>
@@ -242,29 +265,6 @@
     padding: 10px 10px 9px;
     background: var(--bg-0);
     border-bottom: 1px solid var(--line-soft);
-  }
-  .seg {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    background: var(--bg-2);
-    padding: 2px;
-  }
-  .seg button {
-    height: 26px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--fg-3);
-  }
-  .seg button em {
-    font-style: normal;
-    font-family: var(--font-term);
-    font-size: 11px;
-    color: var(--fg-4);
-  }
-  .seg button.on {
-    color: var(--fg-1);
-    background: var(--bg-4);
-    box-shadow: inset 0 -2px 0 var(--mint);
   }
   .search {
     display: flex;
@@ -414,6 +414,23 @@
     box-shadow:
       inset 0 0 0 1.5px var(--fg-1),
       inset 0 2px 0 var(--c);
+  }
+  /* 追踪中：和干员卡一样的右上角薄荷绿标签 */
+  .eq.tracked {
+    box-shadow:
+      inset 0 0 0 1px rgb(34 227 178 / 0.55),
+      inset 0 2px 0 var(--c);
+  }
+  .trk {
+    position: absolute;
+    right: 0;
+    top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 3px 5px;
+    color: var(--mint-ink);
+    background: var(--mint);
   }
   .et {
     position: absolute;

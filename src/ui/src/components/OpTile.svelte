@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN } from '../lib/assets'
   import Icon from './Icon.svelte'
+  import { openMenu, operatorMenu } from '../lib/menu.svelte'
 
   // 小头像格：阵容、禁用列表里用。点一下切换「已持有」或看详情，由调用方决定
   interface Props {
@@ -14,15 +15,17 @@
     showName?: boolean
     /** 阵容里的关键干员：左上角金色三角 */
     isKey?: boolean
+    /** 右键弹干员菜单；编辑器、挑选面板里关掉 */
+    menu?: boolean
     onclick?: () => void
   }
-  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, onclick }: Props = $props()
+  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, menu = true, onclick }: Props = $props()
   const op = $derived(app.op(name))
   const banned = $derived(app.banned.has(name))
   const focus = $derived(app.focusOps.has(name))
 </script>
 
-<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} title="{name} · {ROMAN[op.tier]} 阶">
+<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} oncontextmenu={menu ? (e) => openMenu(e, operatorMenu(name)) : undefined} title="{name} · {ROMAN[op.tier]} 阶">
   <span class="pic">
     <img class="av" src={asset.operator(name)} alt="" loading="lazy" />
     {#if owned}<span class="check"><Icon name="check" size={11} /></span>{/if}

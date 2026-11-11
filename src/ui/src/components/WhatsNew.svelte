@@ -1,0 +1,143 @@
+<script lang="ts">
+  import { fly, fade } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
+  import { app } from '../lib/state.svelte'
+  import { markSeen } from '../lib/changelog'
+  import NotesList from './NotesList.svelte'
+
+  // 更新后第一次打开：这一版有什么新东西。重点条目在前，其余收在「还有 N 项」里；关掉就记为看过
+  const n = $derived(app.whatsNew)
+  const hl = $derived(n?.items.filter((i) => i.highlight) ?? [])
+  const rest = $derived(n?.items.filter((i) => !i.highlight) ?? [])
+  let all = $state(false)
+  const done = () => {
+    markSeen(app.appInfo.version)
+    app.whatsNew = null
+  }
+  const openLog = () => {
+    done()
+    app.changelogOpen = true
+  }
+</script>
+
+{#if n}
+  <div class="scrim" transition:fade={{ duration: 200 }}></div>
+  <div class="wrap">
+    <div class="card" role="dialog" aria-label="这一版有什么新东西" in:fly={{ y: 24, duration: 280, easing: cubicOut }} out:fade={{ duration: 150 }}>
+      <header>
+        <span class="term tag">Updated</span>
+        <h3>已更新到 <b class="term">v{n.version}</b></h3>
+        <p>这一版有这些新东西</p>
+      </header>
+      <div class="body">
+        <NotesList items={all ? [...hl, ...rest] : hl} />
+        {#if rest.length && !all}
+          <button class="more" onclick={() => (all = true)}>还有 {rest.length} 项改进和修复</button>
+        {/if}
+      </div>
+      <footer>
+        <button class="ghost" onclick={openLog}>全部更新日志</button>
+        <button class="primary" onclick={done}>知道了</button>
+      </footer>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgb(0 0 0 / 0.65);
+  }
+  .wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 71;
+    display: grid;
+    place-items: center;
+    padding: 16px 12px;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background:
+      var(--noise),
+      linear-gradient(180deg, #23272a, #16181a 160px);
+    box-shadow:
+      inset 0 0 0 1px #3a3e43,
+      0 16px 40px rgb(0 0 0 / 0.6);
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12px;
+    width: 64px;
+    height: 2px;
+    background: var(--mint);
+    box-shadow: var(--mint-glow);
+  }
+  header {
+    padding: 14px 14px 8px;
+  }
+  .tag {
+    font-size: 9px;
+    padding: 2px 5px 1px;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  h3 {
+    margin: 8px 0 2px;
+    font-size: 18px;
+  }
+  h3 b {
+    color: var(--mint);
+  }
+  header p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-3);
+  }
+  .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px 14px 10px;
+  }
+  .more {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--mint);
+  }
+  footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-1);
+  }
+  .ghost {
+    font-size: 12px;
+    color: var(--fg-3);
+    padding: 5px 8px;
+  }
+  .ghost:hover {
+    color: var(--fg-1);
+  }
+  .primary {
+    height: 30px;
+    padding: 0 18px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .primary:hover {
+    background: var(--mint-hi);
+  }
+</style>

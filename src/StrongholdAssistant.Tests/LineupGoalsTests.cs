@@ -47,16 +47,16 @@ public sealed class LineupGoalsTests : IDisposable
     }
 
     [Fact]
-    public async Task MarkerSetsExcludeBannedOwnedPrimaryAndSpecialOperatorsAndRefresh()
+    public async Task MarkerSetsIgnoreOwnedAndExcludeBannedPrimaryAndSpecialOperatorsAndRefresh()
     {
         var api = await CreateApi();
         var lineup = await api.SaveLineupAsync(new("", "协防", [new("初雪")], "user", null, default)
             { Goals = [new("empty", 1)] });
-        await api.SaveSessionAsync(new(lineup.Id, ["塞雷娅"], ["夜莺"]));
+        await api.SaveSessionAsync(new(lineup.Id, ["塞雷娅"], ["初雪", "夜莺", "暴躁铁皮"]));
         api.SetOperatorBanned("Mon3tr", true);
         Assert.Equal(new[] { "初雪", "夜莺" }, api.TrackedNames);
-        Assert.Equal(new[] { "机械师", "塔露拉", "缪尔赛思" }.Order(), api.SecondaryNames.Order());
-        foreach (var name in new[] { "Mon3tr", "塞雷娅", "初雪", "夜莺", "暴躁铁皮" })
+        Assert.Equal(new[] { "机械师", "塔露拉", "缪尔赛思", "塞雷娅" }.Order(), api.SecondaryNames.Order());
+        foreach (var name in new[] { "Mon3tr", "初雪", "夜莺", "暴躁铁皮" })
             Assert.DoesNotContain(name, api.SecondaryNames);
         var items = new[] { new ShopItem { Name = "初雪" }, new ShopItem { Name = "机械师" } };
         api.UpdateShopTracking(items);

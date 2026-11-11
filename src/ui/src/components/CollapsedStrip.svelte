@@ -1,10 +1,10 @@
 <script lang="ts">
   import { app } from '../lib/state.svelte'
-  import BondIcon from './BondIcon.svelte'
+  import { asset } from '../lib/assets'
   import Icon from './Icon.svelte'
 
-  // 覆盖模式下收起的竖条：侧栏盖在游戏画面上时，买东西、布阵前收成一条，只留目标盟约进度和待购人数
-  const t = $derived(app.target)
+  // 覆盖模式下收起的竖条：侧栏盖在游戏画面上时，买东西、布阵前收成一条，只留追踪列表
+  const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
   const expand = () => app.setCollapsed(false)
 </script>
 
@@ -17,20 +17,22 @@
       <Icon name="stop" size={14} />
     </button>
   {/if}
-  {#if t}
-    <div class="bonds">
-      {#each app.goalProgress as g (g.covenant.id)}
-        <button class="cell" class:active={g.active} title="{g.covenant.name} {g.have}/{g.need}" onclick={expand}>
-          <BondIcon id={g.covenant.id} size={30} on={g.active} progress={g.have / g.need} />
-          <span class="n"><b>{g.have}</b>/{g.need}</span>
-        </button>
-      {/each}
-    </div>
-    <button class="buy" class:done={!app.missing.length} title="还有 {app.missing.length} 名待购" onclick={expand}>
-      <span>待购</span>
-      <b>{app.missing.length}</b>
-    </button>
-  {/if}
+  <!-- 追踪列表竖着排，点头像取消追踪，和顶栏一样 -->
+  <span class="cnt" title="追踪 {total} 项"><b>{total}</b><em>追踪</em></span>
+  <div class="list">
+    {#each app.trackedOps as n (n)}
+      <button class="av" class:banned={app.banned.has(n)} title="{n}：点一下取消追踪" onclick={() => app.toggleTracked(n)}>
+        <img src={asset.operator(n)} alt={n} />
+        <span class="x"><Icon name="close" size={13} /></span>
+      </button>
+    {/each}
+    {#each app.session.trackedEquipment as n (n)}
+      <button class="av eq" title="{n}：点一下取消追踪" onclick={() => app.toggleTrackedEq(n)}>
+        <img src={asset.equipment(n)} alt={n} />
+        <span class="x"><Icon name="close" size={13} /></span>
+      </button>
+    {/each}
+  </div>
 </div>
 
 <style>
@@ -89,54 +91,68 @@
   .stopscan:hover {
     background: var(--mint-tint);
   }
-  .bonds {
+  .cnt {
+    flex: none;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding-top: 4px;
-  }
-  .cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-  }
-  .n {
-    font-size: 10px;
-    color: var(--fg-3);
-    font-variant-numeric: tabular-nums;
-  }
-  .n b {
-    color: var(--fg-1);
-  }
-  .active .n b {
-    color: var(--mint);
-  }
-  .buy {
-    margin-top: 2px;
-    width: 38px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 4px 0 5px;
-    background: rgb(243 179 34 / 0.14);
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.45);
-  }
-  .buy span {
-    font-size: 10px;
-    color: var(--fg-3);
-  }
-  .buy b {
-    font-size: 16px;
     line-height: 1.1;
-    color: var(--gold);
+    padding-top: 2px;
   }
-  .buy.done {
-    background: var(--mint-tint);
-    box-shadow: inset 0 0 0 1px rgb(34 227 178 / 0.4);
-  }
-  .buy.done b {
+  .cnt b {
+    font-family: var(--font-term);
+    font-size: 15px;
     color: var(--mint);
+  }
+  .cnt em {
+    font-style: normal;
+    font-size: 10px;
+    color: var(--fg-3);
+  }
+  .list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+  }
+  .av {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    background: var(--bg-3);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+    overflow: hidden;
+  }
+  .av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .av.eq img {
+    object-fit: contain;
+    padding: 3px;
+  }
+  .av.banned img {
+    filter: grayscale(1) brightness(0.45);
+  }
+  .x {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgb(10 11 12 / 0.62);
+    box-shadow: inset 0 0 0 1.5px var(--red);
+    opacity: 0;
+    transition: opacity var(--t-fast);
+  }
+  .av:hover .x {
+    opacity: 1;
   }
 </style>

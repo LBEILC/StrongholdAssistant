@@ -51,7 +51,9 @@ try {
 Run { dotnet restore installer/Compiler.csproj }
 Run { dotnet msbuild installer/Compiler.csproj -t:CompileInstaller "-p:InstallerVersion=$declared" "-p:PublishDir=$publish" "-p:ReleaseDir=$release" }
 $setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
-$sums = foreach ($file in @($zip, $setup)) {
+$notes = Join-Path $release 'release-notes.json'
+Copy-Item -LiteralPath (Join-Path $root "src/ui/release-notes/$Version.json") -Destination $notes
+$sums = foreach ($file in @($zip, $setup, $notes)) {
     $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $([IO.Path]::GetFileName($file))"
 }

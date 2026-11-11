@@ -43,8 +43,16 @@ public sealed class ShopStateStabilizer
     /// <see langword="true"/> if the stable operator set changed and the overlay
     /// should be updated; <see langword="false"/> if nothing meaningful changed.
     /// </returns>
-    public bool TryUpdate(IReadOnlyList<ShopItem> detectedItems, out IReadOnlyList<ShopItem> stableItems)
+    public bool TryUpdate(IReadOnlyList<ShopItem> detectedItems, out IReadOnlyList<ShopItem> stableItems,
+        bool shopVisible = true)
     {
+        if (!shopVisible)
+        {
+            bool hadItems = _stable.Count != 0;
+            Reset();
+            stableItems = [];
+            return hadItems;
+        }
         var detectedIds = detectedItems.Select(i => i.Id).ToHashSet();
         bool changed = false;
 
@@ -53,7 +61,7 @@ public sealed class ShopStateStabilizer
         {
             if (_stable.TryGetValue(item.Id, out var existing))
             {
-                changed |= existing.Item.OcrRegion != item.OcrRegion;
+                changed |= existing.Item.OcrRegion != item.OcrRegion || existing.Item.CardRegion != item.CardRegion;
                 // Card still present — update card boundary and reset miss counter.
                 _stable[item.Id] = existing with { Item = item, MissCount = 0 };
             }

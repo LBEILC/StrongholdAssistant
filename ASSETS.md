@@ -29,10 +29,12 @@
 | 位置 | 内容 | 来源 |
 |---|---|---|
 | `src/ui/public/assets/data/operators/` | 干员头像（缩放并转为 webp） | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/icons/`（取自 PRTS） |
-| `data/operator_avatars/` | 头像识别模板，141 张 128×128 PNG；与界面头像同源 | 同上 `data/icons/operators/`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
+| `data/operator_avatars/*.png` | 头像识别模板（默认头像），141 张 128×128 PNG；与界面头像同源 | 同上 `data/icons/operators/`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
+| `data/operator_avatars/<干员名>/` | 头像识别模板（默认、精二、各皮肤头像），463 张 128×128 PNG，由 `scripts/generate-avatar-templates.ps1` 生成 | [yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource) `avatar/`，commit `62fe51e`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
 | `src/ui/public/assets/data/equipment/`、`bosses/`、`enemy_types/`、`strategies/` | 装备、首领、敌人类型、策略图标（缩放并转为 webp） | 同上（取自 PRTS、SPDatabase） |
 | `data/*.json` | 宿主读取的当期数据（干员、盟约、装备、首领、敌人类型、策略等）；`covenant_ids.json` 是盟约中文名到盟约 id 的对照 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/`（取自 PRTS、SPDatabase）；盟约 id 取自 [PRTS](https://prts.wiki) 的 `activity_table.json` |
 | `data/model/ocr/` | 文字识别模型（`det.onnx`、`rec.onnx`、`keys.txt`），由 MaaFramework 加载 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/model/ocr/`，为 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 模型（Apache-2.0） |
 | `src/StrongholdAssistant.Tests/TestData/*.png` | 测试用的游戏截图（开局信息页、商店、局内画面），只用于测试，不进发布包 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `src/ASPAssistant.Tests/TestData/`；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/user-ban-4-1920x1080.png` | 用户提供的禁用信息页截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/*-ui100-2000x1125.png` | 用户提供的 UI 100 信息页、禁用头像页和商店截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |

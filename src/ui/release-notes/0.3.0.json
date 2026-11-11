@@ -1,0 +1,18 @@
+{
+  "schema": "sa-release-notes/1",
+  "version": "0.3.0",
+  "date": "2026-11-11",
+  "items": [
+    {
+      "kind": "new",
+      "title": "安装包",
+      "detail": "装在当前用户目录，不需要管理员权限；覆盖安装就是升级，卸载时可以选是否保留数据。",
+      "highlight": true
+    },
+    {
+      "kind": "new",
+      "title": "安装版自动更新",
+      "detail": "在设置里点「更新」会下载新的安装包、校验后静默安装并重启。"
+    }
+  ]
+}

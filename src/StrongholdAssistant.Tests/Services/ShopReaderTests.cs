@@ -11,10 +11,13 @@ using Moq;
 namespace ASPAssistant.Tests.Services;
 
 [Collection("Native OCR")]
-public class ShopReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopReaderFixture>
+public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITestOutputHelper output) : IClassFixture<ShopReaderFixture>
 {
     // These run the real bundled PaddleOCR models against anonymized client crops.
     [Theory]
+    [InlineData("shop-ui100-2000x1125.png", "盟约之币|深靛|深靛|深靛")]
+    [InlineData("shop-terminal-ui100-2000x1125.png", "随身身份牌|深靛|陨星|慕斯")]
+    [InlineData("shop-ursus-ui100-2000x1125.png", "虹彩活血饮料|灰喉|陨星|慕斯")]
     [InlineData("shop-tier2-color.png", "聚合急救箱|渡桥|杰克|陨星|艾丝黛尔")]
     [InlineData("shop-tier4-gray.png", "卫戍推荐信|摆渡人|Miss.Christine|奥斯塔|空弦|山")]
     [InlineData("shop-tier6-frozen.png", "奥斯塔|拉普兰德|斥罪|鸿雪")]
@@ -32,9 +35,14 @@ public class ShopReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopRead
     public async Task RealShopSamples_ReadEquipmentAndOperators(string file, string expected)
     {
         fixture.SelectTheme(file);
-        var items = await fixture.Reader.ReadAsync(File.ReadAllBytes(fixture.Sample(file)), 1920, 1080, fixture.Names);
+        using var bitmap = new Bitmap(fixture.Sample(file));
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        var items = await fixture.Reader.ReadAsync(File.ReadAllBytes(fixture.Sample(file)), bitmap.Width, bitmap.Height, fixture.Names);
+        double ms = timer.Elapsed.TotalMilliseconds;
+        output.WriteLine($"{file} k={GameUiScale.Shop(bitmap):F5} ms={ms:F1}");
         items.Select(i => i.Name).Should().Equal(expected.Split('|'));
         items.Select(i => i.Id).Should().OnlyHaveUniqueItems();
+        fixture.Reader.HasVisibleCards.Should().BeTrue();
         items.Should().OnlyContain(i => i.OcrRegion.Y > .91 && i.OcrRegion.Y < .97
             && i.OcrRegion.X >= 0 && i.OcrRegion.X + i.OcrRegion.Width <= 1);
         if (file == "shop-tier6-frozen.png")
@@ -87,7 +95,7 @@ public class ShopReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopRead
         using var stream = new MemoryStream();
         shop.Save(stream, ImageFormat.Png);
         var items = await fixture.Reader.ReadAsync(stream.ToArray(), 1920, 1080, ["角峰"]);
-        items.Select(i => i.Id).Should().Equal("角峰@0", "角峰@1");
+        items.Select(i => i.Id).Should().Equal("3:角峰", "4:角峰");
         (items[1].OcrRegion.X - items[0].OcrRegion.X).Should().BeGreaterThan(.08);
     }
 
@@ -151,6 +159,25 @@ public class ShopReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopRead
     }
 
     [Fact]
+    public void Match_NameOutsideCardSlotsIsDiscarded()
+    {
+        var reader = new ShopReader(Mock.Of<IOcrEngine>(), ["可露希尔"]);
+        reader.Match([new("可露希尔", (3450, 390, 160, 40)),
+            new("收起", (3500, 370, 160, 60))], 1920, 1080, 810, ["可露希尔"])
+            .Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("info-ingame-1920x1080.png")]
+    [InlineData("gameplay-markers-1920x1080.png")]
+    public void NonShopScreensHaveNoCardEdges(string file)
+    {
+        using var image = new Bitmap(fixture.Sample(file));
+        foreach (var theme in Enum.GetValues<GameShopTheme>())
+            ShopLayout.HasCards(image, GameUiScale.Shop(image), theme).Should().BeFalse();
+    }
+
+    [Fact]
     public void Match_ClosedShopHasNoMarkers()
     {
         var reader = new ShopReader(Mock.Of<IOcrEngine>(), ["山"]);
@@ -164,7 +191,8 @@ public sealed class ShopReaderFixture : IDisposable
     public IReadOnlyList<string> Names { get; }
     public ShopReader Reader { get; }
     public void SelectTheme(string file) => Reader.Theme = file.StartsWith("shop-terminal-", StringComparison.Ordinal)
-        ? GameShopTheme.Terminal : file.StartsWith("shop-frontier-", StringComparison.Ordinal) ? GameShopTheme.Ursus : GameShopTheme.Closure;
+        ? GameShopTheme.Terminal : file.StartsWith("shop-frontier-", StringComparison.Ordinal)
+            || file.StartsWith("shop-ursus-", StringComparison.Ordinal) ? GameShopTheme.Ursus : GameShopTheme.Closure;
     public string Sample(string file) => Path.Combine(AppContext.BaseDirectory, "TestData", file);
 
     public ShopReaderFixture()

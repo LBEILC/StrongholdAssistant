@@ -9,9 +9,14 @@ public sealed record LineupMember(string Name,
 public sealed record LineupDto(string Id, string Name, LineupMember[] Members, string Source,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Note, DateTime UpdatedAt)
 {
+    public string? StrategyId { get; init; }
     public ASPAssistant.Core.Models.CovenantGoal[] Goals { get; init; } = [];
+    public string[] Equipment { get; init; } = [];
 }
-public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[] Tracked);
+public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[] Tracked)
+{
+    public string[] TrackedEquipment { get; init; } = [];
+}
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
     public bool AlwaysOnTop { get; init; }

@@ -10,12 +10,14 @@ public sealed partial class HostApi
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _sessionPath;
+    private readonly SemaphoreSlim _sessionGate = new(1, 1);
     public string DataDirectory { get; }
     public System.Windows.Window? DialogOwner { get; set; }
     private readonly LineupStore _lineups;
     private readonly Dictionary<string, string> _ids;
     private readonly Dictionary<string, string> _names;
     private readonly List<Operator> _operators;
+    private readonly HashSet<string> _equipmentNames;
     private readonly List<CovenantInfo> _covenants;
     private readonly Dictionary<string, bool> _manualBans = [];
     private readonly HashSet<string> _avatarBans = [];
@@ -33,6 +35,8 @@ public sealed partial class HostApi
         _operators = operators;
         _covenants = covenants;
         Catalog = catalog;
+        _equipmentNames = catalog.GetProperty("equipment").EnumerateArray()
+            .Select(e => e.GetProperty("name").GetString()!).ToHashSet();
         Match = new("none", null, covenants.Select(c => new CovenantState(ids[c.Name], false)).ToArray(), [], null, []);
     }
 
@@ -123,7 +127,8 @@ public sealed partial class HostApi
     private LineupDto ToDto(Lineup lineup) => new(lineup.Id, lineup.Name,
         lineup.Slots.Select(s => new LineupMember(s.OperatorName,
             s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key)).ToArray(),
-        lineup.Source, lineup.Note, lineup.UpdatedAt) { Goals = lineup.Goals ?? InferGoals(lineup) };
+        lineup.Source, lineup.Note, lineup.UpdatedAt)
+        { Goals = lineup.Goals ?? InferGoals(lineup), Equipment = lineup.Equipment, StrategyId = lineup.StrategyId };
 
     private CovenantGoal[] InferGoals(Lineup lineup)
     {
@@ -159,7 +164,9 @@ public sealed partial class HostApi
             return slot;
         }).ToList();
         lineup.Goals = input.Goals;
+        lineup.Equipment = input.Equipment;
         lineup.Name = input.Name;
+        lineup.StrategyId = input.StrategyId;
         lineup.Source = input.Source;
         lineup.Note = input.Note;
         await _lineups.SaveAsync(lineup);
@@ -169,6 +176,10 @@ public sealed partial class HostApi
 
     private void ValidateLineup(LineupDto input)
     {
+        if (input.StrategyId is not null && !Catalog.GetProperty("strategies").EnumerateArray()
+                .Any(s => s.GetProperty("id").GetString() == input.StrategyId))
+            throw new ArgumentException("阵容策略无效。");
+        ValidateEquipment(input.Equipment);
         if (input.Id is null || input.Name is null || input.Members is null
             || input.Members.Any(m => m is null) || input.Goals?.Any(g => g is null) == true)
             throw new ArgumentException("阵容内容无效，请检查干员和来源。");
@@ -198,15 +209,83 @@ public sealed partial class HostApi
         await RefreshTrackingAsync();
     }
 
-    public async Task<SessionDto> SessionAsync() => File.Exists(_sessionPath)
-        ? JsonSerializer.Deserialize<SessionDto>(await File.ReadAllTextAsync(_sessionPath), JsonOptions)!
-        : new(null, [], []);
+    public async Task<SessionDto> SessionAsync()
+    {
+        await _sessionGate.WaitAsync();
+        try { return await ReadSessionAsync(); }
+        finally { _sessionGate.Release(); }
+    }
+
+    private async Task<SessionDto> ReadSessionAsync()
+    {
+        if (!File.Exists(_sessionPath)) return new(null, [], []);
+        using var json = JsonDocument.Parse(await File.ReadAllTextAsync(_sessionPath));
+        var session = json.RootElement.Deserialize<SessionDto>(JsonOptions)!;
+        if (!json.RootElement.TryGetProperty("trackedEquipment", out _))
+        {
+            var target = (await LineupsAsync()).SingleOrDefault(l => l.Id == session.TargetLineupId);
+            session = session with
+            {
+                Tracked = session.Tracked.Concat(target?.Members.Select(m => m.Name) ?? []).Distinct().ToArray(),
+                TrackedEquipment = (target?.Equipment ?? []).Distinct().ToArray()
+            };
+            // 写入字段作为迁移标记，之后取消追踪不会重新合入目标名单。
+            await WriteSessionAsync(session);
+        }
+        return session;
+    }
 
     public async Task SaveSessionAsync(SessionDto session)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(_sessionPath)!);
-        await File.WriteAllTextAsync(_sessionPath, JsonSerializer.Serialize(session, JsonOptions));
+        ValidateEquipment(session.TrackedEquipment);
+        await _sessionGate.WaitAsync();
+        try { await WriteSessionAsync(session); }
+        finally { _sessionGate.Release(); }
         await RefreshTrackingAsync();
+    }
+
+    private async Task WriteSessionAsync(SessionDto session)
+    {
+        Directory.CreateDirectory(DataDirectory);
+        await File.WriteAllTextAsync(_sessionPath + ".tmp", JsonSerializer.Serialize(session, JsonOptions));
+        File.Move(_sessionPath + ".tmp", _sessionPath, overwrite: true);
+    }
+
+    public async Task<MatchInfo> ResetMatchAsync()
+    {
+        await _scanGate.WaitAsync();
+        try
+        {
+            _manualBans.Clear();
+            _avatarBans.Clear();
+            Match = new("none", null, _covenants.Select(c => new CovenantState(_ids[c.Name], false)).ToArray(), [], null, []);
+            RecomputeTracking();
+            Changed?.Invoke("match", Match);
+            return Match;
+        }
+        finally { _scanGate.Release(); }
+    }
+
+    public void CopyText(string text)
+    {
+        if (text is null || text.Length > 2000)
+            throw new ArgumentException("复制文字无效或超过 2000 字。");
+        var dispatcher = DialogOwner?.Dispatcher ?? System.Windows.Application.Current?.Dispatcher
+            ?? System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        dispatcher.Invoke(() =>
+        {
+            try { System.Windows.Clipboard.SetText(text); }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                throw new ArgumentException("剪贴板被其他程序占用，稍后再试。");
+            }
+        });
+    }
+
+    private void ValidateEquipment(string[] names)
+    {
+        if (names is null || names.Any(n => !_equipmentNames.Contains(n)))
+            throw new ArgumentException("装备不存在。"); // TODO(design): 确认无效装备的错误文案。
     }
 
     public async Task<object?> InvokeAsync(string method, JsonElement[] args)
@@ -227,6 +306,8 @@ public sealed partial class HostApi
             case "applyUpdate": await ApplyUpdateAsync(); return null;
             case "connection": return Connection;
             case "match": return Match;
+            case "resetMatch": return await ResetMatchAsync();
+            case "copyText": CopyText(Read<string>(0)); return null;
             case "rescan":
                 return await RecordInformationAsync();
             case "scanContinuous": await ScanContinuousAsync(Read<bool>(0)); return null;

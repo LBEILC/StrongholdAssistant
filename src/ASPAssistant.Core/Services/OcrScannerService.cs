@@ -70,7 +70,7 @@ public class OcrScannerService : IDisposable
         Func<IReadOnlyList<string>> getTrackedNames,
         Func<IReadOnlyList<(string Name, IReadOnlyList<string> CoreCovenants, IReadOnlyList<string> AdditionalCovenants, IReadOnlyList<string> TemplateNames)>>? getAllOperators = null,
         MaaBanIconMatcher? iconMatcher = null,
-        int intervalMs = 3000)
+        int intervalMs = 800)
     {
         _captureService = captureService;
         _ocrStrategy = ocrStrategy;
@@ -128,7 +128,7 @@ public class OcrScannerService : IDisposable
             if (screenshot == null)
             {
                 _informationState.Suspend();
-                PublishShopItems([]);
+                PublishShopItems([], false);
                 return;
             }
 
@@ -147,12 +147,12 @@ public class OcrScannerService : IDisposable
 
             if (_pauseBanScreenDetection || _banScreenActive)
             {
-                PublishShopItems([]);
+                PublishShopItems([], false);
                 return;
             }
 
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _getTrackedNames());
-            PublishShopItems(rawItems);
+            PublishShopItems(rawItems, _shopReader.HasVisibleCards);
         }
         catch (Exception ex)
         {
@@ -166,9 +166,9 @@ public class OcrScannerService : IDisposable
         }
     }
 
-    private void PublishShopItems(IReadOnlyList<ShopItem> items)
+    private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible)
     {
-        if (!_stabilizer.TryUpdate(items, out var stableItems))
+        if (!_stabilizer.TryUpdate(items, out var stableItems, shopVisible))
             return;
         _gameState.ShopItems = stableItems.ToList();
         GameStateUpdated?.Invoke(_gameState);

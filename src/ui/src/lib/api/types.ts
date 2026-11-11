@@ -133,6 +133,10 @@ export interface Lineup {
   name: string
   goals: CovenantGoal[]
   members: LineupMember[]
+  /** 想要的装备（装备名，不限数量）：目标阵容里的装备在商店里标记。旧数据没有这一项时宿主补空数组 */
+  equipment: string[]
+  /** 配合的策略（Strategy.id），可不选；主要给分享阵容用。旧数据没有这一项时宿主补 null */
+  strategyId: string | null
   source: 'user' | 'planned' // planned 是旧版规划器生成的，新建的都是 user
   note?: string
   updatedAt: string // ISO 时间
@@ -179,11 +183,30 @@ export interface BackupSummary {
  */
 export type ImportMode = 'merge' | 'replace'
 
+/**
+ * 一个版本的更新说明（结构化）。仓库里每版一个 `src/ui/release-notes/<版本>.json`，随界面打包作历史日志；
+ * 发版时同一份作为 Release 附件 `release-notes.json` 上传，旧版本发现更新时由宿主下载给界面显示。
+ */
+export interface ReleaseNotes {
+  schema: 'sa-release-notes/1'
+  version: string
+  date: string // YYYY-MM-DD
+  items: {
+    kind: 'new' | 'improved' | 'fixed'
+    title: string
+    detail: string
+    /** 重点：更新后弹出的「这一版有什么新东西」里排在前面 */
+    highlight?: boolean
+  }[]
+}
+
 /** 自动更新的状态（检查、下载、校验都在宿主里做） */
 export interface UpdateStatus {
   state: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'ready' | 'failed'
   version?: string // available 及之后：新版本号
   notesUrl?: string // 新版本的发版页
+  /** available 时：新版本 Release 附件里的 release-notes.json；没有这个附件或下载失败就不带，界面只给发版页链接 */
+  notes?: ReleaseNotes
   progress?: number // downloading 时 0–1
   message?: string // failed 时给用户看的原因
 }
@@ -191,8 +214,15 @@ export interface UpdateStatus {
 /** 本局进行中的状态，界面改动后整体回写 */
 export interface Session {
   targetLineupId: string | null
-  owned: string[] // 已持有的干员
-  tracked: string[] // 单独追踪的干员（目标阵容内的干员自动追踪，不必重复）
+  /** 已持有的干员。2026-11-11 起界面不再使用（干员会反复买卖，记不准），保留字段兼容旧数据，界面写回空数组 */
+  owned: string[]
+  /**
+   * 追踪的干员 = 商店里标记的干员（2026-11-11 起）。设为目标时界面把目标名单加进来，取消或换目标时移出，
+   * 用户可以逐个取消；宿主只按这张表标记，不再自动加目标名单。
+   */
+  tracked: string[]
+  /** 追踪的装备，规则同 tracked。旧数据没有这项时宿主补空数组 */
+  trackedEquipment: string[]
 }
 
 export interface Api {
@@ -212,6 +242,11 @@ export interface Api {
   setCovenantIncomplete(id: CovenantId, incomplete: boolean): Promise<MatchInfo>
   /** 手动修正：单个干员是否禁用 */
   setOperatorBanned(name: string, banned: boolean): Promise<MatchInfo>
+  /**
+   * 清空本局：盟约状态、禁用干员（含手动标记和同局累计）、策略、首领、特训敌人全部清掉，source 回到 'none'。
+   * 打完一局后编辑阵容时，被禁的干员不再变暗挡着。持续识别进行中时界面不让点
+   */
+  resetMatch(): Promise<MatchInfo>
   lineups(): Promise<Lineup[]>
   /** 新建（id 为空串）或覆盖保存，返回保存后的阵容 */
   saveLineup(l: Lineup): Promise<Lineup>
@@ -241,6 +276,8 @@ export interface Api {
   importData(token: string, mode: ImportMode): Promise<void>
   /** 用系统默认浏览器打开外部链接（界面里不跳转） */
   openUrl(url: string): Promise<void>
+  /** 把文字写进系统剪贴板（分享码等）。由宿主写，不用网页的剪贴板接口，免得受 WebView2 焦点和权限影响 */
+  copyText(text: string): Promise<void>
   /** 后端推送：更新状态变化 */
   onUpdate(cb: (u: UpdateStatus) => void): () => void
   /** 无边框窗口的按钮 */

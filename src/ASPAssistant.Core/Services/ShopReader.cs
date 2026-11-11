@@ -1,4 +1,5 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// 2026-11-11：从卡片间距测量 UI 缩放，以右下角为基准换算名称栏。
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -16,10 +17,12 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
     private readonly string[] _names = catalogNames.OrderByDescending(n => n.Length).ToArray();
     private volatile GameShopTheme _theme = GameShopTheme.Terminal;
     public GameShopTheme Theme { get => _theme; set => _theme = value; }
+    public bool HasVisibleCards { get; private set; }
 
     public async Task<IReadOnlyList<ShopItem>> ReadAsync(
         byte[] screenshot, int width, int height, IReadOnlyList<string> trackedNames)
     {
+        HasVisibleCards = false;
         if (trackedNames.Count == 0)
             return [];
         var theme = Theme;
@@ -39,13 +42,18 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
             height = enlarged.Height;
         }
         var workingImage = enlarged ?? source;
+        double k = GameUiScale.Shop(workingImage);
+        HasVisibleCards = ShopLayout.HasCards(workingImage, k, theme);
+        int ShopY(double y) => (int)Math.Round(height - (1080 - y) * height / 1080.0 * k);
+        int ShopX(double offset) => (int)Math.Round(width - (width / 2.0 - offset * height / 1080.0) * k);
+        int Size(double size) => (int)Math.Round(size * height / 1080.0 * k);
         // Isolate and enlarge small, dim text. Including the snowflakes below this
         // strip makes the detector merge or lose frozen card names.
-        int top = (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 1014 : 990) / 1080.0);
-        int stripHeight = (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 34 : 50) / 1080.0);
+        int top = ShopY(theme == GameShopTheme.Terminal ? 1014 : 990);
+        int stripHeight = Size(theme == GameShopTheme.Terminal ? 34 : 50);
         int canvasTop = height * 3 / 4;
-        int nameTop = (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 1018 : 1006) / 1080.0);
-        int nameHeight = (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 26 : 30) / 1080.0);
+        int nameTop = ShopY(theme == GameShopTheme.Terminal ? 1018 : 1006);
+        int nameHeight = Size(theme == GameShopTheme.Terminal ? 26 : 30);
         // Keep vertical padding: a very wide, 50px-high input makes PaddleOCR's
         // detector resize away the frozen text strokes.
         using var strip = new Bitmap(width * 2, (height - canvasTop) * 2, PixelFormat.Format32bppArgb);
@@ -79,20 +87,20 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
             // Empty/sold slots are harmless; the original band remains layout-independent.
             for (int slot = 0; slot < 6; slot++)
             {
-                int left = (int)Math.Round(width / 2.0 + (slot * 220 - 600) * height / 1080.0);
+                int left = ShopX(slot * 220 - 600);
                 int bandTop = (int)Math.Round(height * (slot % 2 == 0 ? 60 : 200) / 1080.0);
-                int slotWidth = (int)Math.Round(height * 220 / 1080.0);
+                int slotWidth = Size(220);
                 graphics.DrawImage(originalStrip, new Rectangle(left * 2, bandTop, slotWidth * 2, nameHeight * 2),
                     left * 2, (nameTop - canvasTop) * 2, slotWidth * 2, nameHeight * 2, GraphicsUnit.Pixel, attributes);
             }
             // Isolate the shop control too: on wide captures it can merge with
             // the adjacent card and lose "收起", incorrectly hiding all markers.
-            int controlLeft = (int)Math.Round(width / 2.0 + height * 770 / 1080.0);
-            int controlWidth = (int)Math.Round(height * 120 / 1080.0);
-            int controlHeight = (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 42 : 35) / 1080.0);
+            int controlLeft = ShopX(770);
+            int controlWidth = Size(120);
+            int controlHeight = Size(theme == GameShopTheme.Terminal ? 42 : 35);
             graphics.DrawImage(workingImage,
                 new Rectangle(controlLeft * 2, (int)Math.Round(height * 60 / 1080.0), controlWidth * 2, controlHeight * 2),
-                controlLeft, (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 1006 : 980) / 1080.0),
+                controlLeft, ShopY(theme == GameShopTheme.Terminal ? 1006 : 980),
                 controlWidth, controlHeight, GraphicsUnit.Pixel);
         }
         using var encoded = new MemoryStream();
@@ -126,17 +134,17 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
             // the missing card's name line instead of guessing from a partial name.
             for (int slot = 0; slot < 6; slot++)
             {
-                int left = (int)Math.Round(width / 2.0 + (slot * 220 - 600) * height / 1080.0);
-                int slotWidth = (int)Math.Round(height * 220 / 1080.0);
+                int left = ShopX(slot * 220 - 600);
+                int slotWidth = Size(220);
                 if (items.Any(i => (i.OcrRegion.X + i.OcrRegion.Width / 2) * width >= left
                     && (i.OcrRegion.X + i.OcrRegion.Width / 2) * width < left + slotWidth))
                     continue;
-                int inset = (int)Math.Round(height * 32 / 1080.0);
+                int inset = Size(32);
                 // The wide crop retains long names; the narrow crop removes
                 // snowflake texture to the right of short, dim names.
                 foreach (int lineWidthPx in new[] { 180, 110 })
                 {
-                    int lineWidth = (int)Math.Round(height * lineWidthPx / 1080.0);
+                    int lineWidth = Size(lineWidthPx);
                     var results = await engine.RecognizeLineAsync(ocrInput, (left + inset) * 2,
                         (nameTop - canvasTop) * 2, lineWidth * 2, nameHeight * 2);
                     // Observed on the 720p frozen sample; correct whole names,
@@ -151,15 +159,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 }
             }
         }
-        var occurrences = new Dictionary<string, int>();
-        items.Sort((a, b) => a.OcrRegion.X.CompareTo(b.OcrRegion.X));
-        foreach (var item in items)
-        {
-            occurrences.TryGetValue(item.Name, out int occurrence);
-            item.Id = $"{item.Name}@{occurrence}";
-            occurrences[item.Name] = occurrence + 1;
-        }
-        return items.Where(i => trackedNames.Contains(i.Name)).ToList();
+        return ShopLayout.Snap(items.Where(i => trackedNames.Contains(i.Name)), width, height, k, theme);
     }
 
     public IReadOnlyList<ShopItem> Match(IReadOnlyList<OcrTextResult> texts,
@@ -168,7 +168,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         // Do not leave markers on menus/closed shops with unrelated bottom text.
         if (!texts.Any(t => t.Text.Contains("收起", StringComparison.Ordinal) && t.Box.X + t.Box.W > width * 1.6))
             return [];
-        return MatchNames(texts, width, height, stripTop, trackedNames);
+        return ShopLayout.Snap(MatchNames(texts, width, height, stripTop, trackedNames), width, height, 1, Theme);
     }
 
     private IReadOnlyList<ShopItem> MatchNames(IReadOnlyList<OcrTextResult> texts,

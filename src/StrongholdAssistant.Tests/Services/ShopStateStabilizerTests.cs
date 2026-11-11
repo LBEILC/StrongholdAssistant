@@ -19,6 +19,16 @@ public class ShopStateStabilizerTests
     }
 
     [Fact]
+    public void ShopDisappearingClearsAllCardsInOneScan()
+    {
+        var stabilizer = new ShopStateStabilizer();
+        stabilizer.TryUpdate([new() { Id = "3:山" }, new() { Id = "4:角峰" }], out var appeared).Should().BeTrue();
+        appeared.Should().HaveCount(2);
+        stabilizer.TryUpdate([], out var cleared, shopVisible: false).Should().BeTrue();
+        cleared.Should().BeEmpty();
+    }
+
+    [Fact]
     public void ResizeUpdatesExistingMarker_WithoutCreatingAnotherInstance()
     {
         var stabilizer = new ShopStateStabilizer();

@@ -21,9 +21,10 @@ public sealed partial class HostApi
         ReportUpdate(new { state = "checking" });
         _availableUpdate = await Updater.CheckForUpdateAsync();
         if (Updater.LastError is { } message) return ReportUpdate(new { state = "failed", message });
-        return _availableUpdate is { } info
-            ? ReportUpdate(new { state = "available", version = info.Version, notesUrl = info.NotesUrl })
-            : ReportUpdate(new { state = "latest" });
+        if (_availableUpdate is not { } info) return ReportUpdate(new { state = "latest" });
+        var status = new Dictionary<string, object> { ["state"] = "available", ["version"] = info.Version, ["notesUrl"] = info.NotesUrl };
+        if (info.Notes is { } notes) status["notes"] = notes;
+        return ReportUpdate(status);
     }
 
     public async Task ApplyUpdateAsync()

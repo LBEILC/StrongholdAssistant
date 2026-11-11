@@ -1,0 +1,29 @@
+{
+  "schema": "sa-release-notes/1",
+  "version": "0.2.1",
+  "date": "2026-11-11",
+  "items": [
+    {
+      "kind": "new",
+      "title": "置顶",
+      "detail": "标题栏加了图钉按钮，侧栏可以一直在其他窗口之上。",
+      "highlight": true
+    },
+    {
+      "kind": "new",
+      "title": "数据导入导出",
+      "detail": "设置 → 数据 里可以导出备份，换电脑或重装后导入（合并或替换），导入前自动备份当前数据。",
+      "highlight": true
+    },
+    {
+      "kind": "new",
+      "title": "策略图鉴",
+      "detail": "列出全部策略的发起者和效果，可搜索，本局策略排在最前。"
+    },
+    {
+      "kind": "improved",
+      "title": "发布包目录",
+      "detail": "解压后根目录只有程序、几个文件夹和许可文件。"
+    }
+  ]
+}

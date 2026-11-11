@@ -56,6 +56,13 @@ public class LineupSlot
 
 public class Lineup
 {
+    [JsonPropertyName("strategyId")]
+    public string? StrategyId { get; set; }
+
+    // 2026-11-11：新增阵容想要的装备，旧文件默认空数组。
+    [JsonPropertyName("equipment")]
+    public string[] Equipment { get; set; } = [];
+
     [JsonPropertyName("source")]
     public string Source { get; set; } = "user";
 

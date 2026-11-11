@@ -40,7 +40,7 @@ function build(id: string, name: string, goals: CovenantGoal[], note?: string): 
     .sort((a, b) => goals.filter((g) => hasCov(b, g.id)).length - goals.filter((g) => hasCov(a, g.id)).length || b.tier - a.tier)
     .slice(0, 12)
     .map((o, i) => ({ name: o.name, ...(i < 2 && { key: true }) }))
-  return { id, name, goals, members, source: 'user', note, updatedAt: new Date(Date.now() - 86400_000).toISOString() }
+  return { id, name, goals, members, equipment: [], strategyId: null, source: 'user', note, updatedAt: new Date(Date.now() - 86400_000).toISOString() }
 }
 
 const lineups: Lineup[] = [
@@ -49,11 +49,16 @@ const lineups: Lineup[] = [
   build('l-lethania', '莱塔尼亚 · 叠层', [{ id: 'lethania', level: 1 }, { id: 'visi', level: 1 }]),
   build('l-sargon', '萨尔贡 · 流沙', [{ id: 'sargon', level: 1 }], '后期补伊比利亚'),
 ]
+// 样例：目标阵容带两件装备，另外单独追踪一件
+lineups[0].equipment = catalog.equipment.filter((e) => e.tier >= 4).slice(0, 2).map((e) => e.name)
+lineups[0].strategyId = catalog.strategies[0].id
 
 let session: Session = {
   targetLineupId: 'l-siracusa',
-  owned: lineups[0].members.slice(1, 4).map((m) => m.name),
-  tracked: [],
+  owned: [],
+  // 目标名单全部追踪，另外单独追踪一名干员、一件装备；取消了名单里的一名，方便看「全部追踪」
+  tracked: [...lineups[0].members.slice(1).map((m) => m.name), lineups[1].members[0].name],
+  trackedEquipment: [...lineups[0].equipment, catalog.equipment.find((e) => e.tier === 3)!.name],
 }
 
 // 关注的样例：一个可用、一个阵容不完整的盟约，再加两名会被禁的干员，方便看提示
@@ -117,6 +122,13 @@ export const mockApi: Api = {
     match = computeMatch('manual', match.recognizedAt!)
     return wait(match, 60)
   },
+  resetMatch: () => {
+    incomplete.clear()
+    manualBan.clear()
+    manualUnban.clear()
+    match = { source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [] }
+    return wait(match, 60)
+  },
   setOperatorBanned: (name, v) => {
     ;(v ? manualUnban : manualBan).delete(name)
     ;(v ? manualBan : manualUnban).add(name)
@@ -146,7 +158,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.1.0', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
+  appInfo: () => wait({ version: '0.4.0', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
   openDataFolder: async () => {},
   exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
   pickBackup: () =>
@@ -155,7 +167,20 @@ export const mockApi: Api = {
   // 假数据：每次检查都发现 0.2.0，方便看界面
   checkUpdate: async () => {
     pushUpdate({ state: 'checking' })
-    const u: UpdateStatus = { state: 'available', version: '0.2.0', notesUrl: 'https://github.com/LBEILC/StrongholdAssistant/releases' }
+    const u: UpdateStatus = {
+      state: 'available',
+      version: '0.4.1',
+      notesUrl: 'https://github.com/LBEILC/StrongholdAssistant/releases',
+      notes: {
+        schema: 'sa-release-notes/1',
+        version: '0.4.1',
+        date: '2026-11-20',
+        items: [
+          { kind: 'improved', title: '假数据：更新内容示例', detail: '这是假数据，用来看「发现新版本」时的更新内容怎么显示。', highlight: true },
+          { kind: 'fixed', title: '假数据：修了一个问题', detail: '发现新版本时，宿主会把新版本 Release 附件里的说明一起带过来。' },
+        ],
+      },
+    }
     await new Promise((r) => setTimeout(r, 700))
     pushUpdate(u)
     return u
@@ -163,11 +188,12 @@ export const mockApi: Api = {
   applyUpdate: async () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((r) => setTimeout(r, 150))
-      pushUpdate({ state: 'downloading', version: '0.2.0', progress: i / 10 })
+      pushUpdate({ state: 'downloading', version: '0.4.1', progress: i / 10 })
     }
-    pushUpdate({ state: 'ready', version: '0.2.0' })
+    pushUpdate({ state: 'ready', version: '0.4.1' })
   },
   openUrl: async (url) => void window.open(url, '_blank'),
+  copyText: (text) => navigator.clipboard.writeText(text),
   onUpdate: (cb) => {
     updateListeners.add(cb)
     return () => updateListeners.delete(cb)

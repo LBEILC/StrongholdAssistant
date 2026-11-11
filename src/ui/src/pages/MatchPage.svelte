@@ -28,6 +28,19 @@
   const focusOpsHit = $derived(app.settings.focusOperators.filter((n) => app.banned.has(n)))
   const focusTotal = $derived(app.settings.focusCovenants.length + app.settings.focusOperators.length)
   const edit = $derived(app.matchEdit)
+  // 清空本局要点两次：第一次变成「确认清空」，3 秒内不点就恢复
+  let armReset = $state(false)
+  let armTimer = 0
+  const reset = () => {
+    if (!armReset) {
+      armReset = true
+      armTimer = window.setTimeout(() => (armReset = false), 3000)
+      return
+    }
+    clearTimeout(armTimer)
+    armReset = false
+    app.resetMatch()
+  }
   const tapCov = (id: string) => (edit ? app.toggleCovenantIncomplete(id) : (app.detail = { kind: 'covenant', id }))
 
   const ago = $derived.by(() => {
@@ -44,7 +57,8 @@
 
   // 禁用干员仿游戏按盟约分组：先不完整的核心盟约，再不完整的附加盟约。和游戏一样，
   // 干员属于多个不完整盟约时在每组都出现，组内按星级从高到低，方便和游戏画面逐个核对。
-  // 不属于任何不完整盟约的（手动禁用等）归「其他」。
+  // 不属于任何不完整盟约的（手动禁用等）归「其他」，放最后。每个盟约组末尾有「添加」格，点开只列这个盟约的干员；
+  // 没有任何阵容不完整的盟约时，只剩一个「手动添加」组，点开列全部。
   const rank = new Map(app.catalog.operators.map((o, i) => [o.name, i]))
   const byTier = (a: string, b: string) => app.op(b).tier - app.op(a).tier || rank.get(a)! - rank.get(b)!
   const bannedGroups = $derived.by(() => {
@@ -54,8 +68,9 @@
       ...extra.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).extra.includes(c.id)) })),
     ]
     const shown = new Set(groups.flatMap((g) => g.names))
-    groups.push({ id: null, names: banned.filter((n) => !shown.has(n)) })
-    return groups.filter((g) => g.names.length).map((g) => ({ id: g.id, names: g.names.sort(byTier) }))
+    const rest = banned.filter((n) => !shown.has(n))
+    if (rest.length || !groups.length) groups.push({ id: null, names: rest })
+    return groups.map((g) => ({ id: g.id, names: g.names.sort(byTier) }))
   })
 </script>
 
@@ -83,6 +98,17 @@
       >
         {#if app.continuous}<span class="live-dot"></span>停止{:else}<Icon name="scan" size={13} />持续识别{/if}
       </button>
+      {#if m.source !== 'none'}
+        <button
+          class="tool"
+          class:arm={armReset}
+          onclick={reset}
+          disabled={app.scanning || app.continuous}
+          title="清掉本局的盟约、禁用干员、首领等信息；打完一局编辑阵容时用"
+        >
+          <Icon name={armReset ? 'trash' : 'close'} size={13} />{armReset ? '确认清空' : '清空'}
+        </button>
+      {/if}
     </span>
   </div>
   {#if app.continuous}
@@ -96,7 +122,7 @@
     </div>
   {/if}
   {#if edit}
-    <div class="edithint">点盟约切换「可用 / 阵容不完整」，禁用干员会跟着重新推算；点禁用干员可解除。要单独禁用某名干员，在干员详情里操作。</div>
+    <div class="edithint">点盟约切换「可用 / 阵容不完整」，禁用干员会跟着重新推算；点禁用干员可解除，漏掉的点各组末尾的「添加」补上。不进修正，直接右键盟约或干员也能改。</div>
   {/if}
 
   {#if focusTotal && m.source !== 'none'}
@@ -190,7 +216,7 @@
                 <BondIcon id={g.id} size={20} />
                 <b>{app.cov(g.id).name}</b>
               {:else}
-                <b>其他</b>
+                <b>{g.names.length ? '其他' : '手动添加'}</b>
               {/if}
               <span>{g.names.length}</span>
             </div>
@@ -198,10 +224,14 @@
               {#each g.names as n (n)}
                 <OpTile name={n} size={42} onclick={() => (edit ? app.toggleBanned(n) : (app.detail = { kind: 'operator', name: n }))} />
               {/each}
+              {#if g.id || !g.names.length}
+                <button class="addtile" onclick={() => (app.banPicker = g.id ?? true)} title={g.id ? `补上${app.cov(g.id).name}里识别漏掉的禁用干员` : '手动添加禁用干员'}>
+                  <span class="plus"><Icon name="add" size={20} /></span>
+                  <span class="nm">添加</span>
+                </button>
+              {/if}
             </div>
           </div>
-        {:else}
-          <p class="none">没有禁用干员</p>
         {/each}
       </div>
     {/if}
@@ -242,20 +272,20 @@
         <Icon name="grid" size={18} />
       {/snippet}
       {#snippet right()}
-        <button class="hbtn" onclick={() => ((app.tab = 'lineup'), app.edit(null))}><Icon name="add" size={14} />新建阵容</button>
+        <button class="hbtn" onclick={() => (app.setTab('lineup'), app.edit(null))}><Icon name="add" size={14} />新建阵容</button>
       {/snippet}
     </SectionHeader>
     {#if open('lineups')}
     <div class="recs" transition:slide={sl}>
       {#each usable as { l } (l.id)}
         {@const isT = app.session.targetLineupId === l.id}
-        <LineupCard title={l.name} goals={l.goals} members={l.members} target={isT}>
+        <LineupCard lineup={l} target={isT}>
           {#snippet actions()}
             {#if !isT}<button class="act" onclick={() => app.setTarget(l.id)}>设为目标</button>{/if}
           {/snippet}
         </LineupCard>
       {/each}
-      <button class="all" onclick={() => ((app.tab = 'lineup'), (app.lineupView = 'mine'))}>我的阵容<Icon name="arrowRight" size={14} /></button>
+      <button class="all" onclick={() => (app.setTab('lineup'), (app.lineupView = 'mine'))}>我的阵容<Icon name="arrowRight" size={14} /></button>
     </div>
     {/if}
   </section>
@@ -324,6 +354,11 @@
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--mint);
     opacity: 1;
+  }
+  .tool.arm {
+    color: #fff;
+    background: var(--red);
+    box-shadow: none;
   }
   .tool.on {
     color: var(--mint-ink);
@@ -415,11 +450,6 @@
   .editing {
     outline: 1px dashed rgb(34 227 178 / 0.45);
     outline-offset: -1px;
-  }
-  .none {
-    margin: 0;
-    font-size: 12px;
-    color: var(--fg-4);
   }
   .hbtn {
     display: flex;
@@ -518,6 +548,37 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px 6px;
+  }
+  /* 添加格：和 42 的头像格同尺寸，虚线框 + 加号 */
+  .addtile {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 42px;
+    color: var(--fg-3);
+  }
+  .plus {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    outline: 1px dashed var(--fg-4);
+    outline-offset: -1px;
+    transition:
+      color var(--t-fast),
+      outline-color var(--t-fast),
+      background var(--t-fast);
+  }
+  .addtile .nm {
+    font-size: 11px;
+  }
+  .addtile:hover {
+    color: var(--red);
+  }
+  .addtile:hover .plus {
+    outline-color: var(--red);
+    background: var(--red-tint);
   }
   .enemy {
     display: flex;

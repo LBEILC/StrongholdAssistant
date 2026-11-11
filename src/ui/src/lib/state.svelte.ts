@@ -1,6 +1,8 @@
 // 界面状态：从 api 取数据，派生出各页要用的视图
 import { api } from './api'
-import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Lineup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
+import { shareText } from './share'
+import { unseenNotes } from './changelog'
+import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
 
 export type Tab = 'match' | 'lineup' | 'codex'
 export type LineupView = 'target' | 'mine'
@@ -23,6 +25,7 @@ const [catalog, connection, match, lineups, session, settings, appInfo] = await 
 
 const covenantById = new Map(catalog.covenants.map((c) => [c.id, c]))
 const operatorByName = new Map(catalog.operators.map((o) => [o.name, o]))
+const equipmentByName = new Map(catalog.equipment.map((e) => [e.name, e]))
 
 /** 干员带上转职后的全部盟约 */
 const FOLD_KEY = 'stronghold.folded'
@@ -51,6 +54,8 @@ class AppState {
   /** 正在编辑的阵容草稿；新建时 id 为空串 */
   editing = $state<Lineup | null>(null)
   matchEdit = $state(false)
+  /** 「添加禁用干员」面板：盟约 id = 从这个盟约组点开（只列它的干员），true = 不限盟约，false = 关闭 */
+  banPicker = $state<string | boolean>(false)
   scanning = $state(false)
   /** 持续识别进行中 */
   continuous = $state(false)
@@ -60,6 +65,15 @@ class AppState {
   appInfo: AppInfo = appInfo
   update = $state<UpdateStatus>({ state: 'idle' })
   settingsOpen = $state(false)
+  /** 「导入分享码」面板 */
+  importOpen = $state(false)
+  /** 更新日志面板 */
+  changelogOpen = $state(false)
+  /** 更新后第一次打开要弹的「这一版有什么新东西」 */
+  whatsNew = $state(unseenNotes(appInfo.version))
+  /** 底部轻提示，几秒后自动消失；bad = 操作失败 */
+  toast = $state<{ text: string; bad?: boolean } | null>(null)
+  private toastTimer = 0
   /** 最近一次识别的结果说明 */
   scanNote = $state<ScanStatus | null>(null)
   /** 收起的分组（本局页等），记在本机，下次打开保持 */
@@ -71,20 +85,26 @@ class AppState {
 
   target = $derived(this.lineups.find((l) => l.id === this.session.targetLineupId) ?? null)
   banned = $derived(new Set(this.match.bannedOperators))
-  owned = $derived(new Set(this.session.owned))
-  /** 商店里要标记的干员：目标里想抓的 + 单独追踪 */
-  tracked = $derived(new Set([...(this.target?.members.map((m) => m.name) ?? []), ...this.session.tracked]))
-  /** 目标里还没持有的干员，关键在前 */
-  missing = $derived((this.target?.members.filter((m) => !this.owned.has(m.name)) ?? []).sort((a, b) => Number(!!b.key) - Number(!!a.key)))
-  /** 目标盟约的进度，按所有已持有的干员算 */
-  goalProgress = $derived(this.target ? goalProgress(this.target.goals, this.target.members, this.session.owned) : [])
-  /** 目标盟约里还能抓的其他干员：不在名单里、没持有、没被禁、可招募；覆盖目标盟约越多越靠前 */
+  // 追踪（2026-11-11 起）：商店里标记的就是 session.tracked / trackedEquipment 这两张表，顶栏原样列出、点一下取消。
+  // 设为目标时把名单加进来，取消或换目标时把旧名单移出；干员会反复买卖，所以不记「已持有」
+  tracked = $derived(new Set(this.session.tracked))
+  trackedEq = $derived(new Set(this.session.trackedEquipment))
+  /** 顶栏的追踪列表：目标名单里的在前（关键在最前），再是单独追踪的 */
+  trackedOps = $derived.by(() => {
+    const order = new Map((this.target?.members ?? []).map((m, i) => [m.name, (m.key ? 0 : 1000) + i]))
+    return [...this.session.tracked].sort((a, b) => (order.get(a) ?? 1e6) - (order.get(b) ?? 1e6))
+  })
+  /** 目标名单里被取消追踪的个数（顶栏给「全部追踪」用） */
+  untrackedInTarget = $derived(
+    this.target ? this.target.members.filter((m) => !this.tracked.has(m.name)).length + this.target.equipment.filter((n) => !this.trackedEq.has(n)).length : 0,
+  )
+  /** 目标盟约的人数：按目标名单算（盟约在游戏里有没有生效，游戏里看得到） */
+  goalProgress = $derived(this.target ? goalProgress(this.target.goals, this.target.members, this.target.members.map((m) => m.name)) : [])
+  /** 目标盟约里还能抓的其他干员：不在名单里、没被禁、可招募；覆盖目标盟约越多越靠前 */
   pickable = $derived.by(() => {
     const t = this.target
     if (!t) return []
-    return rankForGoals(t.goals, this.catalog.operators).filter(
-      (o) => !t.members.some((m) => m.name === o.name) && !this.owned.has(o.name) && !this.banned.has(o.name),
-    )
+    return rankForGoals(t.goals, this.catalog.operators).filter((o) => !t.members.some((m) => m.name === o.name) && !this.banned.has(o.name))
   })
   /** 特别关注（跨局保留） */
   focusOps = $derived(new Set(this.settings.focusOperators))
@@ -137,6 +157,9 @@ class AppState {
   op(name: string): Operator {
     return operatorByName.get(name)!
   }
+  eq(name: string): Equipment {
+    return equipmentByName.get(name)!
+  }
   matchCovenant(id: string) {
     return this.match.covenants.find((c) => c.id === id)
   }
@@ -149,20 +172,38 @@ class AppState {
   }
 
   private save() {
-    api.saveSession($state.snapshot(this.session))
+    api.saveSession({ ...$state.snapshot(this.session), owned: [] })
   }
+  /** 换目标：旧目标的名单移出追踪，新目标的名单全部加进来；单独追踪的不动 */
   setTarget(id: string | null) {
+    const old = this.target
+    const next = this.lineups.find((l) => l.id === id) ?? null
+    this.retrack(old ? { ops: old.members.map((m) => m.name), eqs: old.equipment } : null, next ? { ops: next.members.map((m) => m.name), eqs: next.equipment } : null)
     this.session.targetLineupId = id
     this.save()
   }
-  toggleOwned(name: string) {
-    const s = this.session.owned
-    this.session.owned = s.includes(name) ? s.filter((n) => n !== name) : [...s, name]
+  /** 追踪表里先去掉 drop、再加上 add（去重） */
+  private retrack(drop: { ops: string[]; eqs: string[] } | null, add: { ops: string[]; eqs: string[] } | null) {
+    const s = this.session
+    const ops = s.tracked.filter((n) => !drop?.ops.includes(n))
+    const eqs = s.trackedEquipment.filter((n) => !drop?.eqs.includes(n))
+    s.tracked = [...ops, ...(add?.ops ?? []).filter((n) => !ops.includes(n))]
+    s.trackedEquipment = [...eqs, ...(add?.eqs ?? []).filter((n) => !eqs.includes(n))]
+  }
+  /** 目标名单里取消过追踪的重新全部追踪 */
+  trackTarget() {
+    const t = this.target!
+    this.retrack(null, { ops: t.members.map((m) => m.name), eqs: t.equipment })
     this.save()
   }
   toggleTracked(name: string) {
     const s = this.session.tracked
     this.session.tracked = s.includes(name) ? s.filter((n) => n !== name) : [...s, name]
+    this.save()
+  }
+  toggleTrackedEq(name: string) {
+    const s = this.session.trackedEquipment
+    this.session.trackedEquipment = s.includes(name) ? s.filter((n) => n !== name) : [...s, name]
     this.save()
   }
 
@@ -200,25 +241,88 @@ class AppState {
   async toggleCovenantIncomplete(id: string) {
     this.match = await api.setCovenantIncomplete(id, !this.matchCovenant(id)!.incomplete)
   }
+  resetMatch() {
+    return this.attempt(async () => {
+      this.match = await api.resetMatch()
+      this.matchEdit = false
+      this.scanNote = null
+      this.showToast('已清空本局信息')
+    })
+  }
   async toggleBanned(name: string) {
     this.match = await api.setOperatorBanned(name, !this.banned.has(name))
   }
 
+  /** 切换顶部标签：所有弹层（详情、编辑器、添加禁用、导入、设置）一起关掉 */
+  setTab(t: Tab) {
+    this.detail = null
+    this.editing = null
+    this.banPicker = false
+    this.importOpen = false
+    this.settingsOpen = false
+    this.changelogOpen = false
+    this.tab = t
+  }
+
+  showToast(text: string, bad = false) {
+    this.toast = { text, bad }
+    clearTimeout(this.toastTimer)
+    this.toastTimer = window.setTimeout(() => (this.toast = null), bad ? 4500 : 2600)
+  }
+  /** 宿主回错（文件被占用、数据无效等）时把原因用提示条显示出来，不能让操作没反应 */
+  private async attempt(f: () => Promise<void>) {
+    try {
+      await f()
+    } catch (e) {
+      this.showToast((e as Error).message, true)
+    }
+  }
+  /** 复制分享码（连同阵容名的一整句，贴到群里也看得懂） */
+  copyShare(l: Lineup) {
+    return this.attempt(async () => {
+      await api.copyText(shareText($state.snapshot(l), this.catalog))
+      this.showToast(`已复制「${l.name}」的分享码`)
+    })
+  }
+  /** 分享码导入成新阵容；asTarget 时顺便设为目标 */
+  importLineup(l: Lineup, asTarget: boolean) {
+    return this.attempt(() => this.doImport(l, asTarget))
+  }
+  private async doImport(l: Lineup, asTarget: boolean) {
+    const saved = await api.saveLineup(l)
+    this.lineups = await api.lineups()
+    if (asTarget) this.setTarget(saved.id)
+    this.importOpen = false
+    this.lineupView = asTarget ? 'target' : 'mine'
+    this.showToast(asTarget ? `已导入「${saved.name}」并设为目标` : `已导入「${saved.name}」`)
+  }
+
   edit(l: Lineup | null) {
     this.detail = null
-    this.editing = l ? structuredClone($state.snapshot(l)) : { id: '', name: '', goals: [], members: [], source: 'user', updatedAt: new Date().toISOString() }
+    this.editing = l ? structuredClone($state.snapshot(l)) : { id: '', name: '', goals: [], members: [], equipment: [], strategyId: null, source: 'user', updatedAt: new Date().toISOString() }
   }
+  /** 编辑器保存；失败时抛出，编辑器自己把原因显示在底栏 */
   async saveEditing() {
+    const before = this.target && this.target.id === this.editing!.id ? $state.snapshot(this.target) : null
     const saved = await api.saveLineup($state.snapshot(this.editing!))
+    if (before) {
+      const names = (l: Lineup) => l.members.map((m) => m.name)
+      const gone = { ops: names(before).filter((n) => !names(saved).includes(n)), eqs: before.equipment.filter((n) => !saved.equipment.includes(n)) }
+      const added = { ops: names(saved).filter((n) => !names(before).includes(n)), eqs: saved.equipment.filter((n) => !before.equipment.includes(n)) }
+      this.retrack(gone, added)
+      this.save()
+    }
     this.lineups = await api.lineups()
     this.editing = null
     return saved
   }
-  async deleteLineup(id: string) {
-    await api.deleteLineup(id)
-    if (this.session.targetLineupId === id) this.setTarget(null)
-    this.lineups = await api.lineups()
-    this.editing = null
+  deleteLineup(id: string) {
+    return this.attempt(async () => {
+      await api.deleteLineup(id)
+      if (this.session.targetLineupId === id) this.setTarget(null)
+      this.lineups = await api.lineups()
+      this.editing = null
+    })
   }
 
   /** 编辑器里切换目标盟约档位：无 → I → II → 无 */
@@ -230,12 +334,27 @@ class AppState {
     const rest = e.goals.filter((g) => g.id !== id)
     e.goals = next ? [...rest, { id, level: next as 1 | 2 }] : rest
   }
-  /** 详情面板里把干员加入 / 移出目标 */
-  async toggleMember(name: string) {
+  /** 详情面板里把干员加入 / 移出目标；目标阵容存好了才改追踪 */
+  toggleMember(name: string) {
     const t = $state.snapshot(this.target!)
-    t.members = t.members.some((m) => m.name === name) ? t.members.filter((m) => m.name !== name) : [...t.members, { name }]
-    const saved = await api.saveLineup(t)
-    this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
+    const has = t.members.some((m) => m.name === name)
+    t.members = has ? t.members.filter((m) => m.name !== name) : [...t.members, { name }]
+    return this.saveTarget(t, has ? { ops: [name], eqs: [] } : null, has ? null : { ops: [name], eqs: [] })
+  }
+  /** 详情面板、右键菜单里把装备加入 / 移出目标 */
+  toggleTargetEq(name: string) {
+    const t = $state.snapshot(this.target!)
+    const has = t.equipment.includes(name)
+    t.equipment = has ? t.equipment.filter((n) => n !== name) : [...t.equipment, name]
+    return this.saveTarget(t, has ? { ops: [], eqs: [name] } : null, has ? null : { ops: [], eqs: [name] })
+  }
+  private saveTarget(t: Lineup, drop: { ops: string[]; eqs: string[] } | null, add: { ops: string[]; eqs: string[] } | null) {
+    return this.attempt(async () => {
+      const saved = await api.saveLineup(t)
+      this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
+      this.retrack(drop, add)
+      this.save()
+    })
   }
   /** 导入备份后重新读阵容、本局状态和设置 */
   async reloadData() {

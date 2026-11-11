@@ -1,8 +1,8 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Threading;
+using System.Windows.Interop;
 using ASPAssistant.Core.Models;
-using ASPAssistant.Core.Services;
 using StrongholdAssistant.Host;
 
 namespace StrongholdAssistant.Tests;
@@ -10,61 +10,80 @@ namespace StrongholdAssistant.Tests;
 public class OverlayWindowTests
 {
     [Fact]
-    public void Markers_IgnoreSmallDriftButFollowThresholdAndViewportChanges()
+    public void DisappearingMarkerFadesFor150MsBeforeRemoval() => OnSta(() =>
+    {
+        var layer = new ShopMarkerLayer();
+        layer.Update([], 1920, 1080);
+        layer.Update([Item()], 1920, 1080);
+        Pump(220);
+        var marker = Assert.IsAssignableFrom<FrameworkElement>(layer.Children[0]);
+        layer.Update([], 1920, 1080);
+        Assert.True(marker.HasAnimatedProperties);
+        Pump(80);
+        Assert.Single(layer.Children.Cast<UIElement>());
+        Assert.InRange(marker.Opacity, .01, .999);
+        Pump(130);
+        Assert.Empty(layer.Children.Cast<UIElement>());
+    });
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(1, 0)]
+    [InlineData(0, 2)]
+    public void ChangingStyleCrossfadesAndResizeRebuildsWithoutEntrance(int from, int to) => OnSta(() =>
+    {
+        var layer = new ShopMarkerLayer();
+        var item = Item();
+        item.IsTracked = from != 0; item.IsSecondary = from == 0; item.IsKey = from == 2;
+        layer.Update([item], 1920, 1080);
+        var old = (FrameworkElement)layer.Children[0];
+        item.IsTracked = to != 0; item.IsSecondary = to == 0; item.IsKey = to == 2;
+        layer.Update([item], 1920, 1080);
+        Assert.Equal(2, layer.Children.Count);
+        var next = (FrameworkElement)layer.Children[1];
+        Assert.True(old.HasAnimatedProperties);
+        Assert.True(next.HasAnimatedProperties);
+        Pump(80);
+        Assert.InRange(old.Opacity, .01, .999);
+        Assert.InRange(next.Opacity, .01, .999);
+        Pump(140);
+        Assert.Same(next, Assert.Single(layer.Children.Cast<UIElement>()));
+        layer.Update([item], 1280, 720);
+        var resized = (FrameworkElement)layer.Children[0];
+        Assert.False(resized.HasAnimatedProperties);
+        Assert.Equal(1, resized.Opacity);
+        Assert.Equal(item.CardRegion.Width * 1280, resized.Width);
+    });
+
+    private static ShopItem Item() => new()
+        { Id = "3:山", IsTracked = true, CardRegion = (.5, .75, .11, .23) };
+
+    private static void Pump(int milliseconds)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(milliseconds) };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+    }
+
+    private static void OnSta(Action action)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
             try
             {
-                var window = new OverlayWindow { Opacity = 0, Topmost = false, Left = -10000, Top = -10000 };
-                try
-                {
-                    void Resize(double width, double height)
-                    {
-                        window.Width = width; window.Height = height;
-                        if (!window.IsVisible) window.Show();
-                        window.Measure(new Size(width, height));
-                        window.Arrange(new Rect(0, 0, width, height));
-                    }
-                    Resize(1920, 1080);
-                    var item = new ShopItem { Id = "山@0", IsTracked = true, OcrRegion = (.5, .9, .05, .03) };
-                    window.UpdateShopItems([item]);
-                    var marker = Assert.IsAssignableFrom<FrameworkElement>(Assert.Single(((Canvas)window.Content).Children.Cast<UIElement>()));
-                    (double, double) Position() => (Canvas.GetLeft(marker), Canvas.GetTop(marker));
-                    void AssertFollows() => Assert.Equal(
-                        WindowGeometry.ShopMarkerPosition(item.OcrRegion, window.ActualWidth, window.ActualHeight, marker.Width), Position());
-                    AssertFollows();
-                    var original = Position();
-                    item.OcrRegion = (.5 + 5.0 / 1920, .9 - 5.0 / 1080, .05, .03);
-                    window.UpdateShopItems([item]);
-                    Assert.Equal(original, Position());
-                    // 横向恰好 6 DIP、纵向超过阈值时都应跟随。
-                    item.OcrRegion = (.5 + 6.0 / 1920, .9, .05, .03);
-                    window.UpdateShopItems([item]);
-                    AssertFollows();
-                    Assert.NotEqual(original, Position());
-                    item.OcrRegion = (.5, .9 + 7.0 / 1080, .05, .03);
-                    window.UpdateShopItems([item]);
-                    AssertFollows();
-                    original = Position();
-                    Resize(1922, 1080);
-                    window.UpdateShopItems([item]);
-                    AssertFollows();
-                    Assert.NotEqual(original, Position());
-                    original = Position();
-                    Resize(1922, 1082);
-                    window.UpdateShopItems([item]);
-                    AssertFollows();
-                    Assert.NotEqual(original, Position());
-                }
-                finally { window.Close(); }
+                // 不显示窗口；隐藏的呈现源仅驱动 WPF 动画时钟。
+                using var source = new HwndSource(new HwndSourceParameters("标记动画测试")
+                    { WindowStyle = unchecked((int)0x80000000), Width = 1, Height = 1 });
+                action();
             }
             catch (Exception ex) { failure = ex; }
+            finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
         });
         thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+        thread.Start(); thread.Join();
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 }

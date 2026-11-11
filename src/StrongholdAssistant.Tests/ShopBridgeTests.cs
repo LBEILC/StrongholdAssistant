@@ -18,15 +18,20 @@ public sealed class ShopBridgeTests : IDisposable
     {
         var api = await CreateApi();
         var lineup = Assert.IsType<LineupDto>(await Call(api, "saveLineup",
-            new LineupDto("", "测试", [new("卡达"), new("慕斯")], "user", null, default)));
+            new LineupDto("", "测试", [new("卡达", Key: true), new("慕斯")], "user", null, default)));
         await Call(api, "saveSession", new SessionDto(lineup.Id, ["卡达"], ["角峰", "卡达"]));
-        Assert.Equal(new[] { "卡达", "慕斯", "角峰" }, api.TrackedNames);
+        Assert.Equal(new[] { "角峰", "卡达" }, api.TrackedNames);
+        var key = new ShopItem { Name = "卡达" };
+        api.UpdateShopTracking([key]);
+        Assert.True(key.IsKey);
         await Call(api, "saveLineup", lineup with { Members = [new("地灵")] });
-        Assert.Equal(new[] { "地灵", "角峰", "卡达" }, api.TrackedNames);
+        api.UpdateShopTracking([key]);
+        Assert.False(key.IsKey);
+        Assert.Equal(new[] { "角峰", "卡达" }, api.TrackedNames);
         var other = Assert.IsType<LineupDto>(await Call(api, "saveLineup",
             new LineupDto("", "其他", [new("陨星")], "user", null, default)));
         await Call(api, "saveSession", new SessionDto(other.Id, [], ["褐果"]));
-        Assert.Equal(new[] { "陨星", "褐果" }, api.TrackedNames);
+        Assert.Equal(new[] { "褐果" }, api.TrackedNames);
         Assert.Equal(api.TrackedNames, (await CreateApi()).TrackedNames);
         await Call(api, "deleteLineup", other.Id);
         Assert.Equal(new[] { "褐果" }, api.TrackedNames);
@@ -43,11 +48,16 @@ public sealed class ShopBridgeTests : IDisposable
             await Call(api, "saveSettings", new SettingsDto(theme, true, true));
             Assert.Equal(expected, reader.Theme);
         }
-        await Call(api, "saveSession", new SessionDto(null, [], ["卡达"]));
+        await Call(api, "saveSession", new SessionDto(null, [], ["卡达"])
+            { TrackedEquipment = ["虹彩活血饮料"] });
         var items = await reader.ReadAsync(await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory,
             "TestData", "shop-terminal-tier1-color.png")), 1920, 1080, api.TrackedNames);
         api.UpdateShopTracking(items);
-        var item = Assert.Single(items);
+        Assert.Equal(2, items.Count);
+        var equipment = Assert.Single(items, i => i.Name == "虹彩活血饮料");
+        Assert.True(equipment.IsTracked);
+        Assert.False(equipment.IsSecondary);
+        var item = Assert.Single(items, i => i.Name == "卡达");
         Assert.Equal("卡达", item.Name);
         Assert.True(item.IsTracked);
         Assert.InRange(item.OcrRegion.X, 0, 1 - item.OcrRegion.Width);

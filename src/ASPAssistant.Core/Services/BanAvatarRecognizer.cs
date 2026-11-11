@@ -32,18 +32,20 @@ public sealed class BanAvatarRecognizer
         _operators = operators.Where(o => o.Obtain is null).ToArray();
         foreach (var op in _operators)
         {
-            using var bitmap = new Bitmap(Path.Combine(avatarDirectory, op.Name + ".png"));
             var variants = new List<double[]>();
-            foreach (bool flip in new[] { false, true })
-            foreach (int angle in new[] { -20, 0, 20 })
+            var extraDirectory = Path.Combine(avatarDirectory, op.Name);
+            var paths = new[] { Path.Combine(avatarDirectory, op.Name + ".png") }
+                .Concat(Directory.Exists(extraDirectory) ? Directory.GetFiles(extraDirectory, "*.png") : []);
+            foreach (var path in paths)
             {
+                using var bitmap = new Bitmap(path);
                 using var transformed = new Bitmap(128, 128);
                 using (var g = Graphics.FromImage(transformed))
                 {
+                    // 已确认的 17 格均匹配居中缩小 6% 的取景，统一保留头像周围的留白。
                     g.Clear(Color.White);
                     g.TranslateTransform(64, 64);
-                    g.RotateTransform(angle);
-                    g.ScaleTransform(flip ? -1 : 1, 1);
+                    g.ScaleTransform(.94f, .94f);
                     g.DrawImage(bitmap, -64, -64, 128, 128);
                 }
                 variants.Add(Vector(transformed, new Rectangle(0, 0, 128, 128)));
@@ -57,13 +59,15 @@ public sealed class BanAvatarRecognizer
         var timer = Stopwatch.StartNew();
         using var stream = new MemoryStream(screenshot);
         using var source = new Bitmap(stream);
-        double scale = source.Height / 1080.0;
-        var boxes = Locate(source, scale);
+        double k = GameUiScale.Information(screenshot);
+        double scale = source.Height / 1080.0 * k;
+        double offsetX = source.Width / 2.0 * (1 - k);
+        var boxes = Locate(source, scale, offsetX);
         double locateMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         var groups = boxes.Count == 0 ? [] : await _ocr.RecognizeRegionAsync(screenshot,
-            (int)(150 * scale), boxes.Min(b => b.Y), (int)(135 * scale),
-            (int)(985 * scale) - boxes.Min(b => b.Y));
+            Math.Max(0, (int)(offsetX + 150 * scale)), boxes.Min(b => b.Y), (int)(135 * scale),
+            (int)(985 * source.Height / 1080.0) - boxes.Min(b => b.Y));
         double ocrMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         var matches = new List<BanAvatarMatch>();
@@ -96,11 +100,13 @@ public sealed class BanAvatarRecognizer
         return new BanAvatarResult(matches, source.Width, source.Height, locateMs, ocrMs, timer.Elapsed.TotalMilliseconds);
     });
 
-    private static List<Rectangle> Locate(Bitmap bitmap, double scale)
+    private static List<Rectangle> Locate(Bitmap bitmap, double scale, double offsetX)
     {
         // 角标红色连通块的外框约 40×40，头像约 117×117；坐标按画面高度缩放。
-        int left = (int)(320 * scale), right = Math.Min(bitmap.Width, (int)(1295 * scale));
-        int top = (int)(155 * scale), bottom = Math.Min(bitmap.Height, (int)(985 * scale));
+        int left = Math.Max(0, (int)(offsetX + 320 * scale));
+        int right = Math.Min(bitmap.Width, (int)(offsetX + 1295 * scale));
+        // 列表内容随 UI 放大，但底部可视窗口仍在原处裁切；不能把露出上沿的头像当完整格。
+        int top = (int)(155 * scale), bottom = Math.Min(bitmap.Height, (int)(985 * bitmap.Height / 1080.0));
         var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         var bytes = new byte[data.Stride * bitmap.Height];
         Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
@@ -174,18 +180,19 @@ public sealed class BanAvatarRecognizer
 
     private static double[] Vector(Bitmap source, Rectangle rect)
     {
-        using var small = new Bitmap(24, 24);
+        using var small = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(small))
         {
             g.Clear(Color.White);
             g.InterpolationMode = InterpolationMode.HighQualityBilinear;
-            g.DrawImage(source, new Rectangle(0, 0, 24, 24), rect, GraphicsUnit.Pixel);
+            g.DrawImage(source, new Rectangle(0, 0, 32, 32), rect, GraphicsUnit.Pixel);
         }
         var values = new List<double>();
-        for (int y = 1; y < 23; y++)
-        for (int x = 1; x < 23; x++)
+        // 沿用原 24×24 的边缘与角标遮罩比例，边界向上取整到 32×32 像素。
+        for (int y = 2; y < 31; y++)
+        for (int x = 2; x < 31; x++)
         {
-            if ((x >= 16 && y < 9) || (x < 9 && y >= 16)) continue;
+            if ((x >= 22 && y < 12) || (x < 12 && y >= 22)) continue;
             var c = small.GetPixel(x, y);
             values.Add(c.R); values.Add(c.G); values.Add(c.B);
         }

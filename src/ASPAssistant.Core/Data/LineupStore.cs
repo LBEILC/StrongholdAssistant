@@ -10,6 +10,7 @@ namespace ASPAssistant.Core.Data;
 public class LineupStore
 {
     private readonly string _dir;
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -23,6 +24,13 @@ public class LineupStore
     }
 
     public async Task<List<Lineup>> LoadAllAsync()
+    {
+        await _gate.WaitAsync();
+        try { return await LoadAllCoreAsync(); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task<List<Lineup>> LoadAllCoreAsync()
     {
         if (!Directory.Exists(_dir))
             return [];
@@ -50,6 +58,13 @@ public class LineupStore
 
     public async Task SaveAsync(Lineup lineup, bool preserveUpdatedAt = false)
     {
+        await _gate.WaitAsync();
+        try { await SaveCoreAsync(lineup, preserveUpdatedAt); }
+        finally { _gate.Release(); }
+    }
+
+    private async Task SaveCoreAsync(Lineup lineup, bool preserveUpdatedAt)
+    {
         Directory.CreateDirectory(_dir);
         if (string.IsNullOrEmpty(lineup.Id))
             lineup.Id = Guid.NewGuid().ToString("N");
@@ -57,14 +72,18 @@ public class LineupStore
 
         var path = Path.Combine(_dir, $"{lineup.Id}.json");
         var json = JsonSerializer.Serialize(lineup, JsonOptions);
-        await File.WriteAllTextAsync(path, json);
+        await File.WriteAllTextAsync(path + ".tmp", json);
+        File.Move(path + ".tmp", path, overwrite: true);
     }
 
-    public Task DeleteAsync(string id)
+    public async Task DeleteAsync(string id)
     {
-        var path = Path.Combine(_dir, $"{id}.json");
-        if (File.Exists(path))
-            File.Delete(path);
-        return Task.CompletedTask;
+        await _gate.WaitAsync();
+        try
+        {
+            var path = Path.Combine(_dir, $"{id}.json");
+            if (File.Exists(path)) File.Delete(path);
+        }
+        finally { _gate.Release(); }
     }
 }

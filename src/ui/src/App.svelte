@@ -10,6 +10,12 @@
   import LineupPage from './pages/LineupPage.svelte'
   import CodexPage from './pages/CodexPage.svelte'
   import CollapsedStrip from './components/CollapsedStrip.svelte'
+  import ContextMenu from './components/ContextMenu.svelte'
+  import BanPicker from './components/BanPicker.svelte'
+  import ImportSheet from './components/ImportSheet.svelte'
+  import Toast from './components/Toast.svelte'
+  import ChangelogSheet from './components/ChangelogSheet.svelte'
+  import WhatsNew from './components/WhatsNew.svelte'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
@@ -59,10 +65,16 @@
     </main>
     <DetailSheet />
     <LineupEditor />
+    <BanPicker />
+    <ImportSheet />
+    <Toast />
     <SettingsSheet />
+    <ChangelogSheet />
   </div>
 </div>
 {/if}
+<ContextMenu />
+{#if app.phase !== 'boot'}<WhatsNew />{/if}
 
 <style>
   /* 启动：标题栏和原生骨架一致、不动，其余区块等宿主显示网页后依次淡入上移 */

@@ -268,6 +268,12 @@ public sealed class BanScreenPixels : IDisposable
         return (r * 299 + g * 587 + b * 114) / 1000;
     }
 
+    internal (int R, int G, int B) ColorAt(int x, int y)
+    {
+        int offset = y * _data.Stride + x * 4;
+        return (_buffer[offset + 2], _buffer[offset + 1], _buffer[offset]);
+    }
+
     /// <summary>Fraction of green-dominant pixels in the given rectangle.</summary>
     public double GreenFraction(int x0, int y0, int x1, int y1)
     {
