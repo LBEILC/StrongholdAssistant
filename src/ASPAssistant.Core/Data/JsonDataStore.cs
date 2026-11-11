@@ -1,0 +1,202 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+using System.Text.Json;
+using ASPAssistant.Core.Models;
+
+namespace ASPAssistant.Core.Data;
+
+public class JsonDataStore
+{
+    private readonly string _dataDirectory;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public JsonDataStore(string dataDirectory)
+    {
+        _dataDirectory = dataDirectory;
+    }
+
+    public async Task<List<Operator>> LoadOperatorsAsync()
+    {
+        var path = Path.Combine(_dataDirectory, "operators.json");
+        if (!File.Exists(path))
+            return [];
+
+        var json = await File.ReadAllTextAsync(path);
+        var wrapper = JsonSerializer.Deserialize<OperatorDataFile>(json, JsonOptions);
+        return wrapper?.Operators ?? [];
+    }
+
+    public async Task<List<Strategy>> LoadStrategiesAsync()
+    {
+        var json = await File.ReadAllTextAsync(Path.Combine(_dataDirectory, "strategies.json"));
+        var data = JsonSerializer.Deserialize<StrategyDataFile>(json, JsonOptions)
+            ?? throw new InvalidDataException("策略数据不能为空");
+        if (data.Strategies.Count == 0 || data.Strategies.Any(s => s.Id.Length == 0 || s.Name.Length == 0)
+            || data.Strategies.Select(s => s.Id).Distinct().Count() != data.Strategies.Count)
+            throw new InvalidDataException("策略数据包含空条目或重复 ID");
+        return data.Strategies;
+    }
+
+    public async Task<(List<Equipment> Equipment, List<string> ManualJobChangeEquipments)> LoadEquipmentAsync()
+    {
+        var path = Path.Combine(_dataDirectory, "equipment.json");
+        if (!File.Exists(path))
+            return ([], []);
+
+        var json = await File.ReadAllTextAsync(path);
+        var wrapper = JsonSerializer.Deserialize<EquipmentDataFile>(json, JsonOptions);
+        var equipment = wrapper?.Equipment ?? [];
+        await ApplyEquipmentCategoriesAsync(equipment);
+        return (equipment, wrapper?.ManualJobChangeEquipments ?? []);
+    }
+
+    /// <summary>
+    /// Applies the hand-maintained function categories from <c>data/equipment_categories.json</c>
+    /// (攻击/防御/生存/技力/经济/盟约/其他). The file is maintained by hand and is never written by
+    /// <c>fetch_spdatabase.py</c>, so regenerating the scraped data keeps the classification.
+    /// Equipment without an entry falls back to 「其他」.
+    /// </summary>
+    private async Task ApplyEquipmentCategoriesAsync(List<Equipment> equipment)
+    {
+        var path = Path.Combine(_dataDirectory, "equipment_categories.json");
+        if (!File.Exists(path))
+            return;
+
+        var json = await File.ReadAllTextAsync(path);
+        var wrapper = JsonSerializer.Deserialize<EquipmentCategoryDataFile>(json, JsonOptions);
+        if (wrapper?.Categories is not { Count: > 0 } categories)
+            return;
+
+        foreach (var item in equipment)
+        {
+            item.Categories = categories.TryGetValue(item.Name, out var list) && list.Count > 0
+                ? list
+                : ["其他"];
+        }
+    }
+
+    /// <summary>
+    /// Loads the skin avatar map produced by <c>fetch_spdatabase.py --download-skins</c>.
+    /// Returns a dictionary of { filename → operator name }, e.g.
+    /// { "char_1012_skadi2_boc_4.png" → "浊心斯卡蒂" }.
+    /// Returns an empty dictionary if the file does not exist.
+    /// </summary>
+    public async Task<Dictionary<string, string>> LoadSkinAvatarMapAsync()
+    {
+        var path = Path.Combine(_dataDirectory, "skin_avatar_map.json");
+        if (!File.Exists(path))
+            return [];
+
+        var json = await File.ReadAllTextAsync(path);
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions) ?? [];
+    }
+
+    /// <summary>
+    /// Loads covenant definitions and the JobChange-equipment → covenant map from
+    /// <c>data/covenants.json</c>. If <c>data/covenants.user.json</c> exists, merges its
+    /// entries on top (user file overrides matching covenant entries by name and adds /
+    /// overrides job-change-equipment mappings).
+    /// </summary>
+    public async Task<(List<CovenantInfo> Covenants, Dictionary<string, string> JobChangeEquipmentToCovenant)>
+        LoadCovenantsAsync()
+    {
+        var path = Path.Combine(_dataDirectory, "covenants.json");
+        if (!File.Exists(path))
+            return ([], []);
+
+        var json = await File.ReadAllTextAsync(path);
+        var wrapper = JsonSerializer.Deserialize<CovenantDataFile>(json, JsonOptions)
+                      ?? new CovenantDataFile();
+
+        var covenants = wrapper.Covenants;
+        var jobChangeMap = wrapper.JobChangeEquipmentToCovenant ?? [];
+
+        var userPath = Path.Combine(_dataDirectory, "covenants.user.json");
+        if (File.Exists(userPath))
+        {
+            var userJson = await File.ReadAllTextAsync(userPath);
+            var userWrapper = JsonSerializer.Deserialize<CovenantDataFile>(userJson, JsonOptions);
+            if (userWrapper is not null)
+            {
+                var byName = covenants.ToDictionary(c => c.Name, c => c);
+                foreach (var uc in userWrapper.Covenants)
+                {
+                    if (string.IsNullOrEmpty(uc.Name)) continue;
+                    if (byName.TryGetValue(uc.Name, out var existing))
+                    {
+                        if (uc.ActivateCount.HasValue) existing.ActivateCount = uc.ActivateCount;
+                        if (!string.IsNullOrEmpty(uc.BondType)) existing.BondType = uc.BondType;
+                    }
+                    else
+                    {
+                        covenants.Add(uc);
+                    }
+                }
+                if (userWrapper.JobChangeEquipmentToCovenant is not null)
+                {
+                    foreach (var (k, v) in userWrapper.JobChangeEquipmentToCovenant)
+                        jobChangeMap[k] = v;
+                }
+            }
+        }
+
+        await ApplyCovenantEffectsAsync(covenants);
+        return (covenants, jobChangeMap);
+    }
+
+    /// <summary>
+    /// Applies the hand-maintained effect texts from <c>data/covenant_effects.json</c>
+    /// (copied from the in-game S.W.E.E.P. 盟约报告). The file is never written by
+    /// <c>fetch_spdatabase.py</c>; covenants without an entry keep an empty effect list.
+    /// </summary>
+    private async Task ApplyCovenantEffectsAsync(List<CovenantInfo> covenants)
+    {
+        var path = Path.Combine(_dataDirectory, "covenant_effects.json");
+        if (!File.Exists(path))
+            return;
+
+        var json = await File.ReadAllTextAsync(path);
+        var wrapper = JsonSerializer.Deserialize<CovenantEffectDataFile>(json, JsonOptions);
+        if (wrapper?.Covenants is not { Count: > 0 } effects)
+            return;
+
+        foreach (var covenant in covenants)
+            if (effects.TryGetValue(covenant.Name, out var list))
+                covenant.Effects = list.Where(e => !string.IsNullOrWhiteSpace(e.Text)).ToList();
+    }
+
+    private class CovenantEffectDataFile
+    {
+        public Dictionary<string, List<CovenantEffect>> Covenants { get; set; } = [];
+    }
+
+    private class OperatorDataFile
+    {
+        public List<Operator> Operators { get; set; } = [];
+    }
+
+    private class StrategyDataFile
+    {
+        public required List<Strategy> Strategies { get; set; }
+    }
+
+    private class EquipmentDataFile
+    {
+        public List<Equipment> Equipment { get; set; } = [];
+        public List<string> ManualJobChangeEquipments { get; set; } = [];
+    }
+
+    private class CovenantDataFile
+    {
+        public List<CovenantInfo> Covenants { get; set; } = [];
+        public Dictionary<string, string>? JobChangeEquipmentToCovenant { get; set; }
+    }
+
+    private class EquipmentCategoryDataFile
+    {
+        public Dictionary<string, List<string>>? Categories { get; set; }
+    }
+}

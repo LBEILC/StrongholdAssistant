@@ -1,0 +1,136 @@
+/* MiSans 可变字体子集（GB2312 + 数据与界面里出现的字符），随界面打包 */
+@font-face {
+  font-family: 'MiSans';
+  src: url('./assets/fonts/MiSans-VF.woff2') format('woff2');
+  font-weight: 150 700;
+  font-display: block;
+}
+
+/* 设计令牌：取色参照游戏内卫戍协议界面（开局信息页、商店卡） */
+:root {
+  /* 底色：炭黑，层次靠明度差 */
+  --bg-0: #0b0c0d;
+  --bg-1: #131416;
+  --bg-2: #1b1d20;
+  --bg-3: #24272a;
+  --bg-4: #2e3135;
+  --line: #303438;
+  --line-soft: #222528;
+
+  /* 文字 */
+  --fg-1: #ecedee;
+  --fg-2: #b4b8bc;
+  --fg-3: #7d8287;
+  --fg-4: #50555a;
+
+  /* 薄荷绿：激活、可用、目标 */
+  --mint: #22e3b2;
+  --mint-hi: #5ef5cf;
+  --mint-lo: #10a982;
+  --mint-ink: #06231b;
+  --mint-glow: 0 0 10px rgb(34 227 178 / 0.45), 0 0 2px rgb(34 227 178 / 0.8);
+  --mint-tint: rgb(34 227 178 / 0.1);
+
+  /* 金色：领袖、费用、警示 */
+  --gold: #f3b322;
+  --gold-ink: #2a1d02;
+  /* 红：禁用 */
+  --red: #e5484d;
+  --red-tint: rgb(229 72 77 / 0.14);
+
+  /* 等阶色，取自 img_chess_level_1~6 */
+  --tier-1: #8c9094;
+  --tier-2: #e4e6e8;
+  --tier-3: #27d6a0;
+  --tier-4: #22b0e3;
+  --tier-5: #f2c315;
+  --tier-6: #f27a12;
+
+  --font-ui: 'MiSans', 'Microsoft YaHei UI', sans-serif;
+  /* 终端风格英文小字：Windows 自带 Bahnschrift */
+  --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', monospace;
+
+  --r-1: 2px;
+  --r-2: 4px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 120ms;
+  --t-mid: 220ms;
+
+  /* 做旧噪点 */
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* 细斜纹 */
+  --hatch: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 5px);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  display: block;
+}
+
+:focus-visible {
+  outline: 1px solid var(--mint);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-4);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.term {
+  font-family: var(--font-term);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* 用位图做遮罩染色：盟约图标等白色剪影 */
+.glyph {
+  display: block;
+  background: currentColor;
+  mask: var(--src) center / contain no-repeat;
+}

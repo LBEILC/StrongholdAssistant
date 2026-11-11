@@ -1,0 +1,11 @@
+bin/
+obj/
+*.user
+.vs/
+node_modules/
+*.log
+logs/
+.codex-runs/
+docs/research/refs/
+dist/
+out/

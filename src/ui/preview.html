@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>侧栏三页对照</title>
+    <!-- 开发用：按侧栏宽度并排看三页。?w=宽度&h=高度 -->
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        display: flex;
+        gap: 16px;
+        background: #3a3d40;
+      }
+      iframe {
+        border: 0;
+        flex: none;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const p = new URLSearchParams(location.search)
+      for (const tab of ['match', 'lineup', 'codex']) {
+        const f = document.createElement('iframe')
+        f.src = `./index.html#${tab}`
+        f.style.width = (p.get('w') ?? 380) + 'px'
+        f.style.height = (p.get('h') ?? 900) + 'px'
+        document.body.append(f)
+      }
+    </script>
+  </body>
+</html>
