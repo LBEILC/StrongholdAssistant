@@ -90,24 +90,15 @@
     background: var(--mint);
     clip-path: polygon(0 0, 100% 0, 100% 100%);
   }
-  .banned .av {
-    filter: grayscale(1) brightness(0.45);
-  }
-  .banned .pic::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(-45deg, rgb(229 72 77 / 0.35) 0 2px, transparent 2px 6px);
-  }
+  /* 禁用：和游戏禁用列表一样，头像照常，右上角贴红色三角角标。
+     素材 73×73 里三角只占中间 37×37，放大到头像宽 0.6 倍、往右上移 0.14 倍，三角直角正好卡在角上 */
   .ban {
     position: absolute;
-    right: 0;
-    top: 0;
+    right: calc(var(--s) * -0.14);
+    top: calc(var(--s) * -0.14);
     z-index: 1;
-    width: 50%;
-    height: 50%;
-    max-width: 26px;
-    max-height: 26px;
+    width: calc(var(--s) * 0.6);
+    height: calc(var(--s) * 0.6);
   }
   /* 特别关注：金色描边 + 右下角爱心 */
   .focus .pic {
@@ -163,9 +154,5 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .banned .nm {
-    color: var(--fg-4);
-    text-decoration: line-through;
   }
 </style>

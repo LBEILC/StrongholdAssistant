@@ -23,6 +23,7 @@
     {#each app.trackedOps as n (n)}
       <button class="av" class:banned={app.banned.has(n)} title="{n}：点一下取消追踪" onclick={() => app.toggleTracked(n)}>
         <img src={asset.operator(n)} alt={n} />
+          {#if app.banned.has(n)}<img class="ban" src={asset.stage('img_chess_banned')} alt="禁用" />{/if}
         <span class="x"><Icon name="close" size={13} /></span>
       </button>
     {/each}
@@ -138,8 +139,14 @@
     object-fit: contain;
     padding: 3px;
   }
-  .av.banned img {
-    filter: grayscale(1) brightness(0.45);
+  /* 禁用角标：素材四周有留白，放大并往右上移，让红三角卡在角上 */
+  .av .ban {
+    position: absolute;
+    right: -5px;
+    top: -5px;
+    z-index: 1;
+    width: 20px;
+    height: 20px;
   }
   .x {
     position: absolute;

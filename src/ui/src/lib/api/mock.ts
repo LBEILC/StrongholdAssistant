@@ -158,7 +158,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.4.0', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
+  appInfo: () => wait({ version: '0.4.1', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
   openDataFolder: async () => {},
   exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
   pickBackup: () =>
@@ -169,11 +169,11 @@ export const mockApi: Api = {
     pushUpdate({ state: 'checking' })
     const u: UpdateStatus = {
       state: 'available',
-      version: '0.4.1',
+      version: '0.4.2',
       notesUrl: 'https://github.com/LBEILC/StrongholdAssistant/releases',
       notes: {
         schema: 'sa-release-notes/1',
-        version: '0.4.1',
+        version: '0.4.2',
         date: '2026-11-20',
         items: [
           { kind: 'improved', title: '假数据：更新内容示例', detail: '这是假数据，用来看「发现新版本」时的更新内容怎么显示。', highlight: true },
@@ -188,9 +188,9 @@ export const mockApi: Api = {
   applyUpdate: async () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((r) => setTimeout(r, 150))
-      pushUpdate({ state: 'downloading', version: '0.4.1', progress: i / 10 })
+      pushUpdate({ state: 'downloading', version: '0.4.2', progress: i / 10 })
     }
-    pushUpdate({ state: 'ready', version: '0.4.1' })
+    pushUpdate({ state: 'ready', version: '0.4.2' })
   },
   openUrl: async (url) => void window.open(url, '_blank'),
   copyText: (text) => navigator.clipboard.writeText(text),

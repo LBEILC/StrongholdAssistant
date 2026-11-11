@@ -7,6 +7,7 @@
   import OpTile from './OpTile.svelte'
   import EqTile from './EqTile.svelte'
   import Seg from './Seg.svelte'
+  import StrategyGrid from './StrategyGrid.svelte'
   import Icon from './Icon.svelte'
 
   // 阵容编辑器：几乎全高的面板。上半是阵容本身（名字、目标盟约、想抓的干员），下半是挑干员。
@@ -17,8 +18,8 @@
   let goalOnly = $state(true)
   // 下半挑选区：干员 / 装备
   let poolKind = $state<'op' | 'eq' | 'st'>('op')
+  let pheadH = $state(0)
   const strat = $derived(e?.strategyId ? app.catalog.strategies.find((s) => s.id === e.strategyId) : null)
-  const stPool = $derived(app.catalog.strategies.filter((s) => !q || s.name.includes(q) || s.initiator.includes(q) || s.description.includes(q)))
   const pickSt = (id: string) => e && (e.strategyId = e.strategyId === id ? null : id)
   let cat = $state<string | null>(null)
   const cats = [...new Set(app.catalog.equipment.flatMap((x) => x.categories))]
@@ -82,6 +83,8 @@
       <button class="x" onclick={() => (app.editing = null)} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
 
+    <!-- 上半区（目标盟约、已选）和下半区（挑选）一起滚动：已选的多了也不会把挑选区挤没 -->
+    <div class="body">
     <div class="sec">
       <div class="lbl">目标盟约<em>点一次 I 档，再点 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
       <div class="goalpick">
@@ -131,6 +134,7 @@
     </div>
 
     <div class="pick">
+      <div class="phead" bind:clientHeight={pheadH}>
       <Seg
         items={[
           { id: 'op', label: '干员', count: e.members.length },
@@ -156,34 +160,30 @@
             </button>
           {/each}
         </div>
+      {:else if poolKind === 'eq'}
+        <div class="cats">
+          {#each cats as c (c)}
+            <button class="chip" class:on={cat === c} onclick={() => (cat = cat === c ? null : c)}>{c}</button>
+          {/each}
+        </div>
+      {/if}
+      </div>
+      {#if poolKind === 'op'}
         <div class="pool">
           {#each pool as o (o.name)}
             <span class="pi"><OpTile name={o.name} size={44} owned={inLineup(o.name)} menu={false} onclick={() => add(o.name)} /></span>
           {/each}
         </div>
       {:else if poolKind === 'st'}
-        <p class="sthint">可不选。选了会显示在阵容卡上，分享码也会带上。</p>
-        <div class="stlist">
-          {#each stPool as s (s.id)}
-            <button class="st" class:on={e.strategyId === s.id} onclick={() => pickSt(s.id)}>
-              <img src={asset.strategy(s.id)} alt="" loading="lazy" />
-              <span class="stt"><span class="stn"><b>{s.name}</b><em>{s.initiator}</em></span><span class="std">{s.description}</span></span>
-              {#if e.strategyId === s.id}<span class="ck"><Icon name="check" size={13} /></span>{/if}
-            </button>
-          {/each}
-        </div>
+        <div class="stwrap" style:--sticky-top="{pheadH}px"><StrategyGrid selected={e.strategyId} {q} onpick={pickSt} current={app.match.strategyId} /></div>
       {:else}
-        <div class="cats">
-          {#each cats as c (c)}
-            <button class="chip" class:on={cat === c} onclick={() => (cat = cat === c ? null : c)}>{c}</button>
-          {/each}
-        </div>
         <div class="pool">
           {#each eqPool as x (x.name)}
             <EqTile name={x.name} size={44} picked={hasEq(x.name)} menu={false} onclick={() => addEq(x.name)} />
           {/each}
         </div>
       {/if}
+    </div>
     </div>
 
     {#if err}<p class="err">{err}</p>{/if}
@@ -383,13 +383,34 @@
     font-size: 11px;
     color: var(--fg-4);
   }
-  .pick {
+  .body {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+  }
+  .pick {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 10px 12px 0;
+    padding: 0 12px;
+    /* 挑选区至少占面板大半，已选的再多，往下滚也有完整的挑选区 */
+    min-height: 70%;
+  }
+  /* 分段、搜索、筛选吸在滚动区顶部 */
+  .phead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 -12px;
+    padding: 10px 12px 6px;
+    background: #16181a;
+    box-shadow: 0 1px 0 var(--line-soft);
+  }
+  .stwrap {
+    padding: 4px 0 12px;
   }
   .search {
     display: flex;
@@ -433,80 +454,6 @@
   .stchip b {
     color: var(--fg-1);
   }
-  .sthint {
-    margin: 0;
-    font-size: 11px;
-    color: var(--fg-4);
-  }
-  .stlist {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding-bottom: 10px;
-  }
-  .st {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 6px 8px;
-    text-align: left;
-    background: var(--bg-1);
-  }
-  .st img {
-    width: 32px;
-    height: 32px;
-    flex: none;
-    object-fit: cover;
-    box-shadow: inset 0 0 0 1px var(--line);
-  }
-  .st:hover {
-    background: var(--bg-2);
-  }
-  .st.on {
-    background: linear-gradient(90deg, var(--mint-tint), transparent 70%), var(--bg-2);
-    box-shadow: inset 2px 0 0 var(--mint);
-  }
-  .stt {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-  .stn {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-  .stn b {
-    font-size: 12.5px;
-  }
-  .stn em {
-    font-style: normal;
-    font-size: 11px;
-    color: var(--fg-4);
-  }
-  .std {
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--fg-3);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .ck {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    display: grid;
-    place-items: center;
-    color: var(--mint-ink);
-    background: var(--mint);
-  }
   .cats {
     display: flex;
     flex-wrap: wrap;
@@ -546,14 +493,12 @@
     background: var(--mint);
   }
   .pool {
-    flex: 1;
-    overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
     gap: 6px 2px;
     justify-items: center;
     align-content: start;
-    padding: 4px 0 10px;
+    padding: 4px 0 12px;
   }
   .err {
     margin: 0;

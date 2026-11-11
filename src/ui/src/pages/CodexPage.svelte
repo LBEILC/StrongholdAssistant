@@ -6,10 +6,10 @@
   import Icon from '../components/Icon.svelte'
   import { openMenu, equipmentMenu } from '../lib/menu.svelte'
   import Seg from '../components/Seg.svelte'
+  import StrategyGrid from '../components/StrategyGrid.svelte'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
-  import GameText from '../components/GameText.svelte'
 
   // 图鉴：干员 / 装备网格，筛选常驻展开；点卡片在底部面板看详情（不靠悬停）。
   // 策略只有名字、发起者和一句效果，做成列表直接看全，本局策略排最前
@@ -22,6 +22,7 @@
   ]
   // 切换时内容从切换方向滑入
   let dir = $state(1)
+  let topH = $state(0)
   const pick = (k: Kind) => {
     dir = kinds.findIndex((x) => x.id === k) >= kinds.findIndex((x) => x.id === kind) ? 1 : -1
     kind = k
@@ -67,18 +68,13 @@
       }))
       .filter((g) => (kind === 'operator' ? g.ops.length : g.eqs.length)),
   )
-  const strategies = $derived(
-    app.catalog.strategies
-      .filter((s) => !q || s.name.includes(q) || s.initiator.includes(q) || s.description.includes(q))
-      .sort((a, b) => Number(b.id === app.match.strategyId) - Number(a.id === app.match.strategyId)),
-  )
   const cur = $derived(app.detail)
   const filtered = $derived(tiers.length + bonds.length + (onlyTracked ? 1 : 0) + (onlyFocus ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
 </script>
 
 <div class="page">
   <!-- 只让类型切换和搜索吸顶，筛选条件随页面滚走，免得占掉半屏 -->
-  <div class="top">
+  <div class="top" bind:clientHeight={topH}>
     <Seg items={kinds} value={kind} onchange={pick} height={26} />
     <div class="search">
       <span class="si"><Icon name="search" size={15} /></span>
@@ -91,19 +87,8 @@
   {#key kind}
   <div in:fly={{ x: 24 * dir, duration: 220, easing: cubicOut }}>
   {#if kind === 'strategy'}
-    <div class="strats">
-      {#each strategies as s (s.id)}
-        <div class="strat" class:now={s.id === app.match.strategyId}>
-          <img src={asset.strategy(s.id)} alt="" loading="lazy" />
-          <div class="si2">
-            <div class="sn"><b>{s.name}</b><span>{s.initiator}</span>{#if s.id === app.match.strategyId}<em class="term">本局</em>{/if}</div>
-            <p><GameText text={s.description} /></p>
-          </div>
-        </div>
-      {:else}
-        <p class="none">没有符合条件的策略。</p>
-      {/each}
-    </div>
+    <!-- 仿游戏「策略报告」：上面详情（默认本局策略），下面按泛用型 / 盟约型分组排头像 -->
+    <div class="strats" style:--sticky-top="{topH}px"><StrategyGrid {q} current={app.match.strategyId} /></div>
   {:else}
   <div class="filters">
     <div class="chips">
@@ -183,62 +168,7 @@
 
 <style>
   .strats {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     margin-top: 10px;
-  }
-  .strat {
-    display: flex;
-    gap: 9px;
-    align-items: flex-start;
-    padding: 7px 9px;
-    background: var(--hatch), var(--bg-1);
-    box-shadow: inset 0 0 0 1px var(--line-soft);
-  }
-  .strat.now {
-    background: linear-gradient(90deg, var(--mint-tint), transparent 60%), var(--bg-1);
-    box-shadow: inset 2px 0 0 var(--mint), inset 0 0 0 1px rgb(34 227 178 / 0.3);
-  }
-  .strat img {
-    flex: none;
-    width: 40px;
-    height: 40px;
-    object-fit: cover;
-    background: var(--bg-3);
-    box-shadow: inset 0 0 0 1px var(--line);
-  }
-  .si2 {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .sn {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-  .sn b {
-    font-size: 13px;
-    color: var(--fg-1);
-  }
-  .sn span {
-    font-size: 11px;
-    color: var(--fg-3);
-  }
-  .sn em {
-    font-style: normal;
-    font-size: 9px;
-    padding: 1px 4px 0;
-    color: var(--mint-ink);
-    background: var(--mint);
-  }
-  .si2 p {
-    margin: 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--fg-2);
   }
   .special {
     font-size: 12px;

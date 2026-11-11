@@ -47,6 +47,7 @@
           transition:scale={fx}
         >
           <img src={asset.operator(n)} alt={n} />
+          {#if app.banned.has(n)}<img class="ban" src={asset.stage('img_chess_banned')} alt="禁用" />{/if}
           <span class="x"><Icon name="close" size={14} /></span>
         </button>
       {/each}
@@ -194,6 +195,15 @@
     padding: 3px;
   }
   /* 悬停：盖一层暗底和叉，表示点了就取消 */
+  /* 禁用角标：素材四周有留白，放大并往右上移，让红三角卡在角上 */
+  .av .ban {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    z-index: 1;
+    width: 19px;
+    height: 19px;
+  }
   .x {
     position: absolute;
     inset: 0;
@@ -208,15 +218,6 @@
   }
   .av:hover .x {
     opacity: 1;
-  }
-  .av.banned img {
-    filter: grayscale(1) brightness(0.45);
-  }
-  .av.banned::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(-45deg, rgb(229 72 77 / 0.35) 0 2px, transparent 2px 6px);
   }
   .av.key::after {
     /* 关键干员：左上角金色三角 */
