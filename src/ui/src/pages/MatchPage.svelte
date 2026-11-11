@@ -15,13 +15,18 @@
   const extra = $derived(m.covenants.filter((c) => app.cov(c.id).kind === 'extra'))
   const boss = $derived(app.catalog.bosses.find((b) => b.id === m.bossId))
   const strategy = $derived(app.catalog.strategies.find((s) => s.id === m.strategyId))
-  // 我的阵容按本局被禁人数排序，取前 3
+  // 我的阵容先按目标盟约里阵容不完整的个数、再按名单被禁人数排序，取前 3
   const usable = $derived(
     app.lineups
-      .map((l) => ({ l, bad: app.bannedIn(l).length }))
+      .map((l) => ({ l, bad: app.lineupPenalty(l) }))
       .sort((a, b) => a.bad - b.bad)
       .slice(0, 3),
   )
+
+  // 特别关注：本局阵容不完整的关注盟约、被禁的关注干员
+  const focusCovsHit = $derived(app.settings.focusCovenants.filter((id) => app.matchCovenant(id)?.incomplete))
+  const focusOpsHit = $derived(app.settings.focusOperators.filter((n) => app.banned.has(n)))
+  const focusTotal = $derived(app.settings.focusCovenants.length + app.settings.focusOperators.length)
   const edit = $derived(app.matchEdit)
   const tapCov = (id: string) => (edit ? app.toggleCovenantIncomplete(id) : (app.detail = { kind: 'covenant', id }))
 
@@ -37,19 +42,20 @@
   const fold = (key: string) => () => app.toggleFold(`match.${key}`)
   const sl = { duration: 200, easing: cubicOut }
 
-  // 禁用干员仿游戏按盟约分组：先按不完整的核心盟约，再按不完整的附加盟约，剩下的（手动禁用等）归「其他」
+  // 禁用干员仿游戏按盟约分组：先不完整的核心盟约，再不完整的附加盟约。和游戏一样，
+  // 干员属于多个不完整盟约时在每组都出现，组内按星级从高到低，方便和游戏画面逐个核对。
+  // 不属于任何不完整盟约的（手动禁用等）归「其他」。
+  const rank = new Map(app.catalog.operators.map((o, i) => [o.name, i]))
+  const byTier = (a: string, b: string) => app.op(b).tier - app.op(a).tier || rank.get(a)! - rank.get(b)!
   const bannedGroups = $derived.by(() => {
-    const left = new Set(m.bannedOperators)
-    const groups: { id: string | null; names: string[] }[] = []
-    const take = (id: string | null, hit: (o: ReturnType<typeof app.op>) => boolean) => {
-      const names = [...left].filter((n) => hit(app.op(n))).sort((a, b) => app.op(b).tier - app.op(a).tier)
-      names.forEach((n) => left.delete(n))
-      if (names.length) groups.push({ id, names })
-    }
-    for (const c of core.filter((c) => c.incomplete)) take(c.id, (o) => o.core.includes(c.id))
-    for (const c of extra.filter((c) => c.incomplete)) take(c.id, (o) => o.extra.includes(c.id))
-    take(null, () => true)
-    return groups
+    const banned = m.bannedOperators
+    const groups: { id: string | null; names: string[] }[] = [
+      ...core.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).core.includes(c.id)) })),
+      ...extra.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).extra.includes(c.id)) })),
+    ]
+    const shown = new Set(groups.flatMap((g) => g.names))
+    groups.push({ id: null, names: banned.filter((n) => !shown.has(n)) })
+    return groups.filter((g) => g.names.length).map((g) => ({ id: g.id, names: g.names.sort(byTier) }))
   })
 </script>
 
@@ -64,17 +70,53 @@
       <button class="tool" class:on={edit} onclick={() => (app.matchEdit = !edit)}>
         <Icon name="pencil" size={13} />{edit ? '完成' : '修正'}
       </button>
-      <button class="tool" class:busy={app.scanning} onclick={() => app.rescan()} disabled={app.scanning}>
+      <button class="tool" class:busy={app.scanning && !app.continuous} onclick={() => app.rescan()} disabled={app.scanning || app.continuous}>
         <span class="spin"><Icon name="refresh" size={13} /></span>
-        {app.scanning ? '识别中…' : '重新识别'}
+        {app.scanning && !app.continuous ? '识别中…' : '重新识别'}
+      </button>
+      <button
+        class="tool"
+        class:live={app.continuous}
+        onclick={() => app.toggleContinuous()}
+        disabled={app.scanning && !app.continuous}
+        title="点一次后在游戏里往下滚动禁用列表，会自动逐屏识别"
+      >
+        {#if app.continuous}<span class="live-dot"></span>停止{:else}<Icon name="scan" size={13} />持续识别{/if}
       </button>
     </span>
   </div>
-  {#if app.scanNote?.message}
-    <div class="note" class:bad={!app.scanNote.ok}>{app.scanNote.message}</div>
+  {#if app.continuous}
+    <div class="note">
+      <span>持续识别中，已识别 <b>{m.bannedOperators.length}</b> 名禁用干员。在游戏里慢慢往下滚动禁用列表，看全后点「停止」。</span>
+    </div>
+  {:else if app.scanNote?.message}
+    <div class="note" class:bad={!app.scanNote.ok}>
+      <span>{app.scanNote.message}</span>
+      <button class="nx" aria-label="关闭提示" onclick={() => (app.scanNote = null)}><Icon name="close" size={13} /></button>
+    </div>
   {/if}
   {#if edit}
     <div class="edithint">点盟约切换「可用 / 阵容不完整」，禁用干员会跟着重新推算；点禁用干员可解除。要单独禁用某名干员，在干员详情里操作。</div>
+  {/if}
+
+  {#if focusTotal && m.source !== 'none'}
+    {#if focusCovsHit.length || focusOpsHit.length}
+      <div class="focus bad">
+        <span class="fh"><Icon name="heartFill" size={13} />关注的被影响了</span>
+        <div class="fl">
+          {#each focusCovsHit as id (id)}
+            <button class="fc" onclick={() => (app.detail = { kind: 'covenant', id })}>
+              <BondIcon id={id} size={22} incomplete />{app.cov(id).name}<em>阵容不完整</em>
+            </button>
+          {/each}
+          {#each focusOpsHit as n (n)}
+            <OpTile name={n} size={32} showName={false} onclick={() => (app.detail = { kind: 'operator', name: n })} />
+          {/each}
+        </div>
+      </div>
+    {:else}
+      <div class="focus ok"><Icon name="heartFill" size={13} />关注的 {app.settings.focusCovenants.length} 个盟约、{app.settings.focusOperators.length} 名干员本局都可用</div>
+    {/if}
   {/if}
 
   {#if strategy}
@@ -200,14 +242,14 @@
         <Icon name="grid" size={18} />
       {/snippet}
       {#snippet right()}
-        <button class="hbtn" onclick={() => ((app.tab = 'lineup'), (app.lineupView = 'plan'))}><Icon name="magic" size={14} />按本局规划</button>
+        <button class="hbtn" onclick={() => ((app.tab = 'lineup'), app.edit(null))}><Icon name="add" size={14} />新建阵容</button>
       {/snippet}
     </SectionHeader>
     {#if open('lineups')}
     <div class="recs" transition:slide={sl}>
       {#each usable as { l } (l.id)}
         {@const isT = app.session.targetLineupId === l.id}
-        <LineupCard title={l.name} members={l.members} target={isT}>
+        <LineupCard title={l.name} goals={l.goals} members={l.members} target={isT}>
           {#snippet actions()}
             {#if !isT}<button class="act" onclick={() => app.setTarget(l.id)}>设为目标</button>{/if}
           {/snippet}
@@ -226,10 +268,13 @@
     gap: 12px;
     padding: 10px 10px 24px;
   }
+  /* 侧栏窄时按钮整组换到第二行靠右，不和状态文字叠在一起 */
   .status {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
+    gap: 6px 4px;
     font-size: 12px;
   }
   .st {
@@ -256,6 +301,7 @@
   .tools {
     display: flex;
     gap: 4px;
+    margin-left: auto;
   }
   .tool {
     white-space: nowrap;
@@ -264,12 +310,20 @@
     gap: 4px;
     font-size: 12px;
     color: var(--fg-2);
-    padding: 3px 8px;
+    padding: 3px 7px;
     box-shadow: inset 0 0 0 1px var(--line);
   }
   .tool:hover {
     color: var(--fg-1);
     box-shadow: inset 0 0 0 1px var(--fg-3);
+  }
+  .tool:disabled {
+    opacity: 0.45;
+  }
+  .tool.live {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+    opacity: 1;
   }
   .tool.on {
     color: var(--mint-ink);
@@ -277,6 +331,9 @@
     box-shadow: none;
   }
   .note {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     font-size: 12px;
     line-height: 1.5;
     color: var(--mint);
@@ -284,10 +341,68 @@
     background: var(--mint-tint);
     box-shadow: inset 2px 0 0 var(--mint);
   }
+  .note span {
+    flex: 1;
+  }
+  .nx {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin: -1px -4px 0 0;
+    display: grid;
+    place-items: center;
+    color: inherit;
+    opacity: 0.6;
+  }
+  .nx:hover {
+    opacity: 1;
+    background: rgb(255 255 255 / 0.08);
+  }
   .note.bad {
     color: #f2b8ba;
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
+  }
+  .focus {
+    display: flex;
+    gap: 6px;
+    font-size: 12px;
+    padding: 7px 8px;
+  }
+  .focus.ok {
+    align-items: center;
+    color: var(--gold);
+    background: rgb(243 179 34 / 0.08);
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  .focus.bad {
+    flex-direction: column;
+    color: #f2b8ba;
+    background: var(--red-tint);
+    box-shadow: inset 2px 0 0 var(--red);
+  }
+  .fh {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 700;
+  }
+  .fl {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+  .fc {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--fg-1);
+  }
+  .fc em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--red);
   }
   .edithint {
     font-size: 11px;

@@ -18,7 +18,11 @@ public sealed class HostSettingsStore(string path)
         return new(json["gameTheme"]?.GetValue<string>() ?? "terminal",
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
-        { UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")) };
+        {
+            UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
+            FocusCovenants = json["focusCovenants"]?.Deserialize<string[]>() ?? [],
+            FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? []
+        };
     }
 
     public DockSettings LoadDock() => Read().Deserialize<DockSettings>(HostApi.JsonOptions)!;

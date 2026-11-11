@@ -1,13 +1,14 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
-  import type { LineupMember } from '../lib/api'
-  import { app, bondProgress } from '../lib/state.svelte'
+  import type { CovenantGoal, LineupMember } from '../lib/api'
+  import { app, goalProgress } from '../lib/state.svelte'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
 
-  // 阵容卡：我的阵容、规划结果、本局可用阵容共用
+  // 阵容卡：我的阵容、本局可用阵容共用。盟约一行是目标盟约，数字是名单里有这个盟约的人数 / 目标档位人数
   interface Props {
     title: string
+    goals: CovenantGoal[]
     members: LineupMember[]
     target?: boolean
     sub?: Snippet
@@ -15,9 +16,9 @@
     /** 点标题（如打开编辑） */
     ontitle?: () => void
   }
-  let { title, members, target = false, sub, actions, ontitle }: Props = $props()
+  let { title, goals, members, target = false, sub, actions, ontitle }: Props = $props()
   const bannedHere = $derived(app.bannedIn({ members }))
-  const bonds = $derived(bondProgress(members, new Set()))
+  const progress = $derived(goalProgress(goals, members, members.map((m) => m.name)))
 </script>
 
 <article class="lc" class:target>
@@ -37,12 +38,14 @@
     {@render actions?.()}
   </header>
   <div class="bonds">
-    {#each bonds as b (b.covenant.id)}
-      {@const inc = app.matchCovenant(b.covenant.id)?.incomplete}
-      <span class="bc" class:inc>
-        <BondIcon id={b.covenant.id} size={20} on={!inc} />
-        <span>{b.covenant.name}<b>{b.planned}</b></span>
+    {#each progress as g (g.covenant.id)}
+      {@const inc = app.matchCovenant(g.covenant.id)?.incomplete}
+      <span class="bc" class:inc class:short={!g.done}>
+        <BondIcon id={g.covenant.id} size={20} on={!inc} />
+        <span>{g.covenant.name}<em class="term">{g.level === 2 ? 'II' : 'I'}</em><b>{g.have}/{g.need}</b></span>
       </span>
+    {:else}
+      <span class="none">没有目标盟约</span>
     {/each}
   </div>
   <div class="ops">
@@ -50,6 +53,7 @@
       <OpTile
         name={m.name}
         transform={m.transform}
+        isKey={m.key}
         size={30}
         showName={false}
         owned={target && app.owned.has(m.name)}
@@ -144,9 +148,22 @@
     margin-left: 2px;
     color: var(--mint);
   }
+  .bc em {
+    font-style: normal;
+    font-size: 9px;
+    margin-left: 3px;
+    color: var(--fg-3);
+  }
+  .bc.short b {
+    color: var(--gold);
+  }
   .bc.inc,
   .bc.inc b {
     color: var(--fg-3);
+  }
+  .none {
+    font-size: 11px;
+    color: var(--fg-4);
   }
   .ops {
     display: flex;

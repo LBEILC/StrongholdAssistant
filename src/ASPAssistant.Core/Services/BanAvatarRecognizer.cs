@@ -29,8 +29,8 @@ public sealed class BanAvatarRecognizer
     public BanAvatarRecognizer(IOcrEngine ocr, IReadOnlyList<Operator> operators, string avatarDirectory)
     {
         _ocr = ocr;
-        _operators = operators;
-        foreach (var op in operators)
+        _operators = operators.Where(o => o.Obtain is null).ToArray();
+        foreach (var op in _operators)
         {
             using var bitmap = new Bitmap(Path.Combine(avatarDirectory, op.Name + ".png"));
             var variants = new List<double[]>();

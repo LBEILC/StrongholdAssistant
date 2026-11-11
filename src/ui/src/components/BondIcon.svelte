@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
+  import Icon from './Icon.svelte'
 
   interface Props {
     id: string
@@ -16,11 +17,12 @@
   }
   let { id, size = 44, on = false, incomplete = false, progress, name = false, onclick }: Props = $props()
   const cov = $derived(app.cov(id))
+  const focus = $derived(app.focusCovs.has(id))
   const R = 47
   const C = 2 * Math.PI * R
 </script>
 
-<button class="bond" class:on class:clickable={!!onclick} style:--s="{size}px" {onclick} title={cov.name}>
+<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} title={cov.name}>
   <span class="disc">
     {#if progress !== undefined}
       <svg class="ring" viewBox="0 0 100 100">
@@ -29,6 +31,7 @@
       </svg>
     {/if}
     <span class="glyph" style:--src="url({asset.bond(id)})"></span>
+    {#if focus}<span class="fav" title="特别关注"><Icon name="heartFill" size={Math.max(8, Math.round(size * 0.2))} /></span>{/if}
     {#if incomplete}
       <img class="mark" src={asset.stage('img_bond_banned')} alt="阵容不完整" />
     {/if}
@@ -107,6 +110,24 @@
     right: -9px;
     width: max(16px, calc(var(--s) * 0.48));
     height: max(16px, calc(var(--s) * 0.48));
+  }
+  /* 特别关注：金色外圈 + 左下角爱心 */
+  .focus .disc {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .fav {
+    position: absolute;
+    left: -4px;
+    bottom: -3px;
+    width: max(13px, calc(var(--s) * 0.32));
+    height: max(13px, calc(var(--s) * 0.32));
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: 0 0 0 1.5px rgb(0 0 0 / 0.6);
   }
   .name {
     font-size: 12px;

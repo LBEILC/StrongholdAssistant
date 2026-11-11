@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ASPAssistant.Core.Data;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 using StrongholdAssistant.Host;
 
 namespace StrongholdAssistant.Tests;
@@ -9,6 +10,35 @@ public sealed class HostApiTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+
+    [Fact]
+    public async Task SpecialOperatorAppearsInCatalogButIsNotAPlanningCandidate()
+    {
+        var api = await CreateApi();
+        var special = Assert.Single(api.Catalog.GetProperty("operators").EnumerateArray(),
+            o => o.GetProperty("name").GetString() == "暴躁铁皮");
+        Assert.Equal("策略「暴躁铁皮」第 1 回合赠送", special.GetProperty("obtain").GetString());
+        var store = new JsonDataStore(Path.Combine(AppContext.BaseDirectory, "data"));
+        var operators = await store.LoadOperatorsAsync();
+        var (covenants, _) = await store.LoadCovenantsAsync();
+        var planner = new LineupPlanner(operators, covenants);
+        var request = new PlannerRequest
+        {
+            Goals = [LineupPlanner.CreateGoal(covenants.Single(c => c.Name == "协防干员"), 1)],
+            PeopleOptions = [8], TransformOptions = [0]
+        };
+        var result = planner.Plan(request);
+        Assert.Equal(operators.Count(o => o.Obtain is null), result.CandidateCount);
+        Assert.NotEmpty(result.AllLineups);
+        Assert.All(result.AllLineups, lineup => Assert.DoesNotContain(lineup.Operators, o => o.Name == "暴躁铁皮"));
+        var locked = planner.Plan(new PlannerRequest
+        {
+            Goals = request.Goals, PeopleOptions = [8], TransformOptions = [0],
+            LockedOperators = new HashSet<string> { "暴躁铁皮" }
+        });
+        Assert.NotNull(locked.Error);
+        Assert.Empty(locked.AllLineups);
+    }
 
     [Fact]
     public async Task SaveLineupPreservesOtherPhasesAndMemberDetailsAndConvertsTransforms()
@@ -71,25 +101,6 @@ public sealed class HostApiTests : IDisposable
         Assert.Equal(saved.Members, reloaded.Members);
         Assert.Equal(saved.Source, reloaded.Source);
         Assert.Equal(saved.Note, reloaded.Note);
-    }
-
-    [Fact]
-    public async Task PlanReturnsSiracusaTwoRaidOneWithIdTransforms()
-    {
-        var api = await CreateApi();
-        var request = new PlanRequest([new("siracusa", 2), new("raid", 1)], [], [8, 9], [0, 1]);
-        var response = await api.InvokeAsync("plan", [JsonSerializer.SerializeToElement(request, HostApi.JsonOptions)]);
-        var result = Assert.IsType<PlanResultDto>(response);
-        Assert.Null(result.Error);
-        Assert.NotEmpty(result.Candidates);
-        var ids = api.Catalog.GetProperty("covenants").EnumerateArray().Select(c => c.GetProperty("id").GetString()).ToHashSet();
-        Assert.All(result.Candidates, candidate =>
-        {
-            Assert.True(candidate.Counts["siracusa"] >= 6);
-            Assert.True(candidate.Counts["raid"] >= 2);
-            Assert.All(candidate.Members.Where(m => m.Transform is not null), m => Assert.Contains(m.Transform, ids));
-        });
-        Assert.Contains(result.Candidates, c => c.Members.Any(m => m.Transform is not null));
     }
 
     public void Dispose()

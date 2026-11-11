@@ -12,18 +12,23 @@
     /** 转职盟约：左下角小徽记 */
     transform?: string
     showName?: boolean
+    /** 阵容里的关键干员：左上角金色三角 */
+    isKey?: boolean
     onclick?: () => void
   }
-  let { name, size = 48, owned = false, dim = false, transform, showName = true, onclick }: Props = $props()
+  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, onclick }: Props = $props()
   const op = $derived(app.op(name))
   const banned = $derived(app.banned.has(name))
+  const focus = $derived(app.focusOps.has(name))
 </script>
 
-<button class="tile" class:owned class:dim class:banned style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} title="{name} · {ROMAN[op.tier]} 阶">
+<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} title="{name} · {ROMAN[op.tier]} 阶">
   <span class="pic">
     <img class="av" src={asset.operator(name)} alt="" loading="lazy" />
     {#if owned}<span class="check"><Icon name="check" size={11} /></span>{/if}
     {#if banned}<img class="ban" src={asset.stage('img_chess_banned')} alt="禁用" />{/if}
+    {#if isKey}<span class="key" title="关键干员"></span>{/if}
+    {#if focus}<span class="fav" title="特别关注"><Icon name="heartFill" size={9} /></span>{/if}
     {#if transform}<span class="tf" title="转职：{app.cov(transform).name}"><span class="glyph" style:--src="url({asset.bond(transform)})"></span></span>{/if}
   </span>
   {#if showName}<span class="nm">{name}</span>{/if}
@@ -100,6 +105,35 @@
     height: 50%;
     max-width: 26px;
     max-height: 26px;
+  }
+  /* 特别关注：金色描边 + 右下角爱心 */
+  .focus .pic {
+    outline: 1.5px solid var(--gold);
+    outline-offset: 1px;
+  }
+  .fav {
+    position: absolute;
+    right: 1px;
+    bottom: 3px;
+    z-index: 2;
+    width: 13px;
+    height: 13px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+  }
+  .key {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+    width: 11px;
+    height: 11px;
+    background: var(--gold);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
   }
   .tf {
     position: absolute;

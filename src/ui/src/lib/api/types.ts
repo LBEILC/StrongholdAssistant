@@ -29,6 +29,11 @@ export interface Operator {
   extra: CovenantId[]
   normal: Trait[]
   elite: Trait[]
+  /**
+   * 不可招募的特殊干员写获得方式，如「策略「暴躁铁皮」第 1 回合赠送」。有值时不出现在商店，
+   * 不参与阵容规划和本局禁用推算；图鉴里单独归到「特殊」组。普通干员没有这个字段。
+   */
+  obtain?: string
 }
 
 export interface Equipment {
@@ -82,6 +87,8 @@ export interface Connection {
 /** 开局信息页识别的进度（自动触发和「重新识别」都会推送） */
 export interface ScanStatus {
   busy: boolean
+  /** 持续识别进行中为 true（两次识别之间 busy 为 false，continuous 仍为 true）；结束时推送 false */
+  continuous?: boolean
   /** 结束时的结果说明：成功时是一句确认，失败时是原因和怎么办，直接显示给用户 */
   message?: string
   ok?: boolean
@@ -105,43 +112,30 @@ export interface MatchInfo {
 
 export interface LineupMember {
   name: string
-  /** 规划器给这名干员加的转职盟约 */
+  /** 关键干员（如关键叠层）：待购里排在前面，商店标记和其他想抓的干员一样 */
+  key?: boolean
+  /** 旧版规划器给这名干员加的转职盟约；新建的阵容不再产生 */
   transform?: CovenantId
 }
 
+/** 目标盟约和要达到的档位，人数取 Covenant.thresholds[level - 1] */
+export interface CovenantGoal {
+  id: CovenantId
+  level: 1 | 2
+}
+
+/**
+ * 阵容（2026-11-11 起）：目标盟约 + 想抓的干员，不限人数。
+ * 盟约进度按本局所有已持有的干员算，不只 members。
+ */
 export interface Lineup {
   id: string
   name: string
-  members: LineupMember[] // 最多 9 人
-  source: 'user' | 'planned'
+  goals: CovenantGoal[]
+  members: LineupMember[]
+  source: 'user' | 'planned' // planned 是旧版规划器生成的，新建的都是 user
   note?: string
   updatedAt: string // ISO 时间
-}
-
-/** 阵容规划（参考项目 LineupPlanner；算法归工程） */
-export interface PlanGoal {
-  id: CovenantId
-  level: 1 | 2 // 要达到的档位，人数取 Covenant.thresholds[level - 1]
-}
-
-export interface PlanRequest {
-  goals: PlanGoal[]
-  locked: string[] // 必须包含的干员
-  people: (8 | 9)[]
-  transforms: (0 | 1 | 2)[]
-}
-
-export interface PlannedLineup {
-  people: number
-  transforms: number
-  members: LineupMember[] // 目标需要的干员
-  freeSlots: number // 到 people 还空着、可随意填的位置
-  counts: Record<CovenantId, number> // 各目标盟约的人数（含转职）
-}
-
-export interface PlanResult {
-  candidates: PlannedLineup[]
-  error?: string // 目标凑不齐等，直接显示给用户
 }
 
 /** 游戏内正在使用的卫戍协议主题：三套主题商店名称栏的位置不同，商店识别要按主题来 */
@@ -156,6 +150,9 @@ export interface Settings {
    * 数字为固定倍数，取 1、1.25、1.5、1.75、2。侧栏宽度范围也按同样倍数放大。
    */
   uiScale: 'auto' | number
+  /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
+  focusCovenants: CovenantId[]
+  focusOperators: string[]
 }
 
 export interface AppInfo {
@@ -184,6 +181,13 @@ export interface Api {
   match(): Promise<MatchInfo>
   /** 立即识别当前画面的开局信息页；失败时以错误返回，错误文字直接给用户看 */
   rescan(): Promise<MatchInfo>
+  /**
+   * 持续识别：on=true 立即识别一次，之后每次识别结束 0.5 秒再识别下一次，结果像 rescan 一样合并（往下滚动禁用列表
+   * 就能逐屏补全）。识别中推送 scan（continuous: true）和 match。on=false 停止。
+   * 以下情况宿主自动停止：连续 3 次没找到开局信息页、持续满 90 秒、游戏窗口丢失。
+   * 停止时推送 scan { busy: false, continuous: false, ok, message }，message 说明本次结果。
+   */
+  scanContinuous(on: boolean): Promise<void>
   /** 手动修正：盟约是否灰掉（会重新推算禁用干员） */
   setCovenantIncomplete(id: CovenantId, incomplete: boolean): Promise<MatchInfo>
   /** 手动修正：单个干员是否禁用 */
@@ -192,7 +196,6 @@ export interface Api {
   /** 新建（id 为空串）或覆盖保存，返回保存后的阵容 */
   saveLineup(l: Lineup): Promise<Lineup>
   deleteLineup(id: string): Promise<void>
-  plan(req: PlanRequest): Promise<PlanResult>
   session(): Promise<Session>
   saveSession(s: Session): Promise<void>
   settings(): Promise<Settings>

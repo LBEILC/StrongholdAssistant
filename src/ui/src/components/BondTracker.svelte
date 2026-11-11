@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
+  import Icon from './Icon.svelte'
 
   // 常驻顶栏：目标阵容的盟约进度 + 还没买到的干员。任何页面都可见，取代参考项目的「追踪」标签。
   // 商店阶段最常用：买到谁就点谁的头像标记已持有。
@@ -10,6 +11,7 @@
   const goTarget = () => ((app.tab = 'lineup'), (app.lineupView = 'target'))
 </script>
 
+{#if t || !app.folded['hint.noTarget']}
 <section class="tracker">
   {#if t}
     <div class="head">
@@ -20,19 +22,20 @@
       <span class="count trk">追踪 <b>{app.tracked.size}</b></span>
     </div>
     <div class="row">
-      {#each app.targetBonds as b (b.covenant.id)}
-        {@const next = b.covenant.thresholds.find((x) => x > b.owned) ?? b.covenant.thresholds.at(-1)!}
-        <div class="cell" class:active={b.active}>
+      {#each app.goalProgress as g (g.covenant.id)}
+        <div class="cell" class:active={g.active}>
           <BondIcon
-            id={b.covenant.id}
+            id={g.covenant.id}
             size={34}
-            on={b.active}
-            incomplete={app.matchCovenant(b.covenant.id)?.incomplete}
-            progress={b.owned / next}
-            onclick={() => (app.detail = { kind: 'covenant', id: b.covenant.id })}
+            on={g.active}
+            incomplete={app.matchCovenant(g.covenant.id)?.incomplete}
+            progress={g.have / g.need}
+            onclick={() => (app.detail = { kind: 'covenant', id: g.covenant.id })}
           />
-          <span class="n"><b>{b.owned}</b>/{next}</span>
+          <span class="n"><b>{g.have}</b>/{g.need}</span>
         </div>
+      {:else}
+        <span class="nogoal">没有目标盟约，去编辑里选</span>
       {/each}
     </div>
     <div class="buy">
@@ -41,7 +44,8 @@
         <button
           class="av"
           class:banned={app.banned.has(m.name)}
-          title="{m.name}：点一下标记已持有"
+          class:key={m.key}
+          title="{m.name}{m.key ? '（关键）' : ''}：点一下标记已持有"
           onclick={() => app.toggleOwned(m.name)}
         >
           <img src={asset.operator(m.name)} alt={m.name} />
@@ -55,9 +59,11 @@
       还没有目标阵容。去
       <button onclick={goTarget}>阵容</button>
       规划或选一个，这里会显示盟约进度和待购干员。
+      <button class="x" title="不再提示" aria-label="不再提示" onclick={() => app.toggleFold('hint.noTarget')}><Icon name="close" size={13} /></button>
     </div>
   {/if}
 </section>
+{/if}
 
 <style>
   .tracker {
@@ -160,6 +166,7 @@
     margin-right: 2px;
   }
   .av {
+    position: relative;
     flex: none;
     width: 28px;
     height: 28px;
@@ -188,14 +195,45 @@
     font-size: 11px;
     color: var(--mint);
   }
+  .nogoal {
+    font-size: 11px;
+    color: var(--fg-4);
+    align-self: center;
+  }
+  .av.key::after {
+    /* 关键干员：右上角金色三角 */
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    background: var(--gold);
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+  }
   .empty {
+    position: relative;
     font-size: 12px;
     color: var(--fg-3);
-    padding: 6px 0 4px;
+    padding: 6px 24px 4px 0;
   }
-  .empty button {
+  .empty button:not(.x) {
     color: var(--mint);
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  .x {
+    position: absolute;
+    top: 2px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    color: var(--fg-4);
+  }
+  .x:hover {
+    color: var(--fg-1);
+    background: var(--bg-3);
   }
 </style>

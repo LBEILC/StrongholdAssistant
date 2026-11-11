@@ -11,13 +11,18 @@
 <div class="strip">
   <span class="grip" aria-hidden="true"><i></i></span>
   <button class="open" title="展开侧栏" aria-label="展开侧栏" onclick={expand}><Icon name="expandRight" size={18} /></button>
+  {#if app.continuous}
+    <button class="stopscan" title="持续识别中，点这里停止" aria-label="停止持续识别" onclick={() => app.toggleContinuous()}>
+      <span class="live-dot"></span>
+      <Icon name="stop" size={14} />
+    </button>
+  {/if}
   {#if t}
     <div class="bonds">
-      {#each app.targetBonds as b (b.covenant.id)}
-        {@const next = b.covenant.thresholds.find((x) => x > b.owned) ?? b.covenant.thresholds.at(-1)!}
-        <button class="cell" class:active={b.active} title="{b.covenant.name} {b.owned}/{next}" onclick={expand}>
-          <BondIcon id={b.covenant.id} size={30} on={b.active} progress={b.owned / next} />
-          <span class="n"><b>{b.owned}</b>/{next}</span>
+      {#each app.goalProgress as g (g.covenant.id)}
+        <button class="cell" class:active={g.active} title="{g.covenant.name} {g.have}/{g.need}" onclick={expand}>
+          <BondIcon id={g.covenant.id} size={30} on={g.active} progress={g.have / g.need} />
+          <span class="n"><b>{g.have}</b>/{g.need}</span>
         </button>
       {/each}
     </div>
@@ -69,6 +74,20 @@
   }
   .open:hover {
     background: var(--mint-hi);
+  }
+  .stopscan {
+    flex: none;
+    width: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 0;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .stopscan:hover {
+    background: var(--mint-tint);
   }
   .bonds {
     display: flex;

@@ -12,9 +12,9 @@
   <span class="title">卫戍协议助手</span>
   <span class="sub term">Stronghold<br />Assistant</span>
   <span class="spacer"></span>
-  <span class="conn" class:ok={conn.state === 'connected'} title={conn.state === 'connected' ? '已连接游戏窗口' : ''}>
+  <span class="conn" class:ok={conn.state === 'connected'} title={conn.state === 'connected' ? `已连接游戏窗口 ${conn.resolution}` : '寻找游戏窗口…'}>
     <span class="dot"></span>
-    {conn.state === 'connected' ? conn.resolution : '寻找游戏窗口…'}
+    <span class="txt">{conn.state === 'connected' ? conn.resolution : '寻找游戏窗口…'}</span>
     {#if conn.overlay}<em class="fs" title="侧栏盖在游戏画面左侧。买东西、布阵时可以点右边的按钮收成细条">覆盖</em>{/if}
   </span>
   {#if conn.overlay}
@@ -60,7 +60,11 @@
     font-size: 13px;
     letter-spacing: 0.06em;
   }
+  /* 装饰英文最先让出宽度 */
   .sub {
+    min-width: 0;
+    overflow: hidden;
+    flex-shrink: 100;
     white-space: nowrap;
     font-size: 7px;
     line-height: 1.1;
@@ -75,7 +79,9 @@
       display: none;
     }
   }
+  /* 宽度不够时连接状态先省略，窗口按钮始终留在行内 */
   .conn {
+    min-width: 0;
     white-space: nowrap;
     font-family: var(--font-term);
     display: flex;
@@ -85,7 +91,13 @@
     color: var(--fg-3);
     margin-right: 2px;
   }
+  .txt {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .fs {
+    flex: none;
     font-style: normal;
     font-family: var(--font-ui);
     font-size: 10px;
@@ -94,6 +106,7 @@
     background: var(--gold);
   }
   .dot {
+    flex: none;
     width: 6px;
     height: 6px;
     border-radius: 50%;

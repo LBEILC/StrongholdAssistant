@@ -12,11 +12,15 @@ public sealed partial class HostApi
     private ShopReader? _shopReader;
     private string[] _trackedNames = [];
     public IReadOnlyList<string> TrackedNames => Volatile.Read(ref _trackedNames);
+    private string[] _secondaryNames = [];
+    public IReadOnlyList<string> SecondaryNames => Volatile.Read(ref _secondaryNames);
+    private SessionDto _trackingSession = new(null, [], []);
+    private LineupDto? _trackingTarget;
     public event Action? ShopChanged;
 
     public ShopReader CreateShopReader(IOcrEngine engine)
     {
-        _shopReader = new ShopReader(engine, _operators.Select(o => o.Name).ToArray());
+        _shopReader = new ShopReader(engine, _operators.Where(o => o.Obtain is null).Select(o => o.Name).ToArray());
         _shopReader.Theme = Theme(Settings.GameTheme);
         return _shopReader;
     }
@@ -31,6 +35,10 @@ public sealed partial class HostApi
 
     public void SaveSettings(SettingsDto settings)
     {
+        if (settings.FocusCovenants is null || settings.FocusOperators is null
+            || settings.FocusCovenants.Any(id => !_names.ContainsKey(id))
+            || settings.FocusOperators.Any(name => !_operators.Any(o => o.Name == name)))
+            throw new ArgumentException("关注的盟约或干员无效。");
         var scale = settings.UiScale;
         if (!(scale.ValueKind == System.Text.Json.JsonValueKind.String && scale.GetString() == "auto")
             && !(scale.ValueKind == System.Text.Json.JsonValueKind.Number
@@ -45,18 +53,34 @@ public sealed partial class HostApi
 
     private async Task RefreshTrackingAsync()
     {
-        var session = await SessionAsync();
-        var target = (await LineupsAsync()).SingleOrDefault(l => l.Id == session.TargetLineupId);
-        var names = (target?.Members.Select(m => m.Name) ?? []).Concat(session.Tracked)
+        _trackingSession = await SessionAsync();
+        _trackingTarget = (await LineupsAsync()).SingleOrDefault(l => l.Id == _trackingSession.TargetLineupId);
+        RecomputeTracking();
+    }
+
+    private void RecomputeTracking()
+    {
+        var names = (_trackingTarget?.Members.Select(m => m.Name) ?? []).Concat(_trackingSession.Tracked)
             .Where(n => _operators.Any(o => o.Name == n)).Distinct().ToArray();
+        var goals = (_trackingTarget?.Goals ?? []).Select(g => CovenantName(g.Id)).ToHashSet();
+        var secondary = _operators.Where(o => o.Obtain is null
+            && o.CoreCovenants.Concat(o.AdditionalCovenants).Any(goals.Contains)
+            && !Match.BannedOperators.Contains(o.Name) && !_trackingSession.Owned.Contains(o.Name)
+            && !names.Contains(o.Name)).Select(o => o.Name).ToArray();
         Volatile.Write(ref _trackedNames, names);
+        Volatile.Write(ref _secondaryNames, secondary);
         ShopChanged?.Invoke();
     }
 
     public void UpdateShopTracking(IReadOnlyList<ShopItem> items)
     {
         var names = TrackedNames;
-        foreach (var item in items) item.IsTracked = names.Contains(item.Name);
+        var secondary = SecondaryNames;
+        foreach (var item in items)
+        {
+            item.IsTracked = names.Contains(item.Name);
+            item.IsSecondary = secondary.Contains(item.Name);
+        }
     }
 
     private static void OpenUrl(string url)

@@ -25,6 +25,9 @@ public class Operator
     [JsonPropertyName("tier")]
     public int Tier { get; set; }
 
+    [JsonPropertyName("obtain")]
+    public string? Obtain { get; set; }
+
     [JsonPropertyName("coreCovenants")]
     public List<string> CoreCovenants { get; set; } = [];
 

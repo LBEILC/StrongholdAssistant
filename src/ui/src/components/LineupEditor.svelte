@@ -1,30 +1,36 @@
 <script lang="ts">
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-  import { app, bondProgress } from '../lib/state.svelte'
+  import { app, goalProgress, rankForGoals } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
   import Icon from './Icon.svelte'
 
-  // 阵容编辑器：几乎全高的面板。上半是阵容本身（名字、9 个位置、盟约人数），下半是挑干员
-  const MAX = 9
+  // 阵容编辑器：几乎全高的面板。上半是阵容本身（名字、目标盟约、想抓的干员），下半是挑干员。
+  // 阵容不限人数；选了目标盟约后干员池默认只列这些盟约的干员，覆盖目标越多越靠前。
   const e = $derived(app.editing)
   let q = $state('')
   let bond = $state<string | null>(null)
+  let goalOnly = $state(true)
 
   const inLineup = (n: string) => !!e?.members.some((m) => m.name === n)
   const add = (n: string) => {
     if (!e) return
-    if (inLineup(n)) e.members = e.members.filter((m) => m.name !== n)
-    else if (e.members.length < MAX) e.members = [...e.members, { name: n }]
+    e.members = inLineup(n) ? e.members.filter((m) => m.name !== n) : [...e.members, { name: n }]
   }
-  const pool = $derived(
-    app.catalog.operators
-      .filter((o) => (!q || o.name.includes(q)) && (!bond || o.core.includes(bond) || o.extra.includes(bond)))
-      .sort((a, b) => a.tier - b.tier),
-  )
-  const bonds = $derived(e ? bondProgress(e.members, new Set()) : [])
+  const toggleKey = (n: string) => {
+    if (!e) return
+    e.members = e.members.map((m) => (m.name === n ? { ...m, key: !m.key } : m))
+  }
+  const levelOf = (id: string) => e?.goals.find((g) => g.id === id)?.level
+  const useGoals = $derived(!!e?.goals.length && goalOnly)
+  const pool = $derived.by(() => {
+    if (!e) return []
+    const base = useGoals ? rankForGoals(e.goals, app.catalog.operators) : [...app.catalog.operators].sort((a, b) => b.tier - a.tier)
+    return base.filter((o) => (!q || o.name.includes(q)) && (!bond || o.core.includes(bond) || o.extra.includes(bond)))
+  })
+  const progress = $derived(e ? goalProgress(e.goals, e.members, e.members.map((m) => m.name)) : [])
   let confirmDelete = $state(false)
 </script>
 
@@ -36,29 +42,45 @@
       <button class="x" onclick={() => (app.editing = null)} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
 
-    <div class="slots">
-      {#each Array(MAX) as _, i (i)}
-        {@const m = e.members[i]}
-        {#if m}
-          <OpTile name={m.name} transform={m.transform} size={34} showName={false} onclick={() => add(m.name)} />
+    <div class="sec">
+      <div class="lbl">目标盟约<em>点一次 I 档，再点 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
+      <div class="goalpick">
+        {#each app.catalog.covenants as c (c.id)}
+          {@const lv = levelOf(c.id)}
+          {@const blocked = c.kind === 'core' && !!app.matchCovenant(c.id)?.incomplete}
+          <button class="gp" class:on={!!lv} class:core={c.kind === 'core'} class:blocked disabled={blocked && !lv} title={c.name} onclick={() => app.cycleGoal(c.id)}>
+            <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
+            {#if lv}<span class="lv term">{lv === 2 ? 'II' : 'I'}</span>{/if}
+          </button>
+        {/each}
+      </div>
+      <div class="bonds">
+        {#each progress as g (g.covenant.id)}
+          <span class="bc" class:short={!g.done}><BondIcon id={g.covenant.id} size={18} on />{g.covenant.name}<b>{g.have}/{g.need}</b></span>
         {:else}
-          <span class="slot"></span>
-        {/if}
-      {/each}
-      <span class="cap term">{e.members.length}/{MAX}</span>
+          <span class="muted">还没有目标盟约</span>
+        {/each}
+      </div>
     </div>
-    <div class="bonds">
-      {#each bonds as b (b.covenant.id)}
-        <span class="bc"><BondIcon id={b.covenant.id} size={18} on />{b.covenant.name}<b>{b.planned}</b></span>
-      {:else}
-        <span class="muted">还没有达到激活人数的盟约</span>
-      {/each}
+
+    <div class="sec">
+      <div class="lbl">想抓的干员 <b class="term">{e.members.length}</b><em>不限人数；点已选的头像切换「关键」</em></div>
+      <div class="chosen">
+        {#each e.members as m (m.name)}
+          <OpTile name={m.name} transform={m.transform} isKey={m.key} size={34} showName={false} onclick={() => toggleKey(m.name)} />
+        {:else}
+          <span class="muted">在下面点头像加入</span>
+        {/each}
+      </div>
     </div>
 
     <div class="pick">
       <div class="search">
         <Icon name="search" size={14} />
         <input bind:value={q} placeholder="搜索干员" />
+        {#if e.goals.length}
+          <button class="tog" class:on={goalOnly} onclick={() => (goalOnly = !goalOnly)}>只看目标盟约</button>
+        {/if}
       </div>
       <div class="bondpick">
         {#each app.catalog.covenants as c (c.id)}
@@ -69,10 +91,7 @@
       </div>
       <div class="pool">
         {#each pool as o (o.name)}
-          {@const sel = inLineup(o.name)}
-          <span class="pi" class:sel class:full={!sel && e.members.length >= MAX}>
-            <OpTile name={o.name} size={44} owned={sel} onclick={() => add(o.name)} />
-          </span>
+          <span class="pi"><OpTile name={o.name} size={44} owned={inLineup(o.name)} onclick={() => add(o.name)} /></span>
         {/each}
       </div>
     </div>
@@ -88,7 +107,7 @@
       {/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={() => (app.editing = null)}>取消</button>
-      <button class="primary" disabled={!e.name.trim() || !e.members.length} onclick={() => app.saveEditing()}>保存</button>
+      <button class="primary" disabled={!e.name.trim() || (!e.members.length && !e.goals.length)} onclick={() => app.saveEditing()}>保存</button>
     </footer>
   </aside>
 {/if}
@@ -162,30 +181,100 @@
     color: var(--fg-1);
     background: var(--bg-4);
   }
-  .slots {
+  .sec {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .sec + .sec {
+    padding-top: 8px;
+  }
+  .lbl {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--fg-2);
+  }
+  .lbl b {
+    color: var(--mint);
+  }
+  .lbl em {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 10.5px;
+    color: var(--fg-4);
+  }
+  .goalpick {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
     gap: 3px;
-    padding: 0 12px;
   }
-  .slot {
-    width: 34px;
-    height: 34px;
-    background: var(--hatch), var(--bg-1);
-    box-shadow: inset 0 0 0 1px var(--line-soft);
-  }
-  .cap {
-    margin-left: auto;
-    font-size: 11px;
+  .gp {
+    position: relative;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
     color: var(--fg-3);
+    background: var(--bg-2);
+  }
+  .gp.core {
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .gp .glyph {
+    width: 62%;
+    height: 62%;
+  }
+  .gp.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+    box-shadow: var(--mint-glow);
+  }
+  .gp.blocked {
+    opacity: 0.3;
+  }
+  .gp .lv {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    font-size: 8px;
+    line-height: 1;
+    padding: 2px 3px 1px;
+    color: var(--gold-ink);
+    background: var(--gold);
   }
   .bonds {
     display: flex;
     flex-wrap: wrap;
     gap: 4px 10px;
-    padding: 8px 12px 10px;
-    min-height: 34px;
-    border-bottom: 1px solid var(--line);
+    min-height: 20px;
+  }
+  .bc.short b {
+    color: var(--gold);
+  }
+  .chosen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    max-height: 76px;
+    overflow-y: auto;
+  }
+  .tog {
+    flex: none;
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .tog.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+    box-shadow: none;
   }
   .bc {
     display: inline-flex;
@@ -196,6 +285,7 @@
   }
   .bc b {
     font-family: var(--font-term);
+    margin-left: 2px;
     color: var(--mint);
   }
   .muted {
@@ -259,9 +349,6 @@
     justify-items: center;
     align-content: start;
     padding: 4px 0 10px;
-  }
-  .pi.full {
-    opacity: 0.35;
   }
   footer {
     display: flex;

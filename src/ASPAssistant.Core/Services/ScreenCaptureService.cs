@@ -1,4 +1,5 @@
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// 2026-11-11：信息页截屏允许指定侧栏处于前台，避免不遮挡时切换窗口。
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -22,7 +23,7 @@ public class ScreenCaptureService
     /// Requires the window to be visible and not fully occluded.
     /// Returns PNG bytes, or null if the window is not found.
     /// </summary>
-    public byte[]? CaptureScreen()
+    public byte[]? CaptureScreen(IntPtr allowedForeground = default)
     {
         var hwnd = User32.FindArknightsWindow();
         if (hwnd == IntPtr.Zero)
@@ -41,7 +42,7 @@ public class ScreenCaptureService
 
         // CopyFromScreen cannot see through another application's foreground window.
         var foreground = User32.GetForegroundWindow();
-        if (foreground != hwnd)
+        if (foreground != hwnd && (allowedForeground == IntPtr.Zero || foreground != allowedForeground))
         {
             AppLogger.Warn("ScreenCapture", $"Foreground mismatch: game=0x{hwnd.ToInt64():X}, foreground=0x{foreground.ToInt64():X}");
             return null;
@@ -73,7 +74,8 @@ public class ScreenCaptureService
 
             // Reject a frame captured while the user switched apps or resized the game.
             var after = User32.GetClientRectScreen(hwnd);
-            if (User32.GetForegroundWindow() != hwnd || after is null
+            var afterForeground = User32.GetForegroundWindow();
+            if (afterForeground != hwnd && (allowedForeground == IntPtr.Zero || afterForeground != allowedForeground) || after is null
                 || after.Value.Left != rect.Left || after.Value.Top != rect.Top
                 || after.Value.Width != rect.Width || after.Value.Height != rect.Height)
             {

@@ -6,6 +6,7 @@
     { id: 'lineup', label: '阵容', en: 'Lineup' },
     { id: 'codex', label: '图鉴', en: 'Archive' },
   ]
+  const idx = $derived(tabs.findIndex((t) => t.id === app.tab))
 </script>
 
 <nav class="tabs">
@@ -14,10 +15,13 @@
       <span class="in"><span class="lb">{t.label}</span><span class="en term">{t.en}</span></span>
     </button>
   {/each}
+  <!-- 底部亮条：一条，切换时滑到目标标签 -->
+  <span class="ink" style:transform="translateX({idx * 100}%)"></span>
 </nav>
 
 <style>
   .tabs {
+    position: relative;
     flex: none;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -32,7 +36,7 @@
     height: 38px;
     padding-bottom: 1px;
     color: var(--fg-3);
-    transition: color var(--t-fast);
+    transition: color var(--t-mid);
   }
   button:hover {
     color: var(--fg-1);
@@ -59,14 +63,23 @@
   button.on .en {
     color: var(--mint);
   }
-  button.on::after {
-    /* 底部斜切亮条 */
+  .ink {
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: calc(100% / 3);
+    height: 3px;
+    pointer-events: none;
+    transition: transform var(--t-mid) var(--ease-out);
+  }
+  .ink::after {
+    /* 斜切亮条 */
     content: '';
     position: absolute;
     left: 18%;
     right: 18%;
-    bottom: -1px;
-    height: 3px;
+    top: 0;
+    bottom: 0;
     background: var(--mint);
     clip-path: polygon(3px 0, calc(100% - 3px) 0, 100% 100%, 0 100%);
     box-shadow: var(--mint-glow);

@@ -6,6 +6,10 @@ namespace ASPAssistant.Core.Services;
 
 public static class WindowGeometry
 {
+    public static bool ShouldHideForCapture(RECT sidebar, RECT client, bool collapsed)
+        => !collapsed && sidebar.Left < client.Right && sidebar.Right > client.Left
+            && sidebar.Top < client.Bottom && sidebar.Bottom > client.Top;
+
     public static double UiScale(double? manualScale, int? clientHeight, double dpiScale)
         => manualScale ?? (clientHeight is { } height ? Math.Clamp(height / dpiScale / 1080, 1, 2) : 1);
 

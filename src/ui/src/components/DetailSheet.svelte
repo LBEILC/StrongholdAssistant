@@ -12,7 +12,6 @@
   // 底部详情面板：点击打开，固定不随鼠标消失；Esc 或点遮罩关闭
   const d = $derived(app.detail)
   const close = () => (app.detail = null)
-  let elite = $state(false)
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
@@ -37,34 +36,44 @@
             {#each o.core as c (c)}<span class="bchip core"><BondIcon id={c} size={18} on />{app.cov(c).name}</span>{/each}
             {#each o.extra as c (c)}<span class="bchip"><BondIcon id={c} size={18} />{app.cov(c).name}</span>{/each}
           </div>
+          {#if o.obtain}<span class="obtain">不可招募 · {o.obtain}</span>{/if}
           {#if banned}<span class="warn">本局已被禁用</span>{/if}
         </div>
       </div>
-      <div class="seg">
-        <button class:on={!elite} onclick={() => (elite = false)}>普通</button>
-        <button class:on={elite} onclick={() => (elite = true)}>精锐</button>
-      </div>
+      <!-- 普通和精锐并排一屏看，精锐里变化的数字高亮 -->
       <div class="body">
-        {#each elite ? o.elite : o.normal as t, i (i)}
-          <div class="trait"><span class="tt">{t.type}</span><GameText text={t.text} /></div>
+        {#each o.normal as t, i (i)}
+          {@const e = o.elite[i]}
+          <div class="trait col">
+            <span class="tt">{t.type}</span>
+            {#if e.text === t.text}
+              <div class="lv"><span class="lt">普通 / 精锐</span><GameText text={t.text} /></div>
+            {:else}
+              <div class="lv"><span class="lt">普通</span><GameText text={t.text} /></div>
+              <div class="lv"><span class="lt el">精锐</span><GameText text={e.text} compare={t.text} /></div>
+            {/if}
+          </div>
         {/each}
       </div>
       <div class="actions">
-        {#if inTarget}
-          <button class="btn" class:on={app.owned.has(o.name)} onclick={() => app.toggleOwned(o.name)}>
-            {#if app.owned.has(o.name)}<Icon name="check" size={15} />已持有{:else}标记已持有{/if}
+        <button class="btn" class:on={app.owned.has(o.name)} onclick={() => app.toggleOwned(o.name)}>
+          {#if app.owned.has(o.name)}<Icon name="check" size={15} />已持有{:else}标记已持有{/if}
+        </button>
+        {#if app.target}
+          <button class="btn" class:on={inTarget} onclick={() => app.toggleMember(o.name)}>
+            {#if inTarget}<Icon name="check" size={15} />在目标里{:else}<Icon name="add" size={15} />加入目标{/if}
           </button>
-          <span class="note">在目标阵容里，商店会自动标记</span>
-        {:else}
+        {/if}
+        {#if !inTarget}
           <button class="btn" class:on={app.session.tracked.includes(o.name)} onclick={() => app.toggleTracked(o.name)}>
             {#if app.session.tracked.includes(o.name)}<Icon name="starFill" size={15} />追踪中{:else}<Icon name="star" size={15} />追踪{/if}
           </button>
-          <span class="note">追踪后在商店里标记</span>
         {/if}
       </div>
+      <p class="note">{inTarget ? '目标里的干员会在商店里标记；已持有的计入目标盟约进度' : '加入目标或追踪后在商店里标记；已持有的计入目标盟约进度'}</p>
       <div class="minor">
-        <button class:on={app.locked.includes(o.name)} onclick={() => app.toggleLocked(o.name)}>
-          <Icon name={app.locked.includes(o.name) ? 'lockFill' : 'lock'} size={13} />{app.locked.includes(o.name) ? '规划时已锁定' : '规划时锁定'}
+        <button class:fav={app.focusOps.has(o.name)} onclick={() => app.toggleFocusOp(o.name)}>
+          <Icon name={app.focusOps.has(o.name) ? 'heartFill' : 'heart'} size={13} />{app.focusOps.has(o.name) ? '已特别关注' : '特别关注'}
         </button>
         <button class:bad={banned} onclick={() => app.toggleBanned(o.name)}>
           <Icon name="forbid" size={13} />{banned ? '解除本局禁用' : '标记本局禁用'}
@@ -81,7 +90,7 @@
       </div>
       <div class="body">
         <div class="trait"><span class="tt">普通</span><GameText text={e.normal} /></div>
-        <div class="trait"><span class="tt">精锐</span><GameText text={e.elite} /></div>
+        <div class="trait"><span class="tt">精锐</span><GameText text={e.elite} compare={e.normal} /></div>
       </div>
     {:else if d.kind === 'covenant'}
       {@const c = app.cov(d.id)}
@@ -93,6 +102,9 @@
           <div class="nm"><h3>{c.name}</h3><span class="kind">{c.kind === 'core' ? '核心盟约' : '附加盟约'}</span></div>
           <div class="sub">激活：{c.thresholds.map((t) => `${t} 人`).join(' / ')}</div>
           {#if mc?.incomplete}<span class="warn">本局有所含干员被禁用</span>{/if}
+          <button class="favbtn" class:fav={app.focusCovs.has(c.id)} onclick={() => app.toggleFocusCov(c.id)}>
+            <Icon name={app.focusCovs.has(c.id) ? 'heartFill' : 'heart'} size={13} />{app.focusCovs.has(c.id) ? '已特别关注' : '特别关注'}
+          </button>
         </div>
       </div>
       <div class="body">
@@ -247,6 +259,12 @@
     background: var(--red);
     padding: 1px 6px;
   }
+  .obtain {
+    font-size: 11px;
+    color: var(--gold);
+    padding: 1px 6px;
+    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.45);
+  }
   .leader {
     font-size: 11px;
     font-weight: 700;
@@ -254,26 +272,33 @@
     color: var(--gold-ink);
     background: var(--gold);
   }
-  .seg {
-    display: inline-flex;
-    margin-top: 12px;
-    background: var(--bg-1);
-    padding: 2px;
-  }
-  .seg button {
-    font-size: 12px;
-    padding: 2px 12px;
-    color: var(--fg-3);
-  }
-  .seg button.on {
-    color: var(--fg-1);
-    background: var(--bg-4);
-  }
   .body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 12px;
+  }
+  .trait.col {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .lv {
+    display: flex;
+    gap: 8px;
+  }
+  .lt {
+    flex: none;
+    align-self: flex-start;
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 5px;
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .lt.el {
+    color: var(--tier-6);
+    box-shadow: inset 0 0 0 1px rgb(242 122 18 / 0.5);
   }
   .trait {
     display: flex;
@@ -304,8 +329,9 @@
   }
   .actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     margin-top: 12px;
   }
   .btn {
@@ -314,7 +340,7 @@
     gap: 4px;
     font-size: 13px;
     font-weight: 700;
-    padding: 6px 14px;
+    padding: 6px 11px;
     color: var(--fg-1);
     background: var(--bg-4);
   }
@@ -342,13 +368,25 @@
   .minor button:hover {
     color: var(--fg-1);
   }
-  .minor button.on {
+  .minor button.fav,
+  .favbtn.fav {
     color: var(--gold);
+  }
+  .favbtn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--fg-3);
+  }
+  .favbtn:hover {
+    color: var(--fg-1);
   }
   .minor button.bad {
     color: var(--red);
   }
   .note {
+    margin: 6px 0 0;
     font-size: 11px;
     color: var(--fg-4);
   }

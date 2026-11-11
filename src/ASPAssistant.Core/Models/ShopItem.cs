@@ -14,6 +14,8 @@ public class ShopItem
 
     public int Price { get; set; }
     public bool IsTracked { get; set; }
+    // 2026-11-11：目标盟约的可招募干员使用次级标记。
+    public bool IsSecondary { get; set; }
     /// <summary>Detected name bounds, normalized to the full captured client image.</summary>
     public (double X, double Y, double Width, double Height) OcrRegion { get; set; }
 }

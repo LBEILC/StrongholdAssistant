@@ -36,12 +36,16 @@ public partial class MainWindow : Window
 #endif
         var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
-        await InitializeGameAsync();
+        InitializeWindow();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(userDirectory, "WebView2"));
+        // 页面加载前的底色和界面一致，避免白屏
+        Browser.DefaultBackgroundColor = System.Drawing.Color.FromArgb(0x0b, 0x0c, 0x0d);
         await Browser.EnsureCoreWebView2Async(environment);
         ApplyScale(null);
         var web = Browser.CoreWebView2;
         web.Settings.IsNonClientRegionSupportEnabled = true;
+        // 缩放只走设置里的"界面大小"：关掉 Ctrl+滚轮 / Ctrl+加减号，否则页面放大而窗口不变，侧栏会挤坏
+        web.Settings.IsZoomControlEnabled = false;
         Trace.WriteLine($"WebView2 runtime={environment.BrowserVersionString}; IsNonClientRegionSupportEnabled={web.Settings.IsNonClientRegionSupportEnabled}");
         var dev = Environment.GetEnvironmentVariable("STRONGHOLD_UI_DEV") == "1";
         var origin = dev ? "http://localhost:5178" : "https://app.local";
@@ -60,6 +64,7 @@ public partial class MainWindow : Window
         if (!dev)
             web.SetVirtualHostNameToFolderMapping("app.local", Path.Combine(AppContext.BaseDirectory, "ui"), CoreWebView2HostResourceAccessKind.DenyCors);
         web.Navigate(dev ? origin + "/" : origin + "/index.html");
+        await InitializeGameAsync();
         if (_connectGame && !_closing)
         {
             _tracker.Start();
@@ -77,7 +82,7 @@ public partial class MainWindow : Window
             var request = JsonSerializer.Deserialize<BridgeRequest>(e.WebMessageAsJson, HostApi.JsonOptions)!;
             id = request.Id;
             // 重扫由识别锁立即判忙；其余请求保持原有串行存储语义。
-            if (request.Method != "rescan")
+            if (request.Method is not ("rescan" or "scanContinuous"))
             {
                 await _requests.WaitAsync();
                 locked = true;
@@ -89,7 +94,12 @@ public partial class MainWindow : Window
                 if (windowCommand is not ("minimize" or "close" or "collapse" or "expand")) throw new ArgumentException("窗口命令无效。");
                 result = null;
             }
-            else result = await _api.InvokeAsync(request.Method, request.Params);
+            else
+            {
+                // 界面先于 OCR 加载；预热完成前点"重新识别"会等初始化结束
+                if (request.Method is "rescan" or "scanContinuous") await _initialization;
+                result = await _api.InvokeAsync(request.Method, request.Params);
+            }
             if (request.Method == "saveSettings") RefreshScale();
             if (request.Method == "connection")
                 Trace.WriteLine($"connection()={JsonSerializer.Serialize(result, HostApi.JsonOptions)}");

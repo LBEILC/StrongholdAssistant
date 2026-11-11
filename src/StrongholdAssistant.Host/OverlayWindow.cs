@@ -49,7 +49,7 @@ public sealed class OverlayWindow : Window
         _items = items;
         var sameViewport = _markerViewport == (ActualWidth, ActualHeight);
         _markerViewport = (ActualWidth, ActualHeight);
-        var tracked = items.Where(i => i.IsTracked).ToDictionary(i => i.Id);
+        var tracked = items.Where(i => i.IsTracked || i.IsSecondary).ToDictionary(i => i.Id);
         foreach (var id in _markers.Keys.Except(tracked.Keys).ToArray())
         {
             _canvas.Children.Remove(_markers[id]);
@@ -58,12 +58,18 @@ public sealed class OverlayWindow : Window
         var size = 28 * ActualHeight / 1080;
         foreach (var item in tracked.Values)
         {
+            var secondary = !item.IsTracked;
+            if (_markers.TryGetValue(item.Id, out var previous) && !Equals(previous.Tag, secondary))
+            {
+                _canvas.Children.Remove(previous);
+                _markers.Remove(item.Id);
+            }
             if (!_markers.TryGetValue(item.Id, out var marker))
             {
-                marker = CreateMarker();
+                marker = CreateMarker(secondary);
                 _markers.Add(item.Id, marker);
                 _canvas.Children.Add(marker);
-                marker.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120)));
+                marker.BeginAnimation(OpacityProperty, new DoubleAnimation(0, secondary ? .75 : 1, TimeSpan.FromMilliseconds(120)));
             }
             marker.Width = marker.Height = size;
             var (x, y) = WindowGeometry.ShopMarkerPosition(item.OcrRegion, ActualWidth, ActualHeight, size);
@@ -74,12 +80,13 @@ public sealed class OverlayWindow : Window
         }
     }
 
-    private static Grid CreateMarker()
+    private static Grid CreateMarker(bool secondary)
     {
-        var grid = new Grid();
+        var grid = new Grid { Tag = secondary, Opacity = secondary ? .75 : 1 };
+        var mint = new SolidColorBrush(Color.FromRgb(0x22, 0xE3, 0xB2));
         grid.Children.Add(new Ellipse
         {
-            Fill = new RadialGradientBrush
+            Fill = secondary ? null : new RadialGradientBrush
             {
                 GradientStops = new GradientStopCollection
                 {
@@ -88,15 +95,16 @@ public sealed class OverlayWindow : Window
                     new(Color.FromRgb(0x10, 0xA9, 0x82), 1)
                 }
             },
-            Stroke = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)), StrokeThickness = 2,
-            Effect = new DropShadowEffect
+            Stroke = secondary ? mint : new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)), StrokeThickness = 2,
+            Effect = secondary ? null : new DropShadowEffect
                 { Color = Color.FromRgb(0x22, 0xE3, 0xB2), BlurRadius = 10, ShadowDepth = 0, Opacity = .45 }
         });
         // Remix Icon star-fill：沿用界面已采用的图标路径。
         var star = new System.Windows.Shapes.Path
         {
             Data = Geometry.Parse("M12.0006 18.26L4.94715 22.2082L6.52248 14.2799L0.587891 8.7918L8.61493 7.84006L12.0006 0.5L15.3862 7.84006L23.4132 8.7918L17.4787 14.2799L19.054 22.2082L12.0006 18.26Z"),
-            Fill = new SolidColorBrush(Color.FromRgb(0x06, 0x23, 0x1B)), Stretch = Stretch.Uniform,
+            Fill = secondary ? null : new SolidColorBrush(Color.FromRgb(0x06, 0x23, 0x1B)),
+            Stroke = secondary ? mint : null, StrokeThickness = 2, Stretch = Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
         };
         grid.SizeChanged += (_, _) => { star.Width = grid.ActualWidth * .55; star.Height = grid.ActualHeight * .55; };

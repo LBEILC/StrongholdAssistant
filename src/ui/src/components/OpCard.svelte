@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import TierBadge from './TierBadge.svelte'
+  import Icon from './Icon.svelte'
 
   // 图鉴里的干员卡，仿商店卡：头像、左上等阶、底部盟约 + 名字
   let { name, selected = false, onclick }: { name: string; selected?: boolean; onclick: () => void } = $props()
@@ -9,6 +10,7 @@
   const banned = $derived(app.banned.has(name))
   const tracked = $derived(app.tracked.has(name))
   const owned = $derived(app.owned.has(name))
+  const focus = $derived(app.focusOps.has(name))
 </script>
 
 <button class="card" class:banned class:tracked class:selected style:--c="var(--tier-{op.tier})" style:--bg="url({asset.card('bg_common')})" {onclick}>
@@ -18,6 +20,7 @@
   <span class="tier"><TierBadge tier={op.tier} size={17} /></span>
   {#if tracked}<span class="trk" title={owned ? '已持有' : '追踪中'}>{owned ? '持有' : '追踪'}</span>{/if}
   {#if banned}<span class="ban term">BANNED</span>{/if}
+  {#if focus}<span class="fav" title="特别关注"><Icon name="heartFill" size={10} /></span>{/if}
   <span class="foot">
     <span class="bonds">
       {#each [...op.core, ...op.extra] as c (c)}
@@ -29,6 +32,19 @@
 </button>
 
 <style>
+  .fav {
+    position: absolute;
+    left: 4px;
+    top: 24px;
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+  }
   .card {
     position: relative;
     display: flex;

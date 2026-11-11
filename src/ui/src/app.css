@@ -47,8 +47,8 @@
   --tier-6: #f27a12;
 
   --font-ui: 'MiSans', 'Microsoft YaHei UI', sans-serif;
-  /* 终端风格英文小字：Windows 自带 Bahnschrift */
-  --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', monospace;
+  /* 终端风格英文小字：Windows 自带 Bahnschrift；夹带的中文落到 MiSans，不能落到 monospace（会变宋体） */
+  --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', 'MiSans', 'Microsoft YaHei UI', sans-serif;
 
   --r-1: 2px;
   --r-2: 4px;
@@ -133,4 +133,21 @@ img {
   display: block;
   background: currentColor;
   mask: var(--src) center / contain no-repeat;
+}
+
+/* 进行中的呼吸点（持续识别等） */
+.live-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 6px var(--mint);
+  animation: live-dot 1.2s ease-in-out infinite;
+}
+@keyframes live-dot {
+  50% {
+    opacity: 0.3;
+    box-shadow: none;
+  }
 }

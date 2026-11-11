@@ -21,8 +21,12 @@
   import lockFill from 'remixicon/icons/System/lock-fill.svg?raw'
   import forbid from 'remixicon/icons/System/forbid-line.svg?raw'
   import magic from 'remixicon/icons/Design/magic-line.svg?raw'
+  import scan from 'remixicon/icons/Device/scan-line.svg?raw'
+  import stop from 'remixicon/icons/Media/stop-fill.svg?raw'
+  import heart from 'remixicon/icons/Health & Medical/heart-3-line.svg?raw'
+  import heartFill from 'remixicon/icons/Health & Medical/heart-3-fill.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic }
+  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill }
   export type IconName = keyof typeof icons
 </script>
 

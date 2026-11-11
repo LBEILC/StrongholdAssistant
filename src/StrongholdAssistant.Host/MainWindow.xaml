@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="StrongholdAssistant" Width="380" Height="900" MinWidth="320" MaxWidth="460"
-        WindowStyle="None" ResizeMode="CanResize" Loaded="OnLoaded" Icon="icon.ico">
+        WindowStyle="None" ResizeMode="CanResize" Loaded="OnLoaded" Icon="icon.ico" Background="#0B0C0D">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" CornerRadius="0" />
     </WindowChrome.WindowChrome>

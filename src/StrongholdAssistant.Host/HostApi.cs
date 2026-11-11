@@ -15,7 +15,6 @@ public sealed partial class HostApi
     private readonly Dictionary<string, string> _names;
     private readonly List<Operator> _operators;
     private readonly List<CovenantInfo> _covenants;
-    private readonly LineupPlanner _planner;
     private readonly Dictionary<string, bool> _manualBans = [];
     private readonly HashSet<string> _avatarBans = [];
     public JsonElement Catalog { get; }
@@ -30,7 +29,6 @@ public sealed partial class HostApi
         _names = ids.ToDictionary(p => p.Value, p => p.Key);
         _operators = operators;
         _covenants = covenants;
-        _planner = new LineupPlanner(operators, covenants);
         Catalog = catalog;
         Match = new("none", null, covenants.Select(c => new CovenantState(ids[c.Name], false)).ToArray(), [], null, []);
     }
@@ -58,7 +56,7 @@ public sealed partial class HostApi
             }),
             operators = operators.Select(o => new
             {
-                name = o.Name, tier = o.Tier,
+                name = o.Name, tier = o.Tier, obtain = o.Obtain,
                 core = o.CoreCovenants.Select(c => ids[c]), extra = o.AdditionalCovenants.Select(c => ids[c]),
                 normal = o.Normal.Traits.Select(t => new { type = t.TraitType, text = Clean(t.TraitDescription) }),
                 elite = o.Elite.Traits.Select(t => new { type = t.TraitType, text = Clean(t.TraitDescription) })
@@ -115,23 +113,45 @@ public sealed partial class HostApi
         foreach (var (name, value) in _manualBans)
             if (value) banned.Add(name); else banned.Remove(name);
         Match = Match with { Source = "manual", BannedOperators = banned.ToArray() };
+        RecomputeTracking();
         return Match;
     }
 
     private LineupDto ToDto(Lineup lineup) => new(lineup.Id, lineup.Name,
         lineup.Slots.Select(s => new LineupMember(s.OperatorName,
-            s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant])).ToArray(),
-        lineup.Source, lineup.Note, lineup.UpdatedAt);
+            s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key)).ToArray(),
+        lineup.Source, lineup.Note, lineup.UpdatedAt) { Goals = lineup.Goals ?? InferGoals(lineup) };
+
+    private CovenantGoal[] InferGoals(Lineup lineup)
+    {
+        var counts = lineup.Slots.SelectMany(s =>
+        {
+            var op = _operators.Single(o => o.Name == s.OperatorName);
+            return op.CoreCovenants.Concat(op.AdditionalCovenants)
+                .Append(s.TransformedCovenant).Where(n => n.Length > 0).Distinct();
+        }).GroupBy(n => n).ToDictionary(g => _ids[g.Key], g => g.Count());
+        return Catalog.GetProperty("covenants").EnumerateArray().Select(c =>
+        {
+            var id = c.GetProperty("id").GetString()!;
+            var level = c.GetProperty("thresholds").EnumerateArray()
+                .Count(t => counts.GetValueOrDefault(id) >= t.GetInt32());
+            return new CovenantGoal(id, level);
+        }).Where(g => g.Level > 0).ToArray();
+    }
 
     public async Task<LineupDto[]> LineupsAsync() => (await _lineups.LoadAllAsync()).Select(ToDto).ToArray();
 
     public async Task<LineupDto> SaveLineupAsync(LineupDto input)
     {
         ValidateId(input.Id, allowEmpty: true);
-        if (input.Source is not ("user" or "planned") || input.Members.Length > 9 ||
+        if (input.Source is not ("user" or "planned") ||
             input.Members.Select(m => m.Name).Distinct().Count() != input.Members.Length ||
             input.Members.Any(m => !_operators.Any(o => o.Name == m.Name)))
             throw new ArgumentException("阵容内容无效，请检查干员和来源。");
+        if (input.Goals is null || input.Goals.Any(g => !Catalog.GetProperty("covenants").EnumerateArray()
+                .Any(c => c.GetProperty("id").GetString() == g.Id
+                    && g.Level is 1 or 2 && g.Level <= c.GetProperty("thresholds").GetArrayLength())))
+            throw new ArgumentException("阵容的目标盟约无效。");
         var lineup = input.Id.Length == 0 ? new Lineup() :
             (await _lineups.LoadAllAsync()).SingleOrDefault(l => l.Id == input.Id)
             ?? throw new ArgumentException("要保存的阵容不存在。");
@@ -139,9 +159,11 @@ public sealed partial class HostApi
         lineup.Slots = input.Members.Select(m =>
         {
             var slot = oldSlots.TryGetValue(m.Name, out var old) ? old : new LineupSlot { OperatorName = m.Name };
+            slot.Key = m.Key;
             slot.TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform);
             return slot;
         }).ToList();
+        lineup.Goals = input.Goals;
         lineup.Name = input.Name;
         lineup.Source = input.Source;
         lineup.Note = input.Note;
@@ -161,25 +183,6 @@ public sealed partial class HostApi
         ValidateId(id);
         await _lineups.DeleteAsync(id);
         await RefreshTrackingAsync();
-    }
-
-    public PlanResultDto Plan(PlanRequest input)
-    {
-        if (input.Goals.Any(g => g.Level is not (1 or 2)) || input.People.Any(p => p is not (8 or 9)) ||
-            input.Transforms.Any(t => t is < 0 or > 2) || input.Locked.Any(n => !_operators.Any(o => o.Name == n)))
-            throw new ArgumentException("规划参数无效。");
-        var banned = Match.Covenants.Where(c => c.Incomplete).Select(c => CovenantName(c.Id)).ToHashSet();
-        var result = _planner.Plan(new PlannerRequest
-        {
-            Goals = input.Goals.Select(g => LineupPlanner.CreateGoal(_covenants.Single(c => c.Name == CovenantName(g.Id)), g.Level)).ToArray(),
-            BannedCovenants = banned, BannedOperators = Match.BannedOperators.ToHashSet(),
-            LockedOperators = input.Locked.ToHashSet(), TransformAllowed = _planner.DefaultTransformAllowed(banned),
-            PeopleOptions = input.People, TransformOptions = input.Transforms
-        });
-        return new(result.Variants.SelectMany(v => v.Lineups).Select(l => new PlannedLineupDto(
-            l.People, l.Transforms, l.Operators.Select(o => new LineupMember(o.Name,
-                string.IsNullOrEmpty(o.TransformedCovenant) ? null : _ids[o.TransformedCovenant])).ToArray(),
-            l.FreeSlots, l.Counts.ToDictionary(p => _ids[p.Key], p => p.Value))).ToArray(), result.Error);
     }
 
     public async Task<SessionDto> SessionAsync() => File.Exists(_sessionPath)
@@ -209,12 +212,12 @@ public sealed partial class HostApi
             case "match": return Match;
             case "rescan":
                 return await RecordInformationAsync();
+            case "scanContinuous": await ScanContinuousAsync(Read<bool>(0)); return null;
             case "setCovenantIncomplete": return SetCovenantIncomplete(Read<string>(0), Read<bool>(1));
             case "setOperatorBanned": return SetOperatorBanned(Read<string>(0), Read<bool>(1));
             case "lineups": return await LineupsAsync();
             case "saveLineup": return await SaveLineupAsync(Read<LineupDto>(0));
             case "deleteLineup": await DeleteLineupAsync(Read<string>(0)); return null;
-            case "plan": return await Task.Run(() => Plan(Read<PlanRequest>(0)));
             case "session": return await SessionAsync();
             case "saveSession": await SaveSessionAsync(Read<SessionDto>(0)); return null;
             default: throw new ArgumentException("不支持的请求。");

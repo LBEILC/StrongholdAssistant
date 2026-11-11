@@ -33,7 +33,8 @@ public partial class MainWindow
     private Task _automaticScan = Task.CompletedTask;
     private HwndSource? _source;
 
-    private async Task InitializeGameAsync()
+    // 界面加载前要就绪的部分：侧栏尺寸、事件推送、窗口消息。都很快，不等 OCR。
+    private void InitializeWindow()
     {
         _dock = _api.SettingsStore.LoadDock();
         if (!double.IsFinite(_dock.Width) || _dock.FollowOffsetDip is { } offset
@@ -41,6 +42,24 @@ public partial class MainWindow
             throw new JsonException("侧栏设置无效。");
         _dock = _dock with { Width = Math.Clamp(_dock.Width, 320, 460) };
         ApplyScale(null);
+        // 识别事件只会在 InitializeGameAsync 完成后出现，那时 _scanner 已就绪
+        _api.Changed += (name, value) =>
+        {
+            if (value is ScanStatus status)
+            {
+                _scanner.SetBanScreenDetectionPaused(status.Busy || status.Continuous == true || _closing);
+                if (status.Ok == true) _scanner.MarkInformationRecorded();
+            }
+            Dispatcher.Invoke(() => Browser.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new { @event = name, data = value }, HostApi.JsonOptions)));
+        };
+        _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        _source.AddHook(OnWindowMessage);
+    }
+
+    // OCR 加载和预热较慢，放在界面开始加载之后
+    private async Task InitializeGameAsync()
+    {
         var data = Path.Combine(AppContext.BaseDirectory, "data");
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
@@ -59,21 +78,12 @@ public partial class MainWindow
             await _scanner.WaitForIdleAsync();
             return await CaptureInformationScreenAsync();
         });
-        _api.Changed += (name, value) =>
-        {
-            if (value is ScanStatus status)
-            {
-                _scanner.SetBanScreenDetectionPaused(status.Busy || _closing);
-                if (status.Ok == true) _scanner.MarkInformationRecorded();
-            }
-            Dispatcher.Invoke(() => Browser.CoreWebView2.PostWebMessageAsJson(
-                JsonSerializer.Serialize(new { @event = name, data = value }, HostApi.JsonOptions)));
-        };
         _scanner.BanScreenDetected += () => _automaticScan = Dispatcher.InvokeAsync(RecordAutomaticallyAsync).Task.Unwrap();
         _tracker.GameWindowMoved += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowPolled += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowLost += () => Dispatcher.BeginInvoke(() =>
         {
+            _ = _api.StopContinuousAsync(windowLost: true);
             _lastGameRect = null;
             _lastClientRect = null;
             _overlayMode = false;
@@ -90,12 +100,11 @@ public partial class MainWindow
             if (minimized) _overlay.Hide();
             if (!minimized && _tracker.CurrentGameRect is { } rect) UpdateGame(rect);
         });
-        _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
-        _source.AddHook(OnWindowMessage);
     }
 
     private async Task RecordAutomaticallyAsync()
     {
+        if (_api.IsContinuous) return;
         try { await _api.RecordInformationAsync(); }
         catch (RecognitionException) { /* 失败已由 scan 事件送达界面，忙碌时跳过自动请求。 */ }
     }
@@ -109,19 +118,26 @@ public partial class MainWindow
             var foreground = User32.GetForegroundWindow();
             if (_closing || game == IntPtr.Zero || User32.IsIconic(game)
                 || foreground != game && foreground != new WindowInteropHelper(this).Handle)
-                return (Allowed: false, Visible: false);
-            var visible = IsVisible;
+                return (Allowed: false, Hidden: false, Sidebar: IntPtr.Zero);
+            var sidebar = new WindowInteropHelper(this).Handle;
+            var client = User32.GetClientRectScreen(game);
+            if (client is null) return (Allowed: false, Hidden: false, Sidebar: sidebar);
+            bool hide = IsVisible && WindowGeometry.ShouldHideForCapture(
+                User32.ReadWindowRect(sidebar), client.Value, _collapsed);
             _capturingInformation = true;
             _overlay.Hide();
-            Hide();
-            User32.SetForegroundWindow(game);
-            return (Allowed: true, Visible: visible);
+            if (hide)
+            {
+                Hide();
+                User32.SetForegroundWindow(game);
+            }
+            return (Allowed: true, Hidden: hide, Sidebar: sidebar);
         });
         if (!before.Allowed) return null;
         try
         {
-            await Task.Delay(150);
-            return await Task.Run(_capture.CaptureScreen);
+            if (before.Hidden) await Task.Delay(150);
+            return await Task.Run(() => _capture.CaptureScreen(before.Sidebar));
         }
         finally
         {
@@ -129,7 +145,7 @@ public partial class MainWindow
             {
                 _capturingInformation = false;
                 RefreshShopOverlay();
-                if (!before.Visible || _closing) return;
+                if (!before.Hidden || _closing) return;
                 var activated = ShowActivated;
                 ShowActivated = false;
                 Show();
@@ -237,13 +253,16 @@ public partial class MainWindow
         e.Cancel = true;
         if (_closing) return;
         _closing = true;
+        if (_api is not null) await _api.StopContinuousAsync();
+        // 先藏起窗口再等后台收尾，收尾和释放 WebView2 时不会露出白底
+        Hide();
         _overlay.Hide();
         await _initialization;
         _tracker.Stop();
         _scanner.SetBanScreenDetectionPaused(true);
         await _scanner.WaitForIdleAsync();
         await _automaticScan;
-        await _api.WaitForRecordingAsync();
+        await _api!.WaitForRecordingAsync();
         _source?.RemoveHook(OnWindowMessage);
         _overlay.Close();
         _canClose = true;
@@ -256,7 +275,7 @@ public partial class MainWindow
         var items = _api.Settings.ShopMarkers ? _shopItems : [];
         _overlay.UpdateShopItems(items);
         if (!_connectGame || _closing || _capturingInformation || _lastGameRect is null
-            || !items.Any(i => i.IsTracked))
+            || !items.Any(i => i.IsTracked || i.IsSecondary))
         {
             _overlay.Hide();
             return;

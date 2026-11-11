@@ -14,7 +14,7 @@ public static class OperatorBanCalculator
             .ToHashSet(StringComparer.Ordinal);
 
         var autoBannedOperators = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var op in operators)
+        foreach (var op in operators.Where(o => o.Obtain is null))
         {
             if (string.IsNullOrWhiteSpace(op.Name))
                 continue;

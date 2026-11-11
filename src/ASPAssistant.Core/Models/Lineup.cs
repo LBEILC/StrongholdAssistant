@@ -24,10 +24,19 @@ public enum LineupPhase
     挂件,
 }
 
+// 2026-11-11：新增目标盟约与关键干员，兼容旧阵容文件。
+public sealed record CovenantGoal(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("level")] int Level);
+
 public class LineupSlot
 {
     [JsonPropertyName("operatorName")]
     public string OperatorName { get; set; } = "";
+
+    [JsonPropertyName("key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Key { get; set; }
 
     /// <summary>规划器为该干员临时追加的转职盟约。</summary>
     [JsonPropertyName("transformedCovenant")]
@@ -59,7 +68,11 @@ public class Lineup
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
 
-    /// <summary>后期阵容（最多 9 个），也是列表预览和追踪使用的阵容。</summary>
+    // null 表示旧文件尚未迁移；空数组表示用户没有选择目标。
+    [JsonPropertyName("goals")]
+    public CovenantGoal[]? Goals { get; set; }
+
+    /// <summary>想抓的干员池，也是列表预览和追踪使用的阵容。</summary>
     [JsonPropertyName("slots")]
     public List<LineupSlot> Slots { get; set; } = [];
 

@@ -10,11 +10,23 @@
   import LineupPage from './pages/LineupPage.svelte'
   import CodexPage from './pages/CodexPage.svelte'
   import CollapsedStrip from './components/CollapsedStrip.svelte'
+  import { fly } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
 
   let scroller: HTMLElement | undefined = $state()
   $effect(() => {
     app.tab
     if (scroller) scroller.scrollTop = 0
+  })
+
+  // 切换标签时页面从切换方向滑入：往右边的标签切，新页面从右边进来
+  const order = ['match', 'lineup', 'codex']
+  let prev = app.tab
+  let dir = $state(1)
+  $effect.pre(() => {
+    const t = app.tab
+    dir = order.indexOf(t) >= order.indexOf(prev) ? 1 : -1
+    prev = t
   })
 </script>
 
@@ -33,13 +45,17 @@
   {/if}
   <div class="content">
     <main bind:this={scroller}>
-      {#if app.tab === 'match'}
-        <MatchPage />
-      {:else if app.tab === 'lineup'}
-        <LineupPage />
-      {:else}
-        <CodexPage />
-      {/if}
+      {#key app.tab}
+        <div in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
+          {#if app.tab === 'match'}
+            <MatchPage />
+          {:else if app.tab === 'lineup'}
+            <LineupPage />
+          {:else}
+            <CodexPage />
+          {/if}
+        </div>
+      {/key}
     </main>
     <DetailSheet />
     <LineupEditor />
@@ -84,6 +100,7 @@
   }
   main {
     height: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
   }
 </style>

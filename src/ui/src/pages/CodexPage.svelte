@@ -11,6 +11,7 @@
   let tiers = $state<number[]>([])
   let bonds = $state<string[]>([])
   let onlyTracked = $state(false)
+  let onlyFocus = $state(false)
   let hideBanned = $state(false)
   let cat = $state<string | null>(null)
 
@@ -23,6 +24,7 @@
         (!tiers.length || tiers.includes(o.tier)) &&
         (!bonds.length || bonds.every((b) => o.core.includes(b) || o.extra.includes(b))) &&
         (!onlyTracked || app.tracked.has(o.name)) &&
+        (!onlyFocus || app.focusOps.has(o.name)) &&
         (!hideBanned || !app.banned.has(o.name)),
     ),
   )
@@ -32,13 +34,18 @@
       (e) => (!q || e.name.includes(q)) && (!tiers.length || tiers.includes(e.tier)) && (!cat || e.categories.includes(cat)),
     ),
   )
+  // 按等阶分组；不可招募的特殊干员（如暴躁铁皮）单独放最后一组，t = 0
   const groups = $derived(
-    [1, 2, 3, 4, 5, 6]
-      .map((t) => ({ t, ops: ops.filter((o) => o.tier === t), eqs: eqs.filter((e) => e.tier === t) }))
+    [1, 2, 3, 4, 5, 6, 0]
+      .map((t) => ({
+        t,
+        ops: ops.filter((o) => (t ? !o.obtain && o.tier === t : !!o.obtain)),
+        eqs: t ? eqs.filter((e) => e.tier === t) : [],
+      }))
       .filter((g) => (kind === 'operator' ? g.ops.length : g.eqs.length)),
   )
   const cur = $derived(app.detail)
-  const filtered = $derived(tiers.length + bonds.length + (onlyTracked ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
+  const filtered = $derived(tiers.length + bonds.length + (onlyTracked ? 1 : 0) + (onlyFocus ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
 </script>
 
 <div class="page">
@@ -52,7 +59,7 @@
       <span class="si"><Icon name="search" size={15} /></span>
       <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : '搜索装备'} />
       {#if filtered}
-        <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; onlyTracked = false; hideBanned = false; cat = null }}>清除筛选</button>
+        <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; onlyTracked = false; onlyFocus = false; hideBanned = false; cat = null }}>清除筛选</button>
       {/if}
     </div>
   </div>
@@ -64,6 +71,7 @@
       {#if kind === 'operator'}
         <span class="sep"></span>
         <button class="chip" class:on={onlyTracked} onclick={() => (onlyTracked = !onlyTracked)}>追踪中</button>
+        <button class="chip" class:on={onlyFocus} onclick={() => (onlyFocus = !onlyFocus)}>关注</button>
         <button class="chip" class:on={hideBanned} onclick={() => (hideBanned = !hideBanned)}>隐藏禁用</button>
       {/if}
     </div>
@@ -88,9 +96,13 @@
   </div>
 
   {#each groups as g (g.t)}
-    <div class="ghead" style:--c="var(--tier-{g.t})">
-      <TierBadge tier={g.t} size={18} />
-      <span class="term">Tier {ROMAN[g.t]}</span>
+    <div class="ghead" style:--c={g.t ? `var(--tier-${g.t})` : 'var(--gold)'}>
+      {#if g.t}
+        <TierBadge tier={g.t} size={18} />
+        <span class="term">Tier {ROMAN[g.t]}</span>
+      {:else}
+        <span class="special">特殊 · 不可招募</span>
+      {/if}
       <i></i>
       <em>{kind === 'operator' ? g.ops.length : g.eqs.length}</em>
     </div>
@@ -122,6 +134,11 @@
 </div>
 
 <style>
+  .special {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold);
+  }
   .page {
     padding: 0 10px 24px;
   }
