@@ -27,7 +27,7 @@ try {
     $rules = @($block.Groups[1].Value -split '\r?\n' | Where-Object { $_.Trim() })
     # 在提交快照中解释 .gitignore，避免工作区修改影响导出。
     git -C $snapshot init --quiet
-    $files = git -c core.quotepath=false -C $snapshot ls-files --others --exclude-standard -- Directory.Build.props StrongholdAssistant.sln src tests scripts data README.md LICENSE LICENSE.upstream NOTICE ASSETS.md .gitignore .gitattributes .github branding
+    $files = git -c core.quotepath=false -C $snapshot ls-files --others --exclude-standard -- Directory.Build.props StrongholdAssistant.sln src tests scripts data README.md LICENSE LICENSE.upstream NOTICE ASSETS.md .gitignore .gitattributes .github branding installer
     if ($LASTEXITCODE -ne 0) { throw '读取导出文件列表失败。' }
     $hits = @()
     foreach ($file in $files) {

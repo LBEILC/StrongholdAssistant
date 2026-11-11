@@ -27,23 +27,23 @@
 <table>
 <tr>
 <td width="120"><img src=".github/readme/chip-download.png" alt="下载" width="112"></td>
-<td>在 <a href="https://github.com/LBEILC/StrongholdAssistant/releases/latest"><b>Releases</b></a> 下载 <code>StrongholdAssistant-v版本号-win-x64.zip</code>（不要下 Source code）。</td>
+<td>在 <a href="https://github.com/LBEILC/StrongholdAssistant/releases/latest"><b>Releases</b></a> 下载 <b>安装包</b> <code>StrongholdAssistant-v版本号-setup.exe</code>（推荐），或 <b>免安装版</b> <code>StrongholdAssistant-v版本号-win-x64.zip</code>。不要下 Source code。</td>
 </tr>
 <tr>
 <td><img src=".github/readme/chip-install.png" alt="安装" width="112"></td>
-<td>右键 <b>全部解压</b> 到一个单独的文件夹，保留里面的 <code>data</code> 等全部文件。不需要另外安装 .NET。</td>
+<td><b>安装包</b>：双击运行，装在当前用户目录，不需要管理员权限，会建开始菜单和桌面快捷方式。<b>免安装版</b>：右键 <b>全部解压</b> 到一个单独的文件夹，保留里面的全部文件。都不需要另外安装 .NET。</td>
 </tr>
 <tr>
 <td><img src=".github/readme/chip-open.png" alt="打开" width="112"></td>
-<td>双击 <b>StrongholdAssistant.exe</b>。找到游戏窗口后，侧栏会自动贴到游戏右侧；拖动侧栏后会记住相对位置，跟着游戏走。</td>
+<td>从开始菜单或桌面打开 <b>卫戍协议助手</b>（免安装版双击 <b>StrongholdAssistant.exe</b>）。找到游戏窗口后，侧栏会自动贴到游戏右侧；拖动侧栏后会记住相对位置，跟着游戏走。</td>
 </tr>
 <tr>
 <td><img src=".github/readme/chip-update.png" alt="更新" width="112"></td>
-<td>启动时会自动检查新版本（可在设置里关掉），有新版本时点 <b>更新</b>，下载校验后自动替换并重启。阵容和设置存在 <code>%AppData%\StrongholdAssistant</code>，更新不会动它们。</td>
+<td>启动时会自动检查新版本（可在设置里关掉），有新版本时点 <b>更新</b>，下载校验后自动安装并重启（安装版会静默运行新的安装包，免安装版直接替换文件）。阵容和设置存在 <code>%AppData%\StrongholdAssistant</code>，更新不会动它们。</td>
 </tr>
 <tr>
 <td><img src=".github/readme/chip-uninstall.png" alt="卸载" width="112"></td>
-<td>删除解压出来的文件夹即可。想连数据一起删，再删掉 <code>%AppData%\StrongholdAssistant</code>。</td>
+<td><b>安装包</b>：在系统的「应用」里卸载，卸载时会问是否连阵容和设置一起删（默认保留）。<b>免安装版</b>：删除解压出来的文件夹；想连数据一起删，再删掉 <code>%AppData%\StrongholdAssistant</code>。</td>
 </tr>
 </table>
 

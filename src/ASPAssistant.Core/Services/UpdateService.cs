@@ -1,4 +1,4 @@
-// 2026-11-11：适配 StrongholdAssistant 的更新源、包名与启动确认。
+// 2026-11-11：适配 StrongholdAssistant 的更新源、包名、启动确认与安装版更新分支。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
 using System.IO.Compression;
@@ -24,8 +24,10 @@ public record UpdateInfo(
 /// <summary>Thrown when the downloaded package does not match the published SHA-256.</summary>
 public class UpdateIntegrityException(string message) : Exception(message);
 
-public partial class UpdateService(Version? currentVersion = null)
+public partial class UpdateService(Version? currentVersion = null, string? appDirectory = null)
 {
+    private readonly string _appDirectory = Path.GetFullPath(appDirectory ?? AppContext.BaseDirectory).TrimEnd('\\', '/');
+    public bool IsInstalled => File.Exists(Path.Combine(_appDirectory, "installed.json"));
     /// <summary>
     /// 覆盖更新源的环境变量（仅用于本地验证更新流程，正式用户不设置就走 GitHub）。
     /// 值应为返回 GitHub Release JSON 结构的地址。
@@ -91,13 +93,9 @@ public partial class UpdateService(Version? currentVersion = null)
             }
             if (latestVersion <= CurrentVersion) return null;
 
-            var asset = release.Assets.FirstOrDefault(a =>
-                string.Equals(a.Name, $"StrongholdAssistant-v{latestVersion}{PackageSuffix}", StringComparison.OrdinalIgnoreCase));
-            if (asset is null)
-            {
-                LastError = $"发布 {release.TagName} 中没有 {PackageSuffix} 包";
-                return null;
-            }
+            var assetName = SelectPackageAsset(latestVersion, release.Assets.Select(a => a.Name),
+                release.HtmlUrl ?? "https://github.com/LBEILC/StrongholdAssistant/releases/latest");
+            var asset = release.Assets.First(a => a.Name == assetName);
 
             var checksums = release.Assets.FirstOrDefault(a =>
                 string.Equals(a.Name, ChecksumsAssetName, StringComparison.OrdinalIgnoreCase));
@@ -114,6 +112,11 @@ public partial class UpdateService(Version? currentVersion = null)
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             LastError = DescribeError(ex);
+            return null;
+        }
+        catch (InvalidDataException ex)
+        {
+            LastError = ex.Message;
             return null;
         }
         catch (System.Text.Json.JsonException ex)
@@ -176,6 +179,18 @@ public partial class UpdateService(Version? currentVersion = null)
 
         progress?.Report(0.92);
 
+        if (IsInstalled)
+        {
+            var installerScript = Path.Combine(tempDir, "update.ps1");
+            await File.WriteAllTextAsync(installerScript,
+                BuildInstallerUpdateScript(Environment.ProcessId, zipPath, _appDirectory),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
+            PendingScriptPath = installerScript;
+            PendingStagingDir = tempDir;
+            progress?.Report(1.0);
+            return;
+        }
+
         // Extract zip
         var extractDir = Path.Combine(tempDir, "extracted");
         Directory.CreateDirectory(extractDir);
@@ -188,7 +203,7 @@ public partial class UpdateService(Version? currentVersion = null)
         if (!File.Exists(Path.Combine(sourceDir, AppExecutableName)))
             throw IntegrityFailure("更新包不完整，缺少主程序，已停止更新");
 
-        var appDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
+        var appDir = _appDirectory;
         var parentDir = Path.GetDirectoryName(appDir) ?? appDir;
         var stamp = $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
         var scriptPath = Path.Combine(tempDir, "update.ps1");

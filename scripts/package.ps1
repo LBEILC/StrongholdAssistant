@@ -48,6 +48,13 @@ try {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entry, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
 } finally { $archive.Dispose() }
-$hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), "$hash  $([IO.Path]::GetFileName($zip))`n", [Text.Encoding]::ASCII)
+Run { dotnet restore installer/Compiler.csproj }
+Run { dotnet msbuild installer/Compiler.csproj -t:CompileInstaller "-p:InstallerVersion=$declared" "-p:PublishDir=$publish" "-p:ReleaseDir=$release" }
+$setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
+$sums = foreach ($file in @($zip, $setup)) {
+    $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+    "$hash  $([IO.Path]::GetFileName($file))"
+}
+[IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), ($sums -join "`n") + "`n", [Text.Encoding]::ASCII)
 Write-Output "打包完成：$zip ($((Get-Item -LiteralPath $zip).Length) bytes)"
+Write-Output "安装包：$setup ($((Get-Item -LiteralPath $setup).Length) bytes)"

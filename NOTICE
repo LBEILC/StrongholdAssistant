@@ -51,6 +51,14 @@ https://github.com/bingyunhe/asp-assistant-arknights/pull/1
 Original contribution commit: 2498a019db155903419f2109c8651d73ebb4da6d
 The original commit is retained; subsequent integration fixes have separate commits.
 
+The Windows installer is built with Inno Setup 6.4.3
+(Copyright (C) 1997-2025 Jordan Russell; portions Copyright (C) 2000-2025 Martijn Laan),
+used under the Inno Setup License; see installer/LICENSE.InnoSetup.txt.
+installer/ChineseSimplified.isl is the unofficial Simplified Chinese translation
+maintained by Zhenghan Yang (Kira), taken unchanged from the is-6_4_3 tag of
+https://github.com/jrsoftware/issrc (Files/Languages/Unofficial/ChineseSimplified.isl);
+its original credits and notices are kept.
+
 MaaFramework and other third-party dependencies retain their own licenses.
 Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.

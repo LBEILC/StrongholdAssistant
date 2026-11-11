@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Tools.InnoSetup" Version="6.4.3" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+  <Target Name="CompileInstaller">
+    <Exec Command="&quot;$(PkgTools_InnoSetup)\tools\ISCC.exe&quot; /DAppVersion=$(InstallerVersion) /DPublishDir=&quot;$(PublishDir)&quot; /DReleaseDir=&quot;$(ReleaseDir)&quot; &quot;$(MSBuildThisFileDirectory)StrongholdAssistant.iss&quot;" />
+  </Target>
+</Project>
