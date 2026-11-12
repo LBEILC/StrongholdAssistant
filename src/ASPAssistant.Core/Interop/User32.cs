@@ -157,6 +157,10 @@ public static class User32
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     private const uint MonitorDefaultToNearest = 2;
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromRect(ref RECT rect, uint flags);
+
+    public static bool IntersectsMonitor(RECT rect) => MonitorFromRect(ref rect, 0) != IntPtr.Zero;
 
     // Global hotkey APIs
 

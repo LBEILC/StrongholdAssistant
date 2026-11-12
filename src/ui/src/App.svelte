@@ -16,8 +16,15 @@
   import Toast from './components/Toast.svelte'
   import ChangelogSheet from './components/ChangelogSheet.svelte'
   import WhatsNew from './components/WhatsNew.svelte'
+  import Tooltip from './components/Tooltip.svelte'
+  import { api } from './lib/api'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
+
+  let upH = $state(0)
+  $effect(() => {
+    if (app.collapsed === 'up' && upH) api.collapseUp(upH)
+  })
 
   let scroller: HTMLElement | undefined = $state()
   $effect(() => {
@@ -36,8 +43,14 @@
   })
 </script>
 
-{#if app.collapsed}
+{#if app.collapsed === 'strip'}
   <CollapsedStrip />
+{:else if app.collapsed === 'up'}
+  <!-- 向上收起：只留标题栏和追踪列表，窗口高度跟着内容（追踪增减时再告诉宿主） -->
+  <div class="shell up" bind:clientHeight={upH}>
+    <TitleBar />
+    <BondTracker />
+  </div>
 {:else}
 <div class="shell {app.phase}">
   <TitleBar />
@@ -74,6 +87,7 @@
 </div>
 {/if}
 <ContextMenu />
+<Tooltip />
 {#if app.phase !== 'boot'}<WhatsNew />{/if}
 
 <style>
@@ -112,6 +126,11 @@
       var(--noise),
       radial-gradient(120% 60% at 50% 0%, #15171a, var(--bg-0));
     overflow: hidden;
+  }
+  /* 向上收起：高度由内容决定，底边一道薄荷绿细线表示下面还收着东西 */
+  .shell.up {
+    height: auto;
+    border-bottom: 1px solid var(--mint-lo);
   }
   .updbar {
     flex: none;

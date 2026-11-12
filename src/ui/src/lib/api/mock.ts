@@ -1,6 +1,6 @@
 // 原型用的假后端：数据取自参考项目的当期数据表，本局信息仿照 TestData/info-ingame-1920x1080.png。
 // 禁用推算是粗略的假实现，只为让界面能走通；真实逻辑在参考项目的 BanScreenAnalyzer。
-import type { Api, Catalog, CovenantGoal, Lineup, MatchInfo, ScanStatus, Session, Settings, UpdateStatus } from './types'
+import type { Api, BanGroup, Catalog, CovenantGoal, Lineup, MatchInfo, ScanStatus, Session, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 
 const catalog = raw as Catalog
@@ -12,14 +12,52 @@ const incomplete = new Set(['victoria', 'kjerag', 'egir', 'kazimierz', 'ursus', 
 const manualBan = new Set<string>()
 const manualUnban = new Set<string>()
 
-// 假的禁用推算：核心盟约阵容不完整的干员都禁掉，只有附加盟约的看附加盟约；名单长度和游戏里差不多
-const autoBanned = () =>
-  catalog.operators
-    .filter((o) => (o.core.length ? o.core.some((c) => incomplete.has(c)) : o.extra.some((c) => incomplete.has(c))))
-    .map((o) => o.name)
+// 假的禁用推算：阵容不完整的核心盟约按游戏顺序（星级降序、数据表顺序）每三名禁两名，只有附加盟约的看附加盟约
+const rank = new Map(catalog.operators.map((o, i) => [o.name, i]))
+const byGame = (a: Catalog['operators'][number], b: Catalog['operators'][number]) => b.tier - a.tier || rank.get(a.name)! - rank.get(b.name)!
+const banList = (cid: string) => catalog.operators.filter((o) => !o.obtain && o.core.includes(cid)).sort(byGame).filter((_, i) => i % 3 !== 1)
+const autoBanned = () => [
+  ...new Set([...catalog.operators.filter((o) => !o.core.length && o.extra.some((c) => incomplete.has(c))), ...[...incomplete].flatMap(banList)].map((o) => o.name)),
+]
+
+// 假的格位：维多利亚第 3 格没认出（候选不按顺序缩小，有好几个）、谢拉格第 3 格只剩一个候选（推测）、
+// 伊比利亚只看到前 4 格（往下还有）。用户补上、说「不是」都记在这里
+const hidden = new Map([['victoria', 2], ['kjerag', 2]])
+const filled = new Map<string, string>() // 盟约 → 用户补上的
+const notThis = new Map<string, Set<string>>() // 盟约 → 这格说过不是的
+function banGroups(): { groups: BanGroup[]; out: string[]; inferred: string[] } {
+  const groups: BanGroup[] = []
+  const out: string[] = [] // 被藏起来、没认出的真名
+  const inferred: string[] = []
+  for (const cid of ['victoria', 'kjerag', 'egir']) {
+    if (!incomplete.has(cid)) continue
+    const list = banList(cid)
+    const h = hidden.get(cid)
+    const slots = list.map((o, i) => {
+      if (i !== h) return { name: o.name, tier: o.tier, candidates: [] as string[] }
+      out.push(o.name)
+      if (filled.has(cid)) return { name: filled.get(cid)!, tier: o.tier, candidates: [] }
+      const seen = new Set(list.filter((_, j) => j !== i).map((x) => x.name))
+      let cands = catalog.operators.filter((x) => !x.obtain && x.tier === o.tier && (x.core.includes(cid) || x.extra.includes(cid)) && !seen.has(x.name) && !notThis.get(cid)?.has(x.name))
+      // 谢拉格：按游戏顺序夹在前后两格之间
+      if (cid === 'kjerag') cands = cands.filter((x) => (i === 0 || byGame(list[i - 1], x) < 0) && (i === list.length - 1 || byGame(x, list[i + 1]) < 0))
+      if (cid === 'victoria') cands = [...cands, ...catalog.operators.filter((x) => x.tier === o.tier && !x.obtain && x.core.includes('kazimierz'))].slice(0, 4)
+      if (cands.length === 1) {
+        inferred.push(cands[0].name)
+        return { name: cands[0].name, tier: o.tier, candidates: [cands[0].name], inferred: true }
+      }
+      return { name: null, tier: o.tier, candidates: cands.slice(0, 6).map((x) => x.name) }
+    })
+    groups.push(cid === 'egir' ? { covenant: cid, slots: slots.slice(0, 4), complete: false } : { covenant: cid, slots, complete: true })
+  }
+  return { groups, out, inferred }
+}
 
 function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchInfo {
-  const banned = new Set([...autoBanned(), ...manualBan])
+  const g = banGroups()
+  const banned = new Set(autoBanned())
+  for (const n of g.out) banned.delete(n)
+  for (const n of [...g.inferred, ...filled.values(), ...manualBan]) banned.add(n)
   for (const n of manualUnban) banned.delete(n)
   return {
     source,
@@ -29,6 +67,7 @@ function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchI
     bannedOperators: [...banned],
     bossId: 'enemy_1521_dslily',
     enemyTypes: ['REBORN', 'INVISIBLE', 'DOT'],
+    banGroups: g.groups,
   }
 }
 let match: MatchInfo = computeMatch('recognized', new Date(Date.now() - 4 * 60_000).toISOString())
@@ -68,6 +107,8 @@ let settings: Settings = {
   autoCheckUpdate: true,
   uiScale: 'auto',
   alwaysOnTop: false,
+  followGame: true,
+  collapseMode: 'strip',
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
 }
@@ -99,6 +140,8 @@ export const mockApi: Api = {
     ;['victoria', 'kjerag', 'egir', 'kazimierz', 'ursus', 'preci', 'skillful', 'stead', 'visi', 'mira'].forEach((c) => incomplete.add(c))
     manualBan.clear()
     manualUnban.clear()
+    filled.clear()
+    notThis.clear()
     match = computeMatch('recognized', new Date().toISOString())
     return wait(match, 900)
   },
@@ -126,10 +169,23 @@ export const mockApi: Api = {
     incomplete.clear()
     manualBan.clear()
     manualUnban.clear()
-    match = { source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [] }
+    filled.clear()
+    notThis.clear()
+    match = { source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [], banGroups: [] }
     return wait(match, 60)
   },
   setOperatorBanned: (name, v) => {
+    // 和宿主一样维护格位：补上就填进候选里有他的空格；取消就让他所在的格子变回没认出，并记下「不是他」
+    for (const g of match.banGroups) {
+      const i = g.slots.findIndex((s) => (v ? s.name === null || s.inferred : s.name === name) && (!v || s.candidates.includes(name)))
+      if (i < 0) continue
+      if (v) filled.set(g.covenant, name)
+      else {
+        hidden.set(g.covenant, i)
+        filled.delete(g.covenant)
+        notThis.set(g.covenant, (notThis.get(g.covenant) ?? new Set()).add(name))
+      }
+    }
     ;(v ? manualUnban : manualBan).delete(name)
     ;(v ? manualBan : manualUnban).add(name)
     match = computeMatch('manual', match.recognizedAt!)
@@ -150,6 +206,7 @@ export const mockApi: Api = {
     session = structuredClone(s)
   },
   windowCommand: async () => {},
+  collapseUp: async () => {},
   onWindow: (cb) => {
     windowListeners.add(cb)
     return () => windowListeners.delete(cb)
@@ -158,7 +215,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.4.1', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
+  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
   openDataFolder: async () => {},
   exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
   pickBackup: () =>
@@ -169,11 +226,11 @@ export const mockApi: Api = {
     pushUpdate({ state: 'checking' })
     const u: UpdateStatus = {
       state: 'available',
-      version: '0.4.2',
+      version: '0.4.3',
       notesUrl: 'https://github.com/LBEILC/StrongholdAssistant/releases',
       notes: {
         schema: 'sa-release-notes/1',
-        version: '0.4.2',
+        version: '0.4.3',
         date: '2026-11-20',
         items: [
           { kind: 'improved', title: '假数据：更新内容示例', detail: '这是假数据，用来看「发现新版本」时的更新内容怎么显示。', highlight: true },
@@ -188,9 +245,9 @@ export const mockApi: Api = {
   applyUpdate: async () => {
     for (let i = 1; i <= 10; i++) {
       await new Promise((r) => setTimeout(r, 150))
-      pushUpdate({ state: 'downloading', version: '0.4.2', progress: i / 10 })
+      pushUpdate({ state: 'downloading', version: '0.4.3', progress: i / 10 })
     }
-    pushUpdate({ state: 'ready', version: '0.4.2' })
+    pushUpdate({ state: 'ready', version: '0.4.3' })
   },
   openUrl: async (url) => void window.open(url, '_blank'),
   copyText: (text) => navigator.clipboard.writeText(text),

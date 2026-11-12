@@ -37,15 +37,23 @@ const tierName = (t: number) => `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][t]} �
 export function operatorMenu(name: string): Omit<MenuState, 'x' | 'y'> {
   const o = app.op(name)
   const inTarget = !!app.target?.members.some((m) => m.name === name)
-  const items: MenuEntry[] = [
+  const items: MenuEntry[] = []
+  // 按格位推测的禁用：先让用户确认或否认，否认后那一格变回问号、换候选
+  if (app.inferred.has(name))
+    items.push(
+      { label: '确认是他', icon: 'check', run: () => app.setBanned(name, true) },
+      { label: '不是他', icon: 'close', tone: 'danger', run: () => app.setBanned(name, false) },
+      'sep',
+    )
+  items.push(
     { label: '查看详情', icon: 'arrowRight', run: () => (app.detail = { kind: 'operator', name }) },
     'sep',
     { label: '追踪', icon: 'star', on: app.tracked.has(name), run: () => app.toggleTracked(name) },
-  ]
+  )
   if (app.target) items.push({ label: '在目标阵容里', icon: 'focus', on: inTarget, run: () => app.toggleMember(name) })
   items.push('sep', { label: '本局禁用', icon: 'forbid', on: app.banned.has(name), tone: 'danger', run: () => app.toggleBanned(name) })
   items.push({ label: '特别关注', icon: 'heart', on: app.focusOps.has(name), run: () => app.toggleFocusOp(name) })
-  return { title: name, sub: tierName(o.tier), items }
+  return { title: name, sub: app.inferred.has(name) ? `${tierName(o.tier)} · 按格位推测的禁用` : tierName(o.tier), items }
 }
 
 export function equipmentMenu(name: string): Omit<MenuState, 'x' | 'y'> {

@@ -23,7 +23,7 @@
   const C = 2 * Math.PI * R
 </script>
 
-<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={cov.name}>
+<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={name ? undefined : cov.name}>
   <span class="disc">
     {#if progress !== undefined}
       <svg class="ring" viewBox="0 0 100 100">

@@ -58,6 +58,7 @@ export const bridgeApi: Api = {
   session: call('session'),
   saveSession: call('saveSession'),
   windowCommand: call('windowCommand'),
+  collapseUp: call('collapseUp'),
   settings: call('settings'),
   saveSettings: call('saveSettings'),
   appInfo: call('appInfo'),

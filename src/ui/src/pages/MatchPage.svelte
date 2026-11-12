@@ -2,12 +2,13 @@
   import { slide } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { asset } from '../lib/assets'
+  import { asset, ROMAN } from '../lib/assets'
   import SectionHeader from '../components/SectionHeader.svelte'
   import BondIcon from '../components/BondIcon.svelte'
   import OpTile from '../components/OpTile.svelte'
   import LineupCard from '../components/LineupCard.svelte'
   import Icon from '../components/Icon.svelte'
+  import { openMenu, operatorMenu } from '../lib/menu.svelte'
 
   // 本局：开局识别到的信息，排版仿游戏「确认本局信息」页；可手动修正；后面接本局能用的已存阵容
   const m = $derived(app.match)
@@ -70,8 +71,20 @@
     const shown = new Set(groups.flatMap((g) => g.names))
     const rest = banned.filter((n) => !shown.has(n))
     if (rest.length || !groups.length) groups.push({ id: null, names: rest })
-    return groups.map((g) => ({ id: g.id, names: g.names.sort(byTier) }))
+    return groups.map((g) => {
+      // 识别过的组按游戏里的格子排：认出的、推测的、没认出的问号格各在原位；手动加的、推算出的其余禁用接在后面
+      const bg = g.id ? m.banGroups.find((b) => b.covenant === g.id) : undefined
+      const inSlots = new Set(bg?.slots.map((s) => s.name) ?? [])
+      const cells: Cell[] = [
+        ...(bg?.slots.map((s, i): Cell => (s.name ? { kind: 'op', name: s.name, inferred: !!s.inferred, i } : { kind: 'unknown', i, tier: s.tier, n: s.candidates.length })) ?? []),
+        ...g.names.filter((n) => !inSlots.has(n)).sort(byTier).map((name): Cell => ({ kind: 'op', name, inferred: false, i: -1 })),
+      ]
+      const pos = (pred: (s: NonNullable<typeof bg>['slots'][number]) => boolean) => bg?.slots.flatMap((s, i) => (pred(s) ? [i + 1] : [])) ?? []
+      return { id: g.id, count: g.names.length, cells, missing: pos((s) => !s.name), guessed: pos((s) => !!s.inferred), more: !!bg && !bg.complete }
+    })
   })
+  type Cell = { kind: 'op'; name: string; inferred: boolean; i: number } | { kind: 'unknown'; i: number; tier: number; n: number }
+  const nth = (xs: number[]) => `第 ${xs.join('、')} 格`
 </script>
 
 <div class="page">
@@ -216,15 +229,36 @@
                 <BondIcon id={g.id} size={20} />
                 <b>{app.cov(g.id).name}</b>
               {:else}
-                <b>{g.names.length ? '其他' : '手动添加'}</b>
+                <b>{g.count ? '其他' : '手动添加'}</b>
               {/if}
-              <span>{g.names.length}</span>
+              <span>{g.count}</span>
+              <!-- 识别的格位：第几格没认出、哪格是推测、这组还没看到结尾 -->
+              {#if g.missing.length}<em class="miss">{nth(g.missing)}没认出</em>{/if}
+              {#if g.guessed.length}<em class="guess">{nth(g.guessed)}是推测</em>{/if}
+              {#if g.more}<em class="more" title="游戏里这一组还没滚到底，持续识别时往下滚动就能补上">往下还有</em>{/if}
             </div>
             <div class="tiles">
-              {#each g.names as n (n)}
-                <OpTile name={n} size={42} onclick={() => (edit ? app.toggleBanned(n) : (app.detail = { kind: 'operator', name: n }))} />
+              {#each g.cells as c (c.kind === 'op' ? c.name : `?${c.i}`)}
+                {#if c.kind === 'unknown'}
+                  <button
+                    class="slot"
+                    style:--c="var(--tier-{c.tier})"
+                    onclick={() => (app.banPicker = { cov: g.id!, slot: c.i })}
+                    title="第 {c.i + 1} 格没认出（{ROMAN[c.tier]} 阶）{c.n ? `，有 ${c.n} 个候选，点开选` : '，点开手动补'}"
+                  >
+                    <span class="q"><b>?</b><i class="term">{ROMAN[c.tier]}</i></span>
+                    <span class="nm">第 {c.i + 1} 格</span>
+                  </button>
+                {:else if c.inferred}
+                  <span class="inf">
+                    <OpTile name={c.name} size={42} onclick={(e) => openMenu(e, operatorMenu(c.name))} />
+                    <em>推测</em>
+                  </span>
+                {:else}
+                  <OpTile name={c.name} size={42} onclick={() => (edit ? app.toggleBanned(c.name) : (app.detail = { kind: 'operator', name: c.name }))} />
+                {/if}
               {/each}
-              {#if g.id || !g.names.length}
+              {#if g.id || !g.count}
                 <button class="addtile" onclick={() => (app.banPicker = g.id ?? true)} title={g.id ? `补上${app.cov(g.id).name}里识别漏掉的禁用干员` : '手动添加禁用干员'}>
                   <span class="plus"><Icon name="add" size={20} /></span>
                   <span class="nm">添加</span>
@@ -548,6 +582,86 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px 6px;
+  }
+  .bgh em {
+    font-style: normal;
+    font-size: 11px;
+    padding: 0 5px;
+  }
+  .bgh .miss {
+    color: var(--gold-ink);
+    background: var(--gold);
+  }
+  .bgh .guess {
+    color: var(--gold);
+    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.5);
+  }
+  .bgh .more {
+    color: var(--fg-4);
+  }
+  /* 没认出的格：在游戏里的原位置放问号格，金色虚线框，底边是该格星级色，角上写星级 */
+  .slot {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 42px;
+  }
+  .q {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    background: rgb(243 179 34 / 0.08);
+    outline: 1px dashed var(--gold);
+    outline-offset: -1px;
+    box-shadow: inset 0 -2px 0 var(--c);
+    transition: background var(--t-fast);
+  }
+  .q b {
+    font-size: 20px;
+    line-height: 1;
+    color: var(--gold);
+  }
+  .q i {
+    position: absolute;
+    left: 2px;
+    bottom: 3px;
+    font-style: normal;
+    font-size: 9px;
+    color: var(--c);
+  }
+  .slot .nm {
+    font-size: 11px;
+    color: var(--gold);
+  }
+  .slot:hover .q {
+    background: rgb(243 179 34 / 0.2);
+  }
+  /* 推测的格：头像照常，金色虚线框 + 名字下面的「推测」小签，点开确认或否认 */
+  .inf {
+    position: relative;
+    display: inline-flex;
+  }
+  .inf :global(.pic) {
+    outline: 1px dashed var(--gold);
+    outline-offset: 1px;
+  }
+  .inf em {
+    position: absolute;
+    left: 50%;
+    top: 30px;
+    transform: translateX(-50%);
+    z-index: 2;
+    font-style: normal;
+    font-size: 9px;
+    line-height: 12px;
+    padding: 0 3px;
+    white-space: nowrap;
+    color: var(--gold-ink);
+    background: var(--gold);
+    pointer-events: none;
   }
   /* 添加格：和 42 的头像格同尺寸，虚线框 + 加号 */
   .addtile {

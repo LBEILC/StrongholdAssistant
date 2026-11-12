@@ -110,6 +110,28 @@
     </section>
 
     <section>
+      <label class="row">
+        <span class="lbl"
+          ><b>跟随游戏窗口</b><small
+            >{app.settings.followGame
+              ? '侧栏贴在游戏右边，全屏或放不下时盖在游戏左侧'
+              : '侧栏停在你拖到的位置，不再跟着游戏；要盖在全屏游戏上请打开置顶'}</small
+          ></span
+        >
+        <input type="checkbox" class="sw" checked={app.settings.followGame} onchange={(e) => set('followGame', e.currentTarget.checked)} />
+      </label>
+    </section>
+
+    <section>
+      <h4>收起方式 <small>标题栏的收起按钮</small></h4>
+      <div class="scales two">
+        <button class:on={app.settings.collapseMode === 'strip'} onclick={() => set('collapseMode', 'strip')}>收成竖条</button>
+        <button class:on={app.settings.collapseMode === 'up'} onclick={() => set('collapseMode', 'up')}>向上收起</button>
+      </div>
+      <p class="note">{app.settings.collapseMode === 'strip' ? '收成左边一根竖条，追踪的头像竖着排。' : '宽度不变，只留标题栏和追踪列表，打商店时还能点掉追踪。'}</p>
+    </section>
+
+    <section>
       <h4>数据 <small>阵容、特别关注和偏好设置；换电脑、重装时用备份迁移</small></h4>
       <p class="path">
         <span>保存在 <code>{app.appInfo.dataDir}</code>，同一台电脑换新包不用导入。</span>
@@ -310,6 +332,14 @@
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 2px;
+  }
+  .scales.two {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .note {
+    margin: 6px 0 0;
+    font-size: 11px;
+    color: var(--fg-4);
   }
   .scales button {
     height: 30px;

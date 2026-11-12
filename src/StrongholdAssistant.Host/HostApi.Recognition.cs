@@ -13,6 +13,7 @@ public sealed partial class HostApi
     private Func<Task<byte[]?>> _captureInformation = null!;
     internal Func<Task<(MatchInfo Match, string[] Avatars)>> ReadInformation { get; set; } = null!;
     private byte[]? _scanShot;
+    private BanAvatarResult? _scanAvatars;
     private BanScreenResult? _scanResult;
     private EnemyResult? _scanEnemy;
     private string? _scanFailure;
@@ -59,8 +60,9 @@ public sealed partial class HostApi
         try
         {
             Changed?.Invoke("scan", new ScanStatus(true, Continuous: continuous ? true : null));
+            _scanAvatars = null;
             var (next, avatars) = await ReadInformation();
-            int added = ApplyRecognizedMatch(next, avatars);
+            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars);
             Changed?.Invoke("match", Match);
             if (!continuous)
                 Changed?.Invoke("scan", new ScanStatus(false, added > 0
@@ -88,6 +90,7 @@ public sealed partial class HostApi
         _scanFailure = null;
         _scanShot = await _captureInformation();
         var avatars = _scanShot == null ? null : await _avatars.RecognizeAsync(_scanShot);
+        _scanAvatars = avatars;
         // TODO(design): 盟约已滚出画面时沿用已录入的盟约；首领须仍可读且相同，无法据此区分同首领的新局。
         bool supplement = Match.RecognizedAt != null && avatars is { IsScrolledList: true };
         if (supplement)
@@ -110,7 +113,7 @@ public sealed partial class HostApi
         return (next, avatars?.Names ?? []);
     }
 
-    internal int ApplyRecognizedMatch(MatchInfo next, IEnumerable<string> avatars)
+    internal int ApplyRecognizedMatch(MatchInfo next, IEnumerable<string> avatars, BanAvatarResult? grid = null)
     {
         bool sameMatch = Match.BossId == next.BossId
             && Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
@@ -119,8 +122,10 @@ public sealed partial class HostApi
         {
             _avatarBans.Clear();
             _manualBans.Clear();
+            _banGroups.Clear();
         }
-        _avatarBans.UnionWith(avatars);
+        if (grid is null) _avatarBans.UnionWith(avatars);
+        else MergeBanGroups(grid);
         Match = next;
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };

@@ -4,7 +4,9 @@ using ASPAssistant.Core.Models;
 
 namespace StrongholdAssistant.Host;
 
-public sealed record DockSettings(double Width = 380, SidePanelOffset? FollowOffsetDip = null, SidePanelOffset? OverlayOffsetDip = null);
+public sealed record FreeWindowBounds(double Left, double Top, double Width, double Height);
+public sealed record DockSettings(double Width = 380, SidePanelOffset? FollowOffsetDip = null,
+    SidePanelOffset? OverlayOffsetDip = null, FreeWindowBounds? FreeBounds = null);
 
 // 同步合并写入，让窗口位置与界面设置共用文件而不相互覆盖。
 public sealed class HostSettingsStore(string path)
@@ -21,6 +23,8 @@ public sealed class HostSettingsStore(string path)
         {
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
+            FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
+            CollapseMode = json["collapseMode"]?.GetValue<string>() ?? "strip",
             FocusCovenants = json["focusCovenants"]?.Deserialize<string[]>() ?? [],
             FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? []
         };

@@ -25,6 +25,9 @@ public partial class MainWindow
     private bool _moving;
     private bool _overlayMode;
     private bool _collapsed;
+    private double? _collapseUpHeight;
+    private double _expandedWidth;
+    private double _expandedHeight;
     private double _uiScale = 1;
     private RECT? _lastClientRect;
     private bool _closing;
@@ -42,6 +45,22 @@ public partial class MainWindow
             throw new JsonException("侧栏设置无效。");
         _dock = _dock with { Width = Math.Clamp(_dock.Width, 320, 460) };
         ApplyScale(null);
+        if (!_api.Settings.FollowGame && _dock.FreeBounds is { } free)
+        {
+            if (!double.IsFinite(free.Left) || !double.IsFinite(free.Top)
+                || !double.IsFinite(free.Width) || !double.IsFinite(free.Height) || free.Width <= 0 || free.Height <= 0)
+                throw new JsonException("侧栏位置无效。");
+            Left = free.Left; Top = free.Top; Width = free.Width; Height = free.Height;
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var dpi = User32.GetWindowDpiScale(hwnd);
+            var bounds = new RECT { Left = (int)(Left * dpi), Top = (int)(Top * dpi),
+                Right = (int)((Left + Width) * dpi), Bottom = (int)((Top + Height) * dpi) };
+            if (!User32.IntersectsMonitor(bounds))
+            {
+                var primary = User32.GetMonitorGeometry(0, 0).WorkArea;
+                (Left, Top) = WindowGeometry.CenterFreePosition(Width, Height, primary, dpi);
+            }
+        }
         // 识别事件只会在 InitializeGameAsync 完成后出现，那时 _scanner 已就绪
         _api.Changed += (name, value) =>
         {
@@ -88,7 +107,6 @@ public partial class MainWindow
             _lastGameRect = null;
             _lastClientRect = null;
             _overlayMode = false;
-            _collapsed = false;
             ApplyScale(null);
             _shopItems = [];
             _overlay.UpdateShopItems([]);
@@ -97,7 +115,7 @@ public partial class MainWindow
         });
         _tracker.GameWindowMinimizedChanged += minimized => Dispatcher.BeginInvoke(() =>
         {
-            WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
+            if (_api.Settings.FollowGame) WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
             if (minimized) _overlay.Hide();
             if (!minimized && _tracker.CurrentGameRect is { } rect) UpdateGame(rect);
         });
@@ -163,6 +181,13 @@ public partial class MainWindow
         var client = User32.GetClientRectScreen(User32.FindArknightsWindow());
         if (client is null) return;
         _lastClientRect = client;
+        if (!_api.Settings.FollowGame)
+        {
+            _overlayMode = false;
+            ApplyScale(client.Value.Height);
+            _api.UpdateConnection(new("connected", $"{client.Value.Width}×{client.Value.Height}", _tracker.IsFullscreen, false));
+            return;
+        }
         if (_moving || WindowState != WindowState.Normal) return;
         var hwnd = new WindowInteropHelper(this).Handle;
         var current = User32.ReadWindowRect(hwnd);
@@ -190,7 +215,6 @@ public partial class MainWindow
         scale = User32.GetWindowDpiScale(hwnd);
         _uiScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
         _overlayMode = WindowGeometry.NeedsOverlay(game, monitor.WorkArea, scale, _dock.Width * _uiScale, _tracker.IsFullscreen);
-        if (!_overlayMode) _collapsed = false;
         ApplyScale(client.Value.Height);
         _api.UpdateConnection(new("connected", $"{client.Value.Width}×{client.Value.Height}", _tracker.IsFullscreen, _overlayMode));
         var target = _overlayMode
@@ -198,6 +222,8 @@ public partial class MainWindow
             : offset is null
             ? WindowGeometry.SidePanelBounds(game, monitor.WorkArea, scale, Width, null, false)
             : WindowGeometry.FollowBounds(game, monitor.WorkArea, scale, Width, null, false, offset);
+        if (_collapsed && _collapseUpHeight is { } height)
+            target.Bottom = target.Top + (int)Math.Round(height * _uiScale * scale);
         User32.SetWindowBounds(hwnd, target);
     }
 
@@ -211,7 +237,8 @@ public partial class MainWindow
             var scale = User32.GetWindowDpiScale(hwnd);
             var placement = new SidePanelPlacement(rect.Left, rect.Top, rect.Width / scale, rect.Height / scale);
             _dock = _dock with { Width = _collapsed ? _dock.Width : Math.Clamp(placement.WidthDip / _uiScale, 320, 460) };
-            if (_overlayMode && _lastClientRect is { } client)
+            if (!_api.Settings.FollowGame) RememberFreeBounds();
+            else if (_overlayMode && _lastClientRect is { } client)
                 _dock = _dock with { OverlayOffsetDip = new((rect.Left - client.Left) / scale, (rect.Top - client.Top) / scale) };
             else if (_lastGameRect is { } game)
                 _dock = _dock with { FollowOffsetDip = WindowGeometry.CaptureFollowOffset(game, placement, scale) };
@@ -228,8 +255,13 @@ public partial class MainWindow
             User32.GetWindowDpiScale(new WindowInteropHelper(this).Handle));
         MinWidth = 0;
         MaxWidth = 460 * _uiScale;
-        MinWidth = (_collapsed ? 48 : 320) * _uiScale;
-        Width = WindowGeometry.PanelWidth(_dock.Width, _uiScale, _collapsed);
+        MinWidth = (_collapsed && _collapseUpHeight is null ? 48 : 320) * _uiScale;
+        if (_api.Settings.FollowGame)
+        {
+            Width = _collapsed && _collapseUpHeight != null ? _expandedWidth
+                : WindowGeometry.PanelWidth(_dock.Width, _uiScale, _collapsed);
+            if (_collapsed && _collapseUpHeight is { } height) Height = height * _uiScale;
+        }
         ResizeMode = _collapsed ? ResizeMode.NoResize : ResizeMode.CanResize;
         if (Browser.CoreWebView2 is not null) Browser.ZoomFactor = _uiScale;
         Splash.LayoutTransform = new System.Windows.Media.ScaleTransform(_uiScale, _uiScale);
@@ -245,9 +277,40 @@ public partial class MainWindow
 
     private void SetCollapsed(bool collapsed)
     {
-        if (collapsed && !_overlayMode) return;
+        SetCollapse(collapsed, null);
+    }
+
+    private void SetCollapse(bool collapsed, double? upHeight)
+    {
+        if (!_collapsed && collapsed)
+        {
+            _expandedWidth = Width;
+            _expandedHeight = Height;
+        }
+        if (!_collapsed && !collapsed) return;
         _collapsed = collapsed;
+        _collapseUpHeight = upHeight;
         ApplyScale(_lastClientRect?.Height);
+        (Width, Height) = WindowGeometry.CollapsedSize(_expandedWidth, _expandedHeight, _uiScale, collapsed, upHeight);
+        if (!collapsed && _api.Settings.FollowGame && _lastGameRect is { } game) UpdateGame(game);
+    }
+
+    private void RememberFreeBounds()
+    {
+        _dock = _dock with { FreeBounds = new(Left, Top,
+            _collapsed ? _expandedWidth : Width, _collapsed ? _expandedHeight : Height) };
+    }
+
+    private void RefreshSettings(bool followedBefore)
+    {
+        if (followedBefore && !_api.Settings.FollowGame)
+        {
+            RememberFreeBounds();
+            _api.SettingsStore.SaveDock(_dock);
+            _overlayMode = false;
+            _api.UpdateConnection(_api.Connection with { Overlay = false });
+        }
+        RefreshScale();
     }
 
     protected override async void OnClosing(CancelEventArgs e)

@@ -23,6 +23,7 @@ public sealed class BackupTests : IDisposable
         var settings = new SettingsDto("closure", false, false)
         {
             AlwaysOnTop = true, UiScale = JsonSerializer.SerializeToElement(1.5),
+            FollowGame = false, CollapseMode = "up",
             FocusCovenants = ["yan"], FocusOperators = ["折光"]
         };
         api.SaveSettings(settings);
@@ -35,7 +36,7 @@ public sealed class BackupTests : IDisposable
         Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups" }, root.Select(p => p.Key));
         Assert.Equal("stronghold-assistant-backup", root["format"]!.GetValue<string>());
         Assert.Equal(1, root["version"]!.GetValue<int>());
-        Assert.Equal(7, root["settings"]!.AsObject().Count);
+        Assert.Equal(9, root["settings"]!.AsObject().Count);
         var selection = await api.ReadBackupAsync(BackupPath);
         Assert.Equal(1, selection.Summary.Lineups);
         Assert.Equal(1, selection.Summary.FocusCovenants);

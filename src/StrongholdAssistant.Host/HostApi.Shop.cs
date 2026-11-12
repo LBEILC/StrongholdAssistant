@@ -36,6 +36,7 @@ public sealed partial class HostApi
 
     private void ValidateSettings(SettingsDto settings)
     {
+        if (settings.CollapseMode is not ("strip" or "up")) throw new ArgumentException("收起方式无效。");
         if (settings.FocusCovenants is null || settings.FocusOperators is null
             || settings.FocusCovenants.Any(id => !_names.ContainsKey(id))
             || settings.FocusOperators.Any(name => !_operators.Any(o => o.Name == name)))

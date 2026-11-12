@@ -107,6 +107,7 @@ public sealed partial class HostApi
     {
         if (!_operators.Any(o => o.Name == name)) throw new ArgumentException("干员不存在。");
         _manualBans[name] = banned;
+        SetBanGroupOperator(name, banned);
         return RecomputeBans();
     }
 
@@ -117,9 +118,11 @@ public sealed partial class HostApi
         var extra = incomplete.Except(core).ToHashSet();
         var banned = OperatorBanCalculator.Compute(_operators, core, extra).ToHashSet();
         banned.UnionWith(_avatarBans);
+        var groups = RecomputeBanGroups();
+        banned.UnionWith(_banGroups.Values.SelectMany(g => g.Slots.Values).Select(s => s.Name).OfType<string>());
         foreach (var (name, value) in _manualBans)
             if (value) banned.Add(name); else banned.Remove(name);
-        Match = Match with { Source = "manual", BannedOperators = banned.ToArray() };
+        Match = Match with { Source = "manual", BannedOperators = banned.ToArray(), BanGroups = groups };
         RecomputeTracking();
         return Match;
     }
@@ -258,6 +261,7 @@ public sealed partial class HostApi
         {
             _manualBans.Clear();
             _avatarBans.Clear();
+            _banGroups.Clear();
             Match = new("none", null, _covenants.Select(c => new CovenantState(_ids[c.Name], false)).ToArray(), [], null, []);
             RecomputeTracking();
             Changed?.Invoke("match", Match);

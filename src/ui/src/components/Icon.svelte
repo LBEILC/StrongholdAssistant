@@ -13,6 +13,7 @@
   import check from 'remixicon/icons/System/check-line.svg?raw'
   import arrowRight from 'remixicon/icons/Arrows/arrow-right-s-line.svg?raw'
   import arrowDown from 'remixicon/icons/Arrows/arrow-down-s-line.svg?raw'
+  import arrowUp from 'remixicon/icons/Arrows/arrow-up-s-line.svg?raw'
   import contractLeft from 'remixicon/icons/Arrows/contract-left-line.svg?raw'
   import expandRight from 'remixicon/icons/Arrows/expand-right-line.svg?raw'
   import pencil from 'remixicon/icons/Design/pencil-line.svg?raw'
@@ -33,7 +34,7 @@
   import share from 'remixicon/icons/System/share-forward-line.svg?raw'
   import paste from 'remixicon/icons/Document/clipboard-line.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste }
+  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste }
   export type IconName = keyof typeof icons
 </script>
 

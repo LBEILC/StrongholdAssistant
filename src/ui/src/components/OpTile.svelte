@@ -17,7 +17,7 @@
     isKey?: boolean
     /** 右键弹干员菜单；编辑器、挑选面板里关掉 */
     menu?: boolean
-    onclick?: () => void
+    onclick?: (e: MouseEvent) => void
   }
   let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, menu = true, onclick }: Props = $props()
   const op = $derived(app.op(name))

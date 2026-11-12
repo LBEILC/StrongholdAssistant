@@ -54,8 +54,11 @@ class AppState {
   /** 正在编辑的阵容草稿；新建时 id 为空串 */
   editing = $state<Lineup | null>(null)
   matchEdit = $state(false)
-  /** 「添加禁用干员」面板：盟约 id = 从这个盟约组点开（只列它的干员），true = 不限盟约，false = 关闭 */
-  banPicker = $state<string | boolean>(false)
+  /**
+   * 「添加禁用干员」面板：盟约 id = 从这个盟约组点开（只列它的干员），true = 不限盟约，false = 关闭；
+   * { cov, slot } = 从某组没认出的格子点开，先列这一格的候选，选了就关
+   */
+  banPicker = $state<string | boolean | { cov: string; slot: number }>(false)
   scanning = $state(false)
   /** 持续识别进行中 */
   continuous = $state(false)
@@ -78,13 +81,15 @@ class AppState {
   scanNote = $state<ScanStatus | null>(null)
   /** 收起的分组（本局页等），记在本机，下次打开保持 */
   folded = $state<Record<string, boolean>>(readFolded())
-  /** 覆盖模式下收成竖条 */
-  collapsed = $state(false)
+  /** 收起：strip 收成竖条，up 向上收起（只留标题栏和追踪列表），false 展开 */
+  collapsed = $state<false | 'strip' | 'up'>(false)
   /** 启动与关闭过渡：boot 等网页可见，in 入场，out 关闭前退场 */
   phase = $state<'boot' | 'in' | 'out'>('boot')
 
   target = $derived(this.lineups.find((l) => l.id === this.session.targetLineupId) ?? null)
   banned = $derived(new Set(this.match.bannedOperators))
+  /** 按格位推测出来、还没确认的禁用干员 */
+  inferred = $derived(new Set(this.match.banGroups.flatMap((g) => g.slots.flatMap((s) => (s.inferred && s.name ? [s.name] : [])))))
   // 追踪（2026-11-11 起）：商店里标记的就是 session.tracked / trackedEquipment 这两张表，顶栏原样列出、点一下取消。
   // 设为目标时把名单加进来，取消或换目标时把旧名单移出；干员会反复买卖，所以不记「已持有」
   tracked = $derived(new Set(this.session.tracked))
@@ -113,10 +118,7 @@ class AppState {
   constructor() {
     // 宿主识别到新的开局信息页时推送
     api.onMatch((m) => (this.match = m))
-    api.onConnection((c) => {
-      this.connection = c
-      if (!c.overlay) this.collapsed = false // 宿主离开覆盖模式时已经恢复宽度
-    })
+    api.onConnection((c) => (this.connection = c))
     api.onScan((s) => {
       this.scanning = s.busy
       if (s.message) this.scanNote = s
@@ -138,10 +140,16 @@ class AppState {
     api.applyUpdate()
   }
 
-  setCollapsed(v: boolean) {
+  /** 收起或展开。向上收起时窗口高度由 App 量好内容再发 collapseUp */
+  setCollapsed(v: false | 'strip' | 'up') {
     this.collapsed = v
-    if (v) this.settingsOpen = false
-    api.windowCommand(v ? 'collapse' : 'expand')
+    if (!v) return void api.windowCommand('expand')
+    this.setTab(this.tab) // 关掉所有弹层
+    if (v === 'strip') api.windowCommand('collapse')
+  }
+  /** 标题栏的收起按钮：按设置里的收起方式 */
+  collapse() {
+    this.setCollapsed(this.settings.collapseMode)
   }
 
   toggleFold(key: string) {
@@ -229,7 +237,7 @@ class AppState {
       this.matchEdit = false
       if (this.connection.overlay && !this.collapsed) {
         this.autoCollapsed = true
-        this.setCollapsed(true)
+        this.setCollapsed('strip')
       }
     } else this.endContinuous()
     api.scanContinuous(on)
@@ -251,6 +259,10 @@ class AppState {
   }
   async toggleBanned(name: string) {
     this.match = await api.setOperatorBanned(name, !this.banned.has(name))
+  }
+  /** 明确设成禁用 / 不禁用：确认推测、说「不是他」、从候选里选 */
+  async setBanned(name: string, v: boolean) {
+    this.match = await api.setOperatorBanned(name, v)
   }
 
   /** 切换顶部标签：所有弹层（详情、编辑器、添加禁用、导入、设置）一起关掉 */

@@ -89,10 +89,18 @@ public partial class MainWindow : Window
                 locked = true;
             }
             object? result;
+            bool followedBefore = _api.Settings.FollowGame;
             if (request.Method == "windowCommand")
             {
                 windowCommand = request.Params[0].GetString();
                 if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready")) throw new ArgumentException("窗口命令无效。");
+                result = null;
+            }
+            else if (request.Method == "collapseUp")
+            {
+                var height = request.Params[0].GetDouble();
+                if (!double.IsFinite(height) || height <= 0) throw new ArgumentException("收起高度无效。");
+                SetCollapse(true, height);
                 result = null;
             }
             else
@@ -101,7 +109,7 @@ public partial class MainWindow : Window
                 if (request.Method is "rescan" or "scanContinuous") await _initialization;
                 result = await _api.InvokeAsync(request.Method, request.Params);
             }
-            if (request.Method is "saveSettings" or "importData") RefreshScale();
+            if (request.Method is "saveSettings" or "importData") RefreshSettings(followedBefore);
             if (request.Method == "connection")
                 Trace.WriteLine($"connection()={JsonSerializer.Serialize(result, HostApi.JsonOptions)}");
             Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { id, result }, HostApi.JsonOptions));

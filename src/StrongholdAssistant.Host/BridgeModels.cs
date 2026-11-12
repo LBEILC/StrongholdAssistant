@@ -20,6 +20,8 @@ public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[]
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
     public bool AlwaysOnTop { get; init; }
+    public bool FollowGame { get; init; } = true;
+    public string CollapseMode { get; init; } = "strip";
     public string[] FocusCovenants { get; init; } = [];
     public string[] FocusOperators { get; init; } = [];
     public System.Text.Json.JsonElement UiScale { get; init; } = System.Text.Json.JsonSerializer.SerializeToElement("auto");
@@ -29,7 +31,13 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
 public sealed record CovenantState(string Id, bool Incomplete);
 public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[] Covenants,
     string[] BannedOperators, string? BossId, string[] EnemyTypes,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RecognizedAt = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RecognizedAt = null)
+{
+    public BanGroup[] BanGroups { get; init; } = [];
+}
+public sealed record BanGroup(string Covenant, BanSlot[] Slots, bool Complete);
+public sealed record BanSlot(string? Name, int Tier, string[] Candidates,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Inferred = null);
 
 public sealed record Connection(string State,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Resolution = null,

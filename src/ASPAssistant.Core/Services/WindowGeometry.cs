@@ -6,6 +6,14 @@ namespace ASPAssistant.Core.Services;
 
 public static class WindowGeometry
 {
+    public static (double Width, double Height) CollapsedSize(double width, double height,
+        double uiScale, bool collapsed, double? upHeight)
+        => !collapsed ? (width, height) : upHeight is { } h ? (width, h * uiScale) : (48 * uiScale, height);
+
+    public static (double Left, double Top) CenterFreePosition(double widthDip, double heightDip, RECT workArea, double dpiScale)
+        => ((workArea.Left + (workArea.Width - widthDip * dpiScale) / 2) / dpiScale,
+            (workArea.Top + (workArea.Height - heightDip * dpiScale) / 2) / dpiScale);
+
     public static bool ShouldHideForCapture(RECT sidebar, RECT client, bool collapsed)
         => !collapsed && sidebar.Left < client.Right && sidebar.Right > client.Left
             && sidebar.Top < client.Bottom && sidebar.Bottom > client.Top;

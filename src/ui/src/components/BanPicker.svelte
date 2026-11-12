@@ -2,7 +2,7 @@
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { asset } from '../lib/assets'
+  import { asset, ROMAN } from '../lib/assets'
   import OpTile from './OpTile.svelte'
   import Icon from './Icon.svelte'
 
@@ -15,17 +15,28 @@
   let onlyIncomplete = $state(true)
   const useIncomplete = $derived(onlyIncomplete && incomplete.length > 0)
   const inAny = (o: { core: string[]; extra: string[] }, ids: string[]) => ids.some((id) => o.core.includes(id) || o.extra.includes(id))
+  // 从没认出的格子点开：这一格的星级和候选。格子被补上（或推测出）后就当普通的盟约入口
+  const from = $derived(app.banPicker)
+  const slotRef = $derived(typeof from === 'object' ? from : null)
+  const slot = $derived(slotRef ? app.match.banGroups.find((g) => g.covenant === slotRef.cov)?.slots[slotRef.slot] : undefined)
+  const open = $derived(slot && !slot.name ? slot : undefined)
   const pool = $derived(
     app.catalog.operators
-      .filter((o) => !o.obtain && (!useIncomplete || inAny(o, incomplete)) && (!q || o.name.includes(q)) && (!bond || inAny(o, [bond])))
+      .filter((o) => !o.obtain && (!useIncomplete || inAny(o, incomplete)) && (!q || o.name.includes(q)) && (!bond || inAny(o, [bond])) && (!open || o.tier === open.tier))
+      .filter((o) => !open?.candidates.includes(o.name))
       .sort((a, b) => b.tier - a.tier),
   )
   const close = () => (app.banPicker = false)
+  // 给格子选人：标为禁用（宿主会填进这一格），选完就关
+  const pickForSlot = async (name: string) => {
+    await app.setBanned(name, true)
+    close()
+  }
   // 每次打开按入口重设筛选
   $effect(() => {
-    const from = app.banPicker
+    const f = app.banPicker
     q = ''
-    bond = typeof from === 'string' ? from : null
+    bond = typeof f === 'string' ? f : typeof f === 'object' ? f.cov : null
     onlyIncomplete = true
   })
 </script>
@@ -41,7 +52,21 @@
       <span class="cnt">本局已禁 <b class="term">{app.match.bannedOperators.length}</b></span>
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
-    <p class="hint">识别漏掉的在这里补上：点头像标记禁用，再点一次解除。</p>
+    {#if open && slotRef}
+      <p class="hint">游戏里{app.cov(slotRef.cov).name}这一组的<b>第 {slotRef.slot + 1} 格</b>没认出，是 {ROMAN[open.tier]} 阶。对着游戏看一眼，点是谁。</p>
+      {#if open.candidates.length}
+        <div class="cands">
+          <span class="lbl">最可能</span>
+          <div class="crow">
+            {#each open.candidates as n (n)}
+              <OpTile name={n} size={52} menu={false} onclick={() => pickForSlot(n)} />
+            {/each}
+          </div>
+        </div>
+      {/if}
+    {:else}
+      <p class="hint">识别漏掉的在这里补上：点头像标记禁用，再点一次解除。</p>
+    {/if}
 
     <div class="pick">
       <div class="search">
@@ -61,9 +86,9 @@
       </div>
       <div class="pool">
         {#each pool as o (o.name)}
-          <OpTile name={o.name} size={44} menu={false} onclick={() => app.toggleBanned(o.name)} />
+          <OpTile name={o.name} size={44} menu={false} onclick={() => (open ? pickForSlot(o.name) : app.toggleBanned(o.name))} />
         {:else}
-          <p class="none">没有符合条件的干员。</p>
+          <p class="none">{open && !q && bond === slotRef?.cov ? `${app.cov(bond).name}里其他 ${ROMAN[open.tier]} 阶的都在上面了；都不是的话点上面的盟约换一个看看。` : '没有符合条件的干员。'}</p>
         {/each}
       </div>
     </div>
@@ -151,6 +176,26 @@
     margin: 0 12px 4px;
     font-size: 11px;
     color: var(--fg-4);
+  }
+  .hint b {
+    color: var(--gold);
+  }
+  /* 这一格的候选：大一号，金色细框圈起来 */
+  .cands {
+    margin: 4px 12px 2px;
+    padding: 8px 8px 6px;
+    background: rgb(243 179 34 / 0.06);
+    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.35);
+  }
+  .cands .lbl {
+    font-size: 11px;
+    color: var(--gold);
+  }
+  .crow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding-top: 6px;
   }
   .pick {
     flex: 1;

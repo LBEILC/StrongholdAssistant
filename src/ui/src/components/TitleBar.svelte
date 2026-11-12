@@ -13,13 +13,19 @@
   <span class="title">卫戍协议助手</span>
   <span class="sub term">Stronghold<br />Assistant</span>
   <span class="spacer"></span>
-  <span class="conn" class:ok={conn.state === 'connected'} title={conn.state === 'connected' ? `已连接游戏窗口 ${conn.resolution}` : '寻找游戏窗口…'}>
+  <!-- 连上游戏只亮绿点（分辨率放进提示里，标题栏窄，显示了会挤掉「覆盖」）；没连上才写字 -->
+  <span class="conn" class:ok={conn.state === 'connected'} title={conn.state === 'connected' ? `已连接游戏窗口 · ${conn.resolution}` : '寻找游戏窗口…'}>
     <span class="dot"></span>
-    <span class="txt">{conn.state === 'connected' ? conn.resolution : '寻找游戏窗口…'}</span>
+    {#if conn.state !== 'connected'}<span class="txt">寻找游戏窗口…</span>{/if}
     {#if conn.overlay}<em class="fs" title="侧栏盖在游戏画面左侧。买东西、布阵时可以点右边的按钮收成细条">覆盖</em>{/if}
   </span>
-  {#if conn.overlay}
-    <button class="wbtn" title="收起成细条" aria-label="收起成细条" onclick={() => app.setCollapsed(true)}><Icon name="contractLeft" size={15} /></button>
+  <!-- 收起常驻，按设置里的收起方式；向上收起后这里变成展开 -->
+  {#if app.collapsed === 'up'}
+    <button class="wbtn on" title="展开侧栏" aria-label="展开侧栏" onclick={() => app.setCollapsed(false)}><Icon name="arrowDown" size={16} /></button>
+  {:else if app.settings.collapseMode === 'up'}
+    <button class="wbtn" title="向上收起，只留追踪列表" aria-label="向上收起" onclick={() => app.collapse()}><Icon name="arrowUp" size={16} /></button>
+  {:else}
+    <button class="wbtn" title="收起成细条" aria-label="收起成细条" onclick={() => app.collapse()}><Icon name="contractLeft" size={15} /></button>
   {/if}
   <!-- 覆盖模式盖在游戏上，宿主总是置顶，按钮只显示状态 -->
   <button
@@ -33,7 +39,7 @@
   >
     <Icon name={onTop ? 'pinFill' : 'pin'} size={15} />
   </button>
-  <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.settingsOpen = true)}>
+  <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.collapsed && app.setCollapsed(false), (app.settingsOpen = true))}>
     <Icon name="settings" size={15} />
   </button>
   <button class="wbtn" title="最小化" aria-label="最小化" onclick={() => api.windowCommand('minimize')}><Icon name="subtract" size={15} /></button>
@@ -155,7 +161,8 @@
     color: var(--fg-1);
     background: var(--bg-3);
   }
-  .wbtn.pinned {
+  .wbtn.pinned,
+  .wbtn.on {
     color: var(--mint);
   }
   .wbtn:disabled {

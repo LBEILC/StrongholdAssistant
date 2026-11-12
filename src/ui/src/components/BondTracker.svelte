@@ -12,7 +12,8 @@
   const t = $derived(app.target)
   const keys = $derived(new Set(t?.members.filter((m) => m.key).map((m) => m.name) ?? []))
   const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
-  const goTarget = () => (app.setTab('lineup'), (app.lineupView = 'target'))
+  // 向上收起时点目标名也先展开
+  const goTarget = () => (app.collapsed && app.setCollapsed(false), app.setTab('lineup'), (app.lineupView = 'target'))
   const fx = { duration: 160, easing: cubicOut, start: 0.6 }
 </script>
 

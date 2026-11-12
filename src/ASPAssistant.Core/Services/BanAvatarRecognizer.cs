@@ -7,16 +7,23 @@ using ASPAssistant.Core.Models;
 
 namespace ASPAssistant.Core.Services;
 
-public sealed record BanAvatarMatch(Rectangle Box, string? Name, string? Covenant, string Candidate, double Score, double Margin);
+public sealed record BanAvatarMatch(Rectangle Box, string? Name, string? Covenant, string Candidate, double Score, double Margin)
+{
+    public int Tier { get; init; }
+    public int? SlotIndex { get; init; }
+    // 标题滚出画面时，以首个完整可见行作为临时原点，交给宿主按已知名字对齐。
+    public int VisibleIndex { get; init; }
+    public bool EndsGroup { get; init; }
+}
 public sealed record BanAvatarResult(IReadOnlyList<BanAvatarMatch> Slots, int Width, int Height,
     double LocateMs, double OcrMs, double CompareMs)
 {
     public string[] Names => Slots.Select(s => s.Name).OfType<string>().Distinct().ToArray();
     // 完整头像已经进入原盟约面板所在的上半区，说明列表发生了滚动。
-    public bool IsScrolledList => Slots.Any(s => s.Covenant != null && s.Box.Y < Height * .43);
+    public bool IsScrolledList => Slots.Any(s => s.Box.Y < Height * .43);
 }
 
-/// <summary>逐个定位禁用角标，只在所在盟约的成员中比较小图相关性。</summary>
+/// <summary>逐个定位禁用角标，在同星级、已知盟约的成员中比较小图相关性；标题不可见时由宿主对齐。</summary>
 public sealed class BanAvatarRecognizer
 {
     public const double MinimumScore = .58;
@@ -80,14 +87,31 @@ public sealed class BanAvatarRecognizer
                 .OrderByDescending(g => g.Text.Box.Y).FirstOrDefault();
             var vector = Vector(source, box);
             int tier = ReadTier(source, box, scale);
-            var scores = _operators.Where(o => o.Tier == tier && (o.CoreCovenants.Contains(group.Name!) || o.AdditionalCovenants.Contains(group.Name!)))
+            var scores = _operators.Where(o => o.Tier == tier && (group.Name == null || o.CoreCovenants.Contains(group.Name) || o.AdditionalCovenants.Contains(group.Name)))
                 .Select(o => (o.Name, Score: _templates[o.Name].Max(t => vector.Zip(t, (a, b) => a * b).Sum())))
                 .OrderByDescending(s => s.Score).ToArray();
             double score = scores.Length == 0 ? 0 : scores[0].Score;
             double margin = scores.Length < 2 ? score : score - scores[1].Score;
             double threshold = scores.Length == 1 ? UniqueTierMinimumScore : MinimumScore;
             matches.Add(new(box, score >= threshold && margin >= MinimumMargin ? scores[0].Name : null,
-                group.Name, scores.Length == 0 ? "" : scores[0].Name, score, margin));
+                group.Name, scores.Length == 0 ? "" : scores[0].Name, score, margin)
+            {
+                Tier = tier,
+                // 90 档样图：首列 x=332，列距 136.5，行距 172；盟约文字顶边比首行低约 120。
+                SlotIndex = group.Name == null ? null :
+                    (int)Math.Round((box.Y - group.Text.Box.Y + 120 * scale) / (172 * scale)) * 7
+                    + (int)Math.Round((box.X - offsetX - 332 * scale) / (136.5 * scale)),
+                VisibleIndex = (int)Math.Round((box.Y - boxes[0].Y) / (172 * scale)) * 7
+                    + (int)Math.Round((box.X - offsetX - 332 * scale) / (136.5 * scale))
+            });
+        }
+        foreach (var group in matches.GroupBy(m => m.Covenant))
+        {
+            var last = group.Last();
+            int column = (int)Math.Round((last.Box.X - offsetX - 332 * scale) / (136.5 * scale));
+            double nextY = last.Box.Y + (column == 6 ? 172 * scale : 0);
+            bool visible = nextY > 155 * scale && nextY + last.Box.Height <= 985 * source.Height / 1080.0;
+            if (visible) matches[matches.IndexOf(last)] = last with { EndsGroup = true };
         }
         // 同一盟约列表里每名干员只出现一次；冲突时只有明显更好的格子可以保留名字。
         foreach (var duplicate in matches.Where(m => m.Name != null).GroupBy(m => (m.Covenant, m.Name)).Where(g => g.Count() > 1))
@@ -150,7 +174,10 @@ public sealed class BanAvatarRecognizer
             var box = new Rectangle(maxX + 1 - size, minY, size, size);
             if (box.Left >= left && box.Top > top && box.Bottom <= bottom) boxes.Add(box);
         }
-        return boxes.OrderBy(b => b.Y).ThenBy(b => b.X).ToList();
+        if (boxes.Count == 0) return boxes;
+        int firstRow = boxes.Min(b => b.Y);
+        // 同一行的红色角标可能相差一个像素，先归到几何行，再按列排序。
+        return boxes.OrderBy(b => Math.Round((b.Y - firstRow) / (172 * scale))).ThenBy(b => b.X).ToList();
     }
 
     private static int ReadTier(Bitmap bitmap, Rectangle box, double scale)

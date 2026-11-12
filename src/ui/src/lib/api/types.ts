@@ -108,6 +108,35 @@ export interface MatchInfo {
   bannedOperators: string[]
   bossId: string | null
   enemyTypes: string[] // 特训敌人类型 code
+  /**
+   * 游戏「本局禁用干员」列表按盟约分组的格子（v0.4.2）：只来自头像识别，按游戏里的顺序。
+   * 界面据此提示「第几格没认出」并给出候选。新局、清空本局时清空；没识别过的盟约不在里面
+   */
+  banGroups: BanGroup[]
+}
+
+/** 禁用列表里一个盟约组 */
+export interface BanGroup {
+  covenant: CovenantId
+  /** 从组的第一格起连续看到过的格子，按游戏顺序 */
+  slots: BanSlot[]
+  /** 这一组的结尾也看到了（后面一格的位置在画面内且是空的或下一组），slots.length 就是这组的总格数 */
+  complete: boolean
+}
+
+/** 禁用列表里的一格 */
+export interface BanSlot {
+  /** 这一格的干员；null = 没认出 */
+  name: string | null
+  /** 这一格读到的星级 1–6 */
+  tier: number
+  /**
+   * 没认出（或推测出）时的候选：同盟约、同星级、本组其他格没出现过、用户没说过「不是」，
+   * 能确认游戏排序时再限定在前后两格之间。按可能性排，最多 6 个
+   */
+  candidates: string[]
+  /** 只剩一个候选时宿主把它填进 name 并算进 bannedOperators，标为推测，等用户确认 */
+  inferred?: boolean
 }
 
 export interface LineupMember {
@@ -156,6 +185,17 @@ export interface Settings {
   uiScale: 'auto' | number
   /** 侧栏窗口置顶（总在其他窗口之上），默认 false。覆盖模式下宿主总是置顶，不看这一项 */
   alwaysOnTop: boolean
+  /**
+   * 跟随游戏窗口（v0.4.2，默认 true）：侧栏贴在游戏右侧、随游戏移动，放不下或全屏时切覆盖模式。
+   * false：宿主不再移动侧栏、不进覆盖模式（connection.overlay 总是 false），侧栏停在用户拖到的位置和大小，
+   * 下次启动还在那里；界面大小 'auto' 仍按游戏画面高度算
+   */
+  followGame: boolean
+  /**
+   * 收起方式（v0.4.2，默认 'strip'）。strip：收成左侧竖条；up：向上收起，只留标题栏和追踪列表。
+   * 两种都随时可以收起，不再限于覆盖模式
+   */
+  collapseMode: 'strip' | 'up'
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
@@ -240,7 +280,10 @@ export interface Api {
   scanContinuous(on: boolean): Promise<void>
   /** 手动修正：盟约是否灰掉（会重新推算禁用干员） */
   setCovenantIncomplete(id: CovenantId, incomplete: boolean): Promise<MatchInfo>
-  /** 手动修正：单个干员是否禁用 */
+  /**
+   * 手动修正：单个干员是否禁用。同时更新 banGroups：banned=true 时填进各组第一个候选里有他的空格（推测格被确认则去掉 inferred）；
+   * banned=false 时他所在的格子变回没认出，并且这格以后不再把他当候选
+   */
   setOperatorBanned(name: string, banned: boolean): Promise<MatchInfo>
   /**
    * 清空本局：盟约状态、禁用干员（含手动标记和同局累计）、策略、首领、特训敌人全部清掉，source 回到 'none'。
@@ -282,10 +325,16 @@ export interface Api {
   onUpdate(cb: (u: UpdateStatus) => void): () => void
   /** 无边框窗口的按钮 */
   /**
-   * 窗口操作。ready：见 onWindow。collapse：覆盖模式下收成竖条（宽 48 DIP × 界面缩放，左边和上边位置不变，高度不变）；
-   * expand：恢复原宽度。离开覆盖模式时宿主自动恢复原宽度，并推送 connection。
+   * 窗口操作。ready：见 onWindow。collapse：收成竖条（宽 48 DIP × 界面缩放，左边和上边位置不变，高度不变）；
+   * expand：恢复收起前的宽度和高度。v0.4.2 起任何模式都能收起；进出覆盖模式、游戏窗口丢失都不再自动展开，
+   * 只有界面发 expand 才展开
    */
   windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready'): Promise<void>
+  /**
+   * 向上收起（v0.4.2）：宽度和左上角不变，高度改成 height（界面 CSS 像素，宿主乘界面缩放）。
+   * 收起期间内容高度变了（追踪列表增减）界面会再发一次；跟随游戏时上边仍和游戏对齐。expand 恢复
+   */
+  collapseUp(height: number): Promise<void>
   /**
    * 启动与关闭过渡。界面挂载后立刻发 windowCommand('ready')，宿主把原生骨架换成网页（网页之前是隐藏的，
    * 隐藏页面里 requestAnimationFrame 不触发，所以不能等动画帧）；网页变为可见后自己播入场动画。

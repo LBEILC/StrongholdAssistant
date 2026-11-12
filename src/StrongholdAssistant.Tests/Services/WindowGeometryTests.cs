@@ -8,6 +8,21 @@ namespace ASPAssistant.Tests.Services;
 
 public class WindowGeometryTests
 {
+    [Fact]
+    public void CollapseModesPreserveExpandedDimensionsAndRespectScale()
+    {
+        WindowGeometry.CollapsedSize(500, 900, 1.25, true, null).Should().Be((60d, 900d));
+        WindowGeometry.CollapsedSize(500, 900, 1.25, true, 180).Should().Be((500d, 225d));
+        WindowGeometry.CollapsedSize(500, 900, 1.25, true, 240).Should().Be((500d, 300d));
+        WindowGeometry.CollapsedSize(500, 900, 1.25, false, null).Should().Be((500d, 900d));
+        var game = new RECT { Left = 0, Top = 60, Right = 1200, Bottom = 960 };
+        var work = new RECT { Left = 0, Top = 0, Right = 1920, Bottom = 1040 };
+        var strip = WindowGeometry.SidePanelBounds(game, work, 1.25, 60, null, false);
+        strip.Left.Should().Be(game.Right);
+        strip.Top.Should().Be(game.Top);
+        WindowGeometry.CenterFreePosition(400, 600, work, 1.25).Should().Be((568d, 116d));
+    }
+
     [Theory]
     [InlineData(1.0)]
     [InlineData(1.25)]
