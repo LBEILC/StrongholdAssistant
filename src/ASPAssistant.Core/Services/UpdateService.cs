@@ -31,7 +31,8 @@ public record UpdateInfo(
 /// <summary>Thrown when the downloaded package does not match the published SHA-256.</summary>
 public class UpdateIntegrityException(string message) : Exception(message);
 
-public partial class UpdateService(Version? currentVersion = null, string? appDirectory = null)
+public partial class UpdateService(Version? currentVersion = null, string? appDirectory = null,
+    string? feedUrl = null, string? mirrorChyanUrl = null, HttpClient? httpClient = null)
 {
     private readonly string _appDirectory = Path.GetFullPath(appDirectory ?? AppContext.BaseDirectory).TrimEnd('\\', '/');
     public bool IsInstalled => File.Exists(Path.Combine(_appDirectory, "installed.json"));
@@ -48,7 +49,8 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     private const string ChecksumsAssetName = "SHA256SUMS.txt";
     private const string AppExecutableName = "StrongholdAssistant.exe";
 
-    private static readonly HttpClient _http = new()
+    private readonly HttpClient _http = httpClient ?? DefaultHttp;
+    private static readonly HttpClient DefaultHttp = new()
     {
         Timeout = TimeSpan.FromSeconds(30),
         DefaultRequestHeaders = { { "User-Agent", "StrongholdAssistant-Updater/1.0" } }
@@ -71,7 +73,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     /// <summary>本次更新的暂存目录（唯一），便于失败时提示用户手动处理。</summary>
     public string? PendingStagingDir { get; private set; }
 
-    public string FeedUrl => ResolveFeedUrl(Environment.GetEnvironmentVariable(FeedOverrideVariable));
+    public string FeedUrl => ResolveFeedUrl(feedUrl ?? Environment.GetEnvironmentVariable(FeedOverrideVariable));
 
     /// <summary>返回生效的更新源地址：环境变量优先，其次 GitHub。</summary>
     public static string ResolveFeedUrl(string? overrideUrl)

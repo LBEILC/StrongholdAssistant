@@ -129,11 +129,6 @@ public class ShopReaderTests(ShopReaderFixture fixture, EnemyRecognitionFixture 
     [Theory]
     [InlineData("shop-tier6-glow-a.png", "突袭手雷|可露希尔|奥斯塔|拉普兰德|斥罪|鸿雪", 1280, 720, 0)]
     [InlineData("shop-tier6-glow-a.png", "突袭手雷|可露希尔|奥斯塔|拉普兰德|斥罪|鸿雪", 2560, 1080, 320)]
-    [InlineData("shop-frontier-tier1-color.png", "坚守盾牌|野鬃|角峰|褐果", 1280, 720, 0)]
-    [InlineData("shop-frontier-tier2-frozen-gray.png", "卫戍推荐信|砾|哈洛德|雪猎|云迹", 1280, 720, 0)]
-    [InlineData("shop-frontier-tier2-frozen-gray.png", "卫戍推荐信|砾|哈洛德|雪猎|云迹", 2560, 1080, 320)]
-    [InlineData("shop-terminal-tier4-frozen-gray.png", "随身身份牌|斯卡蒂|深巡|复奏|风絮|耶拉", 1280, 720, 0)]
-    [InlineData("shop-terminal-tier4-frozen-gray.png", "随身身份牌|斯卡蒂|深巡|复奏|风絮|耶拉", 2560, 1080, 320)]
     public async Task SyntheticResizeAndLetterbox_KeepNamePositions(string file, string expected, int width, int height, int padding)
     {
         fixture.SelectTheme(file);

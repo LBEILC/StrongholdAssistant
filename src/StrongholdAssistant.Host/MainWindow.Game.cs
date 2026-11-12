@@ -167,7 +167,6 @@ public partial class MainWindow
 
     private async Task RecordAutomaticallyAsync(bool solo)
     {
-        if (_api.IsContinuous) return;
         try { await _api.HandleOpeningAsync(solo); }
         catch (RecognitionException) { /* 失败已由 scan 事件送达界面，忙碌时跳过自动请求。 */ }
     }

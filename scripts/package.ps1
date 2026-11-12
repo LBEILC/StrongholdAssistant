@@ -1,4 +1,4 @@
-﻿param([Parameter(Mandatory = $true, Position = 0)][string]$Version, [switch]$ForceTests)
+﻿param([Parameter(Mandatory = $true, Position = 0)][string]$Version, [switch]$ForceTests, [switch]$ReuseOnly)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
@@ -12,9 +12,27 @@ function Run([scriptblock]$Command) {
     & $Command
     if ($LASTEXITCODE -ne 0) { throw "命令执行失败：$Command" }
 }
+# 只记录已提交且干净的产品输入；测试文件不影响包指纹。
+$release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
+$zip = Join-Path $release "StrongholdAssistant-v$Version-win-x64.zip"
+$setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
+$packageCache = Join-Path $release "package-$Version.json"
+$paths = @('src', 'data', 'installer', 'branding', 'Directory.Build.props', 'LICENSE', 'LICENSE.upstream', 'NOTICE', 'ASSETS.md', ':(exclude)src/StrongholdAssistant.Tests')
+$entries = @(& git -c core.quotepath=false ls-tree -r HEAD -- src data installer branding Directory.Build.props LICENSE LICENSE.upstream NOTICE ASSETS.md | Where-Object { ($_ -split "`t", 2)[1] -notlike 'src/StrongholdAssistant.Tests/*' })
+if ($LASTEXITCODE -ne 0) { throw '读取打包输入失败。' }
+$sha = [Security.Cryptography.SHA256]::Create()
+try { $fingerprint = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($entries -join "`n"))) } finally { $sha.Dispose() }
+$clean = !(& git status --porcelain --untracked-files=all -- $paths)
+if ($LASTEXITCODE -ne 0) { throw '读取打包工作区状态失败。' }
+$previous = if (Test-Path -LiteralPath $packageCache) { Get-Content -LiteralPath $packageCache -Raw -Encoding UTF8 | ConvertFrom-Json }
+$reusable = $clean -and $previous.fingerprint -eq $fingerprint -and (Test-Path -LiteralPath $zip) -and (Test-Path -LiteralPath $setup)
+# 供发版脚本查询是否连包检查也可复用；未通过检查的包仍须 Check。
+if ($ReuseOnly) { return ($reusable -and $previous.checked -eq $true) }
 $timer = [Diagnostics.Stopwatch]::StartNew()
 & (Join-Path $PSScriptRoot 'test-all.ps1') -ForceTests:$ForceTests
 Write-Output "测试阶段：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
+if ($reusable) { Write-Output '产品没变，复用已有的包'; return }
+if (Test-Path -LiteralPath $packageCache) { Remove-Item -LiteralPath $packageCache }
 $timer.Restart()
 $lockHash = (Get-FileHash -LiteralPath 'src/ui/package-lock.json' -Algorithm SHA256).Hash
 $npmCache = 'out/npm-lock.txt'
@@ -94,3 +112,7 @@ $sums = foreach ($file in @($zip, $setup, $notes)) {
 [IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), ($sums -join "`n") + "`n", [Text.Encoding]::ASCII)
 Write-Output "打包完成：$zip ($((Get-Item -LiteralPath $zip).Length) bytes)"
 Write-Output "安装包：$setup ($((Get-Item -LiteralPath $setup).Length) bytes)"
+
+if ($clean -and !(& git status --porcelain --untracked-files=all -- $paths)) {
+    @{ fingerprint = $fingerprint; checked = $false } | ConvertTo-Json | Set-Content -LiteralPath $packageCache -Encoding UTF8
+}

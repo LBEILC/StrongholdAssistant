@@ -301,7 +301,8 @@
               {#if g.more}<em class="more" title="游戏里这一组还没滚到底，持续识别时往下滚动就能补上">往下还有</em>{/if}
             </div>
             <div class="tiles">
-              {#each g.cells as c (c.kind === 'op' ? c.name : `?${c.i}`)}
+              <!-- 格位按位置做 key：合并多屏识别时同组两格可能认成同一个干员，按名字做 key 会重复、整页渲染失败 -->
+              {#each g.cells as c (c.kind === 'op' && c.i < 0 ? c.name : `s${c.i}`)}
                 {#if c.kind === 'unknown'}
                   <button
                     class="slot"

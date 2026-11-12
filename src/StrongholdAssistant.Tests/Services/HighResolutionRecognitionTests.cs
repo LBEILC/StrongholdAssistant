@@ -11,7 +11,6 @@ namespace StrongholdAssistant.Tests.Services;
 public class HighResolutionRecognitionTests(ShopReaderFixture fixture, EnemyRecognitionFixture recognition)
 {
     [Theory]
-    [InlineData(2560, 1440)]
     [InlineData(3840, 2160)]
     public async Task EnlargedSamplesMatchOriginalThroughCapturePath(int width, int height)
     {

@@ -50,7 +50,7 @@ public sealed class MirrorChyanUpdateTests
     public async Task NoCdkBuildsGitHubAssetUrls(bool installed)
     {
         using var fixture = new MirrorFixture(installed);
-        var service = new UpdateService(new Version(1, 0, 0), fixture.DirectoryPath);
+        var service = new UpdateService(new Version(1, 0, 0), fixture.DirectoryPath, mirrorChyanUrl: fixture.Endpoint, httpClient: fixture.Http);
         var info = await service.CheckMirrorChyanAsync("  ");
         Assert.NotNull(info);
         Assert.Equal("github", info.Source);
@@ -77,19 +77,28 @@ public sealed class MirrorChyanUpdateTests
     {
         using var fixture = new MirrorFixture();
         var api = await fixture.CreateApi();
-        api.Updater = new UpdateService(new Version(99, 0, 0), fixture.DirectoryPath);
+        api.Updater = new UpdateService(new Version(99, 0, 0), fixture.DirectoryPath, mirrorChyanUrl: fixture.Endpoint, httpClient: fixture.Http);
         var status = JsonSerializer.SerializeToElement(await api.CheckUpdateAsync());
         Assert.Equal("latest", status.GetProperty("state").GetString());
         Assert.True(status.TryGetProperty("cdkExpiresAt", out _));
+    }
+
+    // 更新说明走固定 GitHub 地址；测试不依赖公网可达性。
+    private sealed class LocalUpdateHandler : HttpClientHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => request.RequestUri!.IsLoopback ? base.SendAsync(request, ct)
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     }
 
     private sealed class MirrorFixture : IDisposable
     {
         private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
         private readonly CancellationTokenSource _stop = new();
-        private readonly string? _oldEndpoint = Environment.GetEnvironmentVariable(UpdateService.MirrorChyanOverrideVariable);
         private readonly HashSet<string> _oldJobs = System.IO.Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").ToHashSet();
         private readonly Task _server;
+        public string Endpoint { get; }
+        public HttpClient Http { get; } = new(new LocalUpdateHandler());
         public string DirectoryPath { get; } = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
         public List<string> Requests { get; } = [];
         public List<string> ApiRequests { get; } = [];
@@ -106,7 +115,7 @@ public sealed class MirrorChyanUpdateTests
             var hash = wrongHash ? new string('0', 64) : Convert.ToHexString(SHA256.HashData(package));
             _listener.Start();
             var root = $"http://127.0.0.1:{((IPEndPoint)_listener.LocalEndpoint).Port}";
-            Environment.SetEnvironmentVariable(UpdateService.MirrorChyanOverrideVariable, root + "/latest");
+            Endpoint = root + "/latest";
             _server = Task.Run(async () =>
             {
                 try
@@ -142,17 +151,17 @@ public sealed class MirrorChyanUpdateTests
         {
             var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), DirectoryPath);
             api.SaveSettings(api.Settings with { UpdateSource = "mirrorchyan", MirrorChyanCdk = "  test-cdk  " });
-            api.Updater = new UpdateService(new Version(1, 0, 0), DirectoryPath);
+            api.Updater = new UpdateService(new Version(1, 0, 0), DirectoryPath, mirrorChyanUrl: Endpoint, httpClient: Http);
             return api;
         }
 
         public void Dispose()
         {
-            Environment.SetEnvironmentVariable(UpdateService.MirrorChyanOverrideVariable, _oldEndpoint);
             _stop.Cancel();
             _server.GetAwaiter().GetResult();
             _listener.Stop();
             _stop.Dispose();
+            Http.Dispose();
             System.IO.Directory.Delete(DirectoryPath, true);
             foreach (var job in System.IO.Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").Except(_oldJobs))
             {

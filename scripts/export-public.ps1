@@ -1,8 +1,56 @@
-﻿param([Parameter(Position = 0)][string]$Destination = 'out/public-repo')
+﻿param([Parameter(Position = 0)][string]$Destination = 'out/public-repo', [switch]$ScanOnly)
 # git 输出 UTF-8，Windows PowerShell 5.1 默认按系统代码页读，中文文件名会乱码。
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+if ($ScanOnly) {
+    # 通过现有 Node 工具链批量读取提交，不解压、不写目标目录。
+    $scanner = @'
+const {spawnSync} = require('node:child_process');
+function git(args, options = {}) {
+    const result = spawnSync('git', args, {maxBuffer: 512 * 1024 * 1024, ...options});
+    if (result.status !== 0) throw new Error(result.stderr.toString());
+    return result.stdout;
+}
+const policy = git(['show', 'HEAD:docs/internal.md']).toString('utf8');
+const block = policy.match(/```forbidden\s*\r?\n([\s\S]*?)```/);
+if (!block) throw new Error('未找到禁用词规则。');
+const rules = block[1].split(/\r?\n/).filter(r => r.trim());
+const patterns = rules.map(r => new RegExp(r, 'i'));
+const entries = git(['ls-tree', '-rz', 'HEAD', '--', 'Directory.Build.props', 'StrongholdAssistant.sln',
+    'src', 'tests', 'scripts', 'data', 'README.md', 'LICENSE', 'LICENSE.upstream', 'NOTICE',
+    'ASSETS.md', '.gitignore', '.gitattributes', '.github', 'branding', 'installer'])
+    .toString('utf8').split('\0').filter(Boolean).map(line => {
+        const [meta, file] = line.split('\t');
+        const [mode, type, hash] = meta.split(' ');
+        if (mode === '120000' || type !== 'blob') throw new Error('不导出符号链接或子模块：' + file);
+        return {file, hash};
+    });
+const blobs = git(['cat-file', '--batch'], {input: entries.map(e => e.hash).join('\n') + '\n'});
+const hits = [];
+let offset = 0;
+for (const {file} of entries) {
+    const end = blobs.indexOf(10, offset);
+    const size = Number(blobs.toString('ascii', offset, end).split(' ')[2]);
+    const bytes = blobs.subarray(end + 1, end + 1 + size);
+    offset = end + 2 + size;
+    const even = bytes.subarray(0, bytes.length - bytes.length % 2);
+    const texts = [bytes.toString('utf8'), even.toString('utf16le'), Buffer.from(even).swap16().toString('utf16le')];
+    for (let i = 0; i < patterns.length; i++)
+        if (texts.some(text => patterns[i].test(text))) hits.push(file + ' : ' + rules[i]);
+}
+if (hits.length) { console.error('导出命中禁用词，目标未修改：\n' + hits.join('\n')); process.exit(1); }
+console.log('禁用词扫描通过：' + entries.length + ' 个文件；来源当前提交。');
+'@
+    Push-Location -LiteralPath $root
+    try {
+        $savedEncoding = $OutputEncoding
+        $OutputEncoding = [Text.Encoding]::UTF8
+        $scanner | & node
+        if ($LASTEXITCODE -ne 0) { throw '禁用词扫描失败。' }
+    } finally { $OutputEncoding = $savedEncoding; Pop-Location }
+    return
+}
 $target = if ([IO.Path]::IsPathRooted($Destination)) { [IO.Path]::GetFullPath($Destination) }
     else { [IO.Path]::GetFullPath((Join-Path (Get-Location) $Destination)) }
 if (!(Test-Path -LiteralPath (Join-Path $target '.git') -PathType Container)) { throw '目标必须是独立的 Git 仓库。' }

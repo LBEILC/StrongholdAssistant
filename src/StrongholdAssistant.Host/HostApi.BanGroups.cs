@@ -10,6 +10,7 @@ public sealed partial class HostApi
         public int Tier;
         public double Score;
         public bool Inferred;
+        public bool Conflict;
         public string[] Candidates = [];
         public HashSet<string> Rejected = [];
     }
@@ -60,8 +61,18 @@ public sealed partial class HostApi
                 if (!target.Slots.TryGetValue(index, out var slot))
                     target.Slots.Add(index, slot = new() { Tier = match.Tier });
                 if (match.Name is { } name && !slot.Rejected.Contains(name)
-                    && (slot.Name is null || slot.Inferred || match.Score > slot.Score))
+                    && (slot.Name is null || slot.Inferred || match.Score > slot.Score
+                        || target.Slots.Any(p => p.Key != index && p.Value.Name == name)))
                 {
+                    // 本次命中的位置优先，旧位置保留为问号，等待下一次实际识别。
+                    foreach (var old in target.Slots.Where(p => p.Key != index && p.Value.Name == name).Select(p => p.Value))
+                    {
+                        old.Name = null;
+                        old.Score = 0;
+                        old.Inferred = false;
+                        old.Conflict = true;
+                    }
+                    slot.Conflict = false;
                     slot.Name = name;
                     slot.Tier = match.Tier;
                     slot.Score = match.Score;
@@ -125,7 +136,7 @@ public sealed partial class HostApi
                         && (before is null || ranks[o.Name] > ranks[before])
                         && (after is null || ranks[o.Name] < ranks[after])).Select(o => o.Name).ToArray();
                     slot.Candidates = candidates.Take(6).ToArray();
-                    if (candidates.Length != 1) continue;
+                    if (slot.Conflict || candidates.Length != 1) continue;
                     slot.Name = candidates[0];
                     slot.Inferred = true;
                     changed = true;

@@ -99,12 +99,12 @@ public sealed class ContinuousScanTests
         await api.StopContinuousAsync();
         Assert.True(api.Match.BansScanned);
 
-        // 手动重扫即便读到不同盟约或首领，也不改变来源标记。
+        // 手动重扫发现不同首领，以及自动进入开局，都清除上一局的扫描状态。
         api.ReadInformation = () => Task.FromResult((api.Match with { BossId = "next" }, Array.Empty<string>()));
         await api.InvokeAsync("rescan", []);
-        Assert.True(api.Match.BansScanned);
+        Assert.False(api.Match.BansScanned);
         await api.HandleOpeningAsync(false);
-        Assert.True(api.Match.BansScanned);
+        Assert.False(api.Match.BansScanned);
 
         api.ReadInformation = () => Task.FromResult((api.Match with { BossId = "new" }, Array.Empty<string>()));
         await api.HandleOpeningAsync(solo);

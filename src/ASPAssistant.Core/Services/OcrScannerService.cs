@@ -172,12 +172,7 @@ public class OcrScannerService : IDisposable
                 return;
             }
 
-            var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _getTrackedNames());
-            if (_shopReader.Failure is { } failure)
-                RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
-            if (EconomyRead is not null)
-                EconomyRead.Invoke(await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadAsync(screenshot, imgWidth, imgHeight));
-            PublishShopItems(rawItems, _shopReader.HasVisibleCards, capturedAt);
+            await ScanShopAsync(screenshot, imgWidth, imgHeight, capturedAt);
         }
         catch (Exception ex)
         {
@@ -190,6 +185,16 @@ public class OcrScannerService : IDisposable
         {
             Interlocked.Exchange(ref _scanning, 0);
         }
+    }
+
+    private async Task ScanShopAsync(byte[] screenshot, int width, int height, DateTimeOffset capturedAt)
+    {
+        var rawItems = await _shopReader.ReadAsync(screenshot, width, height, _getTrackedNames());
+        if (_shopReader.Failure is { } failure)
+            RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
+        if (EconomyRead is not null)
+            EconomyRead.Invoke(await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadAsync(screenshot, width, height));
+        PublishShopItems(rawItems, _shopReader.HasVisibleCards, capturedAt);
     }
 
     private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible, DateTimeOffset capturedAt)

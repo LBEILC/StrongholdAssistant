@@ -88,7 +88,7 @@ public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHe
 
 public sealed class EnemyRecognitionFixture : IDisposable
 {
-    public MaaOcrEngine Engine { get; } = NativeOcrEngines.Create();
+    public CachedTestOcrEngine Engine { get; } = new();
     public BossDataService Bosses { get; } = new();
     public EnemyTypeDataService Types { get; } = new();
 

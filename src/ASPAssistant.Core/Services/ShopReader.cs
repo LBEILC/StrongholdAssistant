@@ -119,10 +119,8 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         var texts = (await engine.RecognizeRegionAsync(ocrInput, 0, 0, strip.Width, strip.Height))
             .Where(t => t.Text.Trim() is not [< (char)128] || t.Box.W <= t.Box.H * 2).ToList();
         if (!texts.Any(t => t.Text.Contains("收起", StringComparison.Ordinal) && t.Box.X + t.Box.W > width * 1.6))
-        {
-            if (HasVisibleCards) Failure = $"没认出商店画面。\n没找到「收起」文字；{OcrSummary(texts)}";
+            // 没找到「收起」时商店未打开，属于正常画面，不上报识别失败。
             return [];
-        }
         var originalTexts = texts.Where(t => t.Box.Y + t.Box.H / 2.0 >= height * 300 / 1080.0
             || t.Text.Contains("收起", StringComparison.Ordinal)).ToList();
         var items = MatchNames(originalTexts, width, height, canvasTop, _names).ToList();

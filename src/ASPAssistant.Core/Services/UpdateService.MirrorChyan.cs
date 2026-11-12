@@ -26,7 +26,7 @@ public partial class UpdateService
         CdkExpiresAt = null;
         CdkProblem = false;
         cdk = cdk.Trim();
-        var endpoint = Environment.GetEnvironmentVariable(MirrorChyanOverrideVariable);
+        var endpoint = mirrorChyanUrl ?? Environment.GetEnvironmentVariable(MirrorChyanOverrideVariable);
         if (string.IsNullOrWhiteSpace(endpoint)) endpoint = "https://mirrorchyan.com/api/resources/StrongholdAssistant/latest";
         var url = endpoint + (endpoint.Contains('?') ? "&" : "?")
             + $"os=win&arch={(IsInstalled ? "x64" : "")}&user_agent=StrongholdAssistant"

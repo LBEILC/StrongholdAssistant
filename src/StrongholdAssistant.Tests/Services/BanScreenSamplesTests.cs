@@ -35,7 +35,7 @@ public sealed class BanScreenSamplesTests(ASPAssistant.Tests.Services.EnemyRecog
         return (season, other);
     }
 
-    private readonly MaaOcrEngine _ocr = fixture.Engine;
+    private readonly IOcrEngine _ocr = fixture.Engine;
 
 
 

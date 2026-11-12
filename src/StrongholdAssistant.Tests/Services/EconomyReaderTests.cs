@@ -6,7 +6,7 @@ namespace StrongholdAssistant.Tests.Services;
 [Collection("Shop OCR")]
 public sealed class EconomyReaderTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture)
 {
-    private readonly MaaOcrEngine _ocr = fixture.Engine;
+    private readonly IOcrEngine _ocr = fixture.Engine;
 
     [Fact]
     public async Task ReadsClosure1600x1024()

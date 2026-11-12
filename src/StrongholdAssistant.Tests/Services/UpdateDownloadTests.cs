@@ -66,13 +66,11 @@ public class UpdateDownloadTests
                 await stream.WriteAsync(body, timeout.Token);
             }
         });
-        var previousFeed = Environment.GetEnvironmentVariable(UpdateService.FeedOverrideVariable);
         string? job = null;
         var beforeJobs = Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").ToHashSet();
         try
         {
-            Environment.SetEnvironmentVariable(UpdateService.FeedOverrideVariable, url);
-            var service = new UpdateService(new Version(0, 1, 0));
+            var service = new UpdateService(new Version(0, 1, 0), feedUrl: url);
             var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"),
                 Path.Combine(Path.GetTempPath(), "StrongholdAssistant-BridgeTest-" + Guid.NewGuid().ToString("N")));
             api.Updater = service;
@@ -113,7 +111,6 @@ public class UpdateDownloadTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable(UpdateService.FeedOverrideVariable, previousFeed);
             timeout.Cancel();
             server.Stop();
             foreach (var directory in Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").Except(beforeJobs))

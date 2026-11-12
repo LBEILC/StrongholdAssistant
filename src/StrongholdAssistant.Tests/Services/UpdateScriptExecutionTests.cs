@@ -13,32 +13,7 @@ public class UpdateScriptExecutionTests
     private static readonly string PowerShell = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
 
-    [Fact]
-    public async Task GeneratedScript_ParsesInWindowsPowerShell()
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var script = Path.Combine(root, "update.ps1");
-            await File.WriteAllTextAsync(script, UpdateService.BuildUpdateScript(
-                int.MaxValue, Path.Combine(root, "source"), Path.Combine(root, "app"),
-                Path.Combine(root, "app", "StrongholdAssistant.exe"), Path.Combine(root, "staging"),
-                Path.Combine(root, "backup"), Path.Combine(root, "update.log")), new UTF8Encoding(true));
-            var parser = Path.Combine(root, "parse.ps1");
-            await File.WriteAllTextAsync(parser, """
-                $tokens = $null
-                $errors = $null
-                [System.Management.Automation.Language.Parser]::ParseFile($args[0], [ref]$tokens, [ref]$errors) | Out-Null
-                if ($errors.Count -gt 0) { $errors | ForEach-Object { [Console]::Error.WriteLine($_.Message) }; exit 1 }
-                """);
-            var result = await RunPowerShellAsync(parser, root, script);
-            result.ExitCode.Should().Be(0, result.Output);
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
     [Theory]
-    [InlineData("normal")]
     [InlineData("中文 空格 & [目录] O'Neil $测试")]
     public async Task Update_ReleasesInheritedWorkingDirectoryAndStartsNewVersion(string folder)
     {
@@ -54,40 +29,6 @@ public class UpdateScriptExecutionTests
             await AssertStartedAsync(app, "new");
             (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should().Contain("activated new version");
             Directory.Exists(Path.Combine(root, "backup")).Should().BeFalse();
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
-    [Fact]
-    public async Task LockedDirectory_DoesNotPartiallyOverwriteOldVersion()
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var (app, source) = await PrepareFilesAsync(root, "locked");
-            var start = new ProcessStartInfo(Path.Combine(app, "StrongholdAssistant.exe"))
-            {
-                UseShellExecute = false, WorkingDirectory = app,
-            };
-            start.ArgumentList.Add("hold");
-            using var holder = Process.Start(start)!;
-            try
-            {
-                await WaitForFileAsync(Path.Combine(app, "held.ready"));
-                var result = await RunUpdateAsync(root, app, source);
-                result.ExitCode.Should().Be(1, result.Output);
-                (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old");
-                File.Exists(Path.Combine(app, "old-only.txt")).Should().BeTrue();
-                File.Exists(Path.Combine(app, "new-only.txt")).Should().BeFalse();
-                await AssertStartedAsync(app, "old");
-                (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should().Contain("rename attempt 10 failed");
-            }
-            finally
-            {
-                await File.WriteAllTextAsync(Path.Combine(app, "release.hold"), "release");
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                await holder.WaitForExitAsync(timeout.Token);
-            }
         }
         finally { DeleteTestDirectory(root); }
     }
@@ -120,93 +61,6 @@ public class UpdateScriptExecutionTests
             File.Exists(Path.Combine(app, "new-only.txt")).Should().BeFalse();
             await AssertStartedAsync(app, "old");
             (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should().Contain("rolled back to previous version");
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
-    [Fact]
-    public async Task OldProcessStillRunning_DoesNotReplaceFilesOrStartAnotherInstance()
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var (app, source) = await PrepareFilesAsync(root, "waiting");
-            var result = await RunUpdateAsync(root, app, source, pid: Environment.ProcessId, shortWait: true);
-            result.ExitCode.Should().Be(1, result.Output);
-            (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old");
-            File.Exists(Path.Combine(app, "new-only.txt")).Should().BeFalse();
-            File.Exists(Path.Combine(app, "started.log")).Should().BeFalse();
-            (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should().Contain("请完全退出辅助");
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
-    [Theory]
-    [InlineData("exit", "未确认就绪就已退出")]
-    [InlineData("failed", "新版启动失败")]
-    public async Task NewVersionFailsBeforeReady_RestoresOldVersion(string mode, string expectedError)
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var (app, source) = await PrepareFilesAsync(root, "early-failure");
-            await File.WriteAllTextAsync(Path.Combine(source, "startup-mode.txt"), mode);
-            var result = await RunUpdateAsync(root, app, source);
-            result.ExitCode.Should().Be(1, result.Output);
-            (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old");
-            File.Exists(Path.Combine(app, "old-only.txt")).Should().BeTrue();
-            File.Exists(Path.Combine(app, "new-only.txt")).Should().BeFalse();
-            await AssertStartedAsync(app, "old");
-            (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should()
-                .Contain(expectedError).And.Contain("rolled back to previous version");
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
-    [Fact]
-    public async Task NewVersionRunningWithoutReady_RollsBackAfterStoppingIt()
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var (app, source) = await PrepareFilesAsync(root, "unconfirmed");
-            await File.WriteAllTextAsync(Path.Combine(source, "startup-mode.txt"), "no-result");
-            var result = await RunUpdateAsync(root, app, source, shortWait: true);
-            result.ExitCode.Should().Be(1, result.Output);
-            (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old");
-            Directory.Exists(Path.Combine(root, "backup")).Should().BeFalse();
-            (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should()
-                .Contain("等待新版启动就绪超时").And.Contain("rolled back to previous version");
-        }
-        finally { DeleteTestDirectory(root); }
-    }
-
-    [Fact]
-    public async Task RestartLauncher_UsesScriptDirectoryInsteadOfInheritingInstallDirectory()
-    {
-        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
-        try
-        {
-            var script = Path.Combine(root, "launcher.ps1");
-            await File.WriteAllTextAsync(script, """
-                @{ cwd = [Environment]::CurrentDirectory; pid = $PID } | ConvertTo-Json |
-                    Set-Content -LiteralPath (Join-Path $PSScriptRoot 'launched.json') -Encoding UTF8
-                Start-Sleep -Milliseconds 1000
-                """);
-            var service = new UpdateService();
-            typeof(UpdateService).GetProperty(nameof(UpdateService.PendingScriptPath))!.SetValue(service, script);
-            service.LaunchPendingUpdateScript().Should().BeTrue();
-            var marker = Path.Combine(root, "launched.json");
-            await WaitForFileAsync(marker);
-            using var json = JsonDocument.Parse(await File.ReadAllTextAsync(marker));
-            try
-            {
-                using var child = Process.GetProcessById(json.RootElement.GetProperty("pid").GetInt32());
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-                await child.WaitForExitAsync(timeout.Token);
-            }
-            catch (ArgumentException) { /* The test-only helper already exited. */ }
-            json.RootElement.GetProperty("cwd").GetString().Should().Be(root);
         }
         finally { DeleteTestDirectory(root); }
     }

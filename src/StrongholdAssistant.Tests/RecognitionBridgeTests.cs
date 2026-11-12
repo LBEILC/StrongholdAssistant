@@ -1,4 +1,6 @@
+using System.Drawing;
 using System.Text.Json;
+using ASPAssistant.Core.Services;
 using ASPAssistant.Tests.Services;
 using StrongholdAssistant.Host;
 
@@ -15,6 +17,68 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         await api.InitializeRecognitionAsync(Data, fixture.Engine,
             async () => await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "TestData", image)));
         return api;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScrolledSampleRecordsEnemiesAndOnlyPreservesSameMatch(bool same)
+    {
+        // 保留已有滚动页的换局与同局合并覆盖。
+        var api = await CreateApi("info-1610-bans-1600x1024.png");
+        api.ApplyRecognizedMatch(api.Match with { BossId = "enemy_9021_acduml",
+            EnemyTypes = same ? ["INVISIBLE", "DOT"] : ["CRITIC", "DOT", "REFLECTION"] }, ["初雪"]);
+        api.SetCovenantIncomplete("kjerag", true);
+        var before = api.Match;
+
+        var match = await api.RecordInformationAsync();
+
+        Assert.Equal("enemy_9021_acduml", match.BossId);
+        Assert.Equal(new[] { "DOT", "INVISIBLE" }, match.EnemyTypes);
+        Assert.Contains("佩佩", match.BannedOperators);
+        if (same)
+        {
+            Assert.Equal(before.Covenants, match.Covenants);
+            Assert.All(before.BannedOperators, name => Assert.Contains(name, match.BannedOperators));
+        }
+        else
+        {
+            Assert.Empty(match.Covenants);
+            Assert.DoesNotContain("初雪", match.BannedOperators);
+            // 25 个直接命中头像，加上既有格位顺序规则补出的异客。
+            Assert.Equal(26, match.BannedOperators.Length);
+        }
+    }
+
+    [Fact]
+    public async Task NewMatchSampleClearsPreviousBansAndSlots()
+    {
+        var api = await CreateApi("info-scrolled-new-match-1920x1080.png");
+        var expected = await api.RecordInformationAsync();
+        Assert.NotEmpty(expected.BannedOperators);
+        Assert.Equal("enemy_9021_acduml", expected.BossId);
+        Assert.Equal(new[] { "DOT", "REFLECTION", "ELEMENT" }.Order(), expected.EnemyTypes.Order());
+        Assert.Empty(expected.Covenants);
+        var oldNames = api.Catalog.GetProperty("operators").EnumerateArray()
+            .Select(o => o.GetProperty("name").GetString()!)
+            .Except(expected.BannedOperators).Take(2).ToArray();
+        var grid = new BanAvatarResult(
+            [new(new Rectangle(0, 200, 100, 100), oldNames[0], "萨尔贡", oldNames[0], .9, .2)
+                { SlotIndex = 0, VisibleIndex = 0, Tier = 6 }], 1920, 1080, 0, 0, 0);
+        api.ApplyRecognizedMatch(api.Match with { EnemyTypes = ["CRITIC", "DOT", "REFLECTION"] }, [], grid);
+        api.SetOperatorBanned(oldNames[1], true);
+        api.SetCovenantIncomplete("kjerag", true);
+        Assert.All(oldNames, name => Assert.Contains(name, api.Match.BannedOperators));
+        Assert.NotEmpty(api.Match.BanGroups);
+
+        var match = await api.RecordInformationAsync();
+
+        Assert.Equal(expected.BossId, match.BossId);
+        Assert.Equal(expected.EnemyTypes, match.EnemyTypes);
+        Assert.Empty(match.Covenants);
+        Assert.Equal(expected.BannedOperators.Order(), match.BannedOperators.Order());
+        Assert.Equal(JsonSerializer.Serialize(expected.BanGroups), JsonSerializer.Serialize(match.BanGroups));
+        Assert.All(oldNames, name => Assert.DoesNotContain(name, match.BannedOperators));
     }
 
     [Fact]

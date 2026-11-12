@@ -5,7 +5,7 @@ namespace ASPAssistant.Core.Services;
 
 public partial class UpdateService
 {
-    private static async Task<JsonElement?> ReadReleaseNotesAsync(string? url, string version, CancellationToken ct)
+    private async Task<JsonElement?> ReadReleaseNotesAsync(string? url, string version, CancellationToken ct)
     {
         if (url is null) return null;
         const int limit = 64 * 1024;

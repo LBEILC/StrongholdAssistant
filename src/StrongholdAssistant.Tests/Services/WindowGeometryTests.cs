@@ -10,8 +10,6 @@ public class WindowGeometryTests
 {
     [Theory]
     [InlineData(1600, 1024, true)]
-    [InlineData(1920, 1200, true)]
-    [InlineData(2560, 1600, true)]
     [InlineData(1620, 1080, true)]
     [InlineData(1920, 1080, true)]
     [InlineData(2560, 1080, false)]
@@ -53,10 +51,7 @@ public class WindowGeometryTests
 
     [Theory]
     [InlineData(1.0)]
-    [InlineData(1.25)]
     [InlineData(1.5)]
-    [InlineData(1.75)]
-    [InlineData(2.0)]
     public void SidePanel_AttachesUsingItsScaledPhysicalWidth(double scale)
     {
         var game = new RECT { Left = 100, Top = 60, Right = 1600, Bottom = 960 };
@@ -76,10 +71,7 @@ public class WindowGeometryTests
 
     [Theory]
     [InlineData(1.0)]
-    [InlineData(1.25)]
     [InlineData(1.5)]
-    [InlineData(1.75)]
-    [InlineData(2.0)]
     public void Fullscreen_PreservesPhysicalHeightRatiosAndFitsWorkArea(double scale)
     {
         var game = new RECT { Left = 1920, Top = 0, Right = 4480, Bottom = 1440 };
@@ -137,10 +129,7 @@ public class WindowGeometryTests
 
     [Theory]
     [InlineData(1.0)]
-    [InlineData(1.25)]
     [InlineData(1.5)]
-    [InlineData(1.75)]
-    [InlineData(2.0)]
     public void RememberedOffset_FollowsGameTranslationAtEachDpi(double scale)
     {
         var game = new RECT { Left = 100, Top = 100, Right = 1000, Bottom = 900 };

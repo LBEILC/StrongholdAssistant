@@ -112,15 +112,26 @@
       {#key app.tab}
         <!-- 历史页在工作台里左右两栏各自滚动，需要撑满滚动区的高度 -->
         <div class:fill={app.tab === 'history'} in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
-          {#if app.tab === 'match'}
-            <MatchPage />
-          {:else if app.tab === 'lineup'}
-            <LineupPage />
-          {:else if app.tab === 'codex'}
-            <CodexPage />
-          {:else}
-            <HistoryPage />
-          {/if}
+          <!-- 一页渲染出错只挡住这一页，别的页照常能切 -->
+          <svelte:boundary onerror={(e) => console.error(e)}>
+            {#if app.tab === 'match'}
+              <MatchPage />
+            {:else if app.tab === 'lineup'}
+              <LineupPage />
+            {:else if app.tab === 'codex'}
+              <CodexPage />
+            {:else}
+              <HistoryPage />
+            {/if}
+            {#snippet failed(error, reset)}
+              <div class="crash">
+                <b>这一页出错了</b>
+                <p>可以先切到别的页，或点「重试」。还不行就在设置里导出诊断包发给我们。</p>
+                <code>{error instanceof Error ? error.message : String(error)}</code>
+                <button onclick={reset}>重试</button>
+              </div>
+            {/snippet}
+          </svelte:boundary>
         </div>
       {/key}
     </main>
@@ -206,6 +217,43 @@
   }
   main > .fill {
     height: 100%;
+  }
+  .crash {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 16px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--fg-3);
+    background: var(--bg-1);
+    box-shadow: inset 2px 0 0 #e0676c;
+  }
+  .crash b {
+    font-size: 14px;
+    color: #f2b8ba;
+  }
+  .crash p {
+    margin: 0;
+  }
+  .crash code {
+    max-width: 100%;
+    font-family: var(--font-term);
+    font-size: 11px;
+    color: var(--fg-4);
+    overflow-wrap: anywhere;
+  }
+  .crash button {
+    height: 28px;
+    padding: 0 14px;
+    font-size: 12px;
+    color: var(--fg-1);
+    background: var(--bg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .crash button:hover {
+    box-shadow: inset 0 0 0 1px var(--fg-4);
   }
   main {
     height: 100%;

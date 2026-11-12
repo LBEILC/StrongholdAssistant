@@ -20,6 +20,7 @@ public sealed partial class HostApi
     private EnemyResult? _scanEnemy;
     private string? _scanFailure;
     private bool _scanOpening;
+    private bool _pendingOpening;
     private DiagnosticOcrEngine? _scanOcr;
     private double? _scanScale;
     private string _scanStep = "截取游戏画面";
@@ -84,7 +85,9 @@ public sealed partial class HostApi
             _scanOcr?.Clear();
             ScanStep("截取游戏画面");
             var (next, avatars) = await ReadInformation();
-            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars, opening || (_scanOpening && _observedRound > 1));
+            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars,
+                opening || _pendingOpening || (_scanOpening && _observedRound > 1));
+            _pendingOpening = false;
             _openingObserved |= _scanOpening;
             if (continuous) Match = Match with { BansScanned = true };
             Changed?.Invoke("match", Match);
@@ -132,12 +135,14 @@ public sealed partial class HostApi
         ScanStep("定位禁用区并识别头像");
         var avatars = _scanShot == null ? null : await _avatars.RecognizeAsync(_scanShot);
         _scanAvatars = avatars;
-        // TODO(design): 盟约已滚出画面时沿用已录入的盟约；首领须仍可读且相同，无法据此区分同首领的新局。
-        bool supplement = Match.RecognizedAt != null && avatars is { IsScrolledList: true };
+        // 轻微滚动时盟约标题已离开画面，头像却还没进入上半区；同样按滚动页补录。
+        bool supplement = avatars is { Slots.Count: > 0 }
+            && (avatars.IsScrolledList || !await _informationDetector.IsInformationScreenAsync(
+                _scanShot!, avatars.Width, avatars.Height));
         if (supplement)
         {
-            var enemy = await _enemyRecognizer.RecognizeAsync(_scanShot!, avatars!.Width, avatars.Height);
-            if (Match.BossId == null || enemy == null || _bosses.Lookup(enemy.BossName)?.EnemyId != Match.BossId)
+            _scanEnemy = await _enemyRecognizer.RecognizeAsync(_scanShot!, avatars!.Width, avatars.Height);
+            if (_scanEnemy is null)
                 _scanFailure = "未找到完整的核心/附加盟约区域，请打开本局信息页并保持面板顶部可见。";
         }
         else
@@ -149,8 +154,8 @@ public sealed partial class HostApi
 
         var result = _scanResult;
         ScanStep($"识别完成: 核心 {result?.CoreCovenants.Count}; 附加 {result?.AdditionalCovenants.Count}; 禁用头像 {avatars?.Names.Length}; 首领 {_scanEnemy?.BossName}");
-        var next = supplement ? Match : new MatchInfo("recognized", null,
-            result!.CoreCovenants.Concat(result.AdditionalCovenants)
+        var next = new MatchInfo("recognized", null,
+            (result is null ? [] : result.CoreCovenants.Concat(result.AdditionalCovenants))
                 .Select(c => new CovenantState(_ids[c.Name], c.IsBanned)).ToArray(),
             [], _scanEnemy is null ? null : _bosses.Lookup(_scanEnemy.BossName)?.EnemyId,
             _scanEnemy?.EnemyTypes.Select(name => _enemyTypes.LookupByTypeName(
@@ -161,27 +166,38 @@ public sealed partial class HostApi
 
     internal int ApplyRecognizedMatch(MatchInfo next, IEnumerable<string> avatars, BanAvatarResult? grid = null, bool opening = false)
     {
-        bool sameMatch = Match.BossId == next.BossId
-            && Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
-        bool newMatch = opening || !sameMatch;
+        // 未读到的区域不参与换局比较；敌人类型按集合比较，忽略 OCR 顺序。
+        bool enemyChanged = (next.BossId is not null && next.BossId != Match.BossId)
+            || (next.EnemyTypes.Length > 0 && Match.EnemyTypes.Length > 0
+                && !next.EnemyTypes.ToHashSet().SetEquals(Match.EnemyTypes));
+        bool covenantsChanged = next.Covenants.Length > 0 && Match.Covenants.Length > 0
+            && !Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
+        bool newMatch = opening || enemyChanged || covenantsChanged;
+        var previous = newMatch ? new HashSet<string>() : Match.BannedOperators.ToHashSet();
         if (newMatch)
         {
             lock (_historyGate) CompleteHistory();
-        }
-        var previous = sameMatch ? Match.BannedOperators.ToHashSet() : [];
-        if (!sameMatch)
-        {
             _avatarBans.Clear();
             _manualBans.Clear();
             _banGroups.Clear();
         }
         if (grid is null) _avatarBans.UnionWith(avatars);
         else MergeBanGroups(grid);
-        Match = next with { StrategyId = newMatch ? null : Match.StrategyId, Solo = Match.Solo, AwaitingDetail = false, Economy = sameMatch && !opening ? Match.Economy : null,
-            BansScanned = Match.BansScanned && !(opening && !sameMatch) };
+        Match = next with
+        {
+            Covenants = next.Covenants.Length > 0 ? next.Covenants : newMatch ? [] : Match.Covenants,
+            BossId = next.BossId ?? (newMatch ? null : Match.BossId),
+            EnemyTypes = next.EnemyTypes.Length > 0 ? next.EnemyTypes : newMatch ? [] : Match.EnemyTypes,
+            StrategyId = newMatch ? null : Match.StrategyId,
+            // 单人开局清空后首次录入详情，保留刚确认的单人模式。
+            Solo = opening || (newMatch && Match.RecognizedAt is not null) ? false : Match.Solo,
+            AwaitingDetail = false,
+            Economy = newMatch ? null : Match.Economy,
+            BansScanned = !newMatch && Match.BansScanned
+        };
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };
-        RecordRecognizedMatch(opening || !sameMatch, opening);
+        RecordRecognizedMatch(newMatch, opening);
         return Match.BannedOperators.Except(previous).Count();
     }
 
@@ -193,6 +209,15 @@ public sealed partial class HostApi
 
     public async Task HandleOpeningAsync(bool solo)
     {
+        if (IsContinuous)
+        {
+            if (!solo)
+            {
+                _pendingOpening = true;
+                return;
+            }
+            await StopContinuousAsync();
+        }
         if (solo)
         {
             lock (_historyGate) CompleteHistory();

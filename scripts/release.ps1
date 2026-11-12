@@ -30,6 +30,7 @@ function Measure-Step([string]$Name, [scriptblock]$Command) {
 try {
     # 续跑也核对基本身份，但不重复构建或上传。
     Measure-Step Preflight {
+        Run { powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-public.ps1 -ScanOnly }
         [xml]$props = Get-Content Directory.Build.props -Raw
         $declared = [string]@($props.Project.PropertyGroup.Version)[0]
         if ($Version -notmatch '^\d+\.\d+\.\d+$' -or $Version -ne $declared) { throw '版本必须与 Directory.Build.props 一致。' }
@@ -54,8 +55,16 @@ try {
         } else { Write-Output '本地验收：不检查 GitHub 登录和正文，不执行提交、推送或 Release 操作。' }
     }
     if ($first -le 3) {
+        . (Join-Path $root 'tools/export-fingerprint.ps1')
+        $fingerprint = Get-ExportFingerprint $root
+        $cache = Join-Path $root 'out/export-check.txt'
+        $exportScripts = @('scripts/export-public.ps1')
+        if ($fingerprint -and (Test-Path -LiteralPath $cache) -and
+            (Get-Content -LiteralPath $cache -Raw).Trim() -eq $fingerprint) {
+            Write-Output '导出机制没变，跳过导出检查'
+        } else { $exportScripts += 'tools/check-export.ps1' }
         # 两者只读同一提交，输出到不同目录，可以各自与打包同时运行。
-        $exportJob = @(foreach ($script in @('scripts/export-public.ps1', 'tools/check-export.ps1')) {
+        $exportJob = @(foreach ($script in $exportScripts) {
             Start-Job -ArgumentList $root, $script -ScriptBlock {
                 param($root, $script)
                 $ErrorActionPreference = 'Stop'
@@ -67,11 +76,21 @@ try {
             }
         })
     }
+    $reusePackage = & (Join-Path $PSScriptRoot 'package.ps1') $Version -ReuseOnly
     if ($first -le 1) {
         Measure-Step Package { Run { powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1 $Version } }
     }
     if ($first -le 2) {
-        Measure-Step Check { Run { powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-package.ps1 -ZipPath $zip -Version $Version -SetupPath $setup -OfflineOnly } }
+        if ($reusePackage) { Write-Output '已有包检查通过，跳过 Check。' }
+        else {
+            Measure-Step Check { Run { powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-package.ps1 -ZipPath $zip -Version $Version -SetupPath $setup -OfflineOnly } }
+            $packageCache = Join-Path $release "package-$Version.json"
+            if (Test-Path -LiteralPath $packageCache) {
+                $record = Get-Content -LiteralPath $packageCache -Raw -Encoding UTF8 | ConvertFrom-Json
+                $record.checked = $true
+                $record | ConvertTo-Json | Set-Content -LiteralPath $packageCache -Encoding UTF8
+            }
+        }
     }
     if ($first -le 3) {
         Measure-Step Export {
