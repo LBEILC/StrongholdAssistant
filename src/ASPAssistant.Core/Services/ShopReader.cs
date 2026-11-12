@@ -1,4 +1,4 @@
-// 2026-11-12：忽略可露希尔主题单字名称旁被识别为 △ 的职业图标。
+// 2026-11-12：高画面商店按宽度缩放并锚定底部；忽略单字名称旁被识别为 △ 的职业图标。
 // 2026-11-11：从卡片间距测量 UI 缩放，以右下角为基准换算名称栏。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Drawing;
@@ -44,10 +44,11 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         }
         var workingImage = enlarged ?? source;
         double k = GameUiScale.Shop(workingImage);
+        double scale = Math.Min(width / 1920.0, height / 1080.0);
         HasVisibleCards = ShopLayout.HasCards(workingImage, k, theme);
-        int ShopY(double y) => (int)Math.Round(height - (1080 - y) * height / 1080.0 * k);
-        int ShopX(double offset) => (int)Math.Round(width - (width / 2.0 - offset * height / 1080.0) * k);
-        int Size(double size) => (int)Math.Round(size * height / 1080.0 * k);
+        int ShopY(double y) => (int)Math.Round(height - (1080 - y) * scale * k);
+        int ShopX(double offset) => (int)Math.Round(width - (width / 2.0 - offset * scale) * k);
+        int Size(double size) => (int)Math.Round(size * scale * k);
         // Isolate and enlarge small, dim text. Including the snowflakes below this
         // strip makes the detector merge or lose frozen card names.
         int top = ShopY(theme == GameShopTheme.Terminal ? 1014 : 990);

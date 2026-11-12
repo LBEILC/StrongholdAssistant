@@ -448,6 +448,8 @@ export const mockApi: Api = {
   sklandGuide: async (url) => {
     await new Promise((r) => setTimeout(r, 1000))
     if (url.includes('fail')) throw new Error('20 秒内没读到攻略内容，可能是森空岛页面改版了，或者这篇攻略已被删除。')
+    // 链接里带 broken：模拟带技术细节的错误（第二行起是细节，见 bridge.ts）
+    if (url.includes('broken')) throw new Error('森空岛攻略的数据结构已变化，暂时无法读取。\nInvalidOperationException: tabs[4].activeBonds 是 null')
     const op = (id: string, elite = false) => ({ id, elite })
     const formation = {
       type: 'FORMATION',

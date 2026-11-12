@@ -9,6 +9,24 @@ namespace ASPAssistant.Tests.Services;
 public class WindowGeometryTests
 {
     [Theory]
+    [InlineData(1600, 1024, true)]
+    [InlineData(1920, 1200, true)]
+    [InlineData(2560, 1600, true)]
+    [InlineData(1620, 1080, true)]
+    [InlineData(1920, 1080, true)]
+    [InlineData(2560, 1080, false)]
+    [InlineData(1440, 1080, false)]
+    public void AcceptsGameAspectRatiosFromThreeTwoToSixteenNine(int width, int height, bool expected)
+        => Assert.Equal(expected, WindowGeometry.IsSupportedGameAspectRatio(width, height));
+
+    [Fact]
+    public void TallMumuImageUsesItsActualAspectRatioInsideViewport()
+    {
+        var actual = WindowGeometry.FitAspectRatio(new RECT { Right = 1800, Bottom = 1024 }, 1600, 1024);
+        Assert.Equal((100, 0, 1600, 1024), (actual.Left, actual.Top, actual.Width, actual.Height));
+    }
+
+    [Theory]
     [InlineData(2000, 900, 200, 0, 1600, 900)]
     [InlineData(1600, 1200, 0, 150, 1600, 900)]
     [InlineData(1600, 900, 0, 0, 1600, 900)]

@@ -8,6 +8,15 @@ public sealed class EconomyReaderTests : IDisposable
 {
     private readonly MaaOcrEngine _ocr = new(Path.Combine(AppContext.BaseDirectory, "data"));
 
+    [Fact]
+    public async Task ReadsClosure1600x1024()
+    {
+        var bytes = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory,
+            "TestData", "shop-closure-round1-1600x1024.png"));
+        var result = await new EconomyReader(_ocr, GameShopTheme.Closure).ReadAsync(bytes, 1600, 1024);
+        Assert.Equal(new EconomyReading(1, 4, 1, 5, true), result);
+    }
+
     [Theory]
     [InlineData("shop-terminal-ui100-2000x1125.png")]
     [InlineData("shop-ursus-ui100-2000x1125.png")]

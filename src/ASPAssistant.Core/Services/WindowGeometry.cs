@@ -1,4 +1,5 @@
 // Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+// 2026-11-12：支持 3:2 到 16:9，保留上边界原有的两像素舍入容差。
 // 2026-11-12：移植上游 PR #5 的 FitAspectRatio 和横屏比例判断。
 using ASPAssistant.Core.Interop;
 using ASPAssistant.Core.Models;
@@ -8,7 +9,7 @@ namespace ASPAssistant.Core.Services;
 public static class WindowGeometry
 {
     public static bool IsSupportedGameAspectRatio(int width, int height)
-        => width > 0 && height > 0 && Math.Abs(width - height * 16.0 / 9) <= 2;
+        => width > 0 && height > 0 && width >= height * 1.5 && width <= height * 16.0 / 9 + 2;
 
     /// <summary>按画面比例居中裁去显示区域的黑边，坐标为物理像素。</summary>
     public static RECT FitAspectRatio(RECT bounds, int imageWidth, int imageHeight)

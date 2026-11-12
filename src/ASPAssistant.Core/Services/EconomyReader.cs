@@ -13,7 +13,7 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
     {
         using var stream = new MemoryStream(png);
         using var bitmap = new Bitmap(stream);
-        double scale = height / 1080.0 * GameUiScale.Shop(bitmap);
+        double scale = Math.Min(width / 1920.0, height / 1080.0) * GameUiScale.Shop(bitmap);
         var top = await ocr.RecognizeRegionAsync(png, (int)(width * .32), 0, (int)(width * .25), (int)(height * .09));
         string heading = string.Join("", top.OrderBy(t => t.Box.X).Select(t => t.Text));
         var roundLabel = top.FirstOrDefault(t => t.Text.Trim() == "回合");
@@ -38,8 +38,11 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
             if (panel.Any(t => t.Text == "已满级" && Math.Abs(t.Box.X + t.Box.W / 2 - center) < 60 * scale))
                 return new(round, money, 6, null, heading.Contains("休息") || heading.Contains("休整"));
             bool closure = theme == GameShopTheme.Closure;
-            var levelText = await ocr.RecognizeLineAsync(png, center - (int)((closure ? 37 : 48) * scale),
-                (label.Text == "升级" ? (int)(height - 183 * scale) : label.Box.Y + label.Box.H + (closure ? 5 : 0)), (int)((closure ? 74 : 96) * scale), (int)((closure ? 48 : 58) * scale));
+            // 可露希尔未检出 LEVEL 时，从底部定位完整等级字形，并避开两侧箭头。
+            bool closureUpgrade = closure && label.Text == "升级";
+            int levelWidth = closureUpgrade ? 48 : closure ? 74 : 96;
+            var levelText = await ocr.RecognizeLineAsync(png, center - (int)(levelWidth / 2 * scale),
+                (label.Text == "升级" ? (int)(height - (closure ? 199 : 183) * scale) : label.Box.Y + label.Box.H + (closure ? 5 : 0)), (int)(levelWidth * scale), (int)((closure ? 48 : 58) * scale));
             string text = string.Join("", levelText.Select(t => t.Text)).Trim().ToUpperInvariant();
             level = text switch { "I" or "Ⅰ" or "1" => 1, "II" or "Ⅱ" => 2,
                 "III" or "Ⅲ" => 3, "IV" or "Ⅳ" => 4, "V" or "Ⅴ" => 5, "VI" or "Ⅵ" => 6, _ => null };

@@ -110,7 +110,8 @@
   <div class="content" class:wb={app.workbench} class:docked={app.workbench && (!!app.detail || !!plaza.viewing)}>
     <main bind:this={scroller}>
       {#key app.tab}
-        <div in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
+        <!-- 历史页在工作台里左右两栏各自滚动，需要撑满滚动区的高度 -->
+        <div class:fill={app.tab === 'history'} in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
           {#if app.tab === 'match'}
             <MatchPage />
           {:else if app.tab === 'lineup'}
@@ -202,6 +203,9 @@
     position: relative;
     flex: 1;
     min-height: 0;
+  }
+  main > .fill {
+    height: 100%;
   }
   main {
     height: 100%;

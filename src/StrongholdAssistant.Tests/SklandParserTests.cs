@@ -51,6 +51,99 @@ public sealed class SklandParserTests
         Assert.Empty(SklandParser.ParseGuide(missing.ToJsonString(), Url).Strategies);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GuideAllowsEmptyOptionalFieldsAcrossFiveStages(bool missing)
+    {
+        var root = JsonNode.Parse(GuideJson)!;
+        var wrapper = root["data"]!["guide"]!;
+        var guide = wrapper["guide"]!;
+        var tabs = guide["tabs"]!.AsArray();
+        while (tabs.Count < 5) tabs.Add(tabs[1]!.DeepClone());
+        for (var i = 1; i < 5; i++)
+        {
+            tabs[i]!["startRound"] = new[] { 1, 4, 8, 11 }[i - 1];
+            tabs[i]!["endRound"] = new[] { 3, 7, 10, 13 }[i - 1];
+        }
+        void Empty(JsonNode node, string name)
+        {
+            if (missing) node.AsObject().Remove(name);
+            else node[name] = null;
+        }
+        Empty(tabs[4]!, "activeBonds");
+        Empty(tabs[2]!["activeBonds"]!, "seasonBondIds");
+        Empty(tabs[2]!["activeBonds"]!, "regularBondIds");
+        Empty(tabs[3]!, "recChars");
+        Empty(tabs[3]!, "recItems");
+        Empty(tabs[3]!, "operationIdea");
+        Empty(tabs[1]!["recChars"]![0]!, "mergeLevel");
+        Empty(guide, "strategyIds");
+        Empty(wrapper["poster"]!, "nickname");
+
+        var parsed = SklandParser.ParseGuide(root.ToJsonString(), Url);
+        Assert.Equal(5, parsed.Stages.Length);
+        Assert.Empty(parsed.Stages[4].Covenants);
+        Assert.Empty(parsed.Stages[2].Covenants);
+        Assert.Empty(parsed.Stages[3].Operators);
+        Assert.Empty(parsed.Stages[3].Equipment);
+        Assert.Equal("", parsed.Stages[3].Notes);
+        Assert.Null(parsed.Stages[1].Operators[0].Module);
+        Assert.False(parsed.Stages[1].Operators[0].Elite);
+        Assert.Empty(parsed.Strategies);
+        Assert.Equal("", parsed.Author);
+    }
+
+    [Fact]
+    public void MissingRequiredTabsReportsTechnicalDetails()
+    {
+        var root = JsonNode.Parse(GuideJson)!;
+        root["data"]!["guide"]!["guide"]!.AsObject().Remove("tabs");
+        var error = Assert.Throws<SklandException>(() => SklandParser.ParseGuide(root.ToJsonString(), Url));
+        var lines = error.Message.Split('\n');
+        Assert.Equal("森空岛攻略的数据结构已变化，暂时无法读取。", lines[0]);
+        Assert.StartsWith("KeyNotFoundException: ", lines[1]);
+        Assert.True(lines[1].Length > "KeyNotFoundException: ".Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HistoryAllowsEmptyOptionalArrays(bool missing)
+    {
+        var root = JsonNode.Parse("""
+            {"code":0,"data":{"records":[
+              {"id":"empty","bandId":"","chessSquad":null,
+               "completeState":0,"gameStartTs":"0","gameEndTs":"0","coinCost":0,"killCnt":0,
+               "bondInfo":null,"acBossInfo":null,"modeType":"SINGLE","modeDifficulty":"NORMAL","passRound":8,"versionId":"V3_1"},
+              {"id":"no-equips","bandId":"","chessSquad":[
+                {"charId":"char_171_bldsk","chessId":"a","chessInfo":{"goldenChessId":"b"},"equips":null}],
+               "completeState":0,"gameStartTs":"0","gameEndTs":"0","coinCost":0,"killCnt":0,
+               "bondInfo":null,"acBossInfo":null,"modeType":"SINGLE","modeDifficulty":"NORMAL","passRound":8,"versionId":"V3_1"}
+            ]}}
+            """)!;
+        if (missing)
+        {
+            var records = root["data"]!["records"]!;
+            records[0]!.AsObject().Remove("chessSquad");
+            records[1]!["chessSquad"]![0]!.AsObject().Remove("equips");
+            foreach (var record in records.AsArray())
+            {
+                record!.AsObject().Remove("bondInfo");
+                record.AsObject().Remove("acBossInfo");
+            }
+        }
+        var parsed = SklandParser.ParseHistory(root.ToJsonString())!;
+        Assert.Empty(parsed[0].Operators);
+        Assert.Single(parsed[1].Operators);
+        Assert.All(parsed, record =>
+        {
+            Assert.Empty(record.Equipment);
+            Assert.Empty(record.Covenants);
+            Assert.Empty(record.Bosses);
+        });
+    }
+
     [Fact]
     public void GuideRejectsInvalidOrNonzeroCode()
     {

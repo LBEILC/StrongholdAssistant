@@ -9,6 +9,7 @@
   import { allStages, stageLabel, stageView } from '../lib/stages'
   import LineupCard from './LineupCard.svelte'
   import Icon from './Icon.svelte'
+  import ErrorNote from './ErrorNote.svelte'
 
   // 导入阵容：底部面板。粘贴分享码马上解码预览（整句转发的消息也行）；粘贴森空岛攻略链接就去读那篇攻略。
   // 名字可以先改，再导入或导入并设为目标
@@ -23,7 +24,9 @@
   let reading = $state(false)
   let readErr = $state('')
   let stageIx = $state(0)
+  let retry = $state(0)
   $effect(() => {
+    void retry
     const url = link
     guide = null
     readErr = ''
@@ -102,7 +105,11 @@
       <button class="lnk" disabled={histBusy} onclick={history}><Icon name="download" size={12} />{histBusy ? '等待森空岛窗口…' : '从森空岛历史战绩导入'}</button>
       <span>会弹出森空岛窗口，没登录的话在里面登录</span>
     </div>
-    {#if histErr}<p class="err">{histErr}</p>{/if}
+    {#if histErr}
+      <ErrorNote title="读取森空岛历史战绩失败" error={histErr}>
+        {#snippet actions()}<button onclick={history} disabled={histBusy}><Icon name="refresh" size={12} />重试</button>{/snippet}
+      </ErrorNote>
+    {/if}
     {#if records && !link}
       {#if records.length}
         <ul class="recs">
@@ -123,10 +130,12 @@
     {#if link && reading}
       <p class="reading"><i class="spin"></i>正在从森空岛读取攻略…</p>
     {:else if link && readErr}
-      <div class="err">
-        {readErr}
-        <button class="lnk" onclick={() => api.openUrl(link)}>在浏览器里打开<Icon name="arrowRight" size={12} /></button>
-      </div>
+      <ErrorNote title="读取森空岛攻略失败" error={readErr} context={{ 链接: link }}>
+        {#snippet actions()}
+          <button onclick={() => retry++}><Icon name="refresh" size={12} />重试</button>
+          <button onclick={() => api.openUrl(link!)}>在浏览器里打开<Icon name="arrowRight" size={12} /></button>
+        {/snippet}
+      </ErrorNote>
     {:else if result && !result.ok}
       <p class="err">{result.error}</p>
     {/if}
@@ -319,13 +328,6 @@
   .recs span {
     font-size: 11px;
     color: var(--fg-4);
-  }
-  .err .lnk {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 6px;
-    color: var(--mint);
   }
   .reading {
     display: flex;

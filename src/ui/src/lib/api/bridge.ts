@@ -1,6 +1,8 @@
 // WebView2 消息桥（界面一侧）。协议由设计定义，宿主（C#）照此实现：
 //   界面 → 宿主  { id: number, method: keyof Api, params: unknown[] }   postMessage 发对象
 //   宿主 → 界面  { id, result } 或 { id, error: string }                 回应同 id 的请求
+//                error 第一行是给用户看的中文原因；第二行起（可选，v0.7.1）是技术细节（异常类型、出错的字段或状态码等），
+//                界面折叠显示，用户可以复制下来反馈。没有细节就只写一行
 //   宿主 → 界面  { event: 'match' | 'connection' | 'scan' | 'update', data } 主动推送，data 依次是 MatchInfo / Connection / ScanStatus / UpdateStatus
 // method 名与参数顺序与 types.ts 的 Api 一致。
 import type { Api } from './types'

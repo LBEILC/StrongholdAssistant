@@ -1,3 +1,4 @@
+// 2026-11-12：高画面首领取区按宽度缩放，避免漏掉领袖标题。
 // 2026-11-12：首领区域增加随 UI 缩放的检测边距，避免紧裁剪导致相似字误读。
 // 2026-11-11：按截图测得的游戏 UI 缩放换算首领和特训敌人区域。
 // 2026-11-11：修正禁用列表样图中领袖标题的 OCR 字形误读。
@@ -17,7 +18,7 @@ public sealed class EnemyRecognizer(IOcrEngine ocr, IOcrStrategy ocrStrategy, Bo
         // 左侧及上下各留 1% 检测边距，再统一换算 UI 缩放；右侧仍排除账号水印。
         region = region with { XPercent = region.XPercent - .01, YPercent = region.YPercent - .01,
             WidthPercent = region.WidthPercent + .01, HeightPercent = region.HeightPercent + .02 };
-        region = GameUiScale.InformationRegion(region, GameUiScale.Information(screenshot));
+        region = GameUiScale.InformationRegion(region, GameUiScale.Information(screenshot), imgWidth, imgHeight);
         // 放大后的右栏贴近屏幕边缘，仍保留原有 2% 外侧留白，排除竖排账号水印。
         region = region with { WidthPercent = Math.Min(region.WidthPercent, .98 - region.XPercent) };
         var texts = await ocr.RecognizeRegionAsync(screenshot,

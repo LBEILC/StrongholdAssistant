@@ -63,6 +63,11 @@
     open = null
   }
 
+  // 分组可折叠，状态记在本机（同本局页）
+  const shown = (key: string) => !app.folded[`history.${key}`]
+  const fold = (key: string) => () => app.toggleFold(`history.${key}`)
+  const sl = { duration: 180 }
+
   // 资金曲线：每回合起始资金，折线 + 点
   function curve(rounds: { round: number; startMoney: number }[]) {
     const max = Math.max(...rounds.map((r) => r.startMoney), 1)
@@ -73,7 +78,7 @@
 
 <div class="page">
   <section class="rec">
-    <SectionHeader title="对局记录" tag="{records.length} 局" en="MATCH RECORDS">
+    <SectionHeader title="对局记录" tag="{records.length} 局" en="MATCH RECORDS" ontoggle={fold('records')} folded={!shown('records')}>
       {#snippet icon()}<Icon name="history" size={18} />{/snippet}
       {#snippet right()}
         <button class="ghost" class:busy={history.syncing} disabled={history.syncing} onclick={sync} title="读森空岛里的历史战绩，补上结果、最终阵容和花费">
@@ -82,6 +87,8 @@
       {/snippet}
     </SectionHeader>
 
+    {#if shown('records')}
+    <div class="fold" transition:slide={sl}>
     {#if records.some((r) => r.skland)}
       <p class="mkdef">编辑阵容时加干员，技能和模组想默认用自己常用的？<button class="ghost" onclick={makeDefaults}>按战绩生成我的默认</button></p>
     {/if}
@@ -192,12 +199,16 @@
         </div>
       {/each}
     </div>
+    </div>
+    {/if}
   </section>
 
   <section class="stats">
-    <SectionHeader title="战绩统计" tag="{s.total} 局有结果" en="STATISTICS">
+    <SectionHeader title="战绩统计" tag="{s.total} 局有结果" en="STATISTICS" ontoggle={fold('stats')} folded={!shown('stats')}>
       {#snippet icon()}<Icon name="chart" size={18} />{/snippet}
     </SectionHeader>
+    {#if shown('stats')}
+    <div class="fold" transition:slide={sl}>
     <div class="filters">
       <Seg items={[{ id: 'all', label: '全部' }, { id: 'MULTI', label: '联机' }, { id: 'SINGLE', label: '单人' }]} value={mode} onchange={(v) => (mode = v)} />
       <Seg items={[{ id: '7', label: '近 7 天' }, { id: '30', label: '近 30 天' }, { id: 'all', label: '全部时间' }]} value={range} onchange={(v) => (range = v)} />
@@ -213,14 +224,17 @@
         <div><b class="term">{Math.round(s.avgSpent)}</b><span>平均花费资金</span></div>
       </div>
 
-      <h5>最近 {s.trend.length} 局到达回合 <small>亮色为通关</small></h5>
+      <button class="h5" class:folded={!shown('trend')} onclick={fold('trend')} aria-expanded={shown('trend')}>最近 {s.trend.length} 局到达回合 <small>亮色为通关</small><Icon name="arrowDown" size={13} /></button>
+      {#if shown('trend')}
       <div class="trend" role="img" aria-label="最近对局到达的回合">
         {#each s.trend as t (t.id)}
           <span class="bar" class:ok={t.success} style:height="{(Math.max(t.passRound, 0.5) / 15) * 100}%" title="{when(t.time)} · {resultText(t)}"></span>
         {/each}
       </div>
+      {/if}
 
-      <h5>策略</h5>
+      <button class="h5" class:folded={!shown('strats')} onclick={fold('strats')} aria-expanded={shown('strats')}>策略<small>{s.strategies.length} 种</small><Icon name="arrowDown" size={13} /></button>
+      {#if shown('strats')}
       <div class="strats">
         {#each s.strategies as g (g.id)}
           <div class="srow">
@@ -231,8 +245,10 @@
           </div>
         {/each}
       </div>
+      {/if}
 
-      <h5>常用干员 <small>出场局数 · 出场时通关率</small></h5>
+      <button class="h5" class:folded={!shown('ops')} onclick={fold('ops')} aria-expanded={shown('ops')}>常用干员 <small>出场局数 · 出场时通关率</small><Icon name="arrowDown" size={13} /></button>
+      {#if shown('ops')}
       <div class="ops">
         {#each s.operators as g (g.id)}
           {@const op = byChar.get(g.id)}
@@ -245,6 +261,9 @@
           {/if}
         {/each}
       </div>
+      {/if}
+    {/if}
+    </div>
     {/if}
   </section>
 </div>
@@ -273,10 +292,23 @@
       gap: 16px;
       align-items: start;
     }
+    /* 两栏各自滚动：统计比窗口高时，不用等左边滚到底（用户 2026-11-12 反馈） */
+    .page {
+      height: 100%;
+      box-sizing: border-box;
+      padding-bottom: 10px;
+      align-items: stretch;
+    }
+    .rec,
+    .stats {
+      min-height: 0;
+      max-height: 100%;
+      overflow-y: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
+    }
     .stats {
       order: 0;
-      position: sticky;
-      top: 10px;
     }
   }
   .ghost {
@@ -536,12 +568,33 @@
     color: var(--fg-3);
     white-space: nowrap;
   }
-  h5 {
+  .fold {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .h5 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin: 6px 0 0;
     font-size: 12px;
     font-weight: 700;
+    color: var(--fg-1);
+    text-align: left;
   }
-  h5 small {
+  .h5 :global(svg) {
+    margin-left: auto;
+    color: var(--fg-4);
+    transition: transform 160ms;
+  }
+  .h5.folded :global(svg) {
+    transform: rotate(-90deg);
+  }
+  .h5:hover :global(svg) {
+    color: var(--fg-2);
+  }
+  .h5 small {
     font-weight: 400;
     color: var(--fg-4);
     margin-left: 6px;

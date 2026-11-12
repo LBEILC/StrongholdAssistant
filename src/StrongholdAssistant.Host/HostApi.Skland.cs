@@ -10,6 +10,13 @@ namespace StrongholdAssistant.Host;
 
 public sealed partial class HostApi
 {
+    private static SklandException SklandReadError(string message, Exception ex)
+    {
+        Trace.WriteLine($"{message} {ex}");
+        // WebView/IO 异常可能带路径或请求资料，只返回类型和错误码。
+        return new SklandException($"{message}\n{ex.GetType().Name}: HRESULT 0x{ex.HResult:X8}");
+    }
+
     private Action? _cancelSklandGuide;
     private Window? _sklandHistoryWindow;
     private Task<SklandRecord[]?>? _sklandHistory;
@@ -49,11 +56,11 @@ public sealed partial class HostApi
         url = SklandParser.NormalizeGuideUrl(url);
         _cancelSklandGuide?.Invoke();
         var completion = new TaskCompletionSource<SklandGuide>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Action cancel = () => completion.TrySetException(new ArgumentException("已取消上一次攻略读取。"));
+        Action cancel = () => completion.TrySetException(new SklandException("已取消上一次攻略读取。"));
         _cancelSklandGuide = cancel;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        using var registration = timeout.Token.Register(() => completion.TrySetException(new ArgumentException(
-            "20 秒内没读到攻略内容，可能是森空岛页面改版了，或者这篇攻略已被删除。")));
+        using var registration = timeout.Token.Register(() => completion.TrySetException(new SklandException(
+            "20 秒内没读到攻略内容，可能是森空岛页面改版了，或者这篇攻略已被删除。\nTimeoutException: 20 秒内未收到攻略内容。")));
         // 没有 WS_VISIBLE 的原生父窗口，为后台 WebView 提供视口，不显示或抢占焦点。
         using var source = new HwndSource(new HwndSourceParameters("SklandGuide")
         { Width = 800, Height = 600, WindowStyle = unchecked((int)0x80000000) });
@@ -74,7 +81,8 @@ public sealed partial class HostApi
                 ConfigureSkland(core, false);
                 core.NavigationCompleted += (_, args) =>
                 {
-                    if (!args.IsSuccess) completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                    if (!args.IsSuccess) completion.TrySetException(new SklandException(
+                        $"打不开森空岛，检查一下网络再试。\nWebErrorStatus: {args.WebErrorStatus}"));
                 };
                 core.WebResourceResponseReceived += async (_, args) =>
                 {
@@ -90,15 +98,14 @@ public sealed partial class HostApi
                     catch (ArgumentException ex) { completion.TrySetException(ex); }
                     catch (Exception ex)
                     {
-                        Trace.WriteLine($"森空岛攻略读取失败: {ex.GetType().FullName}: {ex.Message}");
-                        completion.TrySetException(new ArgumentException("森空岛攻略的数据结构已变化，暂时无法读取。"));
+                        completion.TrySetException(SklandReadError("森空岛攻略的数据结构已变化，暂时无法读取。", ex));
                     }
                 };
                 core.Navigate(url);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                if (!closed) completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                if (!closed) completion.TrySetException(SklandReadError("打不开森空岛，检查一下网络再试。", ex));
             }
         }
         _ = InitializeAsync();
@@ -168,6 +175,10 @@ public sealed partial class HostApi
         if (visible) _sklandHistoryWindow = window;
         var closed = false;
         using var lifetime = new CancellationTokenSource();
+        using var silentTimeout = new CancellationTokenSource();
+        using var silentTimeoutRegistration = silentTimeout.Token.Register(() => completion.TrySetResult(null));
+        var retries = 0;
+        var historyResponseReceived = false;
         using var source = visible ? null : new HwndSource(new HwndSourceParameters("SklandHistory")
         { Width = 800, Height = 600, WindowStyle = unchecked((int)0x80000000) });
         CoreWebView2Controller? controller = null;
@@ -202,13 +213,18 @@ public sealed partial class HostApi
                     core = controller.CoreWebView2;
                 }
                 ConfigureSkland(core, true);
-                core.NavigationStarting += (_, _) => navigation?.Cancel();
+                core.NavigationStarting += (_, _) =>
+                {
+                    navigation?.Cancel();
+                    historyResponseReceived = false;
+                };
                 core.NavigationCompleted += async (_, args) =>
                 {
                     if (closed) return;
                     if (!args.IsSuccess)
                     {
-                        completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                        completion.TrySetException(new SklandException(
+                            $"打不开森空岛，检查一下网络再试。\nWebErrorStatus: {args.WebErrorStatus}"));
                         return;
                     }
                     if (new Uri(core.Source).AbsolutePath != "/arknights/stronghold-guide/edit")
@@ -229,36 +245,65 @@ public sealed partial class HostApi
                                 (() => {
                                   const button = [...document.querySelectorAll('button')]
                                     .find(b => b.textContent.trim() === '导入历史战绩' && !b.disabled && b.getClientRects().length);
-                                  if (!button) return false;
-                                  button.click();
-                                  return true;
+                                  return !!button;
                                 })()
                                 """);
                             token.ThrowIfCancellationRequested();
                             if (result == "true")
                             {
-                                if (!visible)
+                                // 按钮先于绑定角色加载完成时，留出页面查询角色的时间。
+                                await Task.Delay(TimeSpan.FromSeconds(1.5), token);
+                                result = await core.ExecuteScriptAsync("""
+                                    (() => {
+                                      const button = [...document.querySelectorAll('button')]
+                                        .find(b => b.textContent.trim() === '导入历史战绩' && !b.disabled && b.getClientRects().length);
+                                      if (!button) return false;
+                                      button.click();
+                                      return true;
+                                    })()
+                                    """);
+                                token.ThrowIfCancellationRequested();
+                                if (result != "true") continue;
+                                var responseDeadline = DateTime.UtcNow.AddSeconds(8);
+                                while (DateTime.UtcNow < responseDeadline)
                                 {
-                                    await Task.Delay(TimeSpan.FromSeconds(8), token);
-                                    completion.TrySetResult(null);
+                                    await Task.Delay(500, token);
+                                    var missingRole = await core.ExecuteScriptAsync("""
+                                        document.body.innerText.includes('未查询到游戏角色')
+                                        """);
+                                    token.ThrowIfCancellationRequested();
+                                    if (missingRole != "true" || historyResponseReceived) continue;
+                                    if (retries < (visible ? 2 : 1))
+                                    {
+                                        retries++;
+                                        // 静默重试重新计时，避免原来的 8 秒时限截断刷新后的读取。
+                                        if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(8));
+                                        core.Reload();
+                                    }
+                                    else if (!visible) completion.TrySetResult(null);
+                                    return;
                                 }
+                                if (!visible) completion.TrySetResult(null);
                                 return;
                             }
                             await Task.Delay(500, token);
                         }
-                        completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                        completion.TrySetException(new SklandException(
+                            "打不开森空岛，检查一下网络再试。\nTimeoutException: 15 秒内未找到历史战绩导入按钮。"));
                     }
                     catch (OperationCanceledException) { }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         if (!token.IsCancellationRequested)
-                            completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                            completion.TrySetException(SklandReadError("打不开森空岛，检查一下网络再试。", ex));
                     }
                 };
                 core.WebResourceResponseReceived += async (_, args) =>
                 {
                     if (closed || !IsSklandResponse(args.Request.Uri, "history-log")) return;
-                    if (args.Request.Method != "GET" || args.Response.StatusCode != 200) return;
+                    if (args.Request.Method != "GET") return;
+                    historyResponseReceived = true;
+                    if (args.Response.StatusCode != 200) return;
                     try
                     {
                         using var stream = await args.Response.GetContentAsync();
@@ -271,29 +316,27 @@ public sealed partial class HostApi
                     catch (ArgumentException ex) { completion.TrySetException(ex); }
                     catch (Exception ex)
                     {
-                        Trace.WriteLine($"森空岛历史战绩读取失败: {ex.GetType().FullName}: {ex.Message}");
-                        completion.TrySetException(new ArgumentException("历史战绩的数据结构已变化，暂时无法读取。"));
+                        completion.TrySetException(SklandReadError("历史战绩的数据结构已变化，暂时无法读取。", ex));
                     }
 
                 };
                 core.Navigate(editUrl);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 if (closed) return;
-                completion.TrySetException(new ArgumentException("打不开森空岛，检查一下网络再试。"));
+                completion.TrySetException(SklandReadError("打不开森空岛，检查一下网络再试。", ex));
             }
         }
         try
         {
+            if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(8));
             if (visible)
             {
                 window.Loaded += async (_, _) => await InitializeAsync();
                 window.Show();
             }
             else _ = InitializeAsync();
-            if (silent && await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(8))) != completion.Task)
-                return null;
             return await completion.Task;
         }
         finally

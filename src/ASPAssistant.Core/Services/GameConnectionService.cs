@@ -1,4 +1,5 @@
 // Modified for ASP Assistant Arknights on 2026-11-11; see NOTICE.
+// 2026-11-12：MuMu 显示区域按实际截图比例映射。
 // 2026-11-12：参考 PR #5，改为自动发现与来源选择，共享主窗口及画面区域；只保留截图控制器。
 using ASPAssistant.Core.Interop;
 using MaaFramework.Binding;
@@ -97,8 +98,10 @@ public sealed class GameConnectionService : IDisposable
         if (!IsAdb) return User32.GetClientRectScreen(window);
         var display = User32.FindChildWindow(window, "nemudisplay");
         var bounds = display == IntPtr.Zero ? null : User32.GetClientRectScreen(display);
+        var state = State;
         return bounds is { Width: > 0, Height: > 0 } rect
-            ? WindowGeometry.FitAspectRatio(rect, 16, 9) : null;
+            ? WindowGeometry.FitAspectRatio(rect, state.Width > 0 ? state.Width : 16,
+                state.Height > 0 ? state.Height : 9) : null;
     }
 
     public byte[]? CaptureAdbScreen(int maxWidth)

@@ -105,7 +105,11 @@
     inset: 3px;
     background: var(--mint);
   }
+  /* 名字在按钮之后让出宽度，按钮永远不被挤掉（用户 2026-11-12 反馈） */
   .title {
+    min-width: 0;
+    overflow: hidden;
+    flex-shrink: 50;
     white-space: nowrap;
     font-weight: 700;
     font-size: 13px;
@@ -125,8 +129,14 @@
     flex: 1;
   }
   /* 侧栏很窄时去掉装饰英文 */
-  @media (max-width: 360px) {
+  /* 侧栏窄时只留图标，宽了再显示名字；英文小字只在工作台这种宽窗口里显示 */
+  @media (max-width: 599px) {
     .sub {
+      display: none;
+    }
+  }
+  @media (max-width: 439px) {
+    .title {
       display: none;
     }
   }

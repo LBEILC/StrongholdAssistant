@@ -15,7 +15,7 @@ public static class GameUiScale
     public static double Information(BanScreenPixels? pixels)
     {
         if (pixels is null) return 1;
-        double scale = pixels.Height / 1080.0;
+        double scale = InformationBaseScale(pixels.Width, pixels.Height);
         bool Gray(int x, int y)
         {
             var (r, g, b) = pixels.ColorAt(x, y);
@@ -46,12 +46,13 @@ public static class GameUiScale
 
     public static double Shop(Bitmap bitmap)
     {
-        double scale = bitmap.Height / 1080.0;
+        double scale = Math.Min(bitmap.Width / 1920.0, bitmap.Height / 1080.0);
         var edges = new double[bitmap.Width];
         int delta = Math.Max(1, (int)(2 * scale));
         // 卡片两侧的竖线在整段高度上重复，按间距做相关性比较，不依赖卡面或出售状态。
         for (int x = delta; x < bitmap.Width - delta; x++)
-        for (int y = (int)(800 * scale); y < (int)(950 * scale); y += 3)
+        // 高画面同样按宽度缩放，但商店锚定底部。
+        for (int y = (int)(bitmap.Height - 280 * scale); y < (int)(bitmap.Height - 130 * scale); y += 3)
         {
             var a = bitmap.GetPixel(x - delta, y);
             var b = bitmap.GetPixel(x + delta, y);
@@ -71,12 +72,18 @@ public static class GameUiScale
         return Math.Clamp(pitch / (220 * scale), 1, 100.0 / 90);
     }
 
-    public static OcrRegionDefinition InformationRegion(OcrRegionDefinition region, double k)
+    // 高画面的信息页按宽度缩放，顶部锚定；16:9 保持原来的高度换算。
+    public static double InformationBaseScale(int width, int height)
+        => Math.Min(width / 1920.0, height / 1080.0);
+
+    public static OcrRegionDefinition InformationRegion(OcrRegionDefinition region, double k,
+        int width = 1920, int height = 1080)
     {
         double left = Math.Max(0, .5 + (region.XPercent - .5) * k);
         double right = Math.Min(1, .5 + (region.XPercent + region.WidthPercent - .5) * k);
-        double top = region.YPercent * k;
-        double bottom = Math.Min(1, (region.YPercent + region.HeightPercent) * k);
+        double vertical = InformationBaseScale(width, height) * 1080 / height;
+        double top = region.YPercent * k * vertical;
+        double bottom = Math.Min(1, (region.YPercent + region.HeightPercent) * k * vertical);
         return region with { XPercent = left, YPercent = top, WidthPercent = right - left, HeightPercent = bottom - top };
     }
 }

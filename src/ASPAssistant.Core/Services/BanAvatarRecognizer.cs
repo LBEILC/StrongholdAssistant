@@ -68,14 +68,15 @@ public sealed class BanAvatarRecognizer
         using var stream = new MemoryStream(screenshot);
         using var source = new Bitmap(stream);
         double k = GameUiScale.Information(screenshot);
-        double scale = source.Height / 1080.0 * k;
+        double baseScale = GameUiScale.InformationBaseScale(source.Width, source.Height);
+        double scale = baseScale * k;
         double offsetX = source.Width / 2.0 * (1 - k);
         var boxes = Locate(source, scale, offsetX);
         double locateMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         var groups = boxes.Count == 0 ? [] : await _ocr.RecognizeRegionAsync(screenshot,
             Math.Max(0, (int)(offsetX + 150 * scale)), boxes.Min(b => b.Y), (int)(135 * scale),
-            (int)(985 * source.Height / 1080.0) - boxes.Min(b => b.Y));
+            (int)(source.Height - 95 * baseScale) - boxes.Min(b => b.Y));
         double ocrMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         var matches = new List<BanAvatarMatch>();
@@ -111,7 +112,7 @@ public sealed class BanAvatarRecognizer
             var last = group.Last();
             int column = (int)Math.Round((last.Box.X - offsetX - 332 * scale) / (136.5 * scale));
             double nextY = last.Box.Y + (column == 6 ? 172 * scale : 0);
-            bool visible = nextY > 155 * scale && nextY + last.Box.Height <= 985 * source.Height / 1080.0;
+            bool visible = nextY > 155 * scale && nextY + last.Box.Height <= source.Height - 95 * baseScale;
             if (visible) matches[matches.IndexOf(last)] = last with { EndsGroup = true };
         }
         // 同一盟约列表里每名干员只出现一次；冲突时只有明显更好的格子可以保留名字。
@@ -127,11 +128,12 @@ public sealed class BanAvatarRecognizer
 
     private static List<Rectangle> Locate(Bitmap bitmap, double scale, double offsetX)
     {
-        // 角标红色连通块的外框约 40×40，头像约 117×117；坐标按画面高度缩放。
+        // 角标红色连通块的外框约 40×40，头像约 117×117；按信息页缩放换算。
         int left = Math.Max(0, (int)(offsetX + 320 * scale));
         int right = Math.Min(bitmap.Width, (int)(offsetX + 1295 * scale));
         // 列表内容随 UI 放大，但底部可视窗口仍在原处裁切；不能把露出上沿的头像当完整格。
-        int top = (int)(155 * scale), bottom = Math.Min(bitmap.Height, (int)(985 * bitmap.Height / 1080.0));
+        int top = (int)(155 * scale);
+        int bottom = (int)(bitmap.Height - 95 * GameUiScale.InformationBaseScale(bitmap.Width, bitmap.Height));
         var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         var bytes = new byte[data.Stride * bitmap.Height];
         Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);

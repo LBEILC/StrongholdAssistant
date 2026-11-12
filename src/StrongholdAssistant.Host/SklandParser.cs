@@ -1,9 +1,12 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace StrongholdAssistant.Host;
+
+public sealed class SklandException(string message) : ArgumentException(message);
 
 // 与界面 types.ts 一致；解析只处理响应正文，不接触登录凭据。
 public sealed record SklandOperator(string Id, bool Elite,
@@ -35,6 +38,9 @@ public static class SklandParser
     }
 
     public static SklandGuide ParseGuide(string json, string url)
+        => ParseResponse(() => ParseGuideCore(json, url), "森空岛攻略的数据结构已变化，暂时无法读取。");
+
+    private static SklandGuide ParseGuideCore(string json, string url)
     {
         using var document = JsonDocument.Parse(json);
         var data = ReadData(document.RootElement, "这篇攻略不存在或已失效。");
@@ -45,45 +51,48 @@ public static class SklandParser
         var stages = guide.GetProperty("tabs").EnumerateArray().Select(tab =>
         {
             var tabType = tab.GetProperty("tabType").GetInt32();
-            var factions = tab.GetProperty("activeBonds");
+            var factions = Optional(tab, "activeBonds");
             return new SklandStage(tabType == 1 ? "FORMATION" : tabType.ToString(CultureInfo.InvariantCulture),
                 tab.GetProperty("startRound").GetInt32(),
-                tab.GetProperty("endRound").GetInt32(), tab.GetProperty("recChars").EnumerateArray()
-                    .Select(o => new SklandOperator(Text(o, "charId"), o.GetProperty("mergeLevel").GetInt32() == 1,
+                tab.GetProperty("endRound").GetInt32(), Elements(tab, "recChars")
+                    .Select(o => new SklandOperator(Text(o, "charId"), Optional(o, "mergeLevel") is
+                        { ValueKind: not JsonValueKind.Undefined and not JsonValueKind.Null } level && level.GetInt32() == 1,
                         Option(o, "skillId"), Option(o, "moduleId"))).ToArray(),
-                tab.GetProperty("recItems").EnumerateArray().Select(e => Text(e, "itemId")).ToArray(),
+                Elements(tab, "recItems").Select(e => Text(e, "itemId")).ToArray(),
                 Strings(factions, "seasonBondIds").Concat(Strings(factions, "regularBondIds"))
                     .Select(BondId).ToArray(),
-                Text(tab, "operationIdea"));
+                Option(tab, "operationIdea") ?? "");
         }).ToArray();
         if (stages.Length == 0) throw new ArgumentException("这篇攻略不存在或已失效。");
-        return new(NormalizeGuideUrl(url), Text(guide, "title"), Text(wrapper.GetProperty("poster"), "nickname"),
-            guide.TryGetProperty("strategyIds", out var strategies)
-                ? strategies.EnumerateArray().Select(s => s.GetString()!).ToArray() : [],
+        return new(NormalizeGuideUrl(url), Text(guide, "title"), Option(Optional(wrapper, "poster"), "nickname") ?? "",
+            Strings(guide, "strategyIds"),
             Text(guide, "versionId"), stages);
     }
 
     public static SklandRecord[]? ParseHistory(string json)
+        => ParseResponse(() => ParseHistoryCore(json), "历史战绩的数据结构已变化，暂时无法读取。");
+
+    private static SklandRecord[]? ParseHistoryCore(string json)
     {
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.GetProperty("code").GetInt32() != 0) return null;
         var data = document.RootElement.GetProperty("data");
         return data.GetProperty("records").EnumerateArray().Select(record =>
         {
-            var squad = record.GetProperty("chessSquad").EnumerateArray().ToArray();
+            var squad = Elements(record, "chessSquad").ToArray();
             var strategy = Text(record, "bandId");
             return new SklandRecord(Text(record, "id"), strategy.Length == 0 ? null : strategy,
                 squad.Select(o => new SklandOperator(Text(o, "charId"),
                     Text(o, "chessId") == Text(o.GetProperty("chessInfo"), "goldenChessId"),
                     Option(o, "skillId"), Option(o, "moduleId"))).ToArray(),
-                squad.SelectMany(o => o.GetProperty("equips").EnumerateArray())
+                squad.SelectMany(o => Elements(o, "equips"))
                     .Select(e => Text(e, "equipId")).ToArray(),
                 record.GetProperty("completeState").GetInt32() == 1,
                 Timestamp(record, "gameEndTs"), Timestamp(record, "gameStartTs"),
                 record.GetProperty("coinCost").GetInt32(), record.GetProperty("killCnt").GetInt32(),
-                record.GetProperty("bondInfo").EnumerateArray().Select(b =>
+                Elements(record, "bondInfo").Select(b =>
                     new SklandCovenant(BondId(Text(b, "bondId")), b.GetProperty("layer").GetInt32())).ToArray(),
-                record.GetProperty("acBossInfo").EnumerateArray().Select(b =>
+                Elements(record, "acBossInfo").Select(b =>
                     new SklandBoss(BossIds.GetValueOrDefault(Text(b, "bossId"), Text(b, "bossId")),
                         b.GetProperty("isKilled").GetBoolean())).ToArray(),
                 Text(record, "modeType"), Text(record, "modeDifficulty"), record.GetProperty("passRound").GetInt32(),
@@ -124,9 +133,29 @@ public static class SklandParser
         return root.GetProperty("data");
     }
 
+    private static T ParseResponse<T>(Func<T> parse, string message)
+    {
+        try { return parse(); }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException
+            or FormatException or OverflowException)
+        {
+            Trace.WriteLine($"{message} {ex}");
+            // 数字格式异常会回显原始值；不向界面返回该值或含本机路径的堆栈。
+            var detail = ex is FormatException ? "数字字段格式无效。" : ex.Message;
+            throw new SklandException($"{message}\n{ex.GetType().Name}: {detail}");
+        }
+    }
+
+    private static JsonElement Optional(JsonElement value, string name) =>
+        value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? default :
+        value.TryGetProperty(name, out var property) ? property : default;
+    private static IEnumerable<JsonElement> Elements(JsonElement value, string name) =>
+        Optional(value, name) is { ValueKind: not JsonValueKind.Undefined and not JsonValueKind.Null } array
+            ? array.EnumerateArray() : [];
     private static string Text(JsonElement value, string name) => value.GetProperty(name).GetString()!;
     private static string? Option(JsonElement value, string name) =>
-        value.TryGetProperty(name, out var option) && option.GetString() is { Length: > 0 } id ? id : null;
-    private static string[] Strings(JsonElement value, string name) => value.GetProperty(name)
-        .EnumerateArray().Select(e => e.GetString()!).ToArray();
+        Optional(value, name) is { ValueKind: not JsonValueKind.Undefined and not JsonValueKind.Null } option
+        && option.GetString() is { Length: > 0 } id ? id : null;
+    private static string[] Strings(JsonElement value, string name) =>
+        Elements(value, name).Select(e => e.GetString()!).ToArray();
 }

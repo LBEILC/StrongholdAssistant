@@ -1,3 +1,4 @@
+// 2026-11-12：高画面按宽度缩放换算盟约区域，保留顶部标题。
 // 2026-11-11：按截图测得的游戏 UI 缩放换算盟约区域。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using ASPAssistant.Core.GameModes;
@@ -71,8 +72,8 @@ public static class BanCovenantReader
         // 两块区域共用一个像素缓冲：少解一次 PNG，读操作只读所以可以并行。
         using var pixels = BanScreenPixels.Load(screenshot);
         double k = GameUiScale.Information(pixels);
-        coreRegion = GameUiScale.InformationRegion(coreRegion, k);
-        additionalRegion = GameUiScale.InformationRegion(additionalRegion, k);
+        coreRegion = GameUiScale.InformationRegion(coreRegion, k, imgWidth, imgHeight);
+        additionalRegion = GameUiScale.InformationRegion(additionalRegion, k, imgWidth, imgHeight);
 
         var coreTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, coreRegion,
             CoreHeaderText, coreCovenantNames, "Core", greenThreshold);

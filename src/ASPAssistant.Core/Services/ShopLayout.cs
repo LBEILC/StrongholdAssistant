@@ -15,10 +15,11 @@ public static class ShopLayout
             GameShopTheme.Ursus => (815, 1068),
             _ => (808, 1070)
         };
-        double scale = height / 1080.0 * k;
+        double baseScale = Math.Min(width / 1920.0, height / 1080.0);
+        double scale = baseScale * k;
         // UI90 与 UI100 样图测得的锚点差：间距测量 k 略小于设置比例，
         // 卡身原点按两端样图校准，名称裁剪和 GameUiScale 的换算保持不变。
-        double anchor = (k - 1) * height / 1080.0;
+        double anchor = (k - 1) * baseScale;
         return new RectangleF((float)(width - width / 2.0 * k + (-599 + slot * 220) * scale - 72 * anchor),
             (float)(height - (1080 - top) * scale - 36 * anchor), (float)(210 * scale),
             (float)((bottom - top) * scale + 36 * anchor));
@@ -50,7 +51,7 @@ public static class ShopLayout
     /// <summary>两侧长直边的明暗差确认卡身仍在，不用 OCR 空结果判断收店。</summary>
     public static bool HasCards(Bitmap image, double k, GameShopTheme theme)
     {
-        double scale = image.Height / 1080.0 * k;
+        double scale = Math.Min(image.Width / 1920.0, image.Height / 1080.0) * k;
         int delta = Math.Max(2, (int)Math.Round(3 * scale));
         for (int slot = 0; slot < 6; slot++)
         {

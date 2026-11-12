@@ -14,6 +14,31 @@ namespace ASPAssistant.Tests.Services;
 public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITestOutputHelper output) : IClassFixture<ShopReaderFixture>
 {
     [Fact]
+    public async Task Closure1600x1024_TracksFourCardsInTheirSlots()
+    {
+        const string file = "shop-closure-round1-1600x1024.png";
+        fixture.SelectTheme(file);
+        string[] tracked = ["坚守盾牌", "拉普兰德", "烈夏", "慕斯"];
+        var items = await fixture.Reader.ReadAsync(File.ReadAllBytes(fixture.Sample(file)), 1600, 1024, tracked);
+        foreach (var item in items)
+            output.WriteLine($"{item.Name}：槽位 {item.SlotIndex}，卡框 {item.CardRegion}，名称 {item.OcrRegion}");
+        items.Select(i => i.Name).Should().Equal(tracked);
+        items.Select(i => i.SlotIndex).Should().Equal(2, 3, 4, 5);
+        fixture.Reader.HasVisibleCards.Should().BeTrue();
+        // 样图四张卡身横向约为 667～840、850～1023、1033～1206、1216～1389。
+        for (int i = 0; i < items.Count; i++)
+        {
+            double left = 667 + i * 183;
+            var card = items[i].CardRegion;
+            var name = items[i].OcrRegion;
+            ((card.X + card.Width / 2) * 1600).Should().BeInRange(left, left + 173);
+            ((card.Y + card.Height / 2) * 1024).Should().BeInRange(800, 1015);
+            ((name.X + name.Width / 2) * 1600).Should().BeInRange(left, left + 173);
+            ((name.Y + name.Height / 2) * 1024).Should().BeInRange(960, 990);
+        }
+    }
+
+    [Fact]
     public async Task ClosureUserSample_TracksLiAndBaiduren()
     {
         using var engine = new MaaOcrEngine(Path.Combine(AppContext.BaseDirectory, "data"));
