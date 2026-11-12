@@ -5,25 +5,29 @@ import { body, dayStart, description, empty, fail, hasBlocked, hash, iso, json, 
 
 export interface PostRow {
  id: string; user_id: string; code: string; fingerprint: number; lineup: string; description: string
- status: 'visible' | 'hidden' | 'deleted'; featured: number; likes: number; imports: number
- created_at: string; updated_at: string; nickname: string; email: string | null; liked: number; rank: number
+ status: 'visible' | 'hidden' | 'deleted'; featured: number; likes: number; imports: number; comments: number
+ created_at: string; updated_at: string; nickname: string; email: string | null; liked: number; favorited: number; rank: number; favorite_time: string
 }
 const select = `SELECT p.*,u.nickname,u.email,
- EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) AS liked`
+ EXISTS(SELECT 1 FROM likes l WHERE l.post_id=p.id AND l.user_id=?) AS liked,
+ EXISTS(SELECT 1 FROM favorites f WHERE f.post_id=p.id AND f.user_id=?) AS favorited`
 export function toPost(p: PostRow): Post {
  return { id: p.id, code: p.code, lineup: JSON.parse(p.lineup) as PostLineup, description: p.description,
   author: { id: p.user_id, nickname: p.nickname }, createdAt: p.created_at, updatedAt: p.updated_at,
-  featured: !!p.featured, likes: p.likes, imports: p.imports, liked: !!p.liked, current: p.fingerprint === fingerprint }
+  featured: !!p.featured, likes: p.likes, imports: p.imports, comments: p.comments, liked: !!p.liked, favorited: !!p.favorited, current: p.fingerprint === fingerprint }
 }
 export const toAdminPost = (p: PostRow): AdminPost => ({
  ...toPost(p), status: p.status, ...(p.status === 'hidden' && { hidden: true }), authorEmailMasked: mask(p.email),
 })
 export async function getPost(env: Env, id: string, viewer: string | null) {
- return stmt(env, select + ' FROM posts p JOIN users u ON u.id=p.user_id WHERE p.id=?', viewer, id).first<PostRow>()
+ return stmt(env, select + ' FROM posts p JOIN users u ON u.id=p.user_id WHERE p.id=?', viewer, viewer, id).first<PostRow>()
 }
 export async function listPosts(ctx: Context, viewer: string | null, admin = false) {
  const q = new URL(ctx.request.url).searchParams, env = ctx.env
- const sort = admin ? 'new' : q.get('sort') ?? 'hot'
+ const favorite = !admin && q.get('favorite') === '1'
+ if (favorite && !viewer) fail(401, 'unauthorized', '请先登录。')
+ const sort = admin || favorite ? 'new' : q.get('sort') ?? 'hot'
+ const time = favorite ? 'f.created_at' : 'p.created_at'
  if (!['new', 'hot', 'featured'].includes(sort)) fail(400, 'bad_query', '排序参数不正确。')
  const limit = Math.min(50, Number(q.get('limit') ?? 20))
  if (!Number.isInteger(limit) || limit < 1) fail(400, 'bad_query', '分页参数不正确。')
@@ -39,9 +43,10 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
   where.push("p.status='visible'")
   if (sort === 'featured') where.push('p.featured=1')
   const season = q.get('season') ?? 'current'
-  if (!['current', 'all'].includes(season)) fail(400, 'bad_query', '赛季参数不正确。')
+  if (!favorite && !['current', 'all'].includes(season)) fail(400, 'bad_query', '赛季参数不正确。')
   if (q.has('author')) { where.push('p.user_id=?'); values.push(q.get('author')!) }
-  else if (season === 'current') { where.push('p.fingerprint=?'); values.push(fingerprint) }
+  else if (!favorite && season === 'current') { where.push('p.fingerprint=?'); values.push(fingerprint) }
+  if (favorite) { where.push('f.user_id=?'); values.push(viewer!) }
   for (const covenant of q.getAll('covenant')) {
    where.push("EXISTS(SELECT 1 FROM json_each(p.lineup,'$.goals') g WHERE json_extract(g.value,'$.id')=?)")
    values.push(covenant)
@@ -49,22 +54,23 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
   if (q.has('strategy')) { where.push("json_extract(p.lineup,'$.strategyId')=?"); values.push(q.get('strategy')!) }
  }
  // 游标绑定当前筛选，防止换排序后误用旧游标。
- const queryKey = JSON.stringify([admin, sort, where, values])
+ const queryKey = JSON.stringify([admin, favorite, sort, where, values])
  if (q.has('cursor')) {
   let cursor: { key: string; rank: number; time: string; id: string }
   try {
    cursor = JSON.parse(atob(q.get('cursor')!))
    if (cursor.key !== queryKey || typeof cursor.rank !== 'number' || typeof cursor.time !== 'string' || typeof cursor.id !== 'string') throw new Error()
   } catch { return fail(400, 'bad_cursor', '分页参数不正确。') }
-  where.push(`(${rank},p.created_at,p.id)<(?,?,?)`)
+  where.push(`(${rank},${time},p.id)<(?,?,?)`)
   values.push(cursor.rank, cursor.time, cursor.id)
  }
- const rows = (await stmt(env, select + `,${rank} AS rank FROM posts p JOIN users u ON u.id=p.user_id` +
-  (where.length ? ' WHERE ' + where.join(' AND ') : '') + ` ORDER BY ${sort === 'new' ? '' : rank + ' DESC,'}p.created_at DESC,p.id DESC LIMIT ?`,
-  viewer, ...values, limit + 1).all<PostRow>()).results
+ const rows = (await stmt(env, select + `,${rank} AS rank,${time} AS favorite_time FROM posts p JOIN users u ON u.id=p.user_id` +
+  (favorite ? ' JOIN favorites f ON f.post_id=p.id' : '') +
+  (where.length ? ' WHERE ' + where.join(' AND ') : '') + ` ORDER BY ${sort === 'new' ? '' : rank + ' DESC,'}${time} DESC,p.id DESC LIMIT ?`,
+  viewer, viewer, ...values, limit + 1).all<PostRow>()).results
  const more = rows.length > limit
  const page = rows.slice(0, limit), last = page.at(-1)
- const cursor = more ? btoa(JSON.stringify({ key: queryKey, rank: last!.rank, time: last!.created_at, id: last!.id })) : null
+ const cursor = more ? btoa(JSON.stringify({ key: queryKey, rank: last!.rank, time: last!.favorite_time, id: last!.id })) : null
  return json({ posts: page.map(admin ? toAdminPost : toPost), cursor })
 }
 export async function posts(ctx: Context, path: string) {
@@ -80,7 +86,7 @@ export async function posts(ctx: Context, path: string) {
    if (decoded.error.includes('其他赛季')) fail(400, 'season_mismatch', '这个分享码来自其他赛季或其他版本的数据，请先把助手更新到最新版。')
    fail(400, 'bad_share_code', decoded.error)
   }
-  const { name, goals, members, equipment, strategyId } = decoded.lineup
+  const { name, goals, members, equipment, strategyId, stages } = decoded.lineup
   if (hasBlocked(name)) fail(400, 'blocked_words', '阵容名或简介里有不允许的词。')
   // SA1 和 SA2（带干员候选装备）都认，decodeLineup 已经校验过格式
   const code = text.match(/SA\d+-[A-Za-z0-9_-]+/)![0]
@@ -94,11 +100,11 @@ export async function posts(ctx: Context, path: string) {
   const inserted = await stmt(env, `INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,created_at,updated_at)
    SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM posts WHERE user_id=? AND created_at>=?)<10
    ON CONFLICT(user_id,code) DO UPDATE SET description=excluded.description,updated_at=excluded.updated_at RETURNING id`,
-   id, u.id, code, fingerprint, JSON.stringify({ name, goals, members, equipment, strategyId }), desc, now, now, u.id, dayStart()).first<{ id: string }>()
+   id, u.id, code, fingerprint, JSON.stringify({ name, goals, members, equipment, strategyId, ...(stages && { stages }) }), desc, now, now, u.id, dayStart()).first<{ id: string }>()
   if (!inserted) fail(429, 'rate_limited', '今天发布次数已用完，请明天再试。')
   return json(toPost((await getPost(env, inserted.id, u.id))!))
  }
- const match = path.match(/^\/api\/posts\/([^/]+)(?:\/(like|import))?$/)
+ const match = path.match(/^\/api\/posts\/([^/]+)(?:\/(like|import|favorite))?$/)
  if (!match) fail(404, 'not_found', '接口不存在。')
  const [, id, action] = match
  const p = await getPost(env, id, u?.id ?? null)
@@ -113,6 +119,14 @@ export async function posts(ctx: Context, path: string) {
   return json({ imports: (await getPost(env, id, u?.id ?? null))!.imports })
  }
  if (!u) fail(401, 'unauthorized', '请先登录。')
+ if (action === 'favorite' && ['POST', 'DELETE'].includes(method)) {
+  if (method === 'POST') {
+   const result = await stmt(env, `INSERT OR IGNORE INTO favorites(user_id,post_id,created_at)
+    SELECT ?,?,? WHERE (SELECT COUNT(*) FROM favorites WHERE user_id=?)<500`, u.id, id, iso(), u.id).run()
+   if (!result.meta.changes && !p.favorited) fail(429, 'rate_limited', '最多收藏 500 个帖子。')
+  } else await stmt(env, 'DELETE FROM favorites WHERE user_id=? AND post_id=?', u.id, id).run()
+  return json({ favorited: method === 'POST' })
+ }
  if (action === 'like' && ['POST', 'DELETE'].includes(method)) {
   needNickname(u)
   await stmt(env, method === 'POST' ? 'INSERT OR IGNORE INTO likes VALUES(?,?)' : 'DELETE FROM likes WHERE post_id=? AND user_id=?', id, u.id).run()

@@ -18,15 +18,16 @@ declare global {
 const webview = window.chrome!.webview!
 let seq = 0
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>()
-const listeners: Record<string, Set<(d: any) => void>> = { match: new Set(), connection: new Set(), scan: new Set(), update: new Set(), window: new Set() }
+// 事件名不用预先登记：哪个事件有人订阅就建哪个（加 hotkey 时漏登记过，界面启动就崩）
+const listeners: Record<string, Set<(d: any) => void>> = {}
 const listen = (event: string) => (cb: (d: any) => void) => {
-  listeners[event].add(cb)
+  ;(listeners[event] ??= new Set()).add(cb)
   return () => void listeners[event].delete(cb)
 }
 
 webview.addEventListener('message', ({ data }) => {
   if ('event' in data) {
-    listeners[data.event].forEach((cb) => cb(data.data))
+    listeners[data.event]?.forEach((cb) => cb(data.data))
     return
   }
   const p = pending.get(data.id)!
@@ -49,12 +50,14 @@ export const bridgeApi: Api = {
   match: call('match'),
   rescan: call('rescan'),
   scanContinuous: call('scanContinuous'),
+  setMatchStrategy: call('setMatchStrategy'),
   setCovenantIncomplete: call('setCovenantIncomplete'),
   setOperatorBanned: call('setOperatorBanned'),
   resetMatch: call('resetMatch'),
   lineups: call('lineups'),
   saveLineup: call('saveLineup'),
   deleteLineup: call('deleteLineup'),
+  putLineups: call('putLineups'),
   session: call('session'),
   saveSession: call('saveSession'),
   windowCommand: call('windowCommand'),
@@ -69,6 +72,15 @@ export const bridgeApi: Api = {
   plazaLogin: call('plazaLogin'),
   plazaToken: call('plazaToken'),
   plazaLogout: call('plazaLogout'),
+  sklandGuide: call('sklandGuide'),
+  sklandHistory: call('sklandHistory'),
+  setHotkey: call('setHotkey'),
+  addIncome: call('addIncome'),
+  removeIncome: call('removeIncome'),
+  history: call('history'),
+  deleteRecord: call('deleteRecord'),
+  saveSklandRecords: call('saveSklandRecords'),
+  resetShareId: call('resetShareId'),
   openDataFolder: call('openDataFolder'),
   mumuInstances: call('mumuInstances'),
   exportData: call('exportData'),
@@ -80,4 +92,5 @@ export const bridgeApi: Api = {
   onScan: listen('scan'),
   onWindow: listen('window'),
   onDeepLink: listen('deepLink'),
+  onHotkey: listen('hotkey'),
 }

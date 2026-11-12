@@ -3,9 +3,13 @@ import { api } from './api'
 import { shareText } from './share'
 import { unseenNotes } from './changelog'
 import { plaza } from './plaza.svelte'
+import { cloud } from './sync.svelte'
+import { untrack } from 'svelte'
+import { currentStage, stageView, editStage } from './stages'
+import { ELITE_COVENANT, fillDefaults, defaultsFromLineup } from './opconfig'
 import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
 
-export type Tab = 'match' | 'lineup' | 'codex'
+export type Tab = 'match' | 'lineup' | 'codex' | 'history'
 export type LineupView = 'target' | 'mine' | 'plaza'
 export type Detail =
   | { kind: 'operator'; name: string }
@@ -39,6 +43,9 @@ function readFolded(): Record<string, boolean> {
 }
 
 /** 阵容要追踪的全部装备：通用装备 + 每名干员的候选装备，去重 */
+/** 追踪用的名单：干员名和装备名（含候选装备） */
+const lists = (l: Lineup | null) => l && { ops: l.members.map((m) => m.name), eqs: lineupEquipment(l) }
+
 export const lineupEquipment = (l: Lineup) => [...new Set([...l.equipment, ...l.members.flatMap((m) => m.equipment?.map((x) => x.name) ?? [])])]
 
 export const covenantsOf = (m: LineupMember) => {
@@ -46,7 +53,7 @@ export const covenantsOf = (m: LineupMember) => {
   return m.transform ? [...o.core, ...o.extra, m.transform] : [...o.core, ...o.extra]
 }
 
-class AppState {
+export class AppState {
   catalog: Catalog = catalog
   connection = $state<Connection>(connection)
   match = $state<MatchInfo>(match)
@@ -89,10 +96,16 @@ class AppState {
   folded = $state<Record<string, boolean>>(readFolded())
   /** 收起：strip 收成竖条，up 向上收起（只留标题栏和追踪列表），false 展开 */
   collapsed = $state<false | 'strip' | 'up'>(false)
+  /** 工作台（v0.7.0）：宽窗口，编阵容、逛广场、翻图鉴；每次启动都是侧栏 */
+  workbench = $state(false)
   /** 启动与关闭过渡：boot 等网页可见，in 入场，out 关闭前退场 */
   phase = $state<'boot' | 'in' | 'out'>('boot')
 
   target = $derived(this.lineups.find((l) => l.id === this.session.targetLineupId) ?? null)
+  /** 目标阵容的当前阶段（allStages 下标）：固定了用固定的，否则按读到的回合数（v0.7.0） */
+  stageIx = $derived(this.target ? currentStage(this.target, this.session.stage, this.match.economy?.round ?? null) : 0)
+  /** 目标阵容当前阶段的样子（本阶段 + 后面阶段的关键干员）。追踪、顶栏、目标页、商店标记都按它；没有阶段时就是整套阵容 */
+  active = $derived(this.target ? stageView(this.target, this.stageIx) : null)
   banned = $derived(new Set(this.match.bannedOperators))
   /** 按格位推测出来、还没确认的禁用干员 */
   inferred = $derived(new Set(this.match.banGroups.flatMap((g) => g.slots.flatMap((s) => (s.inferred && s.name ? [s.name] : [])))))
@@ -101,21 +114,21 @@ class AppState {
   tracked = $derived(new Set(this.session.tracked))
   trackedEq = $derived(new Set(this.session.trackedEquipment))
   /** 目标阵容里标了「优先」的装备（商店按关键标记，追踪列表里挂在干员旁边） */
-  priorityEq = $derived(new Set(this.target?.members.flatMap((m) => m.equipment?.filter((x) => x.priority).map((x) => x.name) ?? []) ?? []))
+  priorityEq = $derived(new Set(this.active?.members.flatMap((m) => m.equipment?.filter((x) => x.priority).map((x) => x.name) ?? []) ?? []))
   /** 顶栏的追踪列表：目标名单里的在前（关键在最前），再是单独追踪的 */
   trackedOps = $derived.by(() => {
-    const order = new Map((this.target?.members ?? []).map((m, i) => [m.name, (m.key ? 0 : 1000) + i]))
+    const order = new Map((this.active?.members ?? []).map((m, i) => [m.name, (m.key ? 0 : 1000) + i]))
     return [...this.session.tracked].sort((a, b) => (order.get(a) ?? 1e6) - (order.get(b) ?? 1e6))
   })
   /** 目标名单里被取消追踪的个数（顶栏给「全部追踪」用） */
   untrackedInTarget = $derived(
-    this.target ? this.target.members.filter((m) => !this.tracked.has(m.name)).length + lineupEquipment(this.target).filter((n) => !this.trackedEq.has(n)).length : 0,
+    this.active ? this.active.members.filter((m) => !this.tracked.has(m.name)).length + lineupEquipment(this.active).filter((n) => !this.trackedEq.has(n)).length : 0,
   )
   /** 目标盟约的人数：按目标名单算（盟约在游戏里有没有生效，游戏里看得到） */
-  goalProgress = $derived(this.target ? goalProgress(this.target.goals, this.target.members, this.target.members.map((m) => m.name)) : [])
+  goalProgress = $derived(this.active ? goalProgress(this.active.goals, this.active.members, this.active.members.map((m) => m.name)) : [])
   /** 目标盟约里还能抓的其他干员：不在名单里、没被禁、可招募；覆盖目标盟约越多越靠前 */
   pickable = $derived.by(() => {
-    const t = this.target
+    const t = this.active
     if (!t) return []
     return rankForGoals(t.goals, this.catalog.operators).filter((o) => !t.members.some((m) => m.name === o.name) && !this.banned.has(o.name))
   })
@@ -124,6 +137,23 @@ class AppState {
   focusCovs = $derived(new Set(this.settings.focusCovenants))
 
   constructor() {
+    // 同一个目标阵容换了阶段（到回合自动换，或目标页手动切）：追踪像换目标一样整体换掉，用户手动加的保留
+    $effect.root(() => {
+      let prev: Lineup | null = null
+      let prevKey = ''
+      $effect(() => {
+        const v = this.active
+        const key = `${this.target?.id}:${this.stageIx}`
+        untrack(() => {
+          if (prev && v && prev.id === v.id && key !== prevKey) {
+            this.retrack(lists(prev), lists(v))
+            this.save()
+          }
+          prev = v && $state.snapshot(v)
+          prevKey = key
+        })
+      })
+    })
     // 宿主识别到新的开局信息页时推送
     api.onMatch((m) => (this.match = m))
     api.onConnection((c) => (this.connection = c))
@@ -135,10 +165,18 @@ class AppState {
     })
     api.onUpdate((u) => (this.update = u))
     api.onWindow(() => (this.phase = 'out'))
+    // 收起 / 展开快捷键：工作台里最小化（再按由宿主恢复），侧栏里收起和展开来回切
+    api.onHotkey(() => {
+      if (this.workbench) api.windowCommand('minimize')
+      else if (this.collapsed) this.setCollapsed(false)
+      else this.collapse()
+    })
     if (this.settings.autoCheckUpdate) this.checkUpdate()
+    cloud.init(this)
   }
 
   saveSettings() {
+    cloud.beforeSaveSettings()
     api.saveSettings($state.snapshot(this.settings))
   }
   async checkUpdate() {
@@ -154,6 +192,12 @@ class AppState {
     if (!v) return void api.windowCommand('expand')
     this.setTab(this.tab) // 关掉所有弹层
     if (v === 'strip') api.windowCommand('collapse')
+  }
+  /** 进出工作台 */
+  setWorkbench(on: boolean) {
+    if (on && this.collapsed) this.collapsed = false
+    this.workbench = on
+    api.windowCommand(on ? 'workbench' : 'sidebar')
   }
   /** 标题栏的收起按钮：按设置里的收起方式 */
   collapse() {
@@ -192,10 +236,17 @@ class AppState {
   }
   /** 换目标：旧目标的名单移出追踪，新目标的名单全部加进来；单独追踪的不动 */
   setTarget(id: string | null) {
-    const old = this.target
-    const next = this.lineups.find((l) => l.id === id) ?? null
-    this.retrack(old ? { ops: old.members.map((m) => m.name), eqs: lineupEquipment(old) } : null, next ? { ops: next.members.map((m) => m.name), eqs: lineupEquipment(next) } : null)
+    const old = this.active
+    const l = this.lineups.find((x) => x.id === id) ?? null
+    const next = l && stageView(l, currentStage(l, null, this.match.economy?.round ?? null))
+    this.retrack(lists(old), lists(next))
     this.session.targetLineupId = id
+    this.session.stage = null
+    this.save()
+  }
+  /** 目标页切阶段：i 为 allStages 下标，null 回到自动（按回合）。追踪跟着换（由下面的 effect 统一处理） */
+  setStage(i: number | null) {
+    this.session.stage = i
     this.save()
   }
   /** 追踪表里先去掉 drop、再加上 add（去重） */
@@ -208,8 +259,7 @@ class AppState {
   }
   /** 目标名单里取消过追踪的重新全部追踪 */
   trackTarget() {
-    const t = this.target!
-    this.retrack(null, { ops: t.members.map((m) => m.name), eqs: lineupEquipment(t) })
+    this.retrack(null, lists(this.active))
     this.save()
   }
   toggleTracked(name: string) {
@@ -254,6 +304,16 @@ class AppState {
     if (this.autoCollapsed && this.collapsed) this.setCollapsed(false)
     this.autoCollapsed = false
   }
+  /** 资金行「+ 收入」：点上识别不了的收入，从下回合起算进预计 */
+  async addIncome(source: string, elite: boolean) {
+    this.match = await api.addIncome(source, elite)
+  }
+  async removeIncome(id: string) {
+    this.match = await api.removeIncome(id)
+  }
+  async setMatchStrategy(id: string | null) {
+    this.match = await api.setMatchStrategy(id)
+  }
   async toggleCovenantIncomplete(id: string) {
     this.match = await api.setCovenantIncomplete(id, !this.matchCovenant(id)!.incomplete)
   }
@@ -286,6 +346,15 @@ class AppState {
     this.tab = t
   }
 
+  /** 阵容卡菜单「用这套阵容更新我的默认」：把阵容里写了的技能、模组同步成我的默认 */
+  defaultsFromLineup(l: Lineup) {
+    const { next, changed } = defaultsFromLineup(l, (n) => this.op(n), this.settings.operatorDefaults)
+    if (!changed) return this.showToast('这套阵容的技能和模组和我的默认一样')
+    this.settings.operatorDefaults = next
+    this.saveSettings()
+    this.showToast(`已更新 ${changed} 名干员的默认技能和模组`)
+  }
+
   showToast(text: string, bad = false) {
     this.toast = { text, bad }
     clearTimeout(this.toastTimer)
@@ -310,8 +379,12 @@ class AppState {
   importLineup(l: Lineup, asTarget: boolean) {
     return this.attempt(() => this.doImport(l, asTarget))
   }
+  /** 存阵容前把默认技能、模组写进去（默认只预填，之后改默认不影响已有阵容） */
+  private filled(l: Lineup) {
+    return fillDefaults(l, (n) => this.op(n), this.settings.operatorDefaults)
+  }
   private async doImport(l: Lineup, asTarget: boolean) {
-    const saved = await api.saveLineup(l)
+    const saved = await api.saveLineup(this.filled(l))
     this.lineups = await api.lineups()
     if (asTarget) this.setTarget(saved.id)
     this.importOpen = false
@@ -325,12 +398,13 @@ class AppState {
   }
   /** 编辑器保存；失败时抛出，编辑器自己把原因显示在底栏 */
   async saveEditing() {
-    const before = this.target && this.target.id === this.editing!.id ? $state.snapshot(this.target) : null
-    const saved = await api.saveLineup($state.snapshot(this.editing!))
+    const before = this.active && this.active.id === this.editing!.id ? $state.snapshot(this.active) : null
+    const saved = await api.saveLineup(this.filled($state.snapshot(this.editing!)))
     if (before) {
+      const after = stageView(saved, this.stageIx)
       const names = (l: Lineup) => l.members.map((m) => m.name)
-      const gone = { ops: names(before).filter((n) => !names(saved).includes(n)), eqs: lineupEquipment(before).filter((n) => !lineupEquipment(saved).includes(n)) }
-      const added = { ops: names(saved).filter((n) => !names(before).includes(n)), eqs: lineupEquipment(saved).filter((n) => !lineupEquipment(before).includes(n)) }
+      const gone = { ops: names(before).filter((n) => !names(after).includes(n)), eqs: lineupEquipment(before).filter((n) => !lineupEquipment(after).includes(n)) }
+      const added = { ops: names(after).filter((n) => !names(before).includes(n)), eqs: lineupEquipment(after).filter((n) => !lineupEquipment(before).includes(n)) }
       this.retrack(gone, added)
       this.save()
     }
@@ -341,6 +415,7 @@ class AppState {
   deleteLineup(id: string) {
     return this.attempt(async () => {
       await api.deleteLineup(id)
+      cloud.deleted(id)
       if (this.session.targetLineupId === id) this.setTarget(null)
       this.lineups = await api.lineups()
       this.editing = null
@@ -358,21 +433,19 @@ class AppState {
   }
   /** 详情面板里把干员加入 / 移出目标；目标阵容存好了才改追踪 */
   toggleMember(name: string) {
-    const t = $state.snapshot(this.target!)
-    const has = t.members.some((m) => m.name === name)
-    t.members = has ? t.members.filter((m) => m.name !== name) : [...t.members, { name }]
+    const has = this.active!.members.some((m) => m.name === name)
+    const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, members: has ? s.members.filter((m) => m.name !== name) : [...s.members, { name }] }))
     return this.saveTarget(t, has ? { ops: [name], eqs: [] } : null, has ? null : { ops: [name], eqs: [] })
   }
   /** 详情面板、右键菜单里把装备加入 / 移出目标 */
   toggleTargetEq(name: string) {
-    const t = $state.snapshot(this.target!)
-    const has = t.equipment.includes(name)
-    t.equipment = has ? t.equipment.filter((n) => n !== name) : [...t.equipment, name]
+    const has = this.active!.equipment.includes(name)
+    const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, equipment: has ? s.equipment.filter((n) => n !== name) : [...s.equipment, name] }))
     return this.saveTarget(t, has ? { ops: [], eqs: [name] } : null, has ? null : { ops: [], eqs: [name] })
   }
   private saveTarget(t: Lineup, drop: { ops: string[]; eqs: string[] } | null, add: { ops: string[]; eqs: string[] } | null) {
     return this.attempt(async () => {
-      const saved = await api.saveLineup(t)
+      const saved = await api.saveLineup(this.filled(t))
       this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
       this.retrack(drop, add)
       this.save()
@@ -410,12 +483,14 @@ export interface GoalProgress {
 }
 
 /** 目标盟约的人数进度。names 是要计数的干员（已持有的，或编辑时的名单）；名单里的转职盟约也算 */
+
 export function goalProgress(goals: CovenantGoal[], members: LineupMember[], names: Iterable<string>): GoalProgress[] {
   const byName = new Map(members.map((m) => [m.name, m]))
-  const list = [...names].map((n) => covenantsOf(byName.get(n) ?? { name: n }))
+  const all = [...names]
+  const list = all.map((n) => covenantsOf(byName.get(n) ?? { name: n }))
   return goals.map((g) => {
     const covenant = covenantById.get(g.id)!
-    const have = list.filter((cs) => cs.includes(g.id)).length
+    const have = g.id === ELITE_COVENANT ? all.filter((n) => byName.get(n)?.elite).length : list.filter((cs) => cs.includes(g.id)).length
     const need = covenant.thresholds[g.level - 1]
     return { covenant, level: g.level, need, have, active: have >= covenant.thresholds[0], done: have >= need }
   })

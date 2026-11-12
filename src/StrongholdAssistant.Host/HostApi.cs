@@ -40,6 +40,8 @@ public sealed partial class HostApi
         _equipmentNames = catalog.GetProperty("equipment").EnumerateArray()
             .Select(e => e.GetProperty("name").GetString()!).ToHashSet();
         Match = new("none", null, covenants.Select(c => new CovenantState(ids[c.Name], false)).ToArray(), [], null, []);
+        LoadHistory();
+        LoadIncomeTable();
     }
 
     public static async Task<HostApi> CreateAsync(string dataDirectory, string userDirectory)
@@ -55,6 +57,7 @@ public sealed partial class HostApi
         using var enemies = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "enemy_types.json")));
         var catalog = JsonSerializer.SerializeToElement(new
         {
+            incomeSources = BuildIncomeSources(equipment, operators),
             covenants = covenants.Select(c => new
             {
                 id = ids[c.Name], name = c.Name, kind = c.BondType == "SEASON" ? "core" : "extra",
@@ -65,7 +68,7 @@ public sealed partial class HostApi
             }),
             operators = operators.Select(o => new
             {
-                name = o.Name, tier = o.Tier, obtain = o.Obtain,
+                name = o.Name, tier = o.Tier, obtain = o.Obtain, diy = o.Diy,
                 core = o.CoreCovenants.Select(c => ids[c]), extra = o.AdditionalCovenants.Select(c => ids[c]),
                 normal = o.Normal.Traits.Select(t => new { type = t.TraitType, text = Clean(t.TraitDescription) }),
                 elite = o.Elite.Traits.Select(t => new { type = t.TraitType, text = Clean(t.TraitDescription) })
@@ -91,7 +94,7 @@ public sealed partial class HostApi
         foreach (var category in new[] { "equipment", "operators", "bosses" })
             foreach (var entry in merged[category]!.AsArray())
                 if (extra[category]![entry![category == "bosses" ? "id" : "name"]!.GetValue<string>()] is JsonObject fields)
-                    foreach (var field in fields) entry[field.Key] = field.Value!.DeepClone();
+                    foreach (var field in fields) entry[field.Key] = field.Value?.DeepClone();
         var api = new HostApi(userDirectory, ids, operators, covenants, JsonSerializer.SerializeToElement(merged, JsonOptions));
         api._modes = extra["modes"]!.Deserialize<GameModeInfo[]>(JsonOptions)!;
         api.SettingsStore = new HostSettingsStore(Path.Combine(userDirectory, "settings.json"));
@@ -136,11 +139,44 @@ public sealed partial class HostApi
         return Match;
     }
 
+    private LineupMember ToMember(LineupSlot s) => new(s.OperatorName,
+        s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key)
+        { Equipment = s.Equipment, Elite = s.Elite, Skill = s.Skill, Module = s.Module };
+
+    private LineupSlot ToSlot(LineupMember m, LineupSlot? old = null)
+    {
+        var slot = old ?? new LineupSlot { OperatorName = m.Name };
+        slot.Key = m.Key;
+        slot.Equipment = m.Equipment.DistinctBy(e => e.Name).ToArray();
+        slot.TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform);
+        slot.Elite = m.Elite;
+        slot.Skill = m.Skill;
+        slot.Module = m.Module;
+        return slot;
+    }
+
     private LineupDto ToDto(Lineup lineup) => new(lineup.Id, lineup.Name,
-        lineup.Slots.Select(s => new LineupMember(s.OperatorName,
-            s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key) { Equipment = s.Equipment }).ToArray(),
-        lineup.Source, lineup.Note, lineup.UpdatedAt)
-        { Goals = lineup.Goals ?? InferGoals(lineup), Equipment = lineup.Equipment, StrategyId = lineup.StrategyId, Description = lineup.Description };
+        lineup.Slots.Select(ToMember).ToArray(), lineup.Source, lineup.Note, lineup.UpdatedAt)
+        { Goals = lineup.Goals ?? InferGoals(lineup), Equipment = lineup.Equipment, StrategyId = lineup.StrategyId,
+            Description = lineup.Description, Stages = lineup.Stages?.Select(s => new LineupStageDto(
+                s.Name, s.FromRound, s.ToRound, s.Goals, s.Members.Select(ToMember).ToArray(), s.Equipment)).ToArray() };
+
+    private Lineup ApplyLineup(LineupDto input, Lineup lineup)
+    {
+        var oldSlots = lineup.Slots.ToDictionary(s => s.OperatorName);
+        lineup.Slots = input.Members.Select(m => ToSlot(m, oldSlots.GetValueOrDefault(m.Name))).ToList();
+        lineup.Stages = input.Stages?.Select(s => new LineupStage(s.Name, s.FromRound, s.ToRound,
+            s.Goals, s.Members.Select(m => ToSlot(m)).ToArray(), s.Equipment)).ToArray();
+        lineup.Goals = input.Goals;
+        lineup.Equipment = input.Equipment;
+        lineup.Name = input.Name;
+        lineup.StrategyId = input.StrategyId;
+        lineup.Source = input.Source;
+        lineup.Note = input.Note;
+        lineup.Description = input.Description;
+        lineup.UpdatedAt = input.UpdatedAt;
+        return lineup;
+    }
 
     private CovenantGoal[] InferGoals(Lineup lineup)
     {
@@ -167,29 +203,30 @@ public sealed partial class HostApi
         var lineup = input.Id.Length == 0 ? new Lineup() :
             (await _lineups.LoadAllAsync()).SingleOrDefault(l => l.Id == input.Id)
             ?? throw new ArgumentException("要保存的阵容不存在。");
-        var oldSlots = lineup.Slots.ToDictionary(s => s.OperatorName);
-        lineup.Slots = input.Members.Select(m =>
-        {
-            var slot = oldSlots.TryGetValue(m.Name, out var old) ? old : new LineupSlot { OperatorName = m.Name };
-            slot.Key = m.Key;
-            slot.Equipment = m.Equipment.DistinctBy(e => e.Name).ToArray();
-            slot.TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform);
-            return slot;
-        }).ToList();
-        lineup.Goals = input.Goals;
-        lineup.Equipment = input.Equipment;
-        lineup.Name = input.Name;
-        lineup.StrategyId = input.StrategyId;
-        lineup.Source = input.Source;
-        lineup.Note = input.Note;
-        lineup.Description = input.Description;
+        ApplyLineup(input, lineup);
         await _lineups.SaveAsync(lineup);
         await RefreshTrackingAsync();
         return ToDto(lineup);
     }
 
+    public async Task<LineupDto[]> PutLineupsAsync(LineupDto[] lineups, string[] removed)
+    {
+        foreach (var input in lineups) { ValidateLineup(input); ValidateId(input.Id); }
+        foreach (var id in removed) ValidateId(id);
+        var existing = (await _lineups.LoadAllAsync()).ToDictionary(l => l.Id);
+        foreach (var input in lineups)
+            await _lineups.SaveAsync(ApplyLineup(input, existing.GetValueOrDefault(input.Id) ?? new Lineup { Id = input.Id }), preserveUpdatedAt: true);
+        foreach (var id in removed) await _lineups.DeleteAsync(id);
+        var session = await SessionAsync();
+        if (removed.Contains(session.TargetLineupId)) await SaveSessionAsync(session with { TargetLineupId = null });
+        else await RefreshTrackingAsync();
+        return await LineupsAsync();
+    }
+
     private void ValidateLineup(LineupDto input)
     {
+        foreach (var stage in input.Stages ?? [])
+            ValidateLineup(input with { Members = stage.Members, Goals = stage.Goals, Equipment = stage.Equipment, Stages = null });
         if (input.Description?.Length > 500) throw new ArgumentException("简介最多 500 字。");
         if (input.StrategyId is not null && !Catalog.GetProperty("strategies").EnumerateArray()
                 .Any(s => s.GetProperty("id").GetString() == input.StrategyId))
@@ -278,6 +315,11 @@ public sealed partial class HostApi
         await _scanGate.WaitAsync();
         try
         {
+            lock (_historyGate)
+            {
+                _activeRecord = null;
+                ClearEconomy();
+            }
             _manualBans.Clear();
             _avatarBans.Clear();
             _banGroups.Clear();
@@ -318,6 +360,9 @@ public sealed partial class HostApi
         switch (method)
         {
             case "plazaLogin": return await PlazaLoginAsync();
+            case "sklandGuide": return await SklandGuideAsync(args[0].GetString()!);
+            case "sklandHistory": return await SklandHistoryAsync(args.Length > 0 && args[0].ValueKind == JsonValueKind.Object
+                && args[0].TryGetProperty("silent", out var silent) && silent.GetBoolean());
             case "plazaToken": return new PlazaTokenStore(DataDirectory).Read();
             case "plazaLogout": new PlazaTokenStore(DataDirectory).Delete(); return null;
             case "catalog": return Catalog;
@@ -335,6 +380,11 @@ public sealed partial class HostApi
             case "mumuInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverMumuDevices()
                 .Select(d => new MumuInstance(d.Serial, d.Name)).ToArray());
             case "match": return Match;
+            case "addIncome": return AddIncome(Read<string>(0), Read<bool>(1));
+            case "removeIncome": return RemoveIncome(Read<string>(0));
+            case "history": return History();
+            case "deleteRecord": DeleteRecord(Read<string>(0)); return null;
+            case "saveSklandRecords": return SaveSklandRecords(Read<SklandRecord[]>(0));
             case "resetMatch": return await ResetMatchAsync();
             case "copyText": CopyText(Read<string>(0)); return null;
             case "rescan":
@@ -343,6 +393,9 @@ public sealed partial class HostApi
             case "setCovenantIncomplete": return SetCovenantIncomplete(Read<string>(0), Read<bool>(1));
             case "setOperatorBanned": return SetOperatorBanned(Read<string>(0), Read<bool>(1));
             case "lineups": return await LineupsAsync();
+            case "putLineups": return await PutLineupsAsync(Read<LineupDto[]>(0), Read<string[]>(1));
+            case "setMatchStrategy": return SetMatchStrategy(Read<string?>(0));
+            case "resetShareId": ResetShareId(); return null;
             case "saveLineup": return await SaveLineupAsync(Read<LineupDto>(0));
             case "deleteLineup": await DeleteLineupAsync(Read<string>(0)); return null;
             case "session": return await SessionAsync();

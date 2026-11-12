@@ -1,3 +1,4 @@
+// 2026-11-12：忽略可露希尔主题单字名称旁被识别为 △ 的职业图标。
 // 2026-11-11：从卡片间距测量 UI 缩放，以右下角为基准换算名称栏。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Drawing;
@@ -190,7 +191,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 int start = value.IndexOf(candidate, StringComparison.Ordinal);
                 while (start >= 0)
                 {
-                    if ((candidate.Length > 1 || value.Trim('M', 'X', '入', 'λ', '×') == candidate)
+                    if ((candidate.Length > 1 || value.Trim('M', 'X', '入', 'λ', '×', '△') == candidate)
                         && !matches.Any(m => start < m.Start + m.Length && start + candidate.Length > m.Start))
                         matches.Add((name, start, candidate.Length));
                     start = value.IndexOf(candidate, start + candidate.Length, StringComparison.Ordinal);

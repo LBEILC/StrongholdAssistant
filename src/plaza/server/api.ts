@@ -1,6 +1,10 @@
 import { account, type Context } from './auth'
 import { admin } from './admin'
 import { posts } from './posts'
+import { comments } from './comments'
+import { report } from './reports'
+import { sync } from './sync'
+import { incomeTable, reportIncome } from './income'
 import { ApiFailure, empty, fail, json, type Env } from './common'
 export type { Env } from './common'
 
@@ -15,13 +19,18 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   if (request.method === 'OPTIONS') response = empty()
   else if (url.pathname.startsWith('/api/admin/')) response = await admin(ctx, url.pathname)
   else if (url.pathname === '/api/me' || url.pathname === '/api/me/password' || url.pathname.startsWith('/api/auth/')) response = await account(ctx, url.pathname)
+  else if (/^\/api\/posts\/[^/]+\/comments$/.test(url.pathname) || /^\/api\/comments\/[^/]+$/.test(url.pathname)) response = await comments(ctx, url.pathname)
+  else if (url.pathname === '/api/reports' && request.method === 'POST') response = await report(ctx)
+  else if (url.pathname === '/api/sync' && request.method === 'POST') response = await sync(ctx)
+  else if (url.pathname === '/api/income' && request.method === 'POST') response = await reportIncome(ctx)
+  else if (url.pathname === '/api/income-table' && request.method === 'GET') response = await incomeTable(ctx)
   else if (url.pathname === '/api/posts' || url.pathname.startsWith('/api/posts/')) response = await posts(ctx, url.pathname)
   else fail(404, 'not_found', '接口不存在。')
  } catch (error) {
   if (error instanceof ApiFailure) response = json({ error: error.code, message: error.message }, error.status)
   else response = json({ error: 'server_error', message: '请求处理失败，请稍后再试。' }, 500)
  }
- response.headers.set('Cache-Control', 'no-store')
+ if (!response.headers.has('Cache-Control')) response.headers.set('Cache-Control', 'no-store')
  response.headers.set('Vary', 'Origin')
  if (allowed) {
   response.headers.set('Access-Control-Allow-Origin', origin!)

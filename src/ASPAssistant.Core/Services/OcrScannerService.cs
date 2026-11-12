@@ -1,4 +1,5 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+﻿// 2026-11-12：复用商店扫描截图读取回合与资金，通过事件交给宿主记录。
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Threading.Channels;
 using System.Timers;
 using ASPAssistant.Core.GameModes;
@@ -37,6 +38,7 @@ public class OcrScannerService : IDisposable
     private const int BanLostThreshold   = 3;
 
     public event Action<GameState.GameState>? GameStateUpdated;
+    public event Action<EconomyReading>? EconomyRead;
 
     /// <summary>
     /// Raised when the periodic scan first detects that the game is on the ban selection screen.
@@ -154,6 +156,8 @@ public class OcrScannerService : IDisposable
             }
 
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _getTrackedNames());
+            if (EconomyRead is not null)
+                EconomyRead.Invoke(await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadAsync(screenshot, imgWidth, imgHeight));
             PublishShopItems(rawItems, _shopReader.HasVisibleCards);
         }
         catch (Exception ex)

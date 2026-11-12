@@ -15,11 +15,15 @@
     showName?: boolean
     /** 阵容里的关键干员：左上角金色三角 */
     isKey?: boolean
+    /** 目标精锐：左下角金色 V 标（v0.7.0） */
+    elite?: boolean
+    /** 技能或模组跟默认不一样时，右下角显示这个技能的图标（v0.7.0） */
+    skill?: string | null
     /** 右键弹干员菜单；编辑器、挑选面板里关掉 */
     menu?: boolean
     onclick?: (e: MouseEvent) => void
   }
-  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, menu = true, onclick }: Props = $props()
+  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, elite = false, skill = null, menu = true, onclick }: Props = $props()
   const op = $derived(app.op(name))
   const banned = $derived(app.banned.has(name))
   const focus = $derived(app.focusOps.has(name))
@@ -32,6 +36,9 @@
     {#if banned}<img class="ban" src={asset.stage('img_chess_banned')} alt="禁用" />{/if}
     {#if isKey}<span class="key" title="关键干员"></span>{/if}
     {#if focus}<span class="fav" title="特别关注"><Icon name="heartFill" size={9} /></span>{/if}
+    <!-- 精锐：游戏图鉴里精锐状态的标签，贴在头像左下角 -->
+    {#if elite}<img class="el" src={asset.card('icon_golden')} alt="精锐" title="目标精锐" />{/if}
+    {#if skill}<img class="sk" src={asset.skill(skill)} alt="" title="技能：{op.skills?.find((x) => x.id === skill)?.name ?? ''}" />{/if}
     {#if transform}<span class="tf" title="转职：{app.cov(transform).name}"><span class="glyph" style:--src="url({asset.bond(transform)})"></span></span>{/if}
   </span>
   {#if showName}<span class="nm">{name}</span>{/if}
@@ -128,6 +135,28 @@
     height: 11px;
     background: var(--gold);
     clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+  /* 素材是图鉴的标签底板（60×27），双箭头在横向第 10～37 像素，右边留给游戏写字。
+     只框出第 4～43 像素（图案居中，左右各留 6 像素） */
+  .el {
+    position: absolute;
+    left: 0;
+    bottom: 2px;
+    z-index: 2;
+    height: max(11px, calc(var(--s) * 0.26));
+    aspect-ratio: 40 / 27;
+    object-view-box: inset(0px 16px 0px 4px);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+  }
+  .sk {
+    position: absolute;
+    right: 1px;
+    bottom: 3px;
+    z-index: 2;
+    width: 14px;
+    height: 14px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.7);
+    background: var(--bg-0);
   }
   .tf {
     position: absolute;

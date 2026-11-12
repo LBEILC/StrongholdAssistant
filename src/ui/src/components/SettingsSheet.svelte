@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { fly, fade } from 'svelte/transition'
-  import { cubicOut } from 'svelte/easing'
+  import { sheet } from '../lib/sheet'
+  import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { api, type BackupSummary, type GameTheme, type ImportMode, type MumuInstance, type Settings } from '../lib/api'
   import Icon from './Icon.svelte'
   import NotesList from './NotesList.svelte'
   import { plaza, PLAZA } from '../lib/plaza.svelte'
+  import { cloud } from '../lib/sync.svelte'
 
   // 设置：游戏主题（商店识别要用）、商店标记、版本与更新、关于
   const themes: { id: GameTheme; name: string; note: string }[] = [
@@ -47,6 +48,32 @@
   const setSource = (v: Settings['gameSource']) => {
     set('gameSource', v)
     loadInstances()
+  }
+
+  // 快捷键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）
+  let recording = $state(false)
+  let hkMsg = $state('')
+  function recordKey(e: KeyboardEvent) {
+    if (!recording) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.key === 'Escape') return void (recording = false)
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
+    const key = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
+    const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
+    if (!mods.length && !/^F([1-9]|1[0-2])$/.test(key)) return void (hkMsg = '要带上 Ctrl、Alt 或 Shift，或者单按 F1～F12。')
+    recording = false
+    applyHotkey([...mods, key].join('+'))
+  }
+  async function applyHotkey(combo: string) {
+    try {
+      await api.setHotkey(combo)
+      app.settings.toggleHotkey = combo
+      app.appInfo.hotkeyFailed = false
+      hkMsg = ''
+    } catch (e) {
+      hkMsg = (e as Error).message
+    }
   }
 
   // 数据：导出备份、选文件预览后按合并 / 替换导入
@@ -93,7 +120,7 @@
 
 {#if app.settingsOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:fly={{ y: 360, duration: 240, easing: cubicOut }}>
+  <aside class="sheet" transition:sheet={{ y: 360, duration: 240 }}>
     <header>
       <h3>设置</h3>
       <span class="term">Settings</span>
@@ -155,7 +182,9 @@
       <label class="row">
         <span class="lbl"
           ><b>跟随游戏窗口</b><small
-            >{app.settings.followGame
+            >{app.workbench
+              ? '工作台里暂停跟随，收回侧栏后照这里的设置恢复'
+              : app.settings.followGame
               ? '侧栏贴在游戏右边，全屏或放不下时盖在游戏左侧'
               : '侧栏停在你拖到的位置，不再跟着游戏；要盖在全屏游戏上请打开置顶'}</small
           ></span
@@ -171,6 +200,33 @@
         <button class:on={app.settings.collapseMode === 'up'} onclick={() => set('collapseMode', 'up')}>向上收起</button>
       </div>
       <p class="note">{app.settings.collapseMode === 'strip' ? '收成左边一根竖条，追踪的头像竖着排。' : '宽度不变，只留标题栏和追踪列表，打商店时还能点掉追踪。'}</p>
+      <!-- 全局快捷键：游戏在前台也能按；点按钮后按下新组合 -->
+      <div class="hk">
+        <span class="hkl">快捷键收起 / 展开</span>
+        <button class="hkb" class:rec={recording} onclick={() => ((recording = !recording), (hkMsg = ''))} onkeydown={recordKey}>
+          {recording ? '按下新的组合…' : app.settings.toggleHotkey || '未设置'}
+        </button>
+        {#if app.settings.toggleHotkey && !recording}<button class="link" onclick={() => applyHotkey('')}>关闭</button>{/if}
+      </div>
+      {#if hkMsg}
+        <p class="note bad">{hkMsg}</p>
+      {:else if recording}
+        <p class="note">按 Ctrl / Alt / Shift 加一个键，或单按 F1～F12；Esc 取消。</p>
+      {:else if app.appInfo.hotkeyFailed && app.settings.toggleHotkey}
+        <p class="note bad">「{app.settings.toggleHotkey}」被别的软件占用了，没生效，换一个试试。</p>
+      {:else}
+        <p class="note">游戏在前台时也能按：侧栏里收起、展开；工作台里最小化、恢复。</p>
+      {/if}
+    </section>
+
+    <section>
+      <label class="row">
+        <span class="lbl"><b>帮大家补全资金表</b><small>每局结束匿名上报各回合的起始资金（模式、回合、资金、策略），不带账号；资金表让没打过的模式也能预计下回合资金</small></span>
+        <input type="checkbox" class="sw" checked={app.settings.shareIncome} onchange={(e) => set('shareIncome', e.currentTarget.checked)} />
+      </label>
+      {#if app.settings.shareIncome}
+        <p class="note">只带一个本机随机编号，防止一个人刷数据。<button class="link" onclick={() => api.resetShareId().then(() => app.showToast('已换了一个新编号'))}>重置编号</button></p>
+      {/if}
     </section>
 
     <section>
@@ -184,6 +240,21 @@
         <p class="acct"><span>{plaza.checked ? '没有登录。' : '…'}</span>
           <button class="link" disabled={plaza.loggingIn} onclick={() => plaza.login().catch((e) => app.showToast(e.message, true))}>{plaza.loggingIn ? '等待登录…' : '登录'}</button>
           <button class="link" onclick={() => api.openUrl(PLAZA)}>打开阵容广场网站</button>
+        </p>
+      {/if}
+      <!-- 云同步（v0.7.0）：登录后才能打开 -->
+      <label class="row sync">
+        <span class="lbl"
+          ><b>同步我的阵容和偏好</b><small
+            >{plaza.me ? '我的阵容（含阶段、简介）、特别关注、游戏主题、商店标记、我的默认跟着账号走，换电脑、在网站「我的阵容」里都能用' : '登录阵容广场后才能打开'}</small
+          ></span
+        >
+        <input type="checkbox" class="sw" disabled={!plaza.me && !app.settings.cloudSync.enabled} checked={app.settings.cloudSync.enabled} onchange={(e) => cloud.setEnabled(e.currentTarget.checked)} />
+      </label>
+      {#if app.settings.cloudSync.enabled}
+        <p class="note" class:bad={cloud.status === 'error'}>
+          {cloud.status === 'syncing' ? '正在同步…' : cloud.status === 'error' ? `同步失败：${cloud.error}` : !plaza.token ? '没有登录，登录后接着同步。' : cloud.lastAt ? '已同步。改动后几秒内自动上传。' : '启动时和改动后自动同步。'}
+          {#if plaza.token && cloud.status !== 'syncing'}<button class="link" onclick={() => cloud.run()}>立即同步</button>{/if}
         </p>
       {/if}
     </section>
@@ -718,5 +789,34 @@
     margin: 4px 0 0;
     font-size: 11px;
     color: var(--fg-4);
+  }
+  .hk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .hkl {
+    font-size: 13px;
+  }
+  .hkb {
+    min-width: 92px;
+    height: 28px;
+    padding: 0 10px;
+    font-family: var(--font-term);
+    font-size: 12px;
+    color: var(--fg-1);
+    background: var(--bg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .hkb:hover {
+    box-shadow: inset 0 0 0 1px var(--fg-4);
+  }
+  .hkb.rec {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .note.bad {
+    color: var(--gold);
   }
 </style>

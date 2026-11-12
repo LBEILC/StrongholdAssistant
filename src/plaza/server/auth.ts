@@ -15,10 +15,11 @@ export async function authenticate(ctx: Context, required = true) {
   return null
  }
  const tokenHash = await hash(ctx.env.CODE_PEPPER + token)
- const u = await stmt(ctx.env, `SELECT u.*, s.renewed_at, s.created_at AS session_created_at, s.login_method FROM sessions s JOIN users u ON u.id=s.user_id
-  WHERE s.token_hash=? AND s.expires_at>?`, tokenHash, iso()).first<UserRow & { renewed_at: string; session_created_at: string; login_method: string }>()
+ const u = await stmt(ctx.env, `SELECT u.*, s.renewed_at, s.expires_at, s.created_at AS session_created_at, s.login_method FROM sessions s JOIN users u ON u.id=s.user_id
+  WHERE s.token_hash=?`, tokenHash).first<UserRow & { renewed_at: string; expires_at: string; session_created_at: string; login_method: string }>()
  if (!u || u.deleted) fail(401, 'unauthorized', '登录已失效，请重新登录。')
  if (u.banned) fail(403, 'banned', '这个账号已被封禁。')
+ if (u.expires_at <= iso()) fail(401, 'unauthorized', '登录已失效，请重新登录。')
  if (Date.now() - Date.parse(u.renewed_at) > DAY) {
   await stmt(ctx.env, 'UPDATE sessions SET renewed_at=?, expires_at=? WHERE token_hash=?', iso(), iso(Date.now() + 30 * DAY), tokenHash).run()
   ctx.cookie = cookie(token)
@@ -164,7 +165,11 @@ export async function account(ctx: Context, path: string) {
   }
   if (method === 'DELETE') {
    await env.DB.batch([
+    ...['favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage'].map(table => stmt(env, 'DELETE FROM ' + table + ' WHERE user_id=?', u.id)),
     stmt(env, 'DELETE FROM likes WHERE user_id=?', u.id),
+    stmt(env, 'DELETE FROM comments WHERE user_id=?', u.id),
+    stmt(env, 'DELETE FROM reports WHERE user_id=?', u.id),
+    stmt(env, 'DELETE FROM report_usage WHERE user_id=?', u.id),
     stmt(env, 'DELETE FROM posts WHERE user_id=?', u.id),
     stmt(env, 'DELETE FROM sessions WHERE user_id=?', u.id),
     stmt(env, 'DELETE FROM login_codes WHERE email=?', u.email),

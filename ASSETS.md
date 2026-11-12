@@ -10,7 +10,9 @@
 |---|---|---|
 | `src/ui/public/assets/game/bond/` | 盟约图标（文件名为游戏盟约 id 去掉 `Ship`） | [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) `cn` 分支，commit `774d93398fc56df29b4f55e406edda1a9df451e9`，`assets/dyn/ui/autochess/[uc]autochesscommon/arts/bondicon/` |
 | `src/ui/public/assets/game/card/` | 商店卡底、等阶框与等阶角标、冻结等 | 同上，`…/[uc]autochessbattle/shop/autochess_shop_card_item/` |
+| `src/ui/public/assets/game/card/icon_golden.png` | 精锐标记（图鉴里的精锐状态标签） | 同上，`…/[uc]autochessouter/handbook/act_auto_chess_handbook_state/` |
 | `src/ui/public/assets/game/hud/` | 首领框、装饰框等 | 同上，`…/[uc]autochessbattle/hud/autochess_hud_panel/` |
+| `src/ui/public/assets/game/hud/s_icon_gold.png` | 资金图标（三颗菱形，白色原图，界面里染成金色） | 同上，`…/[uc]autochesscommon/arts/garrisontypeicon/` |
 | `src/ui/public/assets/game/band/` | 禁用标记、禁用提示底板 | 同上，`…/[uc]autochessouter/bandchoose/` |
 | `src/ui/public/assets/game/stageinfo/` | 「确认本局信息」页的标题图标、盟约与干员禁用角标、底板等 | 同上，`…/[uc]autochessouter/stageinfo/stageinfogroup/` |
 
@@ -26,10 +28,13 @@
 
 ## 数据与图标
 
+`data/codex_extra.json` 的干员可选技能与模组取自[森空岛卫戍协议公开资源接口](https://zonai.skland.com/web/v1/game/garrison/guide/resource)（2026-11-12）；默认技能与模组取自下述 `activity_table.json` 的 `charShopChessDatas`。由 `scripts/generate-operator-options.mjs` 生成，技能顺序和中文名称保留资源接口原值。
+
 `data/codex_extra.json` 的装备关系、进阶效果与首领血量取自 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 国服 `gamedata/excel/activity_table.json`（2026-11-11 数据，`act3autochess/V3_1`），由 `scripts/GenerateCodexExtra` 生成；游戏数据归上海鹰角网络所有。
 
 | 位置 | 内容 | 来源 |
 |---|---|---|
+| `data/skills/`、`data/modules/` 及 `src/ui/public/assets/data/` 下对应目录 | 技能图标与模组类型图标，原尺寸转为无损 WebP | 森空岛公开资源接口指向的鹰角官方 `web.hycdn.cn/arknights/game/assets/char_skill/`、`uniequip/type/icon/`；游戏美术归上海鹰角网络所有，由 `scripts/convert-operator-icons.gd` 转换。官方地址缺失的 `pri-x`、`rpr-y` 两种类型（6 个模组：`uniequip_002_kaitou`、`_blaze2`、`_christ`、`_mantra`、`_nymph`，`uniequip_003_chen2`）取自 [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) `cn` 分支 commit `774d93398fc56df29b4f55e406edda1a9df451e9` 的 `assets/dyn/arts/ui/uniequiptype/`，按官方图标的 82×58 透明画布居中补边后转换 |
 | `src/ui/public/assets/data/operators/` | 干员头像（缩放并转为 webp） | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/icons/`（取自 PRTS） |
 | `data/operator_avatars/*.png` | 头像识别模板（默认头像），141 张 128×128 PNG；与界面头像同源 | 同上 `data/icons/operators/`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
 | `data/operator_avatars/<干员名>/` | 头像识别模板（默认、精二、各皮肤头像），463 张 128×128 PNG，由 `scripts/generate-avatar-templates.ps1` 生成 | [yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource) `avatar/`，commit `62fe51e`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
@@ -38,6 +43,7 @@
 | `data/model/ocr/` | 文字识别模型（`det.onnx`、`rec.onnx`、`keys.txt`），由 MaaFramework 加载 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/model/ocr/`，为 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 模型（Apache-2.0） |
 | `src/StrongholdAssistant.Tests/TestData/*.png` | 测试用的游戏截图（开局信息页、商店、局内画面），只用于测试，不进发布包 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `src/ASPAssistant.Tests/TestData/`；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/user-ban-4-1920x1080.png` | 用户提供的禁用信息页截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/shop-closure-li-user-1665x1012.jpg` | 用户提供的可露希尔商店截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；游戏画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/*-ui100-2000x1125.png` | 用户提供的 UI 100 信息页、禁用头像页和商店截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/solo-opening-*.png`、`mumu-solo-*.png` | 用户提供的 PC 单人开局页、MuMu 单人开局及对局详情截图，由 WebP 转为 PNG，只用于测试 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |

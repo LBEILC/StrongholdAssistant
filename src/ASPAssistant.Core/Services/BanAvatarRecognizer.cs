@@ -36,7 +36,8 @@ public sealed class BanAvatarRecognizer
     public BanAvatarRecognizer(IOcrEngine ocr, IReadOnlyList<Operator> operators, string avatarDirectory)
     {
         _ocr = ocr;
-        _operators = operators.Where(o => o.Obtain is null).ToArray();
+        // 自选干员只在编队选择页显示禁用，不参与禁用列表头像匹配。
+        _operators = operators.Where(o => o.Obtain is null && !o.Diy).ToArray();
         foreach (var op in _operators)
         {
             var variants = new List<double[]>();

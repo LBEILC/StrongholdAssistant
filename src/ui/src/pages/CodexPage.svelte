@@ -64,13 +64,13 @@
         (!onlyTracked || app.trackedEq.has(e.name)),
     ),
   )
-  // 按等阶分组；不可招募的特殊干员（如暴躁铁皮）单独放最后一组，t = 0
+  // 按等阶分组；自选干员单独一组（t = -1），不可招募的特殊干员（如暴躁铁皮）放最后一组（t = 0）
   const groups = $derived(
-    [1, 2, 3, 4, 5, 6, 0]
+    [1, 2, 3, 4, 5, 6, -1, 0]
       .map((t) => ({
         t,
-        ops: ops.filter((o) => (t ? !o.obtain && o.tier === t : !!o.obtain)),
-        eqs: t ? eqs.filter((e) => e.tier === t) : [],
+        ops: ops.filter((o) => (t > 0 ? !o.obtain && !o.diy && o.tier === t : t < 0 ? !!o.diy : !!o.obtain)),
+        eqs: t > 0 ? eqs.filter((e) => e.tier === t) : [],
       }))
       .filter((g) => (kind === 'operator' ? g.ops.length : g.eqs.length)),
   )
@@ -149,12 +149,12 @@
   </div>
 
   {#each groups as g (g.t)}
-    <div class="ghead" style:--c={g.t ? `var(--tier-${g.t})` : 'var(--gold)'}>
-      {#if g.t}
+    <div class="ghead" style:--c={g.t > 0 ? `var(--tier-${g.t})` : g.t < 0 ? 'var(--mint)' : 'var(--gold)'}>
+      {#if g.t > 0}
         <TierBadge tier={g.t} size={18} />
         <span class="term">Tier {ROMAN[g.t]}</span>
       {:else}
-        <span class="special">特殊 · 不可招募</span>
+        <span class="special">{g.t < 0 ? '自选 · 开局选好后会在商店刷出' : '特殊 · 不可招募'}</span>
       {/if}
       <i></i>
       <em>{kind === 'operator' ? g.ops.length : g.eqs.length}</em>
@@ -494,5 +494,12 @@
     color: var(--fg-3);
     text-align: center;
     padding: 30px 0;
+  }
+  /* 宽（工作台）：盟约筛选不再按 13 列撑满（圆按钮会变得很大），固定 38 像素一个，尽量排成一行 */
+  @container (min-width: 720px) {
+    .bondpick {
+      grid-template-columns: repeat(auto-fill, 38px);
+      gap: 4px;
+    }
   }
 </style>

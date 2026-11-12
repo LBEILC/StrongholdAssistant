@@ -9,7 +9,9 @@
   import MatchPage from './pages/MatchPage.svelte'
   import LineupPage from './pages/LineupPage.svelte'
   import CodexPage from './pages/CodexPage.svelte'
+  import HistoryPage from './pages/HistoryPage.svelte'
   import CollapsedStrip from './components/CollapsedStrip.svelte'
+  import EconomyBar from './components/EconomyBar.svelte'
   import ContextMenu from './components/ContextMenu.svelte'
   import BanPicker from './components/BanPicker.svelte'
   import ImportSheet from './components/ImportSheet.svelte'
@@ -35,7 +37,7 @@
   })
 
   // 切换标签时页面从切换方向滑入：往右边的标签切，新页面从右边进来
-  const order = ['match', 'lineup', 'codex']
+  const order = ['match', 'lineup', 'codex', 'history']
   let prev = app.tab
   let dir = $state(1)
   $effect.pre(() => {
@@ -75,20 +77,37 @@
   <!-- 向上收起：只留标题栏和追踪列表，窗口高度跟着内容（追踪增减时再告诉宿主） -->
   <div class="shell up" bind:clientHeight={upH}>
     <TitleBar />
+    <EconomyBar compact />
     <BondTracker />
   </div>
 {:else}
-<div class="shell {app.phase}">
+<div class="shell {app.phase}" class:wb={app.workbench}>
   <TitleBar />
-  <BondTracker />
-  <Tabs />
+  {#if app.workbench}
+    <!-- 工作台：左边竖排导航，右边追踪列表和内容；详情面板停在右侧，不挡左边 -->
+    <div class="wbody">
+      <Tabs vertical />
+      <div class="wcol">
+        <BondTracker />
+        {@render body()}
+      </div>
+    </div>
+  {:else}
+    <BondTracker />
+    <Tabs />
+    {@render body()}
+  {/if}
+</div>
+{/if}
+
+{#snippet body()}
   {#if app.update.state === 'available' || app.update.state === 'downloading' || app.update.state === 'ready'}
     <button class="updbar" onclick={() => (app.settingsOpen = true)}>
       <b class="term">Update</b>
       {app.update.state === 'available' ? `发现新版本 v${app.update.version}，点这里更新` : app.update.state === 'downloading' ? `正在下载 v${app.update.version}…` : '下载完成，即将重启'}
     </button>
   {/if}
-  <div class="content">
+  <div class="content" class:wb={app.workbench} class:docked={app.workbench && (!!app.detail || !!plaza.viewing)}>
     <main bind:this={scroller}>
       {#key app.tab}
         <div in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
@@ -96,8 +115,10 @@
             <MatchPage />
           {:else if app.tab === 'lineup'}
             <LineupPage />
-          {:else}
+          {:else if app.tab === 'codex'}
             <CodexPage />
+          {:else}
+            <HistoryPage />
           {/if}
         </div>
       {/key}
@@ -111,8 +132,7 @@
     <SettingsSheet />
     <ChangelogSheet />
   </div>
-</div>
-{/if}
+{/snippet}
 <ContextMenu />
 <Tooltip />
 {#if app.phase !== 'boot'}<WhatsNew />{/if}
@@ -187,5 +207,57 @@
     height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
+    /* 页面按自己的可用宽度换多栏（容器查询），侧栏和工作台用同一套页面 */
+    container-type: inline-size;
+    transition: margin-right 240ms var(--ease-out);
+  }
+
+  /* 工作台 */
+  .wbody {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  .wbody > :global(.tabs) {
+    flex: none;
+    width: 132px;
+  }
+  .wcol {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .content.wb main > :global(div) {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  /* 面板都停在右边：详情、广场帖子一栏宽，编辑器和禁用选择宽一些 */
+  .content.wb > :global(aside) {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    width: min(440px, 46%);
+    max-height: none;
+    box-shadow:
+      -1px 0 0 var(--line),
+      -16px 0 32px rgb(0 0 0 / 0.45);
+  }
+  .content.wb > :global(aside.ed) {
+    width: min(720px, 66%);
+  }
+  .content.wb :global(aside > .grip) {
+    display: none;
+  }
+  .content.wb > :global(.scrim) {
+    background: rgb(0 0 0 / 0.3);
+  }
+  /* 详情和广场帖子不遮左边：左边照常能点，点别的卡片直接换内容 */
+  .content.wb > :global(.scrim.dock) {
+    display: none;
+  }
+  .content.docked main {
+    margin-right: min(440px, 46%);
   }
 </style>

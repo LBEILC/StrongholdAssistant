@@ -9,7 +9,7 @@ const built = await build({
  stdin: { contents: "export * from './server/api'; export * from './server/catalog'", resolveDir: process.cwd(), loader: 'ts' },
  bundle: true, platform: 'neutral', format: 'esm', write: false, loader: { '.txt': 'text' },
 })
-const { handleRequest, catalog, encodeLineup } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
+const { handleRequest, catalog, encodeLineup, fingerprint } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
 const originalFetch = globalThis.fetch
 let mf, db, env, privateKey, jwk
 const mails = new Map()
@@ -18,7 +18,7 @@ let serial = 0
 before(async () => {
  mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response() } }', d1Databases: ['DB'], compatibilityDate: '2025-10-11' })
  db = await mf.getD1Database('DB')
- for (const file of ['0001_init.sql', '0002_password.sql']) {
+ for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql']) {
   const sql = await readFile('migrations/' + file, 'utf8')
   // D1 exec 按行分语句；保留触发器整体，迁移一次执行。
   await db.exec(sql.replace(/\r?\n/g, ' '))
@@ -51,7 +51,7 @@ before(async () => {
  }
 })
 beforeEach(async () => {
- await db.batch(['likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
+ await db.batch(['favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage', 'income_reports', 'income_samples', 'income_summary', 'reports', 'report_usage', 'comments', 'likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
  mails.clear()
 })
 after(async () => {
@@ -188,7 +188,7 @@ test('后台 Access 签名与邮箱名单、下架、封禁及凭据失效', asy
  const banned = await ok('/api/admin/users/' + user.me.id, { method: 'PATCH', headers, body: { banned: true } })
  assert.equal(banned.banned, true)
  assert.equal((await request('/api/posts/' + post.id)).status, 404)
- assert.equal((await request('/api/me', { token: user.token })).status, 401)
+ assert.equal((await request('/api/me', { token: user.token })).status, 403)
  assert.equal((await ok('/api/admin/posts?status=hidden', { headers })).posts.length, 1)
 })
 
@@ -206,7 +206,288 @@ test('注销删除帖子和点赞、清除邮箱昵称、使凭据失效', async
  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM likes WHERE user_id=?').bind(user.me.id).first()).n, 0)
 })
 
+const commentPath = post => '/api/posts/' + post.id + '/comments'
+const comment = (user, post, body = '测试评论', replyTo) => ok(commentPath(post), {
+ method: 'POST', token: user.token, body: { body, ...(replyTo !== undefined && { replyTo }) },
+})
+const reportTarget = (user, kind, id, reason = 'spam', detail) => request('/api/reports', {
+ method: 'POST', token: user.token, body: { target: { kind, id }, reason, ...(detail !== undefined && { detail }) },
+})
+const moderateComment = (headers, id, status) => request('/api/admin/comments/' + id, { method: 'PATCH', headers, body: { status } })
+const resolve = (headers, kind, id, action) => request('/api/admin/reports/' + kind + '/' + id, { method: 'PATCH', headers, body: { action } })
+
+test('评论发布、同时间分页、回复昵称快照、删除权限及可见计数', async () => {
+ const owner = await login(), writer = await login(), other = await login(), headers = await access('admin@example.com')
+ const post = await publish(owner), another = await publish(owner, '另一帖子')
+ assert.equal(post.comments, 0)
+ const a = await comment(writer, post, ' 第一条🙂 ')
+ assert.equal(a.body, '第一条🙂'); assert.equal(a.replyTo, null); assert.equal(a.canDelete, true)
+ const b = await comment(other, post, '回复', a.id)
+ const c = await comment(owner, post, '回复的回复', b.id)
+ assert.deepEqual(c.replyTo, { id: b.id, nickname: other.me.nickname })
+ const badReply = await request(commentPath(another), { method: 'POST', token: writer.token, body: { body: '跨帖回复', replyTo: a.id } })
+ assert.equal(badReply.status, 400); assert.equal(badReply.data.error, 'bad_reply')
+ await db.prepare('UPDATE comments SET created_at=? WHERE post_id=?').bind('2026-01-01T00:00:00.000Z', post.id).run()
+ const first = await ok(commentPath(post) + '?limit=2'), second = await ok(commentPath(post) + '?limit=2&cursor=' + encodeURIComponent(first.cursor))
+ assert.equal(second.cursor, null)
+ assert.deepEqual([...first.comments, ...second.comments].map(c => c.id), [a.id,b.id,c.id].sort().reverse())
+ assert.ok(first.comments.every(c => !c.canDelete))
+ assert.ok((await ok(commentPath(post), { token: owner.token })).comments.every(c => c.canDelete))
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 3)
+ assert.equal((await request('/api/comments/' + a.id, { method: 'DELETE', token: other.token })).status, 403)
+ assert.equal((await moderateComment(headers, c.id, 'hidden')).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 2)
+ assert.equal((await moderateComment(headers, c.id, 'visible')).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 3)
+ const admin = await ok('/api/admin/comments?post=' + post.id + '&status=visible&limit=2', { headers })
+ assert.equal(admin.comments.length, 2); assert.ok(admin.cursor)
+ assert.equal(admin.comments[0].postTitle, post.lineup.name); assert.ok(admin.comments[0].authorEmailMasked.includes('***'))
+ assert.equal('canDelete' in admin.comments[0], false)
+ assert.equal((await ok('/api/admin/comments?post=' + post.id + '&status=visible&limit=2&cursor=' + encodeURIComponent(admin.cursor), { headers })).comments.length, 1)
+ assert.equal((await request('/api/comments/' + a.id, { method: 'DELETE', token: writer.token })).status, 204)
+ assert.equal((await request('/api/comments/' + b.id, { method: 'DELETE', token: owner.token })).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 1)
+ assert.deepEqual((await ok(commentPath(post))).comments[0].replyTo, { id: b.id, nickname: other.me.nickname })
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { status: 'hidden' } })
+ assert.equal((await request(commentPath(post), { token: owner.token })).status, 404)
+ assert.equal((await request(commentPath(post), { method: 'POST', token: owner.token, body: { body: '不可发' } })).status, 404)
+ assert.equal((await request('/api/comments/' + c.id, { method: 'DELETE', token: owner.token })).status, 404)
+ assert.equal((await ok('/api/posts/' + post.id, { token: owner.token })).comments, 1)
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { status: 'visible' } })
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 1)
+})
+
+test('评论正文、敏感词、十秒间隔与北京时间每日三十条', async t => {
+ let now = Date.parse('2026-11-12T15:00:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const user = await login(), post = await publish(user)
+ for (const text of ['  ', '🙂'.repeat(301)]) {
+  const result = await request(commentPath(post), { method: 'POST', token: user.token, body: { body: text } })
+  assert.equal(result.status, 400); assert.equal(result.data.error, 'bad_body')
+ }
+ const blocked = await request(commentPath(post), { method: 'POST', token: user.token, body: { body: '加 Q Q' } })
+ assert.equal(blocked.status, 400); assert.equal(blocked.data.error, 'blocked_words')
+ await comment(user, post, '🙂'.repeat(300))
+ const send = () => request(commentPath(post), { method: 'POST', token: user.token, body: { body: '继续评论' } })
+ const quick = await send()
+ assert.equal(quick.status, 429); assert.equal(quick.data.error, 'rate_limited'); assert.match(quick.data.message, /10 秒/)
+ for (let i = 1; i < 30; i++) { now += 10000; await comment(user, post) }
+ now += 10000
+ const daily = await send()
+ assert.equal(daily.status, 429); assert.equal(daily.data.message, '今天评论次数已用完，请明天再试。')
+ now = Date.parse('2026-11-12T16:00:00.000Z')
+ await comment(user, post)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 31)
+})
+
+test('举报去重、理由限制、后台归并分页和处理后重新待处理', async t => {
+ let now = Date.parse('2026-11-12T10:00:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const owner = await login(), writer = await login(), headers = await access('admin@example.com')
+ const post = await publish(owner), c = await comment(writer, post)
+ const invalid = await reportTarget(owner, 'comment', c.id, 'broken')
+ assert.equal(invalid.status, 400); assert.equal(invalid.data.error, 'bad_reason')
+ assert.equal((await reportTarget(owner, 'post', post.id, 'spam', '🙂'.repeat(201))).data.error, 'bad_detail')
+ for (let i = 0; i < 6; i++) {
+  now += 1000
+  const reporter = await login(null)
+  assert.equal((await reportTarget(reporter, 'comment', c.id, i % 2 ? 'other' : 'spam', '说明' + i)).status, 204)
+ }
+ now += 1000
+ assert.equal((await reportTarget(owner, 'post', post.id, 'broken', '阵容错误')).status, 204)
+ assert.equal((await request('/api/admin/comments')).status, 403)
+ assert.equal((await request('/api/admin/reports', { headers: await access('outsider@example.com') })).status, 403)
+ const page = await ok('/api/admin/reports?limit=1', { headers })
+ assert.equal(page.openCount, 2); assert.equal(page.reports[0].target.id, post.id)
+ const next = await ok('/api/admin/reports?limit=1&cursor=' + encodeURIComponent(page.cursor), { headers })
+ assert.equal(next.cursor, null); assert.equal(next.openCount, 2)
+ const grouped = next.reports[0]
+ assert.equal(grouped.post.id, post.id); assert.equal(grouped.comment.id, c.id); assert.equal(grouped.count, 6)
+ assert.deepEqual(grouped.reasons, { spam: 3, other: 3 })
+ assert.deepEqual(grouped.details, ['说明5', '说明4', '说明3', '说明2', '说明1'])
+ assert.equal((await resolve(headers, 'post', post.id, 'dismiss')).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).id, post.id)
+ assert.equal((await ok('/api/admin/reports?status=resolved', { headers })).openCount, 1)
+ now += 1000
+ assert.equal((await reportTarget(owner, 'post', post.id, 'other', '修改说明')).status, 204)
+ const reopened = (await ok('/api/admin/reports', { headers })).reports.find(r => r.target.kind === 'post')
+ assert.equal(reopened.count, 1); assert.equal(reopened.status, 'open'); assert.deepEqual(reopened.reasons, { other: 1 })
+ assert.deepEqual(reopened.details, ['修改说明'])
+ assert.equal((await resolve(headers, 'comment', c.id, 'hide')).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 0)
+ assert.equal((await reportTarget(owner, 'comment', c.id)).status, 404)
+ assert.equal((await moderateComment(headers, c.id, 'visible')).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 1)
+ assert.equal((await resolve(headers, 'post', post.id, 'delete')).status, 204)
+ assert.equal((await request('/api/posts/' + post.id)).status, 404)
+ assert.equal((await ok('/api/admin/reports', { headers })).openCount, 0)
+})
+
+test('重复举报计入每日二十次且北京时间零点重置', async t => {
+ let now = Date.parse('2026-11-12T15:59:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const user = await login(null), author = await login(), post = await publish(author)
+ for (let i = 0; i < 20; i++) assert.equal((await reportTarget(user, 'post', post.id)).status, 204)
+ const limited = await reportTarget(user, 'post', post.id)
+ assert.equal(limited.status, 429)
+ assert.deepEqual(limited.data, { error: 'rate_limited', message: '今天举报次数已用完，请明天再试。' })
+ now = Date.parse('2026-11-12T16:00:00.000Z')
+ assert.equal((await reportTarget(user, 'post', post.id)).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM reports').first()).n, 1)
+})
+
+test('封禁隐藏评论并返回403、解封不恢复，注销删除评论举报并维护计数', async () => {
+ const owner = await login(), writer = await login(), headers = await access('admin@example.com')
+ const post = await publish(owner), own = await publish(writer), c = await comment(writer, post)
+ await reportTarget(writer, 'post', post.id)
+ await reportTarget(owner, 'post', own.id)
+ await reportTarget(owner, 'comment', c.id)
+ await ok('/api/admin/users/' + writer.me.id, { method: 'PATCH', headers, body: { banned: true } })
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 0)
+ assert.equal((await ok('/api/admin/comments?status=hidden', { headers })).comments[0].id, c.id)
+ assert.equal((await request(commentPath(post), { method: 'POST', token: writer.token, body: { body: '禁止评论' } })).status, 403)
+ assert.equal((await reportTarget(writer, 'post', post.id)).status, 403)
+ await ok('/api/admin/users/' + writer.me.id, { method: 'PATCH', headers, body: { banned: false } })
+ assert.equal((await request('/api/me', { token: writer.token })).status, 401)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 0)
+ // 新验证码登录后恢复一条评论，再注销核对物理删除与计数。
+ await db.prepare('UPDATE login_codes SET created_at=? WHERE email=?').bind('2020-01-01T00:00:00.000Z', writer.email).run()
+ const code = await codeFor(writer.email)
+ const fresh = await ok('/api/auth/verify', { method: 'POST', body: { email: writer.email, code } })
+ await moderateComment(headers, c.id, 'visible')
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 1)
+ assert.equal((await request('/api/me', { method: 'DELETE', token: fresh.token })).status, 204)
+ assert.equal((await ok('/api/posts/' + post.id)).comments, 0)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM comments WHERE user_id=?').bind(writer.me.id).first()).n, 0)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM reports').first()).n, 0)
+ assert.equal((await ok('/api/admin/reports', { headers })).openCount, 0)
+})
+
 const password = ' 中文密码🙂 test '
+test('046 SA3 阶段、精锐技能模组原样返回，目录指纹不变', async () => {
+ assert.equal(fingerprint.toString(16), '981d')
+ const user = await login(), original = lineup()
+ const op = catalog.operators.find(o => o.skills?.length && o.modules?.length)
+ const member = { name: op.name, elite: true, skill: op.skills[0].id, module: op.modules[0].id }
+ original.members = [member]
+ original.stages = [{ name: '过渡', fromRound: 1, toRound: 4, goals: original.goals, members: [member], equipment: [] }]
+ const code = encodeLineup(original, catalog)
+ assert.match(code, /^SA3-/)
+ const post = await ok('/api/posts', { method: 'POST', token: user.token, body: { code, description: '' } })
+ const detail = await ok('/api/posts/' + post.id)
+ assert.deepEqual(detail.lineup.stages, original.stages)
+ assert.deepEqual(detail.lineup.members, original.members)
+})
+
+test('046 收藏增删、跨赛季分页、可见性、500 上限和注销清理', async () => {
+ const author = await login(), user = await login(null), a = await publish(author), b = await publish(author, '旧阵容')
+ const favorite = (id, method = 'POST') => ok('/api/posts/' + id + '/favorite', { method, token: user.token })
+ assert.equal((await request('/api/posts?favorite=1')).status, 401)
+ assert.equal((await favorite(a.id)).favorited, true)
+ await favorite(b.id)
+ await db.prepare('UPDATE posts SET fingerprint=0 WHERE id=?').bind(b.id).run()
+ await db.prepare('UPDATE favorites SET created_at=? WHERE post_id=?').bind('2020-01-01T00:00:00.000Z', a.id).run()
+ assert.equal((await ok('/api/posts/' + a.id, { token: user.token })).favorited, true)
+ assert.equal((await ok('/api/posts')).posts[0].favorited, false)
+ const page = await ok('/api/posts?favorite=1&sort=ignored&season=ignored&limit=1', { token: user.token })
+ assert.equal(page.posts[0].id, b.id)
+ assert.equal((await ok('/api/posts?favorite=1&limit=1&cursor=' + encodeURIComponent(page.cursor), { token: user.token })).posts[0].id, a.id)
+ await favorite(a.id, 'DELETE')
+ assert.equal((await ok('/api/posts/' + a.id, { token: user.token })).favorited, false)
+ await db.prepare("UPDATE posts SET status='hidden' WHERE id=?").bind(b.id).run()
+ assert.deepEqual((await ok('/api/posts?favorite=1', { token: user.token })).posts, [])
+ for (const method of ['POST', 'DELETE']) assert.equal((await request('/api/posts/' + b.id + '/favorite', { method, token: user.token })).status, 404)
+ await db.prepare(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<499)
+  INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,created_at,updated_at)
+  SELECT 'bulk-'||x,?,'bulk-'||x,0,'{}','','2020','2020' FROM n`).bind(author.me.id).run()
+ await db.prepare("INSERT INTO favorites SELECT ?,id,'2020' FROM posts WHERE id LIKE 'bulk-%'").bind(user.me.id).run()
+ assert.equal((await request('/api/posts/' + a.id + '/favorite', { method: 'POST', token: user.token })).status, 429)
+ assert.equal((await request('/api/me', { method: 'DELETE', token: user.token })).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM favorites').first()).n, 0)
+})
+
+const cloud = (id, updatedAt = '2026-01-01T00:00:00.000Z') => ({ id, data: { ...lineup(), id, updatedAt }, updatedAt, deleted: false })
+const syncWith = (user, lineups = [], since = null, prefs) => ok('/api/sync', { method: 'POST', token: user.token, body: { lineups, since, ...(prefs && { prefs }) } })
+test('046 同步上传下载、服务端增量、冲突、墓碑、偏好及注销', async t => {
+ let now = Date.parse('2026-11-12T10:00:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const user = await login(null), other = await login(null), a = cloud('a')
+ const prefs = { data: { focusOperators: [], focusCovenants: [], gameTheme: 'dark', shopMarkers: true, operatorDefaults: {} }, updatedAt: a.updatedAt }
+ const uploaded = await syncWith(user, [a], null, prefs)
+ assert.deepEqual(uploaded.lineups, []); assert.deepEqual(uploaded.conflicts, [])
+ const downloaded = await syncWith(user)
+ assert.deepEqual(downloaded.lineups, [a]); assert.deepEqual(downloaded.prefs, prefs)
+ assert.deepEqual((await syncWith(other)).lineups, [])
+ assert.deepEqual((await syncWith(user, [], downloaded.now)).lineups, [])
+ now += 1000
+ const b = cloud('b'), newer = cloud('a', '2026-02-01T00:00:00.000Z')
+ await syncWith(user, [newer, b], downloaded.now, { ...prefs, updatedAt: newer.updatedAt })
+ const delta = await syncWith(user, [], downloaded.now)
+ assert.deepEqual(delta.lineups.map(x => x.id).sort(), ['a', 'b'])
+ const conflict = await syncWith(user, [a], delta.now, prefs)
+ assert.deepEqual(conflict.conflicts, [newer]); assert.equal(conflict.prefs.updatedAt, newer.updatedAt)
+ now += 1000
+ const tombstone = { id: 'a', data: null, deleted: true, updatedAt: '2026-03-01T00:00:00.000Z' }
+ await syncWith(user, [tombstone])
+ assert.deepEqual((await syncWith(user, [], conflict.now)).lineups, [tombstone])
+ assert.deepEqual((await syncWith(user)).lineups, [b])
+ await db.prepare('UPDATE cloud_lineups SET changed_at=? WHERE id=?').bind(new Date(now - 91 * 86400000).toISOString(), 'a').run()
+ await syncWith(user)
+ assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM cloud_lineups WHERE id='a'").first()).n, 0)
+ assert.equal((await request('/api/me', { method: 'DELETE', token: user.token })).status, 204)
+ for (const table of ['cloud_lineups', 'cloud_prefs', 'sync_usage'])
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM ' + table + ' WHERE user_id=?').bind(user.me.id).first()).n, 0)
+})
+
+test('046 同步容量、64 KB、id 校验和每分钟限频', async () => {
+ const user = await login(null)
+ const send = lineups => request('/api/sync', { method: 'POST', token: user.token, body: { since: null, lineups } })
+ const large = cloud('large'); large.data.description = '中'.repeat(22000)
+ assert.equal((await send([large])).data.error, 'too_large')
+ const invalid = cloud('a'); invalid.data.id = 'b'
+ assert.equal((await send([invalid])).status, 400)
+ await syncWith(user, Array.from({ length: 300 }, (_, i) => cloud('x' + i)))
+ assert.equal((await send([cloud('overflow')])).data.error, 'too_many')
+ await syncWith(user, [cloud('x0')])
+ await syncWith(user, [{ id: 'x0', data: null, deleted: true, updatedAt: '2026-02-01T00:00:00.000Z' }, cloud('replacement')])
+ assert.equal((await syncWith(user)).lineups.length, 300)
+ await db.prepare('DELETE FROM sync_usage WHERE user_id=?').bind(user.me.id).run()
+ for (let i = 0; i < 30; i++) await syncWith(user, [], '2099-01-01T00:00:00.000Z')
+ assert.equal((await send([])).status, 429)
+})
+
+const income = (device, samples = [{ round: 1, startMoney: 10 }], extra = {}) => request('/api/income', {
+ method: 'POST', body: { device, mode: 'mode_single_16', solo: true, strategyId: null, fingerprint, samples, ...extra },
+})
+test('046 资金参数校验、经济策略拒收、三设备最小值及每日缓存', async t => {
+ let now = Date.parse('2026-11-12T10:00:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ for (const extra of [{ mode: 'mode_single_unknown' }, { samples: [{ round: 31, startMoney: 1 }] }, { samples: [{ round: 1, startMoney: 201 }] }, { samples: Array(31).fill({ round: 1, startMoney: 1 }) }])
+  assert.equal((await income('bad', undefined, extra)).data.error, 'bad_income')
+ for (const strategyId of ['band_cannot', 'band_lmlee', 'band_mlynar', 'band_fund', 'band_protect', 'band_treasure', 'band_ducklord', 'band_siracusa'])
+  assert.equal((await income('excluded', undefined, { strategyId })).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM income_samples').first()).n, 0)
+ for (const device of ['a', 'a', 'b']) assert.equal((await income(device)).status, 204)
+ assert.deepEqual((await ok('/api/income-table')).rows, [])
+ await income('c')
+ assert.deepEqual((await ok('/api/income-table')).rows, [])
+ for (const device of ['a', 'b', 'c']) await income(device, [{ round: 1, startMoney: 8 }, { round: 2, startMoney: 12 }])
+ await income('a', [{ round: 1, startMoney: 1 }])
+ for (const device of ['a', 'b', 'c']) await income(device, [{ round: 1, startMoney: 0 }], { fingerprint: 0 })
+ now += 86400000
+ const result = await request('/api/income-table')
+ assert.equal(result.headers.get('Cache-Control'), 'public, max-age=3600')
+ assert.deepEqual(result.data.rows, [{ mode: 'mode_single_16', solo: true, round: 1, base: 8 }, { mode: 'mode_single_16', solo: true, round: 2, base: 12 }])
+ assert.equal(result.data.fingerprint, fingerprint)
+})
+
+test('046 资金上报按设备二十次、IP 六十次限频', async () => {
+ for (let i = 0; i < 20; i++) assert.equal((await income('same')).status, 204)
+ assert.equal((await income('same')).status, 429)
+ for (let i = 0; i < 40; i++) assert.equal((await income('other' + i)).status, 204)
+ assert.equal((await income('last')).status, 429)
+})
+
 const setPassword = (user, value = password, currentPassword) => ok('/api/me/password', {
  method: 'PUT', token: user.token, body: { password: value, ...(currentPassword !== undefined && { currentPassword }) },
 })

@@ -6,11 +6,18 @@
   import { asset } from '../lib/assets'
   import { openMenu, operatorMenu, equipmentMenu } from '../lib/menu.svelte'
   import Icon from './Icon.svelte'
+  import { allStages, stageLabel } from '../lib/stages'
 
   // 常驻顶栏：追踪列表 = 商店里会标记的干员和装备，任何页面都可见。
   // 不做「待购」和盟约进度：干员会反复买卖，盟约有没有生效游戏里也看得到。点头像取消追踪
   const t = $derived(app.target)
-  const keys = $derived(new Set(t?.members.filter((m) => m.key).map((m) => m.name) ?? []))
+  // 有阶段时标题后面写当前阶段
+  const stageName = $derived.by(() => {
+    if (!t?.stages?.length) return ''
+    const s = allStages(t)[app.stageIx]
+    return s.final ? '成型' : stageLabel(s)
+  })
+  const keys = $derived(new Set(app.active?.members.filter((m) => m.key).map((m) => m.name) ?? []))
   const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
   // 向上收起时点目标名也先展开
   const goTarget = () => (app.collapsed && app.setCollapsed(false), app.setTab('lineup'), (app.lineupView = 'target'))
@@ -23,7 +30,7 @@
     <div class="head">
       <span class="lbl term">Track</span>
       {#if t}
-        <button class="name" onclick={goTarget} title="目标阵容：{t.name}">{t.name}</button>
+        <button class="name" onclick={goTarget} title="目标阵容：{t.name}">{t.name}{#if stageName}<em class="stg">{stageName}</em>{/if}</button>
       {:else}
         <span class="name muted">单独追踪</span>
       {/if}
@@ -266,5 +273,12 @@
   .close:hover {
     color: var(--fg-1);
     background: var(--bg-3);
+  }
+  .stg {
+    margin-left: 6px;
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--mint);
   }
 </style>

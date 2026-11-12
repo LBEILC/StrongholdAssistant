@@ -18,6 +18,7 @@
     <b class="nm">{l.name}</b>
     {#if post.featured}<span class="feat"><Icon name="star" size={11} />精选</span>{/if}
     {#if !post.current}<span class="oldtag">旧赛季</span>{/if}
+    {#if l.stages?.length}<span class="stg" title="卡片上是成型阵容；前面还有 {l.stages.length} 个回合阶段">{l.stages.length + 1} 阶段</span>{/if}
   </div>
   <div class="by">{post.author.nickname} · {ago(post.createdAt)}</div>
   {#if l.goals.length}
@@ -26,7 +27,7 @@
     </div>
   {/if}
   <div class="ops">
-    {#each l.members.slice(0, 14) as m (m.name)}<OpAvatar name={m.name} size={38} isKey={m.key} priority={pri(m)} />{/each}
+    {#each l.members.slice(0, 14) as m (m.name)}<OpAvatar name={m.name} size={38} isKey={m.key} elite={m.elite} priority={pri(m)} />{/each}
     {#if l.members.length > 14}<span class="more">+{l.members.length - 14}</span>{/if}
   </div>
   {#if post.description}<p class="desc">{post.description}</p>{/if}
@@ -38,10 +39,18 @@
     {/if}
     <span class="num" title="点赞"><Icon name={post.liked ? 'heartFill' : 'heart'} size={14} />{post.likes}</span>
     <span class="num" title="导入次数"><Icon name="download" size={14} />{post.imports}</span>
+    <span class="num" title="评论"><Icon name="chat" size={14} />{post.comments}</span>
   </div>
 </a>
 
 <style>
+  .stg {
+    flex: none;
+    font-size: 11px;
+    padding: 0 5px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
   .pc {
     position: relative;
     display: flex;

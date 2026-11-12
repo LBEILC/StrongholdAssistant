@@ -1,6 +1,10 @@
 <script lang="ts">
+  import { sheet } from '../lib/sheet'
   import { fly, fade } from 'svelte/transition'
-  import { cubicOut } from 'svelte/easing'
+  import { untrack } from 'svelte'
+  import type { CovenantGoal, LineupMember } from '../lib/api/types'
+  import { stageLabel, MAX_ROUND } from '../lib/stages'
+  import { defaultsFor, effective, customSkill, setChoice, setMyDefault } from '../lib/opconfig'
   import { app, goalProgress, rankForGoals, lineupEquipment } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
@@ -35,6 +39,19 @@
   const setMemberEq = (f: (l: { name: string; priority: boolean }[]) => { name: string; priority: boolean }[]) => {
     if (!e || !sel) return
     e.members = e.members.map((m) => (m.name === sel ? { ...m, equipment: f(m.equipment ?? []) } : m))
+  }
+  // 精锐、技能、模组（v0.7.0）：改的是这套阵容（这个阶段）里的这名干员；和默认一样就不写
+  const my = $derived(app.settings.operatorDefaults)
+  const setMember = (m: LineupMember) => e && (e.members = e.members.map((x) => (x.name === m.name ? m : x)))
+  function toggleElite() {
+    const { elite, ...rest } = selM!
+    setMember(elite ? rest : { ...rest, elite: true })
+  }
+  /** 把这名干员现在的技能、模组设为我的默认；这套阵容里就不用再单独写了 */
+  function saveMyDefault() {
+    app.settings.operatorDefaults = setMyDefault(my, selOp!, effective(selM!, selOp!, my))
+    app.saveSettings()
+    app.showToast(`以后加「${selOp!.name}」默认用这套技能和模组`)
   }
   const togglePriority = (n: string) => setMemberEq((l) => l.map((x) => (x.name === n ? { ...x, priority: !x.priority } : x)))
   const removeMemberEq = (n: string) => setMemberEq((l) => l.filter((x) => x.name !== n))
@@ -81,7 +98,69 @@
   // 保存失败（宿主回错）时把原因显示在底栏，编辑内容保留，可以直接再点保存
   let saving = $state(false)
   let err = $state('')
+  // 阶段（v0.7.0）：顶层字段始终是「正在编辑的那个阶段」，下面的盟约、干员、装备代码都不用改。
+  // cur = -1 表示成型阵容在顶层；切到回合阶段时成型阵容先放进 finalBuf，切回来再放回去
+  type Part = { goals: CovenantGoal[]; members: LineupMember[]; equipment: string[] }
+  let cur = $state(-1)
+  let finalBuf = $state.raw<Part | null>(null)
+  // 加回合阶段：依次点起始、结束回合（可以相同），照森空岛
+  let addingStage = $state(false)
+  let pickFrom = $state<number | null>(null)
+  $effect.pre(() => {
+    app.editing
+    untrack(() => ((cur = -1), (finalBuf = null), (addingStage = false)))
+  })
+  function swapTo(i: number) {
+    if (!e || i === cur) return
+    const top: Part = { goals: e.goals, members: e.members, equipment: e.equipment }
+    if (cur === -1) finalBuf = top
+    else e.stages![cur] = { ...e.stages![cur], ...top }
+    const next = i === -1 ? finalBuf! : e.stages![i]
+    e.goals = next.goals
+    e.members = next.members
+    e.equipment = next.equipment
+    if (i === -1) finalBuf = null
+    cur = i
+    sel = null
+  }
+  // 每个回合都能单独做一个阶段（照森空岛），回合不能重叠：已经被别的阶段占用的回合点不了
+  const covered = (r: number) => !!e?.stages?.some((x) => r >= x.fromRound && r <= x.toRound)
+  function pickRound(r: number) {
+    if (pickFrom === null) return void (pickFrom = r)
+    const [from, to] = pickFrom <= r ? [pickFrom, r] : [r, pickFrom]
+    pickFrom = null
+    for (let k = from; k <= to; k++) if (covered(k)) return
+    swapTo(-1)
+    // 新阶段先从它前面最近的回合阶段复制一份，接着改最方便；前面没有就空着
+    const prev = (e!.stages ?? []).filter((x) => x.toRound < from).at(-1)
+    const seed = prev ? structuredClone($state.snapshot(prev)) : null
+    const stages = [...(e!.stages ?? []), { name: '', fromRound: from, toRound: to, goals: seed?.goals ?? [], members: seed?.members ?? [], equipment: seed?.equipment ?? [] }]
+    stages.sort((a, b) => a.fromRound - b.fromRound)
+    e!.stages = stages
+    addingStage = false
+    swapTo(stages.findIndex((x) => x.fromRound === from))
+  }
+  function removeStage(i: number) {
+    swapTo(-1)
+    e!.stages = e!.stages!.filter((_, j) => j !== i)
+  }
+  // 从别的阶段复制（整段覆盖当前阶段的盟约、干员、装备）；当前阶段有内容时要点两次
+  let confirmCopy = $state<number | null>(null)
+  const partOf = (i: number): Part => (i === cur ? { goals: e!.goals, members: e!.members, equipment: e!.equipment } : i === -1 ? finalBuf! : e!.stages![i])
+  const curEmpty = $derived(!e?.members.length && !e?.goals.length && !e?.equipment.length)
+  function copyFrom(i: number) {
+    if (!curEmpty && confirmCopy !== i) return void (confirmCopy = i)
+    const src = structuredClone($state.snapshot(partOf(i)))
+    e!.goals = src.goals
+    e!.members = src.members
+    e!.equipment = src.equipment
+    confirmCopy = null
+    sel = null
+  }
+
   const save = async () => {
+    swapTo(-1)
+    if (!e!.stages?.length) delete e!.stages
     if (!e!.name.trim()) e!.name = autoName
     saving = true
     err = ''
@@ -97,23 +176,61 @@
 
 {#if e}
   <div class="scrim" transition:fade={{ duration: 160 }}></div>
-  <aside class="ed" transition:fly={{ y: 400, duration: 260, easing: cubicOut }}>
+  <aside class="ed" transition:sheet={{ y: 400, duration: 260 }}>
     <header>
       <input class="nm" bind:value={e.name} placeholder="名称（不填就叫「{autoName}」）" />
       <button class="x" onclick={() => (app.editing = null)} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
 
+    <!-- 阶段页签：回合阶段按先后在前，成型阵容在最后；每个回合都可以单独一个阶段（照森空岛） -->
+    <div class="stages">
+      {#each e.stages ?? [] as s, i (i)}
+        <span class="stab" class:on={cur === i}>
+          <button onclick={() => swapTo(i)}>{stageLabel(s)}</button>
+          <button class="sx" aria-label="删除这个阶段" title="删除这个阶段" onclick={() => removeStage(i)}><Icon name="close" size={11} /></button>
+        </span>
+      {/each}
+      <span class="stab final" class:on={cur === -1}><button onclick={() => swapTo(-1)}>成型阵容</button></span>
+      <button class="sadd" class:on={addingStage} title="按回合加一个阶段，每个回合都可以单独一个" onclick={() => ((addingStage = !addingStage), (pickFrom = null))}><Icon name="add" size={14} />回合阶段</button>
+    </div>
+    {#if addingStage}
+      <div class="rpick" transition:fly={{ y: -6, duration: 160 }}>
+        <p>{pickFrom === null ? '点起始回合' : `从第 ${pickFrom} 回合到第几回合？（可以相同）`}</p>
+        <div class="rounds">
+          {#each Array.from({ length: MAX_ROUND }, (_, k) => k + 1) as r (r)}
+            <button class:on={pickFrom === r} disabled={covered(r)} title={covered(r) ? '这个回合已经在别的阶段里' : undefined} onclick={() => pickRound(r)}>{r}</button>
+          {/each}
+        </div>
+      </div>
+    {:else}
+      {#if cur >= 0 && e.stages}
+        {@const st = e.stages[cur]}
+        <div class="sbar">
+          <input class="sname" bind:value={st.name} placeholder="阶段名（不填就叫「{st.fromRound === st.toRound ? `第 ${st.fromRound} 回合` : `${st.fromRound}～${st.toRound} 回合`}」）" maxlength="12" />
+        </div>
+      {/if}
+      {#if e.stages?.length}
+        <div class="copyrow">
+          <span>复制自</span>
+          {#each [...e.stages.map((x, i) => ({ i, label: stageLabel(x) })), { i: -1, label: '成型阵容' }].filter((x) => x.i !== cur) as x (x.i)}
+            <button class:armed={confirmCopy === x.i} onclick={() => copyFrom(x.i)}>{confirmCopy === x.i ? `再点一次，用「${x.label}」覆盖` : x.label}</button>
+          {/each}
+        </div>
+      {/if}
+    {/if}
+
     <!-- 上半区（目标盟约、已选）和下半区（挑选）一起滚动：已选的多了也不会把挑选区挤没 -->
     <div class="body">
     <div class="sec">
-      <div class="lbl">目标盟约<em>点一次 I 档，再点 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
+      <div class="lbl">目标盟约<em>点一下选上，有 II 档的再点升 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
       <div class="goalpick">
         {#each app.catalog.covenants as c (c.id)}
           {@const lv = levelOf(c.id)}
           {@const blocked = c.kind === 'core' && !!app.matchCovenant(c.id)?.incomplete}
           <button class="gp" class:on={!!lv} class:core={c.kind === 'core'} class:blocked disabled={blocked && !lv} title={c.name} onclick={() => app.cycleGoal(c.id)}>
             <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
-            {#if lv}<span class="lv term">{lv === 2 ? 'II' : 'I'}</span>{/if}
+            <!-- 只有一档的盟约（调和、独行等）选上就只亮起，不标档位 -->
+            {#if lv && c.thresholds.length >= 2}<span class="lv term">{lv === 2 ? 'II' : 'I'}</span>{/if}
           </button>
         {/each}
       </div>
@@ -131,7 +248,7 @@
       <div class="chosen">
         {#each e.members as m (m.name)}
           <span class="mt" class:sel={sel === m.name}>
-            <OpTile name={m.name} transform={m.transform} isKey={m.key} size={34} showName={false} menu={false} onclick={() => pickMember(m.name)} />
+            <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), my)} size={34} showName={false} menu={false} onclick={() => pickMember(m.name)} />
             {#if priCount(m)}<b class="pc" title="{priCount(m)} 件优先装备">{priCount(m)}</b>{:else if m.equipment?.length}<b class="pc soft" title="{m.equipment.length} 件候选装备">{m.equipment.length}</b>{/if}
           </span>
         {:else}
@@ -140,6 +257,8 @@
       </div>
       {#if selM && selOp}
         {@const pri = priCount(selM)}
+        {@const d = defaultsFor(selOp, my)}
+        {@const ef = effective(selM, selOp, my)}
         <div class="mp" transition:fly={{ y: -6, duration: 160 }}>
           <div class="mph">
             <b>{selM.name}</b>
@@ -148,6 +267,31 @@
             <button class="kt" class:on={selM.key} onclick={() => toggleKey(selM.name)}>{selM.key ? '★ 关键' : '☆ 设为关键'}</button>
             <button class="x2" aria-label="收起" onclick={() => (sel = null)}><Icon name="close" size={13} /></button>
           </div>
+          <!-- 精锐 · 技能 · 模组：默认就够用，只改想改的；带「默认」角标的是不写时用的那个 -->
+          <div class="cfg">
+            <button class="elt" class:on={selM.elite} onclick={toggleElite} title="这名干员要凑到精锐">精锐</button>
+            {#if selOp.skills.length > 1}
+              <span class="cl">技能</span>
+              {#each selOp.skills as k (k.id)}
+                <button class="opt" class:on={ef.skill === k.id} title={k.name} onclick={() => setMember(setChoice(selM, selOp, my, 'skill', k.id))}>
+                  <img src={asset.skill(k.id)} alt={k.name} />{#if k.id === d.skill}<em>默认</em>{/if}
+                </button>
+              {/each}
+            {/if}
+            {#if selOp.modules.length}
+              <span class="cl">模组</span>
+              <button class="opt txt" class:on={ef.module === ''} onclick={() => setMember(setChoice(selM, selOp, my, 'module', ''))}>不带{#if d.module === ''}<em>默认</em>{/if}</button>
+              {#each selOp.modules as k (k.id)}
+                <button class="opt" class:on={ef.module === k.id} title={k.name} onclick={() => setMember(setChoice(selM, selOp, my, 'module', k.id))}>
+                  <img src={asset.module(k.id)} alt={k.name} />{#if k.id === d.module}<em>默认</em>{/if}
+                </button>
+              {/each}
+            {/if}
+          </div>
+          <p class="cfgn">
+            {selOp.skills.find((k) => k.id === ef.skill)?.name ?? ''}{selOp.modules.length ? ` · ${selOp.modules.find((k) => k.id === ef.module)?.name ?? '不带模组'}` : ''}
+            {#if selM.skill !== undefined || selM.module !== undefined}<button class="link" onclick={saveMyDefault}>设为我的默认</button>{/if}
+          </p>
           <div class="ces">
             {#each selM.equipment ?? [] as x (x.name)}
               <span class="ce" class:pri={x.priority}>
@@ -596,12 +740,11 @@
   .bc.short b {
     color: var(--gold);
   }
+  /* 已选的不再单独滚动，跟着编辑器整体滚：避免滚轮落在这里时外层滚不动 */
   .chosen {
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
-    max-height: 76px;
-    overflow-y: auto;
   }
   .tog {
     flex: none;
@@ -797,5 +940,192 @@
     color: var(--fg-4);
     background: var(--bg-3);
     cursor: default;
+  }
+  .stages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 12px 0;
+  }
+  .stab {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 12px;
+    color: var(--fg-2);
+  }
+  .stab > button:first-child {
+    height: 100%;
+    padding: 0 10px;
+  }
+  .stab.on {
+    color: var(--fg-1);
+    background: var(--mint-tint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .sx {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 100%;
+    color: var(--fg-4);
+  }
+  .sx:hover {
+    color: var(--fg-1);
+  }
+  .sadd {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--mint);
+  }
+  .sadd.on,
+  .sadd:hover {
+    background: var(--bg-2);
+  }
+  .rpick {
+    margin: 6px 12px 0;
+    padding: 8px;
+    background: var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .rpick p {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: var(--fg-3);
+  }
+  .rounds {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+    gap: 4px;
+  }
+  .rounds button {
+    height: 28px;
+    font-family: var(--font-term);
+    font-size: 13px;
+    background: var(--bg-3);
+  }
+  .rounds button:hover {
+    background: var(--bg-4);
+  }
+  .rounds button.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .sbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 12px 0;
+  }
+  .sname {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--fg-1);
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+  }
+  .copyrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px 0;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .copyrow button {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 11px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .copyrow button:hover {
+    background: var(--bg-2);
+  }
+  .copyrow button.armed {
+    color: var(--gold-ink);
+    background: var(--gold);
+  }
+  .rounds button:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+  .cfg {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 6px 0 2px;
+  }
+  .elt {
+    height: 26px;
+    padding: 0 9px;
+    font-size: 12px;
+    color: var(--fg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .elt.on {
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: none;
+  }
+  .cl {
+    margin: 0 2px 0 8px;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .opt {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .opt img {
+    width: 24px;
+    height: 24px;
+  }
+  .opt.txt {
+    width: auto;
+    padding: 0 8px;
+    font-size: 11px;
+    color: var(--fg-2);
+  }
+  .opt.on {
+    box-shadow: inset 0 0 0 1.5px var(--mint);
+    background: var(--mint-tint);
+  }
+  .opt em {
+    position: absolute;
+    right: -3px;
+    top: -6px;
+    padding: 0 2px;
+    font-style: normal;
+    font-size: 8px;
+    line-height: 11px;
+    color: var(--fg-1);
+    background: var(--bg-4);
+  }
+  .cfgn {
+    margin: 0 0 4px;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .cfgn .link {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--mint);
   }
 </style>

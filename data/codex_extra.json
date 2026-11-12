@@ -1,233 +1,469 @@
 {
   "equipment": {
     "炎国短刀": {
-      "transformBond": "yan"
+      "itemId": "chess_item_3_03_e_a",
+      "transformBond": "yan",
+      "itemAliases": [
+        "chess_item_3_03_e_b"
+      ]
     },
     "维式重锤": {
+      "itemId": "chess_item_1_01_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_1_01_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
     "灼燃维式重锤": {
+      "itemId": "chess_item_4_05_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_4_05_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
     "坚固维式重锤": {
+      "itemId": "chess_item_3_08_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_3_08_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
     "加速维式重锤": {
+      "itemId": "chess_item_3_09_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_3_09_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
     "战栗维式重锤": {
+      "itemId": "chess_item_2_03_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_2_03_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
     "阿戈尔重刃": {
-      "transformBond": "egir"
+      "itemId": "chess_item_3_06_e_a",
+      "transformBond": "egir",
+      "itemAliases": [
+        "chess_item_3_06_e_b"
+      ]
     },
     "坚守盾牌": {
-      "transformBond": "stead"
+      "itemId": "chess_item_1_02_e_a",
+      "transformBond": "stead",
+      "itemAliases": [
+        "chess_item_1_02_e_b"
+      ]
     },
     "奥术法阵": {
-      "transformBond": "arcane"
+      "itemId": "chess_item_3_07_e_a",
+      "transformBond": "arcane",
+      "itemAliases": [
+        "chess_item_3_07_e_b"
+      ]
     },
-    "歌利亚头盔": {},
+    "歌利亚头盔": {
+      "itemId": "chess_item_3_05_e_a",
+      "itemAliases": [
+        "chess_item_3_05_e_b"
+      ]
+    },
     "萨尔贡浓茶": {
+      "itemId": "chess_item_2_04_e_a",
       "transformBond": "sargon",
+      "itemAliases": [
+        "chess_item_2_04_e_b"
+      ],
       "sources": [
         "异客"
       ]
     },
     "迅捷作战粮": {
+      "itemId": "chess_item_3_04_e_a",
       "transformBond": "swift",
+      "itemAliases": [
+        "chess_item_3_04_e_b"
+      ],
       "sources": [
         "卡涅利安"
       ]
     },
-    "蜂鸣器": {},
-    "伪装服": {},
-    "不屈弹射器": {
-      "transformBond": "indom"
+    "蜂鸣器": {
+      "itemId": "chess_item_4_02_e_a",
+      "itemAliases": [
+        "chess_item_4_02_e_b"
+      ]
     },
-    "护盾无人机": {},
+    "伪装服": {
+      "itemId": "chess_item_4_03_e_a",
+      "itemAliases": [
+        "chess_item_4_03_e_b"
+      ]
+    },
+    "不屈弹射器": {
+      "itemId": "chess_item_2_01_e_a",
+      "transformBond": "indom",
+      "itemAliases": [
+        "chess_item_2_01_e_b"
+      ]
+    },
+    "护盾无人机": {
+      "itemId": "chess_item_4_07_e_a",
+      "itemAliases": [
+        "chess_item_4_07_e_b"
+      ]
+    },
     "谢拉格不融冰": {
+      "itemId": "chess_item_4_10_e_a",
       "transformBond": "kjerag",
+      "itemAliases": [
+        "chess_item_4_10_e_b"
+      ],
       "sources": [
         "耶拉"
       ]
     },
     "精准狙击镜": {
+      "itemId": "chess_item_3_02_e_a",
       "transformBond": "preci",
+      "itemAliases": [
+        "chess_item_3_02_e_b"
+      ],
       "sources": [
         "承曦格雷伊"
       ]
     },
     "突袭手雷": {
-      "transformBond": "raid"
+      "itemId": "chess_item_3_10_e_a",
+      "transformBond": "raid",
+      "itemAliases": [
+        "chess_item_3_10_e_b"
+      ]
     },
     "盟约之币": {
+      "itemId": "chess_item_1_03_e_a",
+      "itemAliases": [
+        "chess_item_1_03_e_b"
+      ],
       "sources": [
         "乌有",
         "异客"
       ]
     },
-    "双模机械臂": {},
-    "M3茧甲": {},
+    "双模机械臂": {
+      "itemId": "chess_item_5_01_e_a",
+      "itemAliases": [
+        "chess_item_5_01_e_b"
+      ]
+    },
+    "M3茧甲": {
+      "itemId": "chess_item_4_08_e_a",
+      "itemAliases": [
+        "chess_item_4_08_e_b"
+      ]
+    },
     "拟态物质": {
+      "itemId": "chess_item_5_03_e_a",
       "sources": [
         "异客"
       ]
     },
-    "人事部文档": {},
-    "博士投影": {},
+    "人事部文档": {
+      "itemId": "chess_item_6_02_e_a"
+    },
+    "博士投影": {
+      "itemId": "chess_item_5_04_e_a",
+      "itemAliases": [
+        "chess_item_5_04_e_b"
+      ]
+    },
     "变形同构体": {
+      "itemId": "chess_item_6_03_e_a",
       "sources": [
         "缪尔赛思"
       ]
     },
-    "寻呼模块": {},
-    "信标": {},
-    "精打细算玩偶": {},
-    "见钱眼开玩偶": {},
-    "简易通讯机": {},
-    "紧急调度券": {},
+    "寻呼模块": {
+      "itemId": "chess_item_4_01_e_a"
+    },
+    "信标": {
+      "itemId": "chess_item_5_02_e_a"
+    },
+    "精打细算玩偶": {
+      "itemId": "chess_item_2_05_e_a",
+      "itemAliases": [
+        "chess_item_2_05_e_b"
+      ]
+    },
+    "见钱眼开玩偶": {
+      "itemId": "chess_item_2_07_e_a",
+      "itemAliases": [
+        "chess_item_2_07_e_b"
+      ]
+    },
+    "简易通讯机": {
+      "itemId": "chess_item_2_06_e_a",
+      "itemAliases": [
+        "chess_item_2_06_e_b"
+      ]
+    },
+    "紧急调度券": {
+      "itemId": "chess_item_2_02_e_a",
+      "itemAliases": [
+        "chess_item_2_02_e_b"
+      ]
+    },
     "天马之枪": {
+      "itemId": "chess_item_6_01_e_a",
       "fuse": {
         "with": "天马之盔",
         "result": "天马之耀"
       }
     },
     "天马之盔": {
+      "itemId": "chess_item_5_05_e_a",
       "fuse": {
         "with": "天马之枪",
         "result": "天马之耀"
       }
     },
     "卡西米尔竞技旗": {
-      "transformBond": "kazimierz"
+      "itemId": "chess_item_4_04_e_a",
+      "transformBond": "kazimierz",
+      "itemAliases": [
+        "chess_item_4_04_e_b"
+      ]
     },
     "叙拉古正装": {
-      "transformBond": "siracusa"
+      "itemId": "chess_item_3_01_e_a",
+      "transformBond": "siracusa",
+      "itemAliases": [
+        "chess_item_3_01_e_b"
+      ]
     },
-    "驮兽储蓄罐": {},
-    "随身身份牌": {},
-    "源石溶剂": {},
-    "虹彩活血饮料": {},
-    "雪祀之衣": {},
-    "卫戍推荐信": {},
+    "驮兽储蓄罐": {
+      "itemId": "chess_item_3_11_e_a",
+      "itemAliases": [
+        "chess_item_3_11_e_b"
+      ]
+    },
+    "随身身份牌": {
+      "itemId": "chess_item_1_04_e_a",
+      "itemAliases": [
+        "chess_item_1_04_e_b"
+      ]
+    },
+    "源石溶剂": {
+      "itemId": "chess_item_1_05_e_a",
+      "itemAliases": [
+        "chess_item_1_05_e_b"
+      ]
+    },
+    "虹彩活血饮料": {
+      "itemId": "chess_item_1_06_e_a",
+      "itemAliases": [
+        "chess_item_1_06_e_b"
+      ]
+    },
+    "雪祀之衣": {
+      "itemId": "chess_item_1_07_e_a",
+      "itemAliases": [
+        "chess_item_1_07_e_b"
+      ]
+    },
+    "卫戍推荐信": {
+      "itemId": "chess_item_2_08_e_a",
+      "itemAliases": [
+        "chess_item_2_08_e_b"
+      ]
+    },
     "聚合急救箱": {
-      "transformBond": "doc"
+      "itemId": "chess_item_2_09_e_a",
+      "transformBond": "doc",
+      "itemAliases": [
+        "chess_item_2_09_e_b"
+      ]
     },
     "灵巧涡轮手套": {
-      "transformBond": "skillful"
+      "itemId": "chess_item_2_10_e_a",
+      "transformBond": "skillful",
+      "itemAliases": [
+        "chess_item_2_10_e_b"
+      ]
     },
     "乌萨斯呼吸器": {
+      "itemId": "chess_item_3_12_e_a",
       "transformBond": "ursus",
+      "itemAliases": [
+        "chess_item_3_12_e_b"
+      ],
       "sources": [
         "奥尔佳"
       ]
     },
-    "多功能补剂": {},
-    "伊比利亚骨刺刀": {
-      "transformBond": "iberia"
+    "多功能补剂": {
+      "itemId": "chess_item_3_13_e_a",
+      "itemAliases": [
+        "chess_item_3_13_e_b"
+      ]
     },
-    "定期存折": {},
+    "伊比利亚骨刺刀": {
+      "itemId": "chess_item_3_14_e_a",
+      "transformBond": "iberia",
+      "itemAliases": [
+        "chess_item_3_14_e_b"
+      ]
+    },
+    "定期存折": {
+      "itemId": "chess_item_3_15_e_a"
+    },
     "莱塔尼亚小鼓": {
+      "itemId": "chess_item_4_09_e_a",
       "transformBond": "lethania",
+      "itemAliases": [
+        "chess_item_4_09_e_b"
+      ],
       "sources": [
         "车尔尼"
       ]
     },
-    "可靠怀表": {},
-    "一次性促销券": {},
-    "投机骰子": {},
+    "可靠怀表": {
+      "itemId": "chess_item_4_11_e_a",
+      "itemAliases": [
+        "chess_item_4_11_e_b"
+      ]
+    },
+    "一次性促销券": {
+      "itemId": "chess_item_4_15_e_a",
+      "itemAliases": [
+        "chess_item_4_15_e_b"
+      ]
+    },
+    "投机骰子": {
+      "itemId": "chess_item_5_06_e_a"
+    },
     "电流维式重锤": {
+      "itemId": "chess_item_5_07_e_a",
       "transformBond": "victoria",
+      "itemAliases": [
+        "chess_item_5_07_e_b"
+      ],
       "sources": [
         "凯瑟琳"
       ]
     },
-    "佣兵名牌": {},
-    "人事部记录": {},
-    "瓶装烈性反应": {},
+    "佣兵名牌": {
+      "itemId": "chess_item_5_08_e_a",
+      "itemAliases": [
+        "chess_item_5_08_e_b"
+      ]
+    },
+    "人事部记录": {
+      "itemId": "chess_item_5_09_e_a"
+    },
+    "瓶装烈性反应": {
+      "itemId": "chess_item_5_10_e_a",
+      "itemAliases": [
+        "chess_item_5_10_e_b"
+      ]
+    },
     "驱逐者警棍": {
+      "itemId": "chess_item_4_12_e_a",
       "fuse": {
         "with": "驱逐者瓦斯",
         "result": "驱逐者防暴装备"
       }
     },
     "驱逐者瓦斯": {
+      "itemId": "chess_item_5_12_e_a",
       "fuse": {
         "with": "驱逐者警棍",
         "result": "驱逐者防暴装备"
       }
     },
     "驱逐者防暴装备": {
+      "itemId": "chess_item_6_05_e_a",
       "elite": "携带者攻击范围内的敌人受到的晕眩、冻结、恐惧等异常状态影响时间提高100%，且对受这类异常状态影响的敌人造成伤害提升30%；携带者处于技能期间时，每次施加这类异常状态时有50%概率将其传递给附近另一名敌人"
     },
     "不退者之盾": {
+      "itemId": "chess_item_3_16_e_a",
       "fuse": {
         "with": "不退者力场",
         "result": "不退者卫护系统"
       }
     },
     "不退者力场": {
+      "itemId": "chess_item_5_11_e_a",
       "fuse": {
         "with": "不退者之盾",
         "result": "不退者卫护系统"
       }
     },
     "不退者卫护系统": {
+      "itemId": "chess_item_6_06_e_a",
       "elite": "免疫晕眩、冻结等特殊状态，阻挡数+2，每阻挡一个单位自身生命上限和防御力提升20%；携带者开启技能时对自身周围范围内敌人产生一次诱导，持续3秒"
     },
     "动能加速器": {
+      "itemId": "chess_item_6_07_e_a",
       "fuse": {
         "with": "动能单手弩",
         "result": "动能轰击弩"
       }
     },
     "动能单手弩": {
+      "itemId": "chess_item_4_13_e_a",
       "fuse": {
         "with": "动能加速器",
         "result": "动能轰击弩"
       }
     },
     "动能轰击弩": {
+      "itemId": "chess_item_6_08_e_a",
       "elite": "造成伤害时有30%概率使攻击力提升至130%；每次攻击后攻击速度+2（最高60层），攻击速度叠加达到上限后每次攻击时有30%概率对攻击范围内随机敌人造成自身攻击力100%的范围物理伤害"
     },
     "汲取者之喙": {
+      "itemId": "chess_item_4_14_e_a",
       "fuse": {
         "with": "汲取者之心",
         "result": "汲取者之镰"
       }
     },
     "汲取者之心": {
+      "itemId": "chess_item_6_09_e_a",
       "fuse": {
         "with": "汲取者之喙",
         "result": "汲取者之镰"
       }
     },
     "汲取者之镰": {
+      "itemId": "chess_item_6_10_e_a",
       "elite": "攻击力+30%，攻击速度+30，每秒流失1%最大生命值（不会降至0），每次造成伤害时回复相当于造成伤害5%的生命值；携带者处于技能期间时上述效果翻倍且自身无法被治疗"
     },
     "终极维式重锤": {
+      "itemId": "chess_item_6_11_e_a",
       "transformBond": "victoria",
       "sources": [
         "凯瑟琳"
       ]
     },
     "天马之耀": {
+      "itemId": "chess_item_6_12_e_a",
       "elite": "生命上限+60%，每秒恢复8%最大生命值；攻击力+50%，造成伤害时额外造成攻击力30%真实伤害"
     }
   },
@@ -236,882 +472,6480 @@
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_499_kaitou",
+      "skills": [
+        {
+          "id": "skchr_kaitou_1",
+          "name": "镭射穿凿"
+        },
+        {
+          "id": "skchr_kaitou_2",
+          "name": "热处理变色"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kaitou",
+          "name": "凡石"
+        }
+      ],
+      "defaultSkill": "skchr_kaitou_2",
+      "defaultModule": "uniequip_002_kaitou"
     },
     "车尔尼": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_4047_pianst",
       "givesEquipment": [
         "莱塔尼亚小鼓"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_pianst_1",
+          "name": "纷飞十指"
+        },
+        {
+          "id": "skchr_pianst_2",
+          "name": "曲惊四座"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pianst",
+          "name": "“日复一日”"
+        }
+      ],
+      "defaultSkill": "skchr_pianst_2",
+      "defaultModule": "uniequip_002_pianst"
     },
     "黑键": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4046_ebnhlz",
+      "skills": [
+        {
+          "id": "skchr_ebnhlz_1",
+          "name": "渐快急板"
+        },
+        {
+          "id": "skchr_ebnhlz_2",
+          "name": "荒芜回响"
+        },
+        {
+          "id": "skchr_ebnhlz_3",
+          "name": "寂静之声"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_ebnhlz",
+          "name": "朽坏传承"
+        },
+        {
+          "id": "uniequip_002_ebnhlz",
+          "name": "源石骰子收纳盒"
+        },
+        {
+          "id": "uniequip_003_ebnhlz",
+          "name": "“乐理阐释者”"
+        }
+      ],
+      "defaultSkill": "skchr_ebnhlz_2",
+      "defaultModule": "uniequip_004_ebnhlz"
     },
     "卡涅利安": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_426_billro",
       "givesEquipment": [
         "迅捷作战粮"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_billro_1",
+          "name": "沙暴守卫"
+        },
+        {
+          "id": "skchr_billro_2",
+          "name": "沙缚镣锁"
+        },
+        {
+          "id": "skchr_billro_3",
+          "name": "食噬之印"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_billro",
+          "name": "风信子与匕首"
+        },
+        {
+          "id": "uniequip_003_billro",
+          "name": "乡音"
+        }
+      ],
+      "defaultSkill": "skchr_billro_3",
+      "defaultModule": "uniequip_002_billro"
     },
     "艾雅法拉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_180_amgoat",
+      "skills": [
+        {
+          "id": "skchr_amgoat_1",
+          "name": "二重咏唱"
+        },
+        {
+          "id": "skchr_amgoat_2",
+          "name": "点燃"
+        },
+        {
+          "id": "skchr_amgoat_3",
+          "name": "火山"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_amgoat",
+          "name": "“错过的声音”"
+        },
+        {
+          "id": "uniequip_003_amgoat",
+          "name": "宠物大赛第一名"
+        }
+      ],
+      "defaultSkill": "skchr_amgoat_3",
+      "defaultModule": "uniequip_002_amgoat"
     },
     "纯烬艾雅法拉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1016_agoat2",
+      "skills": [
+        {
+          "id": "skchr_agoat2_1",
+          "name": "无声润物"
+        },
+        {
+          "id": "skchr_agoat2_2",
+          "name": "云霭荫佑"
+        },
+        {
+          "id": "skchr_agoat2_3",
+          "name": "火山回响"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_agoat2",
+          "name": "想要留住的声音"
+        },
+        {
+          "id": "uniequip_003_agoat2",
+          "name": "想要留下的生命"
+        }
+      ],
+      "defaultSkill": "skchr_agoat2_3",
+      "defaultModule": "uniequip_002_agoat2"
     },
     "折桠": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4207_branch",
+      "skills": [
+        {
+          "id": "skchr_branch_1",
+          "name": "绝境抵抗"
+        },
+        {
+          "id": "skchr_branch_2",
+          "name": "生存决心"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_branch",
+          "name": "“时间的痕迹”"
+        }
+      ],
+      "defaultSkill": "skchr_branch_2",
+      "defaultModule": "uniequip_002_branch"
     },
     "乌啾": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4224_turdus",
+      "skills": [
+        {
+          "id": "skchr_turdus_1",
+          "name": "火钳秘咒"
+        },
+        {
+          "id": "skchr_turdus_2",
+          "name": "“捉迷藏！”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_turdus",
+          "name": "“睡前故事”"
+        }
+      ],
+      "defaultSkill": "skchr_turdus_2",
+      "defaultModule": "uniequip_002_turdus"
     },
     "赫拉格": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_188_helage",
+      "skills": [
+        {
+          "id": "skchr_helage_1",
+          "name": "新月"
+        },
+        {
+          "id": "skchr_helage_2",
+          "name": "弦月"
+        },
+        {
+          "id": "skchr_helage_3",
+          "name": "满月"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_helage",
+          "name": "藏锋"
+        },
+        {
+          "id": "uniequip_003_helage",
+          "name": "“热的雪”"
+        }
+      ],
+      "defaultSkill": "skchr_helage_2",
+      "defaultModule": "uniequip_002_helage"
     },
     "维伊": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4226_veen",
+      "skills": [
+        {
+          "id": "skchr_veen_1",
+          "name": "“自呼号生发”"
+        },
+        {
+          "id": "skchr_veen_2",
+          "name": "“以鲜血洗去”"
+        },
+        {
+          "id": "skchr_veen_3",
+          "name": "“用赤铁铭记”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_veen",
+          "name": "军械库"
+        }
+      ],
+      "defaultSkill": "skchr_veen_3",
+      "defaultModule": "uniequip_002_veen"
     },
     "怒潮凛冬": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1051_headb2",
+      "skills": [
+        {
+          "id": "skchr_headb2_1",
+          "name": "誓不低头"
+        },
+        {
+          "id": "skchr_headb2_2",
+          "name": "绝不罢休"
+        },
+        {
+          "id": "skchr_headb2_3",
+          "name": "无可抵挡"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_headb2",
+          "name": "迟到的勋章"
+        }
+      ],
+      "defaultSkill": "skchr_headb2_2",
+      "defaultModule": "uniequip_002_headb2"
     },
     "蓝毒": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_129_bluep",
+      "skills": [
+        {
+          "id": "skchr_bluep_1",
+          "name": "二重射击·自动"
+        },
+        {
+          "id": "skchr_bluep_2",
+          "name": "毒液散射"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bluep",
+          "name": "标准比色卡"
+        }
+      ],
+      "defaultSkill": "skchr_bluep_1",
+      "defaultModule": "uniequip_002_bluep"
     },
     "海沫": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4066_highmo",
+      "skills": [
+        {
+          "id": "skchr_highmo_1",
+          "name": "回首，断舍"
+        },
+        {
+          "id": "skchr_highmo_2",
+          "name": "泡影，殆尽"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_highmo",
+          "name": "“启航”"
+        }
+      ],
+      "defaultSkill": "skchr_highmo_1",
+      "defaultModule": "uniequip_002_highmo"
     },
     "旅骨": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4232_hbound",
+      "skills": [
+        {
+          "id": "skchr_hbound_1",
+          "name": "触礁"
+        },
+        {
+          "id": "skchr_hbound_2",
+          "name": "座浅"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hbound",
+          "name": "看不见的大海"
+        }
+      ],
+      "defaultSkill": "skchr_hbound_2",
+      "defaultModule": "uniequip_002_hbound"
     },
     "艾丽妮": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4009_irene",
+      "skills": [
+        {
+          "id": "skchr_irene_1",
+          "name": "起风"
+        },
+        {
+          "id": "skchr_irene_2",
+          "name": "裂潮"
+        },
+        {
+          "id": "skchr_irene_3",
+          "name": "判决"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_irene",
+          "name": "艾丽妮特限证章"
+        },
+        {
+          "id": "uniequip_003_irene",
+          "name": "审判官口粮"
+        },
+        {
+          "id": "uniequip_002_irene",
+          "name": "厚重的经卷"
+        }
+      ],
+      "defaultSkill": "skchr_irene_3",
+      "defaultModule": "uniequip_002_irene"
     },
     "温蒂": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_400_weedy",
+      "skills": [
+        {
+          "id": "skchr_weedy_1",
+          "name": "炮管敲击"
+        },
+        {
+          "id": "skchr_weedy_2",
+          "name": "水炮模式"
+        },
+        {
+          "id": "skchr_weedy_3",
+          "name": "液氮大炮"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_weedy",
+          "name": "仿生海龙改型"
+        },
+        {
+          "id": "uniequip_003_weedy",
+          "name": "新型仿生原型"
+        }
+      ],
+      "defaultSkill": "skchr_weedy_3",
+      "defaultModule": "uniequip_002_weedy"
     },
     "流明": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4042_lumen",
+      "skills": [
+        {
+          "id": "skchr_lumen_1",
+          "name": "沐雨"
+        },
+        {
+          "id": "skchr_lumen_2",
+          "name": "沛霖"
+        },
+        {
+          "id": "skchr_lumen_3",
+          "name": "灯火不灭"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lumen",
+          "name": "纯铜单筒望远镜"
+        },
+        {
+          "id": "uniequip_003_lumen",
+          "name": "“幸运”"
+        }
+      ],
+      "defaultSkill": "skchr_lumen_3",
+      "defaultModule": "uniequip_002_lumen"
     },
     "棘刺": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_293_thorns",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_thorns_2",
+          "name": "护身尖刺"
+        },
+        {
+          "id": "skchr_thorns_3",
+          "name": "至高之术"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_thorns",
+          "name": "沙蚀"
+        },
+        {
+          "id": "uniequip_002_thorns",
+          "name": "“盐与沙”"
+        }
+      ],
+      "defaultSkill": "skchr_thorns_3",
+      "defaultModule": "uniequip_002_thorns"
     },
     "引星棘刺": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1039_thorn2",
+      "skills": [
+        {
+          "id": "skchr_thorn2_1",
+          "name": "度算浪波"
+        },
+        {
+          "id": "skchr_thorn2_2",
+          "name": "解构涌潮"
+        },
+        {
+          "id": "skchr_thorn2_3",
+          "name": "“我的海疆”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_thorn2",
+          "name": "三面的金币"
+        }
+      ],
+      "defaultSkill": "skchr_thorn2_2",
+      "defaultModule": "uniequip_002_thorn2"
     },
     "风絮": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4222_taraxa",
+      "skills": [
+        {
+          "id": "skchr_taraxa_1",
+          "name": "何处着"
+        },
+        {
+          "id": "skchr_taraxa_2",
+          "name": "扶风起"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_taraxa_2",
+      "defaultModule": null
     },
     "余": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_2026_yu",
+      "skills": [
+        {
+          "id": "skchr_yu_1",
+          "name": "今日做东"
+        },
+        {
+          "id": "skchr_yu_2",
+          "name": "厚礼上宾"
+        },
+        {
+          "id": "skchr_yu_3",
+          "name": "灶里乾坤"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yu",
+          "name": "人间百味"
+        }
+      ],
+      "defaultSkill": "skchr_yu_3",
+      "defaultModule": "uniequip_002_yu"
     },
     "黍": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_2025_shu",
+      "skills": [
+        {
+          "id": "skchr_shu_1",
+          "name": "化被草木"
+        },
+        {
+          "id": "skchr_shu_2",
+          "name": "嘉禾盈仓"
+        },
+        {
+          "id": "skchr_shu_3",
+          "name": "离离枯荣"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_shu",
+          "name": "“钦天司时”"
+        },
+        {
+          "id": "uniequip_003_shu",
+          "name": "好时节"
+        }
+      ],
+      "defaultSkill": "skchr_shu_3",
+      "defaultModule": "uniequip_002_shu"
     },
     "烛煌": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1040_blaze2",
+      "skills": [
+        {
+          "id": "skchr_blaze2_1",
+          "name": "炙手之援"
+        },
+        {
+          "id": "skchr_blaze2_2",
+          "name": "沸血燎原"
+        },
+        {
+          "id": "skchr_blaze2_3",
+          "name": "众恶的焚场"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_blaze2",
+          "name": "热切的期盼"
+        },
+        {
+          "id": "uniequip_003_blaze2",
+          "name": "沟通小助手"
+        }
+      ],
+      "defaultSkill": "skchr_blaze2_3",
+      "defaultModule": "uniequip_002_blaze2"
     },
     "艾丝黛尔": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_127_estell",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]",
+          "name": "攻击力强化·β型"
+        },
+        {
+          "id": "skchr_estell_2",
+          "name": "舍身突击"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_estell",
+          "name": "荒野地的饯别礼"
+        }
+      ],
+      "defaultSkill": "skcom_atk_up[2]",
+      "defaultModule": "uniequip_002_estell"
     },
     "泡泡": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_381_bubble",
+      "skills": [
+        {
+          "id": "skcom_def_up[2]",
+          "name": "防御力强化·β型"
+        },
+        {
+          "id": "skchr_bubble_2",
+          "name": "“挨打”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bubble",
+          "name": "泡泡闪光必杀剑"
+        }
+      ],
+      "defaultSkill": "skchr_bubble_2",
+      "defaultModule": "uniequip_002_bubble"
     },
     "莎草": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4139_papyrs",
+      "skills": [
+        {
+          "id": "skchr_papyrs_1",
+          "name": "巧思乍现"
+        },
+        {
+          "id": "skchr_papyrs_2",
+          "name": "临考发挥"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_papyrs",
+          "name": "小小的种子"
+        }
+      ],
+      "defaultSkill": "skchr_papyrs_1",
+      "defaultModule": "uniequip_002_papyrs"
     },
     "森蚺": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_416_zumama",
+      "skills": [
+        {
+          "id": "skchr_zumama_1",
+          "name": "轻型挂斧"
+        },
+        {
+          "id": "skchr_zumama_2",
+          "name": "震慑劈砍"
+        },
+        {
+          "id": "skchr_zumama_3",
+          "name": "钢铁意志"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_zumama",
+          "name": "森蚺特限证章"
+        },
+        {
+          "id": "uniequip_002_zumama",
+          "name": "祖玛玛的工具箱"
+        },
+        {
+          "id": "uniequip_003_zumama",
+          "name": "“小小的丑东西”"
+        }
+      ],
+      "defaultSkill": "skchr_zumama_3",
+      "defaultModule": "uniequip_002_zumama"
     },
     "佩佩": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4058_pepe",
+      "skills": [
+        {
+          "id": "skchr_pepe_1",
+          "name": "盖戳！"
+        },
+        {
+          "id": "skchr_pepe_2",
+          "name": "阻遏混乱锤"
+        },
+        {
+          "id": "skchr_pepe_3",
+          "name": "时光震荡"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_pepe",
+          "name": "佩佩特限证章"
+        },
+        {
+          "id": "uniequip_002_pepe",
+          "name": "晴雨"
+        }
+      ],
+      "defaultSkill": "skchr_pepe_3",
+      "defaultModule": "uniequip_002_pepe"
     },
     "极光": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_422_aurora",
+      "skills": [
+        {
+          "id": "skchr_aurora_1",
+          "name": "固守家园"
+        },
+        {
+          "id": "skchr_aurora_2",
+          "name": "人工降雪"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aurora",
+          "name": "盾用摄制模块"
+        }
+      ],
+      "defaultSkill": "skchr_aurora_2",
+      "defaultModule": "uniequip_002_aurora"
     },
     "雪猎": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4211_snhunt",
+      "skills": [
+        {
+          "id": "skchr_snhunt_1",
+          "name": "强力击·β型"
+        },
+        {
+          "id": "skchr_snhunt_2",
+          "name": "风雪连弩"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_snhunt",
+          "name": "过去的狩猎"
+        }
+      ],
+      "defaultSkill": "skchr_snhunt_2",
+      "defaultModule": "uniequip_002_snhunt"
     },
     "耶拉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_4013_kjera",
       "givesEquipment": [
         "谢拉格不融冰"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_kjera_2",
+          "name": "心随意动"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kjera",
+          "name": "以雪为线"
+        }
+      ],
+      "defaultSkill": "skchr_kjera_2",
+      "defaultModule": "uniequip_002_kjera"
     },
     "初雪": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_174_slbell",
+      "skills": [
+        {
+          "id": "skchr_slbell_1",
+          "name": "传音回响"
+        },
+        {
+          "id": "skchr_slbell_2",
+          "name": "自然震慑"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_slbell",
+          "name": "“续针”"
+        }
+      ],
+      "defaultSkill": "skchr_slbell_2",
+      "defaultModule": "uniequip_002_slbell"
     },
     "灵知": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_206_gnosis",
+      "skills": [
+        {
+          "id": "skchr_gnosis_1",
+          "name": "高速思考"
+        },
+        {
+          "id": "skchr_gnosis_2",
+          "name": "零度爆发"
+        },
+        {
+          "id": "skchr_gnosis_3",
+          "name": "失温症"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_gnosis",
+          "name": "灵知特限证章"
+        },
+        {
+          "id": "uniequip_002_gnosis",
+          "name": "“誓言”"
+        },
+        {
+          "id": "uniequip_003_gnosis",
+          "name": "一号项目模型"
+        }
+      ],
+      "defaultSkill": "skchr_gnosis_2",
+      "defaultModule": "uniequip_002_gnosis"
     },
     "圣聆初雪": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1046_sbell2",
+      "skills": [
+        {
+          "id": "skchr_sbell2_1",
+          "name": "铃音吹雪"
+        },
+        {
+          "id": "skchr_sbell2_2",
+          "name": "霜涛覆岭"
+        },
+        {
+          "id": "skchr_sbell2_3",
+          "name": "群山俯首"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sbell2",
+          "name": "千分之一的心"
+        }
+      ],
+      "defaultSkill": "skchr_sbell2_3",
+      "defaultModule": "uniequip_002_sbell2"
     },
     "凛御银灰": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1045_svash2",
+      "skills": [
+        {
+          "id": "skchr_svash2_1",
+          "name": "周旋的谋略"
+        },
+        {
+          "id": "skchr_svash2_2",
+          "name": "御敌的锋锐"
+        },
+        {
+          "id": "skchr_svash2_3",
+          "name": "变革已至"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_svash2",
+          "name": "邀约"
+        }
+      ],
+      "defaultSkill": "skchr_svash2_3",
+      "defaultModule": "uniequip_002_svash2"
     },
     "幽灵鲨": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_143_ghost",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_ghost_2",
+          "name": "肉斩骨断"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ghost",
+          "name": "幽明烛光"
+        }
+      ],
+      "defaultSkill": "skcom_atk_up[3]",
+      "defaultModule": "uniequip_002_ghost"
     },
     "深巡": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4137_udflow",
+      "skills": [
+        {
+          "id": "skchr_udflow_1",
+          "name": "侵袭破坏应对"
+        },
+        {
+          "id": "skchr_udflow_2",
+          "name": "行动能力剥夺"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_udflow",
+          "name": "基于咖啡的神经活性剂"
+        }
+      ],
+      "defaultSkill": "skchr_udflow_2",
+      "defaultModule": "uniequip_002_udflow"
     },
     "斯卡蒂": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_263_skadi",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_skadi_2",
+          "name": "跃浪击"
+        },
+        {
+          "id": "skchr_skadi_3",
+          "name": "涌潮悲歌"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_skadi",
+          "name": "往日残梦"
+        },
+        {
+          "id": "uniequip_002_skadi",
+          "name": "潮湿的剑袋"
+        }
+      ],
+      "defaultSkill": "skchr_skadi_2",
+      "defaultModule": "uniequip_002_skadi"
     },
     "歌蕾蒂娅": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_474_glady",
+      "skills": [
+        {
+          "id": "skchr_glady_1",
+          "name": "缺水的大洋裂断"
+        },
+        {
+          "id": "skchr_glady_2",
+          "name": "缺水的掌握怒海"
+        },
+        {
+          "id": "skchr_glady_3",
+          "name": "缺水的碎漩狂舞"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_glady",
+          "name": "执政官手镜"
+        },
+        {
+          "id": "uniequip_003_glady",
+          "name": "淡金坠饰"
+        }
+      ],
+      "defaultSkill": "skchr_glady_3",
+      "defaultModule": "uniequip_002_glady"
     },
     "归溟幽灵鲨": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1023_ghost2",
+      "skills": [
+        {
+          "id": "skchr_ghost2_1",
+          "name": "生存的技巧"
+        },
+        {
+          "id": "skchr_ghost2_2",
+          "name": "生存的渴望"
+        },
+        {
+          "id": "skchr_ghost2_3",
+          "name": "生存的重压"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_ghost2",
+          "name": "归溟幽灵鲨特限证章"
+        },
+        {
+          "id": "uniequip_002_ghost2",
+          "name": "“唱片”收藏箱"
+        },
+        {
+          "id": "uniequip_003_ghost2",
+          "name": "未竟之美"
+        }
+      ],
+      "defaultSkill": "skchr_ghost2_2",
+      "defaultModule": "uniequip_002_ghost2"
     },
     "乌尔比安": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4145_ulpia",
+      "skills": [
+        {
+          "id": "skchr_ulpia_1",
+          "name": "必须促成的接触"
+        },
+        {
+          "id": "skchr_ulpia_2",
+          "name": "必须维系的界限"
+        },
+        {
+          "id": "skchr_ulpia_3",
+          "name": "必须开辟的通路"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ulpia",
+          "name": "乌尔比安的衣橱"
+        },
+        {
+          "id": "uniequip_003_ulpia",
+          "name": "“前路”"
+        }
+      ],
+      "defaultSkill": "skchr_ulpia_3",
+      "defaultModule": "uniequip_002_ulpia"
     },
     "浊心斯卡蒂": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1012_skadi2",
+      "skills": [
+        {
+          "id": "skchr_skadi2_1",
+          "name": "同归殊途之吟"
+        },
+        {
+          "id": "skchr_skadi2_2",
+          "name": "同葬无光之愿"
+        },
+        {
+          "id": "skchr_skadi2_3",
+          "name": "\"潮涌，潮枯\""
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_skadi2",
+          "name": "蜕化的残迹"
+        },
+        {
+          "id": "uniequip_003_skadi2",
+          "name": "新生代"
+        }
+      ],
+      "defaultSkill": "skchr_skadi2_3",
+      "defaultModule": "uniequip_002_skadi2"
     },
     "克莱门莎": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4231_clemnt",
+      "skills": [
+        {
+          "id": "skchr_clemnt_1",
+          "name": "冲蚀"
+        },
+        {
+          "id": "skchr_clemnt_2",
+          "name": "风暴潮"
+        },
+        {
+          "id": "skchr_clemnt_3",
+          "name": "与海为敌"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_clemnt_2",
+      "defaultModule": null
     },
     "水月": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_437_mizuki",
+      "skills": [
+        {
+          "id": "skchr_mizuki_1",
+          "name": "唤醒"
+        },
+        {
+          "id": "skchr_mizuki_2",
+          "name": "囚徒困境"
+        },
+        {
+          "id": "skchr_mizuki_3",
+          "name": "镜花水月"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_mizuki",
+          "name": "水月特限证章"
+        },
+        {
+          "id": "uniequip_002_mizuki",
+          "name": "使者之约"
+        },
+        {
+          "id": "uniequip_003_mizuki",
+          "name": "深蓝之籽"
+        }
+      ],
+      "defaultSkill": "skchr_mizuki_2",
+      "defaultModule": "uniequip_002_mizuki"
     },
     "砾": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_237_gravel",
+      "skills": [
+        {
+          "id": "skchr_gravel_1",
+          "name": "影袭"
+        },
+        {
+          "id": "skchr_gravel_2",
+          "name": "鼠群"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_gravel",
+          "name": "隐秘行动工具包"
+        }
+      ],
+      "defaultSkill": "skchr_gravel_1",
+      "defaultModule": "uniequip_002_gravel"
     },
     "野鬃": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_496_wildmn",
+      "skills": [
+        {
+          "id": "skchr_wildmn_1",
+          "name": "骑枪刺击"
+        },
+        {
+          "id": "skchr_wildmn_2",
+          "name": "夹枪冲锋"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wildmn",
+          "name": "长枪替补套装"
+        }
+      ],
+      "defaultSkill": "skchr_wildmn_2",
+      "defaultModule": "uniequip_002_wildmn"
     },
     "瑕光": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_423_blemsh",
+      "skills": [
+        {
+          "id": "skchr_blemsh_1",
+          "name": "光芒涌动"
+        },
+        {
+          "id": "skchr_blemsh_2",
+          "name": "慑敌辉光"
+        },
+        {
+          "id": "skchr_blemsh_3",
+          "name": "先贤化身"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_blemsh",
+          "name": "“长骑”"
+        },
+        {
+          "id": "uniequip_002_blemsh",
+          "name": "工匠团的回响"
+        }
+      ],
+      "defaultSkill": "skchr_blemsh_3",
+      "defaultModule": "uniequip_002_blemsh"
     },
     "远牙": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_430_fartth",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_fartth_2",
+          "name": "同盟支援"
+        },
+        {
+          "id": "skchr_fartth_3",
+          "name": "光羽箭"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_fartth",
+          "name": "首战支援套组"
+        },
+        {
+          "id": "uniequip_003_fartth",
+          "name": "支持者来信"
+        }
+      ],
+      "defaultSkill": "skchr_fartth_2",
+      "defaultModule": "uniequip_002_fartth"
     },
     "玛恩纳": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4064_mlynar",
+      "skills": [
+        {
+          "id": "skchr_mlynar_1",
+          "name": "未声张的怒火"
+        },
+        {
+          "id": "skchr_mlynar_2",
+          "name": "未宽解的悲哀"
+        },
+        {
+          "id": "skchr_mlynar_3",
+          "name": "未照耀的荣光"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mlynar",
+          "name": "“鞘中人”"
+        }
+      ],
+      "defaultSkill": "skchr_mlynar_3",
+      "defaultModule": "uniequip_002_mlynar"
     },
     "耀骑士临光": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1014_nearl2",
+      "skills": [
+        {
+          "id": "skchr_nearl2_1",
+          "name": "灿焰长刃"
+        },
+        {
+          "id": "skchr_nearl2_2",
+          "name": "逐夜烁光"
+        },
+        {
+          "id": "skchr_nearl2_3",
+          "name": "耀阳颔首"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nearl2",
+          "name": "耀阳锋刃"
+        },
+        {
+          "id": "uniequip_003_nearl2",
+          "name": "“骑士家族”"
+        }
+      ],
+      "defaultSkill": "skchr_nearl2_3",
+      "defaultModule": "uniequip_002_nearl2"
     },
     "薇薇安娜": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4098_vvana",
+      "skills": [
+        {
+          "id": "skchr_vvana_1",
+          "name": "光影迅捷剑"
+        },
+        {
+          "id": "skchr_vvana_2",
+          "name": "烛燃影息"
+        },
+        {
+          "id": "skchr_vvana_3",
+          "name": "“明灭”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vvana",
+          "name": "目不能及之处"
+        },
+        {
+          "id": "uniequip_003_vvana",
+          "name": "“最后一行”"
+        }
+      ],
+      "defaultSkill": "skchr_vvana_3",
+      "defaultModule": "uniequip_002_vvana"
     },
     "复奏": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4031_liesel",
+      "skills": [
+        {
+          "id": "skchr_liesel_1",
+          "name": "合奏起拍"
+        },
+        {
+          "id": "skchr_liesel_2",
+          "name": "直到终曲"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_liesel",
+          "name": "“暮约”"
+        }
+      ],
+      "defaultSkill": "skchr_liesel_2",
+      "defaultModule": "uniequip_002_liesel"
     },
     "奥斯塔": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_346_aosta",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_aosta_2",
+          "name": "影钉"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aosta",
+          "name": "逃亡路上的应急小包"
+        }
+      ],
+      "defaultSkill": "skchr_aosta_2",
+      "defaultModule": "uniequip_002_aosta"
     },
     "忍冬": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4026_vulpis",
+      "skills": [
+        {
+          "id": "skchr_vulpis_1",
+          "name": "小施惩戒"
+        },
+        {
+          "id": "skchr_vulpis_2",
+          "name": "坠刃拷问"
+        },
+        {
+          "id": "skchr_vulpis_3",
+          "name": "隐狐之艺"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vulpis",
+          "name": "杀手也有假期"
+        },
+        {
+          "id": "uniequip_003_vulpis",
+          "name": "剑舞"
+        }
+      ],
+      "defaultSkill": "skchr_vulpis_3",
+      "defaultModule": "uniequip_002_vulpis"
     },
     "伺夜": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_427_vigil",
+      "skills": [
+        {
+          "id": "skchr_vigil_1",
+          "name": "领袖的呼唤"
+        },
+        {
+          "id": "skchr_vigil_2",
+          "name": "领袖的馈赠"
+        },
+        {
+          "id": "skchr_vigil_3",
+          "name": "领袖的尊严"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vigil",
+          "name": "叙拉古式入门礼"
+        },
+        {
+          "id": "uniequip_003_vigil",
+          "name": "时光不再"
+        }
+      ],
+      "defaultSkill": "skchr_vigil_3",
+      "defaultModule": "uniequip_002_vigil"
     },
     "铃兰": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_358_lisa",
+      "skills": [
+        {
+          "id": "skchr_lisa_1",
+          "name": "全力以赴"
+        },
+        {
+          "id": "skchr_lisa_2",
+          "name": "儿时的舞乐"
+        },
+        {
+          "id": "skchr_lisa_3",
+          "name": "狐火渺然"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lisa",
+          "name": "怀中御守"
+        },
+        {
+          "id": "uniequip_003_lisa",
+          "name": "孩子们"
+        }
+      ],
+      "defaultSkill": "skchr_lisa_3",
+      "defaultModule": "uniequip_002_lisa"
     },
     "贝洛内": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4037_demetr",
+      "skills": [
+        {
+          "id": "skchr_demetr_1",
+          "name": "家主的余裕"
+        },
+        {
+          "id": "skchr_demetr_2",
+          "name": "军师的手段"
+        },
+        {
+          "id": "skchr_demetr_3",
+          "name": "清算"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_demetr",
+          "name": "实用的工具"
+        }
+      ],
+      "defaultSkill": "skchr_demetr_2",
+      "defaultModule": "uniequip_002_demetr"
     },
     "荒芜拉普兰德": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1038_whitw2",
+      "skills": [
+        {
+          "id": "skchr_whitw2_1",
+          "name": "慵怠者悲鸣"
+        },
+        {
+          "id": "skchr_whitw2_2",
+          "name": "逐猎狂飙"
+        },
+        {
+          "id": "skchr_whitw2_3",
+          "name": "终幕·浩劫"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_whitw2",
+          "name": "狼时"
+        }
+      ],
+      "defaultSkill": "skchr_whitw2_3",
+      "defaultModule": "uniequip_002_whitw2"
     },
     "慕斯": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_185_frncat",
+      "skills": [
+        {
+          "id": "skchr_frncat_1",
+          "name": "挠伤"
+        },
+        {
+          "id": "skchr_frncat_2",
+          "name": "炸毛"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_frncat",
+          "name": "美爪套装二象性"
+        }
+      ],
+      "defaultSkill": "skchr_frncat_1",
+      "defaultModule": "uniequip_002_frncat"
     },
     "水灯心": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4177_brigid",
+      "skills": [
+        {
+          "id": "skchr_brigid_1",
+          "name": "所熟知的"
+        },
+        {
+          "id": "skchr_brigid_2",
+          "name": "可驯服的"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_brigid",
+          "name": "风的颜色"
+        }
+      ],
+      "defaultSkill": "skchr_brigid_2",
+      "defaultModule": "uniequip_002_brigid"
     },
     "Miss.Christine": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4198_christ",
+      "skills": [
+        {
+          "id": "skchr_christ_1",
+          "name": "自由用餐礼仪"
+        },
+        {
+          "id": "skchr_christ_2",
+          "name": "狂饮之宴"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_christ",
+          "name": "“黑色”贩卖机"
+        }
+      ],
+      "defaultSkill": "skchr_christ_2",
+      "defaultModule": "uniequip_002_christ"
     },
     "涤火杰西卡": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1034_jesca2",
+      "skills": [
+        {
+          "id": "skchr_jesca2_1",
+          "name": "坚守阵线"
+        },
+        {
+          "id": "skchr_jesca2_2",
+          "name": "掩蔽护卫"
+        },
+        {
+          "id": "skchr_jesca2_3",
+          "name": "饱和迸射"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_jesca2",
+          "name": "“私家英雄”"
+        },
+        {
+          "id": "uniequip_003_jesca2",
+          "name": "未曾风化"
+        }
+      ],
+      "defaultSkill": "skchr_jesca2_3",
+      "defaultModule": "uniequip_002_jesca2"
     },
     "白铁": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4072_ironmn",
+      "skills": [
+        {
+          "id": "skchr_ironmn_1",
+          "name": "极致火力"
+        },
+        {
+          "id": "skchr_ironmn_2",
+          "name": "高效补给"
+        },
+        {
+          "id": "skchr_ironmn_3",
+          "name": "铁钳号·原型机"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ironmn",
+          "name": "铁钳号·爬行者"
+        },
+        {
+          "id": "uniequip_003_ironmn",
+          "name": "海布里印记"
+        }
+      ],
+      "defaultSkill": "skchr_ironmn_3",
+      "defaultModule": "uniequip_002_ironmn"
     },
     "酒神": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1042_phatm2",
+      "skills": [
+        {
+          "id": "skchr_phatm2_1",
+          "name": "暗夜回声"
+        },
+        {
+          "id": "skchr_phatm2_2",
+          "name": "群体性谵妄"
+        },
+        {
+          "id": "skchr_phatm2_3",
+          "name": "空剧场"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_phatm2",
+          "name": "酒神之心"
+        }
+      ],
+      "defaultSkill": "skchr_phatm2_3",
+      "defaultModule": "uniequip_002_phatm2"
     },
     "维娜·维多利亚": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1019_siege2",
+      "skills": [
+        {
+          "id": "skchr_siege2_1",
+          "name": "重铸晖光"
+        },
+        {
+          "id": "skchr_siege2_2",
+          "name": "进赴故土"
+        },
+        {
+          "id": "skchr_siege2_3",
+          "name": "俱以我之名"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_siege2",
+          "name": "城主的冒险"
+        },
+        {
+          "id": "uniequip_003_siege2",
+          "name": "秩序圣“球”"
+        }
+      ],
+      "defaultSkill": "skchr_siege2_3",
+      "defaultModule": "uniequip_002_siege2"
     },
     "角峰": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_199_yak",
+      "skills": [
+        {
+          "id": "skchr_yak_1",
+          "name": "体能强化"
+        },
+        {
+          "id": "skchr_yak_2",
+          "name": "抗寒体质"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yak",
+          "name": "父亲的袍子"
+        }
+      ],
+      "defaultSkill": "skchr_yak_2",
+      "defaultModule": "uniequip_002_yak"
     },
     "哈洛德": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4114_harold",
+      "skills": [
+        {
+          "id": "skcom_heal_up[3]",
+          "name": "治疗强化·γ型"
+        },
+        {
+          "id": "skchr_harold_2",
+          "name": "重症优先"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_harold",
+          "name": "腿部护理套装"
+        }
+      ],
+      "defaultSkill": "skchr_harold_2",
+      "defaultModule": "uniequip_002_harold"
     },
     "斥罪": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4065_judge",
+      "skills": [
+        {
+          "id": "skchr_judge_1",
+          "name": "一锤定音"
+        },
+        {
+          "id": "skchr_judge_2",
+          "name": "坚心苦修"
+        },
+        {
+          "id": "skchr_judge_3",
+          "name": "披荆斩棘"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_judge",
+          "name": "通往未来的荆棘之路"
+        },
+        {
+          "id": "uniequip_003_judge",
+          "name": "“无罪”"
+        }
+      ],
+      "defaultSkill": "skchr_judge_2",
+      "defaultModule": "uniequip_002_judge"
     },
     "逻各斯": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4133_logos",
+      "skills": [
+        {
+          "id": "skchr_logos_1",
+          "name": "殁亡"
+        },
+        {
+          "id": "skchr_logos_2",
+          "name": "提喻"
+        },
+        {
+          "id": "skchr_logos_3",
+          "name": "延异视阈"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_logos",
+          "name": "来自河谷的笔盒"
+        },
+        {
+          "id": "uniequip_003_logos",
+          "name": "《语义范式百科》"
+        }
+      ],
+      "defaultSkill": "skchr_logos_3",
+      "defaultModule": "uniequip_003_logos"
     },
     "空弦": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_332_archet",
+      "skills": [
+        {
+          "id": "skchr_archet_1",
+          "name": "箭矢·散逸"
+        },
+        {
+          "id": "skchr_archet_2",
+          "name": "箭矢·追猎"
+        },
+        {
+          "id": "skchr_archet_3",
+          "name": "箭矢·暴风"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_archet",
+          "name": "空弦特限证章"
+        },
+        {
+          "id": "uniequip_003_archet",
+          "name": "旧日重现"
+        },
+        {
+          "id": "uniequip_002_archet",
+          "name": "“明天的种子”"
+        }
+      ],
+      "defaultSkill": "skchr_archet_3",
+      "defaultModule": "uniequip_002_archet"
     },
     "迷迭香": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_391_rosmon",
+      "skills": [
+        {
+          "id": "skchr_rosmon_1",
+          "name": "思维膨大"
+        },
+        {
+          "id": "skchr_rosmon_2",
+          "name": "末梢阻断"
+        },
+        {
+          "id": "skchr_rosmon_3",
+          "name": "“如你所愿”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_rosmon",
+          "name": "迷迭香特限证章"
+        },
+        {
+          "id": "uniequip_002_rosmon",
+          "name": "“记事”"
+        }
+      ],
+      "defaultSkill": "skchr_rosmon_2",
+      "defaultModule": "uniequip_002_rosmon"
     },
     "真言": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4204_mantra",
+      "skills": [
+        {
+          "id": "skchr_mantra_1",
+          "name": "共鸣溃缩"
+        },
+        {
+          "id": "skchr_mantra_2",
+          "name": "意识联协"
+        },
+        {
+          "id": "skchr_mantra_3",
+          "name": "无言为真"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mantra",
+          "name": "中枢神经探测模块"
+        }
+      ],
+      "defaultSkill": "skchr_mantra_3",
+      "defaultModule": "uniequip_002_mantra"
     },
     "灰喉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_367_swllow",
+      "skills": [
+        {
+          "id": "skchr_swllow_1",
+          "name": "飞羽"
+        },
+        {
+          "id": "skchr_swllow_2",
+          "name": "回流"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_swllow",
+          "name": "母爱的倒影"
+        }
+      ],
+      "defaultSkill": "skchr_swllow_2",
+      "defaultModule": "uniequip_002_swllow"
     },
     "吉星": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4203_kichi",
+      "skills": [
+        {
+          "id": "skchr_kichi_1",
+          "name": "欢迎您来！"
+        },
+        {
+          "id": "skchr_kichi_2",
+          "name": "吉星高照！"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kichi",
+          "name": "可疑的宣传页"
+        }
+      ],
+      "defaultSkill": "skchr_kichi_2",
+      "defaultModule": "uniequip_002_kichi"
     },
     "妮芙": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4146_nymph",
+      "skills": [
+        {
+          "id": "skchr_nymph_1",
+          "name": "笞心击"
+        },
+        {
+          "id": "skchr_nymph_2",
+          "name": "怵然震爆"
+        },
+        {
+          "id": "skchr_nymph_3",
+          "name": "心防溃决"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nymph",
+          "name": "心声"
+        },
+        {
+          "id": "uniequip_003_nymph",
+          "name": "烦恼问诊匣"
+        }
+      ],
+      "defaultSkill": "skchr_nymph_2",
+      "defaultModule": "uniequip_002_nymph"
     },
     "W": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_113_cqbw",
+      "skills": [
+        {
+          "id": "skchr_cqbw_1",
+          "name": "红桃K"
+        },
+        {
+          "id": "skchr_cqbw_2",
+          "name": "惊吓盒子"
+        },
+        {
+          "id": "skchr_cqbw_3",
+          "name": "D12"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cqbw",
+          "name": "佣兵的行囊"
+        },
+        {
+          "id": "uniequip_003_cqbw",
+          "name": "刺棱钝刃"
+        }
+      ],
+      "defaultSkill": "skchr_cqbw_2",
+      "defaultModule": "uniequip_002_cqbw"
     },
     "霍尔海雅": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4027_heyak",
+      "skills": [
+        {
+          "id": "skchr_heyak_1",
+          "name": "但为求索"
+        },
+        {
+          "id": "skchr_heyak_2",
+          "name": "群星逶迤"
+        },
+        {
+          "id": "skchr_heyak_3",
+          "name": "博览者的狂语"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_heyak",
+          "name": "霍尔海雅特限证章"
+        },
+        {
+          "id": "uniequip_002_heyak",
+          "name": "“图书馆”"
+        },
+        {
+          "id": "uniequip_003_heyak",
+          "name": "羽蛇的时间博物馆"
+        }
+      ],
+      "defaultSkill": "skchr_heyak_2",
+      "defaultModule": "uniequip_002_heyak"
     },
     "云迹": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4165_ctrail",
+      "skills": [
+        {
+          "id": "skchr_ctrail_1",
+          "name": "紧急升空"
+        },
+        {
+          "id": "skchr_ctrail_2",
+          "name": "掠空飞翎"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_ctrail_2",
+      "defaultModule": null
     },
     "隐德来希": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4010_etlchi",
+      "skills": [
+        {
+          "id": "skchr_etlchi_1",
+          "name": "玫影觅迹"
+        },
+        {
+          "id": "skchr_etlchi_2",
+          "name": "绯红壁合"
+        },
+        {
+          "id": "skchr_etlchi_3",
+          "name": "灵与欲的惜别"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_etlchi",
+          "name": "易枯萎的航船"
+        },
+        {
+          "id": "uniequip_003_etlchi",
+          "name": "玫瑰色故事集"
+        }
+      ],
+      "defaultSkill": "skchr_etlchi_3",
+      "defaultModule": "uniequip_002_etlchi"
     },
     "伊桑": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_355_ethan",
+      "skills": [
+        {
+          "id": "skchr_ethan_1",
+          "name": "花式回旋"
+        },
+        {
+          "id": "skchr_ethan_2",
+          "name": "十字悬挂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ethan",
+          "name": "超级喷漆套装"
+        }
+      ],
+      "defaultSkill": "skchr_ethan_2",
+      "defaultModule": "uniequip_002_ethan"
     },
     "深靛": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_469_indigo",
+      "skills": [
+        {
+          "id": "skchr_indigo_1",
+          "name": "灯塔守卫者"
+        },
+        {
+          "id": "skchr_indigo_2",
+          "name": "光影迷宫"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_indigo",
+          "name": "法杖保养套装"
+        }
+      ],
+      "defaultSkill": "skchr_indigo_2",
+      "defaultModule": "uniequip_002_indigo"
     },
     "卡达": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_328_cammou",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]",
+          "name": "攻击力强化·β型"
+        },
+        {
+          "id": "skchr_cammou_2",
+          "name": "同步索敌攻击"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cammou",
+          "name": "大菲林脱敏实验"
+        }
+      ],
+      "defaultSkill": "skchr_cammou_2",
+      "defaultModule": "uniequip_002_cammou"
     },
     "蛇屠箱": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_150_snakek",
+      "skills": [
+        {
+          "id": "skcom_def_up[2]",
+          "name": "防御力强化·β型"
+        },
+        {
+          "id": "skchr_snakek_2",
+          "name": "壳状防御"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_snakek",
+          "name": "超强棒球套装"
+        }
+      ],
+      "defaultSkill": "skchr_snakek_2",
+      "defaultModule": "uniequip_002_snakek"
     },
     "罗比菈塔": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_484_robrta",
+      "skills": [
+        {
+          "id": "skchr_robrta_1",
+          "name": "叙拉古式上妆"
+        },
+        {
+          "id": "skchr_robrta_2",
+          "name": "全自动造型仪"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_robrta",
+          "name": "半自动造型工具套组"
+        }
+      ],
+      "defaultSkill": "skchr_robrta_2",
+      "defaultModule": "uniequip_002_robrta"
     },
     "摆渡人": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4166_varkis",
+      "skills": [
+        {
+          "id": "skchr_varkis_1",
+          "name": "奔流"
+        },
+        {
+          "id": "skchr_varkis_2",
+          "name": "同胞的意志"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_varkis",
+          "name": "回家的路"
+        }
+      ],
+      "defaultSkill": "skchr_varkis_2",
+      "defaultModule": "uniequip_002_varkis"
     },
     "塞雷娅": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_202_demkni",
+      "skills": [
+        {
+          "id": "skchr_demkni_1",
+          "name": "急救"
+        },
+        {
+          "id": "skchr_demkni_2",
+          "name": "药物配置"
+        },
+        {
+          "id": "skchr_demkni_3",
+          "name": "钙质化"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_demkni",
+          "name": "闲置的拳击手套"
+        },
+        {
+          "id": "uniequip_003_demkni",
+          "name": "科技新星"
+        }
+      ],
+      "defaultSkill": "skchr_demkni_1",
+      "defaultModule": "uniequip_002_demkni"
     },
     "遥": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4202_haruka",
+      "skills": [
+        {
+          "id": "skchr_haruka_1",
+          "name": "夜啼彩羽"
+        },
+        {
+          "id": "skchr_haruka_2",
+          "name": "幽隙栖萤"
+        },
+        {
+          "id": "skchr_haruka_3",
+          "name": "夏末游鳞"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_haruka",
+          "name": "迟来的纪念"
+        }
+      ],
+      "defaultSkill": "skchr_haruka_2",
+      "defaultModule": "uniequip_002_haruka"
     },
     "魔王": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4134_cetsyr",
+      "skills": [
+        {
+          "id": "skchr_cetsyr_1",
+          "name": "往昔萦绕身旁"
+        },
+        {
+          "id": "skchr_cetsyr_2",
+          "name": "明日渺远不及"
+        },
+        {
+          "id": "skchr_cetsyr_3",
+          "name": "编织重构现世"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cetsyr",
+          "name": "故事的结局"
+        }
+      ],
+      "defaultSkill": "skchr_cetsyr_3",
+      "defaultModule": "uniequip_002_cetsyr"
     },
     "波登可": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_258_podego",
+      "skills": [
+        {
+          "id": "skchr_podego_1",
+          "name": "花香疗法"
+        },
+        {
+          "id": "skchr_podego_2",
+          "name": "孢子扩散"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_podego",
+          "name": "“不谢的苗圃”"
+        }
+      ],
+      "defaultSkill": "skchr_podego_2",
+      "defaultModule": "uniequip_002_podego"
     },
     "史尔特尔": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_350_surtr",
+      "skills": [
+        {
+          "id": "skchr_surtr_1",
+          "name": "烈焰魔剑"
+        },
+        {
+          "id": "skchr_surtr_2",
+          "name": "熔核巨影"
+        },
+        {
+          "id": "skchr_surtr_3",
+          "name": "黄昏"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_surtr",
+          "name": "萨米的不灭心脏碎片"
+        },
+        {
+          "id": "uniequip_003_surtr",
+          "name": "旅游必需品"
+        }
+      ],
+      "defaultSkill": "skchr_surtr_3",
+      "defaultModule": "uniequip_003_surtr"
     },
     "承曦格雷伊": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_1027_greyy2",
       "givesEquipment": [
         "精准狙击镜"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_greyy2_2",
+          "name": "晨曦信标"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_greyy2",
+          "name": "新型电控设备技术原型"
+        }
+      ],
+      "defaultSkill": "skchr_greyy2_2",
+      "defaultModule": "uniequip_002_greyy2"
     },
     "锡人": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4151_tinman",
+      "skills": [
+        {
+          "id": "skchr_tinman_1",
+          "name": "“老科利”"
+        },
+        {
+          "id": "skchr_tinman_2",
+          "name": "“大拉里”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_tinman",
+          "name": "“颅相学”"
+        }
+      ],
+      "defaultSkill": "skchr_tinman_2",
+      "defaultModule": "uniequip_002_tinman"
     },
     "溯光星源": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1047_halo2",
+      "skills": [
+        {
+          "id": "skchr_halo2_1",
+          "name": "星图闪烁"
+        },
+        {
+          "id": "skchr_halo2_2",
+          "name": "星束引力"
+        },
+        {
+          "id": "skchr_halo2_3",
+          "name": "并流连锁"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_halo2",
+          "name": "远方问候"
+        },
+        {
+          "id": "uniequip_002_halo2",
+          "name": "探索者的收藏"
+        }
+      ],
+      "defaultSkill": "skchr_halo2_3",
+      "defaultModule": "uniequip_002_halo2"
     },
     "宴": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_337_utage",
+      "skills": [
+        {
+          "id": "skchr_utage_1",
+          "name": "分神"
+        },
+        {
+          "id": "skchr_utage_2",
+          "name": "落地斩·破门"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_utage",
+          "name": "翻盖手机"
+        }
+      ],
+      "defaultSkill": "skchr_utage_2",
+      "defaultModule": "uniequip_002_utage"
     },
     "山": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_264_f12yin",
+      "skills": [
+        {
+          "id": "skchr_f12yin_1",
+          "name": "左勾扫拳"
+        },
+        {
+          "id": "skchr_f12yin_2",
+          "name": "横扫架势"
+        },
+        {
+          "id": "skchr_f12yin_3",
+          "name": "震地碎岩击"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_f12yin",
+          "name": "“夜深人静”"
+        },
+        {
+          "id": "uniequip_002_f12yin",
+          "name": "“自由的代价”"
+        }
+      ],
+      "defaultSkill": "skchr_f12yin_3",
+      "defaultModule": "uniequip_002_f12yin"
     },
     "锏": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4116_blkkgt",
+      "skills": [
+        {
+          "id": "skchr_blkkgt_1",
+          "name": "纯粹的武力"
+        },
+        {
+          "id": "skchr_blkkgt_2",
+          "name": "无声的嘲笑"
+        },
+        {
+          "id": "skchr_blkkgt_3",
+          "name": "归于宁静"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_blkkgt",
+          "name": "“过往的注脚”"
+        },
+        {
+          "id": "uniequip_003_blkkgt",
+          "name": "新合同"
+        }
+      ],
+      "defaultSkill": "skchr_blkkgt_3",
+      "defaultModule": "uniequip_002_blkkgt"
     },
     "老鲤": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_322_lmlee",
+      "skills": [
+        {
+          "id": "skchr_lmlee_1",
+          "name": "小惩大诫"
+        },
+        {
+          "id": "skchr_lmlee_2",
+          "name": "驱凶辟邪"
+        },
+        {
+          "id": "skchr_lmlee_3",
+          "name": "贵客盈门"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lmlee",
+          "name": "“无问吉凶”"
+        },
+        {
+          "id": "uniequip_003_lmlee",
+          "name": "“但思善恶”"
+        }
+      ],
+      "defaultSkill": "skchr_lmlee_2",
+      "defaultModule": "uniequip_002_lmlee"
     },
     "淬羽赫默": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1031_slent2",
+      "skills": [
+        {
+          "id": "skchr_slent2_1",
+          "name": "进取之心"
+        },
+        {
+          "id": "skchr_slent2_2",
+          "name": "俯瞰视界"
+        },
+        {
+          "id": "skchr_slent2_3",
+          "name": "无畏者协议"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_slent2",
+          "name": "难得清醒"
+        },
+        {
+          "id": "uniequip_003_slent2",
+          "name": "可控动量"
+        }
+      ],
+      "defaultSkill": "skchr_slent2_3",
+      "defaultModule": "uniequip_002_slent2"
     },
     "夏栎": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_492_quercu",
+      "skills": [
+        {
+          "id": "skchr_quercu_1",
+          "name": "大地的慈悲"
+        },
+        {
+          "id": "skchr_quercu_2",
+          "name": "生灵的回响"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_quercu",
+          "name": "锈枝"
+        }
+      ],
+      "defaultSkill": "skchr_quercu_2",
+      "defaultModule": "uniequip_002_quercu"
     },
     "杰克": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_347_jaksel",
+      "skills": [
+        {
+          "id": "skchr_jaksel_1",
+          "name": "给你一拳！"
+        },
+        {
+          "id": "skchr_jaksel_2",
+          "name": "全神贯注！"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_jaksel",
+          "name": "D32钢椅"
+        }
+      ],
+      "defaultSkill": "skchr_jaksel_1",
+      "defaultModule": "uniequip_002_jaksel"
     },
     "赫德雷": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4088_hodrer",
+      "skills": [
+        {
+          "id": "skchr_hodrer_1",
+          "name": "重锋不熄"
+        },
+        {
+          "id": "skchr_hodrer_2",
+          "name": "余烬重荷"
+        },
+        {
+          "id": "skchr_hodrer_3",
+          "name": "死境硝烟"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hodrer",
+          "name": "新的生活"
+        },
+        {
+          "id": "uniequip_003_hodrer",
+          "name": "笔迹"
+        }
+      ],
+      "defaultSkill": "skchr_hodrer_3",
+      "defaultModule": "uniequip_002_hodrer"
     },
     "夜莺": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_179_cgbird",
+      "skills": [
+        {
+          "id": "skcom_heal_up[3]",
+          "name": "治疗强化·γ型"
+        },
+        {
+          "id": "skchr_cgbird_2",
+          "name": "法术护盾"
+        },
+        {
+          "id": "skchr_cgbird_3",
+          "name": "圣域"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cgbird",
+          "name": "“封闭的希望”"
+        },
+        {
+          "id": "uniequip_003_cgbird",
+          "name": "“莺歌”"
+        }
+      ],
+      "defaultSkill": "skchr_cgbird_3",
+      "defaultModule": "uniequip_002_cgbird"
     },
     "霜叶": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_193_frostl",
+      "skills": [
+        {
+          "id": "skchr_frostl_1",
+          "name": "寒霜枪刃"
+        },
+        {
+          "id": "skchr_frostl_2",
+          "name": "凝冰枪刃"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_frostl",
+          "name": "不歇律动"
+        }
+      ],
+      "defaultSkill": "skchr_frostl_2",
+      "defaultModule": "uniequip_002_frostl"
     },
     "乌有": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_455_nothin",
       "givesEquipment": [
         "盟约之币"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_nothin_1",
+          "name": "知难而退"
+        },
+        {
+          "id": "skchr_nothin_2",
+          "name": "阴晴圆缺"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nothin",
+          "name": "“檐下听雨”"
+        }
+      ],
+      "defaultSkill": "skchr_nothin_2",
+      "defaultModule": "uniequip_002_nothin"
     },
     "历阵锐枪芬": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_1036_fang2",
+      "skills": [
+        {
+          "id": "skchr_fang2_1",
+          "name": "贯敌刺枪"
+        },
+        {
+          "id": "skchr_fang2_2",
+          "name": "执守阵线"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_fang2",
+          "name": "一往无前"
+        }
+      ],
+      "defaultSkill": "skchr_fang2_2",
+      "defaultModule": "uniequip_002_fang2"
     },
     "渡桥": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4147_mitm",
+      "skills": [
+        {
+          "id": "skchr_mitm_1",
+          "name": "遥控解体"
+        },
+        {
+          "id": "skchr_mitm_2",
+          "name": "承压功率"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mitm",
+          "name": "内敛锋芒"
+        }
+      ],
+      "defaultSkill": "skchr_mitm_2",
+      "defaultModule": "uniequip_002_mitm"
     },
     "Mon3tr": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4179_monstr",
+      "skills": [
+        {
+          "id": "skchr_monstr_1",
+          "name": "策略：超压链接"
+        },
+        {
+          "id": "skchr_monstr_2",
+          "name": "策略：超负荷"
+        },
+        {
+          "id": "skchr_monstr_3",
+          "name": "策略：熔毁"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_monstr",
+          "name": "记忆存档"
+        }
+      ],
+      "defaultSkill": "skchr_monstr_3",
+      "defaultModule": "uniequip_002_monstr"
     },
     "凯瑟琳": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_4162_cathy",
       "givesEquipment": [
         "维式重锤"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_cathy_1",
+          "name": "岁月锻打"
+        },
+        {
+          "id": "skchr_cathy_2",
+          "name": "战火淬炼"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cathy",
+          "name": "闲暇时分"
+        }
+      ],
+      "defaultSkill": "skchr_cathy_2",
+      "defaultModule": "uniequip_002_cathy"
     },
     "可露希尔": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4228_closur",
+      "skills": [
+        {
+          "id": "skchr_closur_1",
+          "name": "递归策略"
+        },
+        {
+          "id": "skchr_closur_2",
+          "name": "模型扩展"
+        },
+        {
+          "id": "skchr_closur_3",
+          "name": "Q.E.D."
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_closur",
+          "name": "给自己的小奖杯"
+        }
+      ],
+      "defaultSkill": "skchr_closur_3",
+      "defaultModule": "uniequip_002_closur"
     },
     "矩": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4221_ju",
+      "skills": [
+        {
+          "id": "skchr_ju_1",
+          "name": "良弓难张"
+        },
+        {
+          "id": "skchr_ju_2",
+          "name": "良翼难乘"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ju",
+          "name": "田间吓兽人"
+        }
+      ],
+      "defaultSkill": "skchr_ju_2",
+      "defaultModule": "uniequip_002_ju"
     },
     "拜松": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_325_bison",
+      "skills": [
+        {
+          "id": "skcom_def_up[3]",
+          "name": "防御力强化·γ型"
+        },
+        {
+          "id": "skchr_bison_2",
+          "name": "深化阵线"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bison",
+          "name": "“一路以来”"
+        }
+      ],
+      "defaultSkill": "skcom_def_up[3]",
+      "defaultModule": "uniequip_002_bison"
     },
     "褐果": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4041_chnut",
+      "skills": [
+        {
+          "id": "skchr_chnut_1",
+          "name": "积微成著"
+        },
+        {
+          "id": "skchr_chnut_2",
+          "name": "厚土迸发"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chnut",
+          "name": "地上巡旅纪念灯"
+        }
+      ],
+      "defaultSkill": "skchr_chnut_1",
+      "defaultModule": "uniequip_002_chnut"
     },
     "风丸": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4016_kazema",
+      "skills": [
+        {
+          "id": "skchr_kazema_1",
+          "name": "纸艺·迅击"
+        },
+        {
+          "id": "skchr_kazema_2",
+          "name": "纸艺·双影"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kazema",
+          "name": "旧物"
+        }
+      ],
+      "defaultSkill": "skchr_kazema_2",
+      "defaultModule": "uniequip_002_kazema"
     },
     "鸿雪": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4055_bgsnow",
+      "skills": [
+        {
+          "id": "skchr_bgsnow_1",
+          "name": "抑扬格"
+        },
+        {
+          "id": "skchr_bgsnow_2",
+          "name": "点题"
+        },
+        {
+          "id": "skchr_bgsnow_3",
+          "name": "锐笔速写"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_bgsnow",
+          "name": "仪式感"
+        },
+        {
+          "id": "uniequip_002_bgsnow",
+          "name": "打字机色带"
+        }
+      ],
+      "defaultSkill": "skchr_bgsnow_2",
+      "defaultModule": "uniequip_003_bgsnow"
     },
     "仇白": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4082_qiubai",
+      "skills": [
+        {
+          "id": "skchr_qiubai_1",
+          "name": "留羽"
+        },
+        {
+          "id": "skchr_qiubai_2",
+          "name": "承影"
+        },
+        {
+          "id": "skchr_qiubai_3",
+          "name": "问雪"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_qiubai",
+          "name": "雪浸过的斗笠"
+        },
+        {
+          "id": "uniequip_003_qiubai",
+          "name": "欲雪时"
+        }
+      ],
+      "defaultSkill": "skchr_qiubai_3",
+      "defaultModule": "uniequip_002_qiubai"
     },
     "星极": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_274_astesi",
+      "skills": [
+        {
+          "id": "skchr_astesi_1",
+          "name": "星座守护"
+        },
+        {
+          "id": "skchr_astesi_2",
+          "name": "星辉剑"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_astesi",
+          "name": "未卜星图"
+        }
+      ],
+      "defaultSkill": "skchr_astesi_2",
+      "defaultModule": "uniequip_002_astesi"
     },
     "焰尾": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_420_flamtl",
+      "skills": [
+        {
+          "id": "skchr_flamtl_1",
+          "name": "迅敏直觉"
+        },
+        {
+          "id": "skchr_flamtl_2",
+          "name": "“红松林”"
+        },
+        {
+          "id": "skchr_flamtl_3",
+          "name": "焰心"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_flamtl",
+          "name": "她们的未来"
+        },
+        {
+          "id": "uniequip_002_flamtl",
+          "name": "红松的起点"
+        }
+      ],
+      "defaultSkill": "skchr_flamtl_3",
+      "defaultModule": "uniequip_002_flamtl"
     },
     "瑰盐": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4163_rosesa",
+      "skills": [
+        {
+          "id": "skchr_rosesa_1",
+          "name": "上佳的应急药呀"
+        },
+        {
+          "id": "skchr_rosesa_2",
+          "name": "绝妙的长效药呀"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_rosesa",
+          "name": "多彩盐漠生活"
+        }
+      ],
+      "defaultSkill": "skchr_rosesa_2",
+      "defaultModule": "uniequip_002_rosesa"
     },
     "烈夏": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_194_leto",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_leto_2",
+          "name": "一呼百应"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_leto",
+          "name": "旧衣服"
+        }
+      ],
+      "defaultSkill": "skchr_leto_2",
+      "defaultModule": "uniequip_002_leto"
     },
     "至简": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4054_malist",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_malist_2",
+          "name": "神工意匠"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_malist",
+          "name": "“新家园”"
+        }
+      ],
+      "defaultSkill": "skchr_malist_2",
+      "defaultModule": "uniequip_002_malist"
     },
     "陨星": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_219_meteo",
+      "skills": [
+        {
+          "id": "skchr_meteo_1",
+          "name": "霰射弹头"
+        },
+        {
+          "id": "skchr_meteo_2",
+          "name": "高爆弹头"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_meteo",
+          "name": "无名的身份牌"
+        }
+      ],
+      "defaultSkill": "skchr_meteo_1",
+      "defaultModule": "uniequip_002_meteo"
     },
     "机械师": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4230_mcnist",
+      "skills": [
+        {
+          "id": "skchr_mcnist_1",
+          "name": "聚类分析"
+        },
+        {
+          "id": "skchr_mcnist_2",
+          "name": "协防术式"
+        },
+        {
+          "id": "skchr_mcnist_3",
+          "name": "工程学十字星"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mcnist",
+          "name": "机械师特勤证章"
+        }
+      ],
+      "defaultSkill": "skchr_mcnist_3",
+      "defaultModule": "uniequip_002_mcnist"
     },
     "异客": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_472_pasngr",
       "givesEquipment": [
         "盟约之币",
         "萨尔贡浓茶",
         "拟态物质"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_pasngr_1",
+          "name": "电能之触"
+        },
+        {
+          "id": "skchr_pasngr_2",
+          "name": "聚焦指令"
+        },
+        {
+          "id": "skchr_pasngr_3",
+          "name": "辉煌裂片"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_pasngr",
+          "name": "异客特限证章"
+        },
+        {
+          "id": "uniequip_002_pasngr",
+          "name": "电磁调节器"
+        },
+        {
+          "id": "uniequip_003_pasngr",
+          "name": "王权金币"
+        }
+      ],
+      "defaultSkill": "skchr_pasngr_1",
+      "defaultModule": "uniequip_002_pasngr"
     },
     "塔露拉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4247_oxi",
+      "skills": [
+        {
+          "id": "skchr_oxi_1",
+          "name": "照霎白夜"
+        },
+        {
+          "id": "skchr_oxi_2",
+          "name": "阂断骤雪"
+        },
+        {
+          "id": "skchr_oxi_3",
+          "name": "日冕重烈"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_oxi_3",
+      "defaultModule": null
     },
     "真理": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_195_glassb",
+      "skills": [
+        {
+          "id": "skchr_glassb_1",
+          "name": "专心致志"
+        },
+        {
+          "id": "skchr_glassb_2",
+          "name": "文学风暴"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_glassb",
+          "name": "读书笔记"
+        }
+      ],
+      "defaultSkill": "skchr_glassb_2",
+      "defaultModule": "uniequip_002_glassb"
     },
     "奥尔佳": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_4245_alga",
       "givesEquipment": [
         "乌萨斯呼吸器"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_alga_1",
+          "name": "交叉施压"
+        },
+        {
+          "id": "skchr_alga_2",
+          "name": "只为我的答案"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_alga",
+          "name": "来自昨天"
+        }
+      ],
+      "defaultSkill": "skchr_alga_2",
+      "defaultModule": "uniequip_002_alga"
     },
     "安洁莉娜": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_291_aglina",
+      "skills": [
+        {
+          "id": "skchr_aglina_1",
+          "name": "秘杖·速充模式"
+        },
+        {
+          "id": "skchr_aglina_2",
+          "name": "秘杖·微粒模式"
+        },
+        {
+          "id": "skchr_aglina_3",
+          "name": "秘杖·反重力模式"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_aglina",
+          "name": "安洁莉娜特限证章"
+        },
+        {
+          "id": "uniequip_003_aglina",
+          "name": "实验用反重力模块"
+        },
+        {
+          "id": "uniequip_002_aglina",
+          "name": "重力校准模块"
+        }
+      ],
+      "defaultSkill": "skchr_aglina_3",
+      "defaultModule": "uniequip_002_aglina"
     },
     "夕": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_2015_dusk",
+      "skills": [
+        {
+          "id": "skchr_dusk_1",
+          "name": "工笔入化"
+        },
+        {
+          "id": "skchr_dusk_2",
+          "name": "泼墨淋漓"
+        },
+        {
+          "id": "skchr_dusk_3",
+          "name": "写意胜形"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_dusk",
+          "name": "夕特限证章"
+        },
+        {
+          "id": "uniequip_002_dusk",
+          "name": "无题长卷"
+        },
+        {
+          "id": "uniequip_003_dusk",
+          "name": "“终夜无寐”"
+        }
+      ],
+      "defaultSkill": "skchr_dusk_2",
+      "defaultModule": "uniequip_002_dusk"
     },
     "冻河": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4244_tocka",
+      "skills": [
+        {
+          "id": "skchr_tocka_1",
+          "name": "一无所有之人"
+        },
+        {
+          "id": "skchr_tocka_2",
+          "name": "意欲呼啸之心"
+        },
+        {
+          "id": "skchr_tocka_3",
+          "name": "踽踽独行之春"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_tocka_3",
+      "defaultModule": null
     },
     "青枳": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_488_buildr",
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]",
+          "name": "冲锋号令·γ型"
+        },
+        {
+          "id": "skchr_buildr_2",
+          "name": "工程者之愿"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_buildr",
+          "name": "寻乡人的启明星"
+        }
+      ],
+      "defaultSkill": "skcom_charge_cost[3]",
+      "defaultModule": "uniequip_002_buildr"
     },
     "铸铁": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_333_sidero",
+      "skills": [
+        {
+          "id": "skcom_heal_self[3]",
+          "name": "生命回复·γ型"
+        },
+        {
+          "id": "skchr_sidero_2",
+          "name": "破浪回神"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sidero",
+          "name": "漫游者的压舱石"
+        }
+      ],
+      "defaultSkill": "skcom_heal_self[3]",
+      "defaultModule": "uniequip_002_sidero"
     },
     "华法琳": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_171_bldsk",
+      "skills": [
+        {
+          "id": "skchr_bldsk_1",
+          "name": "紧急包扎"
+        },
+        {
+          "id": "skchr_bldsk_2",
+          "name": "不稳定血浆"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bldsk",
+          "name": "应急储备"
+        }
+      ],
+      "defaultSkill": "skchr_bldsk_1",
+      "defaultModule": "uniequip_002_bldsk"
     },
     "拉普兰德": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_140_whitew",
+      "skills": [
+        {
+          "id": "skchr_whitew_1",
+          "name": "日晷"
+        },
+        {
+          "id": "skchr_whitew_2",
+          "name": "狼魂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_whitew",
+          "name": "“幼狼的牙齿”"
+        }
+      ],
+      "defaultSkill": "skchr_whitew_2",
+      "defaultModule": "uniequip_002_whitew"
     },
     "蕾缪安": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_4193_lemuen",
+      "skills": [
+        {
+          "id": "skchr_lemuen_1",
+          "name": "重逢问候"
+        },
+        {
+          "id": "skchr_lemuen_2",
+          "name": "归乡邀约"
+        },
+        {
+          "id": "skchr_lemuen_3",
+          "name": "礼炮·强制追思"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lemuen",
+          "name": "“弹匣与花窗”"
+        }
+      ],
+      "defaultSkill": "skchr_lemuen_3",
+      "defaultModule": "uniequip_002_lemuen"
     },
     "星源": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_135_halo",
+      "skills": [
+        {
+          "id": "skchr_halo_1",
+          "name": "双端导流"
+        },
+        {
+          "id": "skchr_halo_2",
+          "name": "星束交汇"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_halo",
+          "name": "未组装的钟表"
+        }
+      ],
+      "defaultSkill": "skchr_halo_1",
+      "defaultModule": "uniequip_002_halo"
     },
     "寒檀": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_341_sntlla",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_sntlla_2",
+          "name": "“女巫之泪”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sntlla",
+          "name": "“冰焰”"
+        }
+      ],
+      "defaultSkill": "skchr_sntlla_2",
+      "defaultModule": "uniequip_002_sntlla"
     },
     "地灵": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_183_skgoat",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]",
+          "name": "攻击力强化·β型"
+        },
+        {
+          "id": "skchr_skgoat_2",
+          "name": "流沙化"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_skgoat",
+          "name": "待确认的申请表"
+        }
+      ],
+      "defaultSkill": "skcom_atk_up[2]",
+      "defaultModule": "uniequip_002_skgoat"
     },
     "缪尔赛思": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
       },
+      "charId": "char_249_mlyss",
       "givesEquipment": [
         "变形同构体"
-      ]
+      ],
+      "skills": [
+        {
+          "id": "skchr_mlyss_1",
+          "name": "渐进性润化"
+        },
+        {
+          "id": "skchr_mlyss_2",
+          "name": "生态耦合"
+        },
+        {
+          "id": "skchr_mlyss_3",
+          "name": "浅层非熵适应"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_mlyss",
+          "name": "“缪尔赛思和朋友们”"
+        },
+        {
+          "id": "uniequip_002_mlyss",
+          "name": "梳妆流形"
+        },
+        {
+          "id": "uniequip_003_mlyss",
+          "name": "落叶四季"
+        }
+      ],
+      "defaultSkill": "skchr_mlyss_3",
+      "defaultModule": "uniequip_002_mlyss"
     },
     "阿米娅": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_002_amiya",
+      "skills": [
+        {
+          "id": "skchr_amiya3_1",
+          "name": "哀恸共情"
+        },
+        {
+          "id": "skchr_amiya3_2",
+          "name": "慈悲愿景"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_amiya3",
+          "name": "带有灼痕的裙子"
+        }
+      ],
+      "defaultSkill": "skchr_amiya3_2",
+      "defaultModule": "uniequip_002_amiya3"
     },
     "安哲拉": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_218_cuttle",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_cuttle_2",
+          "name": "阻滞射击战术"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cuttle",
+          "name": "枪支调试工具组"
+        }
+      ],
+      "defaultSkill": "skcom_atk_up[3]",
+      "defaultModule": "uniequip_002_cuttle"
     },
     "帕拉斯": {
       "equipSlots": {
         "normal": 2,
         "elite": 2
-      }
+      },
+      "charId": "char_485_pallas",
+      "skills": [
+        {
+          "id": "skchr_pallas_1",
+          "name": "胜利的连击"
+        },
+        {
+          "id": "skchr_pallas_2",
+          "name": "信念的长鞭"
+        },
+        {
+          "id": "skchr_pallas_3",
+          "name": "英勇的祝福"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pallas",
+          "name": "“故乡的山岩”"
+        },
+        {
+          "id": "uniequip_003_pallas",
+          "name": "“赫里亚之辉”"
+        }
+      ],
+      "defaultSkill": "skchr_pallas_3",
+      "defaultModule": "uniequip_002_pallas"
     },
     "暴躁铁皮": {
       "equipSlots": {
         "normal": 4,
         "elite": 6
-      }
+      },
+      "charId": "char_618_acrbot",
+      "skills": [
+        {
+          "id": "skchr_acrbot_1",
+          "name": "大丑的愤怒"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acrbot",
+          "name": "“暴躁铁皮”证章"
+        }
+      ],
+      "defaultSkill": "skchr_acrbot_1",
+      "defaultModule": "uniequip_002_acrbot"
+    },
+    "凯尔希": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_003_kalts",
+      "skills": [
+        {
+          "id": "skchr_kalts_1",
+          "name": "指令：结构加固"
+        },
+        {
+          "id": "skchr_kalts_2",
+          "name": "指令：战术协同"
+        },
+        {
+          "id": "skchr_kalts_3",
+          "name": "指令：熔毁"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_kalts",
+          "name": "凯尔希特限证章"
+        },
+        {
+          "id": "uniequip_002_kalts",
+          "name": "Mon2tr"
+        },
+        {
+          "id": "uniequip_003_kalts",
+          "name": "医者"
+        }
+      ],
+      "defaultSkill": "skchr_kalts_3",
+      "defaultModule": "uniequip_004_kalts"
+    },
+    "陈": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_010_chen",
+      "skills": [
+        {
+          "id": "skchr_chen_1",
+          "name": "鞘击"
+        },
+        {
+          "id": "skchr_chen_2",
+          "name": "赤霄·拔刀"
+        },
+        {
+          "id": "skchr_chen_3",
+          "name": "赤霄·绝影"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen",
+          "name": "罗德岛制式剑"
+        },
+        {
+          "id": "uniequip_003_chen",
+          "name": "往昔时光"
+        }
+      ],
+      "defaultSkill": "skchr_chen_3",
+      "defaultModule": "uniequip_002_chen"
+    },
+    "煌": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_017_huang",
+      "skills": [
+        {
+          "id": "skchr_huang_1",
+          "name": "强力击·γ型"
+        },
+        {
+          "id": "skchr_huang_2",
+          "name": "链锯延伸模块"
+        },
+        {
+          "id": "skchr_huang_3",
+          "name": "沸腾爆裂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_huang",
+          "name": "过载的武器与过热的心脏"
+        },
+        {
+          "id": "uniequip_003_huang",
+          "name": "“稍后回来”"
+        }
+      ],
+      "defaultSkill": "skchr_huang_3",
+      "defaultModule": "uniequip_002_huang"
+    },
+    "假日威龙陈": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1013_chen2",
+      "skills": [
+        {
+          "id": "skchr_chen2_1",
+          "name": "高压冲击"
+        },
+        {
+          "id": "skchr_chen2_2",
+          "name": "“堇青之夜”"
+        },
+        {
+          "id": "skchr_chen2_3",
+          "name": "“假日风暴”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen2",
+          "name": "沙滩战斗套装"
+        },
+        {
+          "id": "uniequip_003_chen2",
+          "name": "假期的最后一天"
+        }
+      ],
+      "defaultSkill": "skchr_chen2_3",
+      "defaultModule": "uniequip_002_chen2"
+    },
+    "予愿安洁莉娜": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1015_aglna2",
+      "skills": [
+        {
+          "id": "skchr_aglna2_1",
+          "name": "极速送达"
+        },
+        {
+          "id": "skchr_aglna2_2",
+          "name": "重力自定义"
+        },
+        {
+          "id": "skchr_aglna2_3",
+          "name": "酸橙的心事"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_aglna2_3",
+      "defaultModule": null
+    },
+    "焰影苇草": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1020_reed2",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_reed2_2",
+          "name": "枯荣共息"
+        },
+        {
+          "id": "skchr_reed2_3",
+          "name": "生命火种"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_reed2",
+          "name": "“赠予红龙的花冠”"
+        },
+        {
+          "id": "uniequip_003_reed2",
+          "name": "“独属自己的一隅”"
+        }
+      ],
+      "defaultSkill": "skchr_reed2_3",
+      "defaultModule": "uniequip_002_reed2"
+    },
+    "百炼嘉维尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1026_gvial2",
+      "skills": [
+        {
+          "id": "skchr_gvial2_1",
+          "name": "精准痛击"
+        },
+        {
+          "id": "skchr_gvial2_2",
+          "name": "链锯强袭"
+        },
+        {
+          "id": "skchr_gvial2_3",
+          "name": "丛林之魂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_gvial2",
+          "name": "百炼嘉维尔特限证章"
+        },
+        {
+          "id": "uniequip_002_gvial2",
+          "name": "嘉维尔的折磨"
+        },
+        {
+          "id": "uniequip_003_gvial2",
+          "name": "好锯多磨"
+        }
+      ],
+      "defaultSkill": "skchr_gvial2_3",
+      "defaultModule": "uniequip_004_gvial2"
+    },
+    "缄默德克萨斯": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1028_texas2",
+      "skills": [
+        {
+          "id": "skchr_texas2_1",
+          "name": "细雨无声"
+        },
+        {
+          "id": "skchr_texas2_2",
+          "name": "阵雨连绵"
+        },
+        {
+          "id": "skchr_texas2_3",
+          "name": "剑雨滂沱"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_texas2",
+          "name": "“新车和新生活”"
+        },
+        {
+          "id": "uniequip_002_texas2",
+          "name": "蓝莓与黑巧"
+        }
+      ],
+      "defaultSkill": "skchr_texas2_3",
+      "defaultModule": "uniequip_003_texas2"
+    },
+    "麒麟R夜刀": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1029_yato2",
+      "skills": [
+        {
+          "id": "skchr_yato2_1",
+          "name": "鬼人化"
+        },
+        {
+          "id": "skchr_yato2_2",
+          "name": "乱舞"
+        },
+        {
+          "id": "skchr_yato2_3",
+          "name": "空中回旋乱舞"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yato2",
+          "name": "训练用木桩"
+        },
+        {
+          "id": "uniequip_003_yato2",
+          "name": "罗德岛制式双刀"
+        }
+      ],
+      "defaultSkill": "skchr_yato2_3",
+      "defaultModule": "uniequip_002_yato2"
+    },
+    "圣约送葬人": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1032_excu2",
+      "skills": [
+        {
+          "id": "skchr_excu2_1",
+          "name": "遗嘱执行"
+        },
+        {
+          "id": "skchr_excu2_2",
+          "name": "近身铳斗"
+        },
+        {
+          "id": "skchr_excu2_3",
+          "name": "圣约决裁"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_excu2",
+          "name": "待解答"
+        },
+        {
+          "id": "uniequip_003_excu2",
+          "name": "已知悉"
+        }
+      ],
+      "defaultSkill": "skchr_excu2_3",
+      "defaultModule": "uniequip_002_excu2"
+    },
+    "琳琅诗怀雅": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1033_swire2",
+      "skills": [
+        {
+          "id": "skchr_swire2_1",
+          "name": "仗义疏财"
+        },
+        {
+          "id": "skchr_swire2_2",
+          "name": "“见面礼”"
+        },
+        {
+          "id": "skchr_swire2_3",
+          "name": "千金一掷"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_swire2",
+          "name": "琳琅诗怀雅特限证章"
+        },
+        {
+          "id": "uniequip_002_swire2",
+          "name": "“金币辉煌”"
+        },
+        {
+          "id": "uniequip_003_swire2",
+          "name": "诗怀雅的龙门美食指南"
+        }
+      ],
+      "defaultSkill": "skchr_swire2_3",
+      "defaultModule": "uniequip_004_swire2"
+    },
+    "维什戴尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1035_wisdel",
+      "skills": [
+        {
+          "id": "skchr_wisdel_1",
+          "name": "定点清算"
+        },
+        {
+          "id": "skchr_wisdel_2",
+          "name": "饱和复仇"
+        },
+        {
+          "id": "skchr_wisdel_3",
+          "name": "爆裂黎明"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wisdel",
+          "name": "“祖宗发射器”"
+        }
+      ],
+      "defaultSkill": "skchr_wisdel_3",
+      "defaultModule": "uniequip_002_wisdel"
+    },
+    "能天使": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_103_angel",
+      "skills": [
+        {
+          "id": "skchr_angel_1",
+          "name": "冲锋模式"
+        },
+        {
+          "id": "skchr_angel_2",
+          "name": "扫射模式"
+        },
+        {
+          "id": "skchr_angel_3",
+          "name": "过载模式"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_angel",
+          "name": "能天使的杰作"
+        },
+        {
+          "id": "uniequip_003_angel",
+          "name": "欢迎光临，企鹅物流"
+        }
+      ],
+      "defaultSkill": "skchr_angel_3",
+      "defaultModule": "uniequip_002_angel"
+    },
+    "新约能天使": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1041_angel2",
+      "skills": [
+        {
+          "id": "skchr_angel2_1",
+          "name": "天空大扫除"
+        },
+        {
+          "id": "skchr_angel2_2",
+          "name": "开火成瘾症"
+        },
+        {
+          "id": "skchr_angel2_3",
+          "name": "使命必达！"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_angel2",
+          "name": "新朋友圣城生活套组"
+        }
+      ],
+      "defaultSkill": "skchr_angel2_3",
+      "defaultModule": "uniequip_002_angel2"
+    },
+    "司霆惊蛰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1043_leizi2",
+      "skills": [
+        {
+          "id": "skchr_leizi2_1",
+          "name": "浩气长存"
+        },
+        {
+          "id": "skchr_leizi2_2",
+          "name": "正霆摄威"
+        },
+        {
+          "id": "skchr_leizi2_3",
+          "name": "天地通明"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_leizi2",
+          "name": "“一念”"
+        }
+      ],
+      "defaultSkill": "skchr_leizi2_3",
+      "defaultModule": "uniequip_002_leizi2"
+    },
+    "斩业星熊": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1044_hsgma2",
+      "skills": [
+        {
+          "id": "skchr_hsgma2_1",
+          "name": "恶业苦果"
+        },
+        {
+          "id": "skchr_hsgma2_2",
+          "name": "无始无明"
+        },
+        {
+          "id": "skchr_hsgma2_3",
+          "name": "地狱变相"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hsgma2",
+          "name": "无迹"
+        }
+      ],
+      "defaultSkill": "skchr_hsgma2_3",
+      "defaultModule": "uniequip_002_hsgma2"
+    },
+    "焰狐龙梓兰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1048_orchd2",
+      "skills": [
+        {
+          "id": "skchr_orchd2_1",
+          "name": "刚射"
+        },
+        {
+          "id": "skchr_orchd2_2",
+          "name": "飞翔瞪射"
+        },
+        {
+          "id": "skchr_orchd2_3",
+          "name": "龙之箭"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_orchd2",
+          "name": "梓兰特制箭靶"
+        }
+      ],
+      "defaultSkill": "skchr_orchd2_3",
+      "defaultModule": "uniequip_002_orchd2"
+    },
+    "赤刃明霄陈": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1050_chen3",
+      "skills": [
+        {
+          "id": "skchr_chen3_1",
+          "name": "赤霄·奔夜"
+        },
+        {
+          "id": "skchr_chen3_2",
+          "name": "赤霄·绝影-驰"
+        },
+        {
+          "id": "skchr_chen3_3",
+          "name": "赤霄·天喟"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen3",
+          "name": "记忆残页"
+        }
+      ],
+      "defaultSkill": "skchr_chen3_3",
+      "defaultModule": "uniequip_002_chen3"
+    },
+    "凯尔希·思衡托": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1052_kalts2",
+      "skills": [
+        {
+          "id": "skchr_kalts2_1",
+          "name": "应急肃正防线"
+        },
+        {
+          "id": "skchr_kalts2_2",
+          "name": "保护性拒止"
+        },
+        {
+          "id": "skchr_kalts2_3",
+          "name": "破梏重生"
+        }
+      ],
+      "modules": [],
+      "defaultSkill": "skchr_kalts2_3",
+      "defaultModule": null
+    },
+    "推进之王": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_112_siege",
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]",
+          "name": "冲锋号令·γ型"
+        },
+        {
+          "id": "skchr_siege_2",
+          "name": "跃空锤"
+        },
+        {
+          "id": "skchr_siege_3",
+          "name": "碎颅击"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_siege",
+          "name": "“糖果盒”"
+        },
+        {
+          "id": "uniequip_003_siege",
+          "name": "“初诺”"
+        }
+      ],
+      "defaultSkill": "skchr_siege_3",
+      "defaultModule": "uniequip_002_siege"
+    },
+    "伊芙利特": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_134_ifrit",
+      "skills": [
+        {
+          "id": "skchr_ifrit_1",
+          "name": "狂热"
+        },
+        {
+          "id": "skchr_ifrit_2",
+          "name": "炎爆"
+        },
+        {
+          "id": "skchr_ifrit_3",
+          "name": "灼地"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_ifrit",
+          "name": "“热成形记忆”"
+        },
+        {
+          "id": "uniequip_002_ifrit",
+          "name": "“同熔”"
+        }
+      ],
+      "defaultSkill": "skchr_ifrit_3",
+      "defaultModule": "uniequip_003_ifrit"
+    },
+    "星熊": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_136_hsguma",
+      "skills": [
+        {
+          "id": "skchr_hsguma_1",
+          "name": "战意"
+        },
+        {
+          "id": "skchr_hsguma_2",
+          "name": "荆棘"
+        },
+        {
+          "id": "skchr_hsguma_3",
+          "name": "力之锯"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_hsguma",
+          "name": "护身符"
+        },
+        {
+          "id": "uniequip_002_hsguma",
+          "name": "友人们的赠礼"
+        }
+      ],
+      "defaultSkill": "skchr_hsguma_3",
+      "defaultModule": "uniequip_003_hsguma"
+    },
+    "闪灵": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_147_shining",
+      "skills": [
+        {
+          "id": "skchr_shining_1",
+          "name": "信条"
+        },
+        {
+          "id": "skchr_shining_2",
+          "name": "自动掩护"
+        },
+        {
+          "id": "skchr_shining_3",
+          "name": "教条力场"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_shining",
+          "name": "“使徒”"
+        },
+        {
+          "id": "uniequip_002_shining",
+          "name": "干枯剑鞘"
+        }
+      ],
+      "defaultSkill": "skchr_shining_3",
+      "defaultModule": "uniequip_003_shining"
+    },
+    "弑君者": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_1502_crosly",
+      "skills": [
+        {
+          "id": "skchr_crosly_1",
+          "name": "尘烟蔽目"
+        },
+        {
+          "id": "skchr_crosly_2",
+          "name": "硝烟震爆"
+        },
+        {
+          "id": "skchr_crosly_3",
+          "name": "烽烟行刑场"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_crosly",
+          "name": "弑君刃"
+        },
+        {
+          "id": "uniequip_003_crosly",
+          "name": "木炭画"
+        }
+      ],
+      "defaultSkill": "skchr_crosly_3",
+      "defaultModule": "uniequip_002_crosly"
+    },
+    "银灰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_172_svrash",
+      "skills": [
+        {
+          "id": "skchr_svrash_1",
+          "name": "强力击·γ型"
+        },
+        {
+          "id": "skchr_svrash_2",
+          "name": "雪境生存法则"
+        },
+        {
+          "id": "skchr_svrash_3",
+          "name": "真银斩"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_svrash",
+          "name": "雪境羽兽护理套组"
+        }
+      ],
+      "defaultSkill": "skchr_svrash_3",
+      "defaultModule": "uniequip_002_svrash"
+    },
+    "早露": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_197_poca",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_poca_2",
+          "name": "分裂射击"
+        },
+        {
+          "id": "skchr_poca_3",
+          "name": "雪崩击"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_poca",
+          "name": "攻城器械训练装置"
+        },
+        {
+          "id": "uniequip_003_poca",
+          "name": "“心”"
+        }
+      ],
+      "defaultSkill": "skchr_poca_3",
+      "defaultModule": "uniequip_002_poca"
+    },
+    "提丰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2012_typhon",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_typhon_2",
+          "name": "冰原秩序"
+        },
+        {
+          "id": "skchr_typhon_3",
+          "name": "“永恒狩猎”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_typhon",
+          "name": "提丰特限证章"
+        },
+        {
+          "id": "uniequip_002_typhon",
+          "name": "自然的包容"
+        },
+        {
+          "id": "uniequip_003_typhon",
+          "name": "冰原的影子"
+        }
+      ],
+      "defaultSkill": "skchr_typhon_3",
+      "defaultModule": "uniequip_004_typhon"
+    },
+    "刻俄柏": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2013_cerber",
+      "skills": [
+        {
+          "id": "skchr_cerber_1",
+          "name": "“很冰的斧”"
+        },
+        {
+          "id": "skchr_cerber_2",
+          "name": "“很热的刀”"
+        },
+        {
+          "id": "skchr_cerber_3",
+          "name": "“很重的枪”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cerber",
+          "name": "“很干的面包”"
+        },
+        {
+          "id": "uniequip_003_cerber",
+          "name": "“我打的刀”"
+        }
+      ],
+      "defaultSkill": "skchr_cerber_3",
+      "defaultModule": "uniequip_002_cerber"
+    },
+    "年": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2014_nian",
+      "skills": [
+        {
+          "id": "skchr_nian_1",
+          "name": "锡灼"
+        },
+        {
+          "id": "skchr_nian_2",
+          "name": "铜印"
+        },
+        {
+          "id": "skchr_nian_3",
+          "name": "铁御"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nian",
+          "name": "混沌阵列"
+        },
+        {
+          "id": "uniequip_003_nian",
+          "name": "“请勿叩门”"
+        }
+      ],
+      "defaultSkill": "skchr_nian_3",
+      "defaultModule": "uniequip_002_nian"
+    },
+    "令": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2023_ling",
+      "skills": [
+        {
+          "id": "skchr_ling_1",
+          "name": "重进酒"
+        },
+        {
+          "id": "skchr_ling_2",
+          "name": "笑鸣瑟"
+        },
+        {
+          "id": "skchr_ling_3",
+          "name": "宁作吾"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ling",
+          "name": "诗短梦长"
+        }
+      ],
+      "defaultSkill": "skchr_ling_3",
+      "defaultModule": "uniequip_002_ling"
+    },
+    "重岳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2024_chyue",
+      "skills": [
+        {
+          "id": "skchr_chyue_1",
+          "name": "冲盈"
+        },
+        {
+          "id": "skchr_chyue_2",
+          "name": "拂尘"
+        },
+        {
+          "id": "skchr_chyue_3",
+          "name": "我无"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chyue",
+          "name": "“自晦及明”"
+        },
+        {
+          "id": "uniequip_003_chyue",
+          "name": "“朔”"
+        }
+      ],
+      "defaultSkill": "skchr_chyue_3",
+      "defaultModule": "uniequip_002_chyue"
+    },
+    "望": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_2027_wang",
+      "skills": [
+        {
+          "id": "skchr_wang_1",
+          "name": "取势"
+        },
+        {
+          "id": "skchr_wang_2",
+          "name": "连星"
+        },
+        {
+          "id": "skchr_wang_3",
+          "name": "天下劫"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wang",
+          "name": "兽形棋盒"
+        }
+      ],
+      "defaultSkill": "skchr_wang_3",
+      "defaultModule": "uniequip_002_wang"
+    },
+    "莫斯提马": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_213_mostma",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]",
+          "name": "攻击力强化·γ型"
+        },
+        {
+          "id": "skchr_mostma_2",
+          "name": "荒时之锁"
+        },
+        {
+          "id": "skchr_mostma_3",
+          "name": "序时之匙"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_mostma",
+          "name": "资深万国信使定制斗篷"
+        },
+        {
+          "id": "uniequip_002_mostma",
+          "name": "锁与匙之家"
+        }
+      ],
+      "defaultSkill": "skchr_mostma_3",
+      "defaultModule": "uniequip_003_mostma"
+    },
+    "风笛": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_222_bpipe",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]",
+          "name": "迅捷打击·γ型"
+        },
+        {
+          "id": "skchr_bpipe_2",
+          "name": "高效冲击"
+        },
+        {
+          "id": "skchr_bpipe_3",
+          "name": "闭膛连发"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bpipe",
+          "name": "破城矛弹夹"
+        },
+        {
+          "id": "uniequip_003_bpipe",
+          "name": "“棍棒与口袋”"
+        }
+      ],
+      "defaultSkill": "skchr_bpipe_3",
+      "defaultModule": "uniequip_002_bpipe"
+    },
+    "阿": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_225_haak",
+      "skills": [
+        {
+          "id": "skchr_haak_1",
+          "name": "快速射击"
+        },
+        {
+          "id": "skchr_haak_2",
+          "name": "爆发剂·γ型"
+        },
+        {
+          "id": "skchr_haak_3",
+          "name": "爆发剂·榴莲味"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_haak",
+          "name": "什锦果味医用箱"
+        },
+        {
+          "id": "uniequip_003_haak",
+          "name": "毒医残章"
+        }
+      ],
+      "defaultSkill": "skchr_haak_3",
+      "defaultModule": "uniequip_002_haak"
+    },
+    "塑心": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_245_cello",
+      "skills": [
+        {
+          "id": "skchr_cello_1",
+          "name": "“黄金的狂喜”"
+        },
+        {
+          "id": "skchr_cello_2",
+          "name": "“安魂的弥撒”"
+        },
+        {
+          "id": "skchr_cello_3",
+          "name": "“自由的探戈”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cello",
+          "name": "强弱法"
+        },
+        {
+          "id": "uniequip_003_cello",
+          "name": "音乐家的旅程"
+        }
+      ],
+      "defaultSkill": "skchr_cello_3",
+      "defaultModule": "uniequip_002_cello"
+    },
+    "麦哲伦": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_248_mgllan",
+      "skills": [
+        {
+          "id": "skchr_mgllan_1",
+          "name": "高效制冷模块"
+        },
+        {
+          "id": "skchr_mgllan_2",
+          "name": "激光开采模块"
+        },
+        {
+          "id": "skchr_mgllan_3",
+          "name": "武装打击模块"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mgllan",
+          "name": "专业无人机操作模块"
+        },
+        {
+          "id": "uniequip_003_mgllan",
+          "name": "教学用龙腾无人机"
+        }
+      ],
+      "defaultSkill": "skchr_mgllan_3",
+      "defaultModule": "uniequip_002_mgllan"
+    },
+    "傀影": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_250_phatom",
+      "skills": [
+        {
+          "id": "skchr_phatom_1",
+          "name": "暗夜魅影"
+        },
+        {
+          "id": "skchr_phatom_2",
+          "name": "血色乐章"
+        },
+        {
+          "id": "skchr_phatom_3",
+          "name": "夜幕突袭"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_phatom",
+          "name": "傀影特限证章"
+        },
+        {
+          "id": "uniequip_002_phatom",
+          "name": "克里斯汀小姐的毛毡"
+        },
+        {
+          "id": "uniequip_003_phatom",
+          "name": "“如影随形”"
+        }
+      ],
+      "defaultSkill": "skchr_phatom_3",
+      "defaultModule": "uniequip_004_phatom"
+    },
+    "菲亚梅塔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_300_phenxi",
+      "skills": [
+        {
+          "id": "skchr_phenxi_1",
+          "name": "“你须直面”"
+        },
+        {
+          "id": "skchr_phenxi_2",
+          "name": "“你须愧悔”"
+        },
+        {
+          "id": "skchr_phenxi_3",
+          "name": "“你须偿还”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_phenxi",
+          "name": "菲亚梅塔特限证章"
+        },
+        {
+          "id": "uniequip_003_phenxi",
+          "name": "漫长的旅途"
+        },
+        {
+          "id": "uniequip_002_phenxi",
+          "name": "“律外”特种弹药配给组"
+        }
+      ],
+      "defaultSkill": "skchr_phenxi_3",
+      "defaultModule": "uniequip_004_phenxi"
+    },
+    "泥岩": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_311_mudrok",
+      "skills": [
+        {
+          "id": "skcom_def_up[3]",
+          "name": "防御力强化·γ型"
+        },
+        {
+          "id": "skchr_mudrok_2",
+          "name": "岩崩锤"
+        },
+        {
+          "id": "skchr_mudrok_3",
+          "name": "秽壤的血脉"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mudrok",
+          "name": "土石的根系"
+        },
+        {
+          "id": "uniequip_003_mudrok",
+          "name": "沃土的愿景"
+        }
+      ],
+      "defaultSkill": "skchr_mudrok_3",
+      "defaultModule": "uniequip_002_mudrok"
+    },
+    "黑": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_340_shwaz",
+      "skills": [
+        {
+          "id": "skchr_shwaz_1",
+          "name": "强弩"
+        },
+        {
+          "id": "skchr_shwaz_2",
+          "name": "暮眼锐瞳"
+        },
+        {
+          "id": "skchr_shwaz_3",
+          "name": "战术的终结"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_shwaz",
+          "name": "定制弩配件套装"
+        },
+        {
+          "id": "uniequip_003_shwaz",
+          "name": "老剃刀"
+        }
+      ],
+      "defaultSkill": "skchr_shwaz_3",
+      "defaultModule": "uniequip_002_shwaz"
+    },
+    "嵯峨": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_362_saga",
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]",
+          "name": "冲锋号令·γ型"
+        },
+        {
+          "id": "skchr_saga_2",
+          "name": "除恶"
+        },
+        {
+          "id": "skchr_saga_3",
+          "name": "怒目"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_saga",
+          "name": "何处寻驮？"
+        },
+        {
+          "id": "uniequip_002_saga",
+          "name": "身向云泥"
+        }
+      ],
+      "defaultSkill": "skchr_saga_3",
+      "defaultModule": "uniequip_003_saga"
+    },
+    "澄闪": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_377_gdglow",
+      "skills": [
+        {
+          "id": "skchr_gdglow_1",
+          "name": "火花四溅"
+        },
+        {
+          "id": "skchr_gdglow_2",
+          "name": "电流翻涌"
+        },
+        {
+          "id": "skchr_gdglow_3",
+          "name": "澄净闪耀"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_gdglow",
+          "name": "“辛劳之翼”"
+        },
+        {
+          "id": "uniequip_003_gdglow",
+          "name": "梦想终将实现"
+        }
+      ],
+      "defaultSkill": "skchr_gdglow_3",
+      "defaultModule": "uniequip_002_gdglow"
+    },
+    "止颂": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4011_lessng",
+      "skills": [
+        {
+          "id": "skchr_lessng_1",
+          "name": "强力击·γ型"
+        },
+        {
+          "id": "skchr_lessng_2",
+          "name": "虔修对决"
+        },
+        {
+          "id": "skchr_lessng_3",
+          "name": "苦修破誓"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lessng",
+          "name": "沉锋之束"
+        },
+        {
+          "id": "uniequip_003_lessng",
+          "name": "苦修者的抗压训练"
+        }
+      ],
+      "defaultSkill": "skchr_lessng_3",
+      "defaultModule": "uniequip_002_lessng"
+    },
+    "号角": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4039_horn",
+      "skills": [
+        {
+          "id": "skchr_horn_1",
+          "name": "照明榴弹"
+        },
+        {
+          "id": "skchr_horn_2",
+          "name": "暴风号令"
+        },
+        {
+          "id": "skchr_horn_3",
+          "name": "终极防线"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_horn",
+          "name": "号角特限证章"
+        },
+        {
+          "id": "uniequip_002_horn",
+          "name": "“典范之人”"
+        },
+        {
+          "id": "uniequip_003_horn",
+          "name": "旧日新装"
+        }
+      ],
+      "defaultSkill": "skchr_horn_3",
+      "defaultModule": "uniequip_004_horn"
+    },
+    "多萝西": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4048_doroth",
+      "skills": [
+        {
+          "id": "skchr_doroth_1",
+          "name": "危险目标清除"
+        },
+        {
+          "id": "skchr_doroth_2",
+          "name": "流沙区域生成"
+        },
+        {
+          "id": "skchr_doroth_3",
+          "name": "高速共振排障"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_doroth",
+          "name": "梦中人"
+        },
+        {
+          "id": "uniequip_002_doroth",
+          "name": "童话书"
+        }
+      ],
+      "defaultSkill": "skchr_doroth_3",
+      "defaultModule": "uniequip_003_doroth"
+    },
+    "缇缇": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4056_titi",
+      "skills": [
+        {
+          "id": "skchr_titi_1",
+          "name": "缓蚀"
+        },
+        {
+          "id": "skchr_titi_2",
+          "name": "封护"
+        },
+        {
+          "id": "skchr_titi_3",
+          "name": "旧日绽放"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_titi",
+          "name": "远方的礼物"
+        }
+      ],
+      "defaultSkill": "skchr_titi_3",
+      "defaultModule": "uniequip_002_titi"
+    },
+    "林": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4080_lin",
+      "skills": [
+        {
+          "id": "skchr_lin_1",
+          "name": "玲珑"
+        },
+        {
+          "id": "skchr_lin_2",
+          "name": "荫庇"
+        },
+        {
+          "id": "skchr_lin_3",
+          "name": "流光乍裂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lin",
+          "name": "“七窍玲珑”"
+        },
+        {
+          "id": "uniequip_003_lin",
+          "name": "“情与义”"
+        }
+      ],
+      "defaultSkill": "skchr_lin_3",
+      "defaultModule": "uniequip_002_lin"
+    },
+    "伊内丝": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4087_ines",
+      "skills": [
+        {
+          "id": "skchr_ines_1",
+          "name": "淬影突袭"
+        },
+        {
+          "id": "skchr_ines_2",
+          "name": "暗夜无明"
+        },
+        {
+          "id": "skchr_ines_3",
+          "name": "独影归途"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ines",
+          "name": "角部“护理”套组"
+        }
+      ],
+      "defaultSkill": "skchr_ines_3",
+      "defaultModule": "uniequip_002_ines"
+    },
+    "莱伊": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4117_ray",
+      "skills": [
+        {
+          "id": "skchr_ray_1",
+          "name": "脱身矢"
+        },
+        {
+          "id": "skchr_ray_2",
+          "name": "广域警觉"
+        },
+        {
+          "id": "skchr_ray_3",
+          "name": "“得见光芒”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ray",
+          "name": "《跳舞的月光》"
+        },
+        {
+          "id": "uniequip_003_ray",
+          "name": "证明什么？"
+        }
+      ],
+      "defaultSkill": "skchr_ray_3",
+      "defaultModule": "uniequip_002_ray"
+    },
+    "左乐": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4121_zuole",
+      "skills": [
+        {
+          "id": "skchr_zuole_1",
+          "name": "破虏"
+        },
+        {
+          "id": "skchr_zuole_2",
+          "name": "行险"
+        },
+        {
+          "id": "skchr_zuole_3",
+          "name": "佑序有炎"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_zuole",
+          "name": "“岂苦夜长”"
+        },
+        {
+          "id": "uniequip_003_zuole",
+          "name": "秉烛人的记录"
+        }
+      ],
+      "defaultSkill": "skchr_zuole_3",
+      "defaultModule": "uniequip_002_zuole"
+    },
+    "艾拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4123_ela",
+      "skills": [
+        {
+          "id": "skchr_ela_1",
+          "name": "眩目阻滞"
+        },
+        {
+          "id": "skchr_ela_2",
+          "name": "震荡坚守"
+        },
+        {
+          "id": "skchr_ela_3",
+          "name": "“博萨克风暴”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ela",
+          "name": "社会期望背包"
+        }
+      ],
+      "defaultSkill": "skchr_ela_3",
+      "defaultModule": "uniequip_002_ela"
+    },
+    "阿斯卡纶": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4132_ascln",
+      "skills": [
+        {
+          "id": "skchr_ascln_1",
+          "name": "追袭"
+        },
+        {
+          "id": "skchr_ascln_2",
+          "name": "恩赐"
+        },
+        {
+          "id": "skchr_ascln_3",
+          "name": "降临"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ascln",
+          "name": "“无形，无情”"
+        },
+        {
+          "id": "uniequip_003_ascln",
+          "name": "“阿斯卡纶的眼睛”"
+        }
+      ],
+      "defaultSkill": "skchr_ascln_3",
+      "defaultModule": "uniequip_002_ascln"
+    },
+    "娜仁图亚": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4138_narant",
+      "skills": [
+        {
+          "id": "skchr_narant_1",
+          "name": "旋刃"
+        },
+        {
+          "id": "skchr_narant_2",
+          "name": "恶魇"
+        },
+        {
+          "id": "skchr_narant_3",
+          "name": "吞日"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_narant",
+          "name": "“吹尽狂沙”"
+        },
+        {
+          "id": "uniequip_003_narant",
+          "name": "“致我们的老大”"
+        }
+      ],
+      "defaultSkill": "skchr_narant_3",
+      "defaultModule": "uniequip_002_narant"
+    },
+    "玛露西尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4141_marcil",
+      "skills": [
+        {
+          "id": "skchr_marcil_1",
+          "name": "才女的实力"
+        },
+        {
+          "id": "skchr_marcil_2",
+          "name": "召唤使魔"
+        },
+        {
+          "id": "skchr_marcil_3",
+          "name": "爆破魔法"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_marcil",
+          "name": "才女的藏书"
+        }
+      ],
+      "defaultSkill": "skchr_marcil_3",
+      "defaultModule": "uniequip_002_marcil"
+    },
+    "丰川祥子": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4182_oblvns",
+      "skills": [
+        {
+          "id": "skchr_oblvns_1",
+          "name": "新月的苏醒"
+        },
+        {
+          "id": "skchr_oblvns_2",
+          "name": "满月的舞会"
+        },
+        {
+          "id": "skchr_oblvns_3",
+          "name": "残月的余响"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_oblvns",
+          "name": "无言的约定"
+        }
+      ],
+      "defaultSkill": "skchr_oblvns_3",
+      "defaultModule": "uniequip_002_oblvns"
+    },
+    "信仰搅拌机": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4194_rmixer",
+      "skills": [
+        {
+          "id": "skchr_rmixer_1",
+          "name": "铳骑主考官"
+        },
+        {
+          "id": "skchr_rmixer_2",
+          "name": "八臂电锯侠"
+        },
+        {
+          "id": "skchr_rmixer_3",
+          "name": "退休前布道"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_rmixer",
+          "name": "毛刷套装"
+        },
+        {
+          "id": "uniequip_003_rmixer",
+          "name": "“老朋友”"
+        }
+      ],
+      "defaultSkill": "skchr_rmixer_3",
+      "defaultModule": "uniequip_002_rmixer"
+    },
+    "电弧": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4195_radian",
+      "skills": [
+        {
+          "id": "skchr_radian_1",
+          "name": "律动线"
+        },
+        {
+          "id": "skchr_radian_2",
+          "name": "环形鳞地"
+        },
+        {
+          "id": "skchr_radian_3",
+          "name": "手牵手"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_radian",
+          "name": "电弧特勤证章"
+        },
+        {
+          "id": "uniequip_003_radian",
+          "name": "新起点"
+        }
+      ],
+      "defaultSkill": "skchr_radian_3",
+      "defaultModule": "uniequip_002_radian"
+    },
+    "娜斯提": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4212_nasti",
+      "skills": [
+        {
+          "id": "skchr_nasti_1",
+          "name": "“拱卫”"
+        },
+        {
+          "id": "skchr_nasti_2",
+          "name": "“执行”"
+        },
+        {
+          "id": "skchr_nasti_3",
+          "name": "栖脚地"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nasti",
+          "name": "工程师们"
+        }
+      ],
+      "defaultSkill": "skchr_nasti_3",
+      "defaultModule": "uniequip_002_nasti"
+    },
+    "结城理": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4217_makoto",
+      "skills": [
+        {
+          "id": "skchr_makoto_1",
+          "name": "俄耳甫斯的竖琴"
+        },
+        {
+          "id": "skchr_makoto_2",
+          "name": "塔纳托斯的囚锁"
+        },
+        {
+          "id": "skchr_makoto_3",
+          "name": "开辟明日的剑刃"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_makoto",
+          "name": "彼此的声音"
+        }
+      ],
+      "defaultSkill": "skchr_makoto_3",
+      "defaultModule": "uniequip_002_makoto"
+    },
+    "谬因": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4229_aphris",
+      "skills": [
+        {
+          "id": "skchr_aphris_1",
+          "name": "连续映射"
+        },
+        {
+          "id": "skchr_aphris_2",
+          "name": "临界瞬爆"
+        },
+        {
+          "id": "skchr_aphris_3",
+          "name": "混沌的本质"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aphris",
+          "name": "第三相态"
+        }
+      ],
+      "defaultSkill": "skchr_aphris_3",
+      "defaultModule": "uniequip_002_aphris"
+    },
+    "珊比": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4235_thumpy",
+      "skills": [
+        {
+          "id": "skchr_thumpy_1",
+          "name": "“还不走？”"
+        },
+        {
+          "id": "skchr_thumpy_2",
+          "name": "“慢慢走~”"
+        },
+        {
+          "id": "skchr_thumpy_3",
+          "name": "“不准走！”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_thumpy",
+          "name": "出发的勇气"
+        }
+      ],
+      "defaultSkill": "skchr_thumpy_3",
+      "defaultModule": "uniequip_002_thumpy"
+    },
+    "国度": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_4246_dminon",
+      "skills": [
+        {
+          "id": "skchr_dminon_1",
+          "name": "停步"
+        },
+        {
+          "id": "skchr_dminon_2",
+          "name": "受戮"
+        },
+        {
+          "id": "skchr_dminon_3",
+          "name": "无人的国度"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_dminon",
+          "name": "空瓶罐们"
+        }
+      ],
+      "defaultSkill": "skchr_dminon_3",
+      "defaultModule": "uniequip_002_dminon"
+    },
+    "死芒": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_450_necras",
+      "skills": [
+        {
+          "id": "skchr_necras_1",
+          "name": "噩愿"
+        },
+        {
+          "id": "skchr_necras_2",
+          "name": "折朽"
+        },
+        {
+          "id": "skchr_necras_3",
+          "name": "冠死以冕"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_necras",
+          "name": "未处理的遗产"
+        }
+      ],
+      "defaultSkill": "skchr_necras_3",
+      "defaultModule": "uniequip_002_necras"
+    },
+    "灰烬": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_456_ash",
+      "skills": [
+        {
+          "id": "skchr_ash_1",
+          "name": "支援射击"
+        },
+        {
+          "id": "skchr_ash_2",
+          "name": "突击战术"
+        },
+        {
+          "id": "skchr_ash_3",
+          "name": "攻坚榴弹"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_ash",
+          "name": "刺针式合金爆破弹"
+        },
+        {
+          "id": "uniequip_002_ash",
+          "name": "破墙榴弹战术收纳包"
+        }
+      ],
+      "defaultSkill": "skchr_ash_3",
+      "defaultModule": "uniequip_003_ash"
+    },
+    "琴柳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_479_sleach",
+      "skills": [
+        {
+          "id": "skcom_assist_cost[3]",
+          "name": "支援号令·γ型"
+        },
+        {
+          "id": "skchr_sleach_2",
+          "name": "信仰传承"
+        },
+        {
+          "id": "skchr_sleach_3",
+          "name": "光辉旗帜"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sleach",
+          "name": "牧人的歌"
+        },
+        {
+          "id": "uniequip_003_sleach",
+          "name": "“友谊万岁”"
+        }
+      ],
+      "defaultSkill": "skchr_sleach_3",
+      "defaultModule": "uniequip_002_sleach"
+    },
+    "郁金香": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_608_acpion",
+      "skills": [
+        {
+          "id": "skchr_acpion_1",
+          "name": "钻心"
+        },
+        {
+          "id": "skchr_acpion_2",
+          "name": "迅瞬"
+        },
+        {
+          "id": "skchr_acpion_3",
+          "name": "只余芬芳"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acpion",
+          "name": "郁金香证章"
+        }
+      ],
+      "defaultSkill": "skchr_acpion_3",
+      "defaultModule": "uniequip_002_acpion"
+    },
+    "Sharp": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_609_acguad",
+      "skills": [
+        {
+          "id": "skchr_acguad_1",
+          "name": "快刀"
+        },
+        {
+          "id": "skchr_acguad_2",
+          "name": "亮剑"
+        },
+        {
+          "id": "skchr_acguad_3",
+          "name": "力战不竭"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acguad",
+          "name": "Sharp证章"
+        }
+      ],
+      "defaultSkill": "skchr_acguad_3",
+      "defaultModule": "uniequip_002_acguad"
+    },
+    "Mechanist": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_610_acfend",
+      "skills": [
+        {
+          "id": "skchr_acfend_1",
+          "name": "结构稳定"
+        },
+        {
+          "id": "skchr_acfend_2",
+          "name": "不变性原理"
+        },
+        {
+          "id": "skchr_acfend_3",
+          "name": "应力倒置"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acfend",
+          "name": "Mechanist证章"
+        }
+      ],
+      "defaultSkill": "skchr_acfend_3",
+      "defaultModule": "uniequip_002_acfend"
+    },
+    "Stormeye": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_611_acnipe",
+      "skills": [
+        {
+          "id": "skchr_acnipe_1",
+          "name": "破空"
+        },
+        {
+          "id": "skchr_acnipe_2",
+          "name": "心手合一"
+        },
+        {
+          "id": "skchr_acnipe_3",
+          "name": "旋臂"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acnipe",
+          "name": "Stormeye证章"
+        }
+      ],
+      "defaultSkill": "skchr_acnipe_3",
+      "defaultModule": "uniequip_002_acnipe"
+    },
+    "Pith": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_612_accast",
+      "skills": [
+        {
+          "id": "skchr_accast_1",
+          "name": "“书我所书”"
+        },
+        {
+          "id": "skchr_accast_2",
+          "name": "“为我所为”"
+        },
+        {
+          "id": "skchr_accast_3",
+          "name": "“驭我所驭”"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_accast",
+          "name": "Pith证章"
+        }
+      ],
+      "defaultSkill": "skchr_accast_3",
+      "defaultModule": "uniequip_002_accast"
+    },
+    "Touch": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_613_acmedc",
+      "skills": [
+        {
+          "id": "skchr_acmedc_1",
+          "name": "慨赠"
+        },
+        {
+          "id": "skchr_acmedc_2",
+          "name": "宛如天启"
+        },
+        {
+          "id": "skchr_acmedc_3",
+          "name": "恳切福音"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acmedc",
+          "name": "Touch证章"
+        }
+      ],
+      "defaultSkill": "skchr_acmedc_3",
+      "defaultModule": "uniequip_002_acmedc"
+    },
+    "Raidian": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_614_acsupo",
+      "skills": [
+        {
+          "id": "skchr_acsupo_1",
+          "name": "双声"
+        },
+        {
+          "id": "skchr_acsupo_2",
+          "name": "三形"
+        },
+        {
+          "id": "skchr_acsupo_3",
+          "name": "信号跃动"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acsupo",
+          "name": "Raidian证章"
+        }
+      ],
+      "defaultSkill": "skchr_acsupo_3",
+      "defaultModule": "uniequip_002_acsupo"
+    },
+    "Misery": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_615_acspec",
+      "skills": [
+        {
+          "id": "skchr_acspec_1",
+          "name": "物理的服从"
+        },
+        {
+          "id": "skchr_acspec_2",
+          "name": "战争的恭顺"
+        },
+        {
+          "id": "skchr_acspec_3",
+          "name": "空间的归依"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acspec",
+          "name": "Misery证章"
+        }
+      ],
+      "defaultSkill": "skchr_acspec_3",
+      "defaultModule": "uniequip_002_acspec"
+    },
+    "领主·Sharp": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_617_sharp2",
+      "skills": [
+        {
+          "id": "skchr_sharp2_1",
+          "name": "沉默的爆发"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sharp2",
+          "name": "领主·Sharp证章"
+        }
+      ],
+      "defaultSkill": "skchr_sharp2_1",
+      "defaultModule": "uniequip_002_sharp2"
     }
   },
   "bosses": {

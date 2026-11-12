@@ -14,6 +14,8 @@ export const asset = {
   boss: (id: string) => `${base}/data/bosses/${id}.webp`,
   enemyType: (code: string) => `${base}/data/enemy_types/${code}.webp`,
   strategy: (id: string) => `${base}/data/strategies/${id}.webp`,
+  skill: (id: string) => `${base}/data/skills/${encodeURIComponent(id)}.webp`,
+  module: (id: string) => `${base}/data/modules/${id}.webp`,
 }
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']

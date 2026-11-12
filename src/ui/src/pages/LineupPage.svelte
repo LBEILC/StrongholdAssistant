@@ -1,6 +1,8 @@
 <script lang="ts">
   import { asset } from '../lib/assets'
   import { app, type LineupView, lineupEquipment } from '../lib/state.svelte'
+  import { allStages, stageLabel } from '../lib/stages'
+  import { customSkill } from '../lib/opconfig'
   import SectionHeader from '../components/SectionHeader.svelte'
   import BondIcon from '../components/BondIcon.svelte'
   import OpTile from '../components/OpTile.svelte'
@@ -28,10 +30,15 @@
     prev = v
   })
   const t = $derived(app.target)
+  // 当前阶段的样子（本阶段 + 后面阶段的关键干员）；没有阶段时就是整套阵容
+  const a = $derived(app.active)
+  const stages = $derived(t ? allStages(t) : [])
+  const own = $derived(new Set(stages[app.stageIx]?.members.map((m) => m.name) ?? []))
+  const round = $derived(app.match.economy?.round ?? null)
   // 「还能抓」默认只露两行，多了点展开
   let allPicks = $state(false)
   const picks = $derived(allPicks ? app.pickable : app.pickable.slice(0, 10))
-  const targetEqs = $derived(app.target ? lineupEquipment(app.target) : [])
+  const targetEqs = $derived(a ? lineupEquipment(a) : [])
 </script>
 
 <div class="page">
@@ -53,6 +60,22 @@
             </span>
           {/snippet}
         </SectionHeader>
+
+        <!-- 阶段：默认自动按回合切；点某个阶段固定住，点「自动」恢复 -->
+        {#if stages.length > 1}
+          <div class="stagesw">
+            <button class="auto" class:on={app.session.stage == null} onclick={() => app.setStage(null)} title="按读到的回合自动切换">自动</button>
+            {#each stages as s, i (i)}
+              <button class:on={app.stageIx === i} onclick={() => app.setStage(i)}>{s.final ? '成型阵容' : stageLabel(s)}</button>
+            {/each}
+          </div>
+          <p class="stagenote">
+            {#if app.session.stage != null}已固定在这个阶段，点「自动」按回合切换。
+            {:else if round != null}第 {round} 回合 · 自动切到这个阶段。
+            {:else}还没读到回合，先按成型阵容；进休整期后自动切换。{/if}
+            后面阶段的关键干员也一起追踪。
+          </p>
+        {/if}
 
         <div class="bondlist">
           {#each app.goalProgress as g (g.covenant.id)}
@@ -78,12 +101,12 @@
           {/each}
         </div>
 
-        <div class="sub">想抓的干员<em>{t.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
+        <div class="sub">想抓的干员<em>{a!.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
         <div class="ops">
-          {#each t.members as m (m.name)}
+          {#each a!.members as m (m.name)}
             {@const pe = m.equipment?.filter((x) => x.priority) ?? []}
-            <span class="mw">
-              <OpTile name={m.name} transform={m.transform} isKey={m.key} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
+            <span class="mw" class:later={!own.has(m.name)} title={own.has(m.name) ? undefined : '后面阶段的关键干员，提前追踪'}>
+              <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), app.settings.operatorDefaults)} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
               {#if pe.length}
                 <span class="pe" title="优先装备：{pe.map((x) => x.name).join('、')}">
                   {#each pe.slice(0, 3) as x (x.name)}<img src={asset.equipment(x.name)} alt="" />{/each}
@@ -104,7 +127,7 @@
           {/each}
         </div>
 
-        {#if t.goals.length}
+        {#if a!.goals.length}
           <div class="sub">还能抓<em>目标盟约里没被禁的其他干员 · 点开可加入目标或追踪</em></div>
           <div class="ops">
             {#each picks as o (o.name)}
@@ -391,5 +414,52 @@
   .note {
     color: var(--gold);
     margin-left: 6px;
+  }
+  /* 宽（工作台）：阵容卡两三列 */
+  @container (min-width: 720px) {
+    .list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      align-items: start;
+      gap: 8px;
+    }
+  }
+  .stagesw {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .stagesw button {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .stagesw button.on {
+    color: var(--fg-1);
+    background: var(--mint-tint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .stagesw .auto.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .stagenote {
+    margin: 0;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  /* 后面阶段的关键干员：右下角小标 */
+  .mw.later::after {
+    content: '后';
+    position: absolute;
+    right: 0;
+    bottom: 16px;
+    padding: 0 3px;
+    font-size: 9px;
+    color: var(--gold-ink);
+    background: var(--gold);
   }
 </style>

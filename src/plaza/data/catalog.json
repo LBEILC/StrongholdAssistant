@@ -81,430 +81,4318 @@
   ],
   "operators": [
     {
-      "name": "折光"
-    },
-    {
-      "name": "车尔尼"
-    },
-    {
-      "name": "黑键"
-    },
-    {
-      "name": "卡涅利安"
-    },
-    {
-      "name": "艾雅法拉"
-    },
-    {
-      "name": "纯烬艾雅法拉"
-    },
-    {
-      "name": "折桠"
-    },
-    {
-      "name": "乌啾"
-    },
-    {
-      "name": "赫拉格"
-    },
-    {
-      "name": "维伊"
-    },
-    {
-      "name": "怒潮凛冬"
-    },
-    {
-      "name": "蓝毒"
-    },
-    {
-      "name": "海沫"
-    },
-    {
-      "name": "旅骨"
-    },
-    {
-      "name": "艾丽妮"
-    },
-    {
-      "name": "温蒂"
-    },
-    {
-      "name": "流明"
-    },
-    {
-      "name": "棘刺"
-    },
-    {
-      "name": "引星棘刺"
-    },
-    {
-      "name": "风絮"
-    },
-    {
-      "name": "余"
-    },
-    {
-      "name": "黍"
-    },
-    {
-      "name": "烛煌"
-    },
-    {
-      "name": "艾丝黛尔"
-    },
-    {
-      "name": "泡泡"
-    },
-    {
-      "name": "莎草"
-    },
-    {
-      "name": "森蚺"
-    },
-    {
-      "name": "佩佩"
-    },
-    {
-      "name": "极光"
-    },
-    {
-      "name": "雪猎"
-    },
-    {
-      "name": "耶拉"
-    },
-    {
-      "name": "初雪"
-    },
-    {
-      "name": "灵知"
-    },
-    {
-      "name": "圣聆初雪"
-    },
-    {
-      "name": "凛御银灰"
-    },
-    {
-      "name": "幽灵鲨"
-    },
-    {
-      "name": "深巡"
-    },
-    {
-      "name": "斯卡蒂"
-    },
-    {
-      "name": "歌蕾蒂娅"
-    },
-    {
-      "name": "归溟幽灵鲨"
-    },
-    {
-      "name": "乌尔比安"
-    },
-    {
-      "name": "浊心斯卡蒂"
-    },
-    {
-      "name": "克莱门莎"
-    },
-    {
-      "name": "水月"
-    },
-    {
-      "name": "砾"
-    },
-    {
-      "name": "野鬃"
-    },
-    {
-      "name": "瑕光"
-    },
-    {
-      "name": "远牙"
-    },
-    {
-      "name": "玛恩纳"
-    },
-    {
-      "name": "耀骑士临光"
-    },
-    {
-      "name": "薇薇安娜"
-    },
-    {
-      "name": "复奏"
-    },
-    {
-      "name": "奥斯塔"
-    },
-    {
-      "name": "忍冬"
-    },
-    {
-      "name": "伺夜"
-    },
-    {
-      "name": "铃兰"
-    },
-    {
-      "name": "贝洛内"
-    },
-    {
-      "name": "荒芜拉普兰德"
-    },
-    {
-      "name": "慕斯"
-    },
-    {
-      "name": "水灯心"
-    },
-    {
-      "name": "Miss.Christine"
-    },
-    {
-      "name": "涤火杰西卡"
-    },
-    {
-      "name": "白铁"
-    },
-    {
-      "name": "酒神"
-    },
-    {
-      "name": "维娜·维多利亚"
-    },
-    {
-      "name": "角峰"
-    },
-    {
-      "name": "哈洛德"
-    },
-    {
-      "name": "斥罪"
-    },
-    {
-      "name": "逻各斯"
-    },
-    {
-      "name": "空弦"
-    },
-    {
-      "name": "迷迭香"
-    },
-    {
-      "name": "真言"
-    },
-    {
-      "name": "灰喉"
-    },
-    {
-      "name": "吉星"
-    },
-    {
-      "name": "妮芙"
-    },
-    {
-      "name": "W"
-    },
-    {
-      "name": "霍尔海雅"
-    },
-    {
-      "name": "云迹"
-    },
-    {
-      "name": "隐德来希"
-    },
-    {
-      "name": "伊桑"
-    },
-    {
-      "name": "深靛"
-    },
-    {
-      "name": "卡达"
-    },
-    {
-      "name": "蛇屠箱"
-    },
-    {
-      "name": "罗比菈塔"
-    },
-    {
-      "name": "摆渡人"
-    },
-    {
-      "name": "塞雷娅"
-    },
-    {
-      "name": "遥"
-    },
-    {
-      "name": "魔王"
-    },
-    {
-      "name": "波登可"
-    },
-    {
-      "name": "史尔特尔"
-    },
-    {
-      "name": "承曦格雷伊"
-    },
-    {
-      "name": "锡人"
-    },
-    {
-      "name": "溯光星源"
-    },
-    {
-      "name": "宴"
-    },
-    {
-      "name": "山"
-    },
-    {
-      "name": "锏"
-    },
-    {
-      "name": "老鲤"
-    },
-    {
-      "name": "淬羽赫默"
-    },
-    {
-      "name": "夏栎"
-    },
-    {
-      "name": "杰克"
-    },
-    {
-      "name": "赫德雷"
-    },
-    {
-      "name": "夜莺"
-    },
-    {
-      "name": "霜叶"
-    },
-    {
-      "name": "乌有"
-    },
-    {
-      "name": "历阵锐枪芬"
-    },
-    {
-      "name": "渡桥"
-    },
-    {
-      "name": "Mon3tr"
-    },
-    {
-      "name": "凯瑟琳"
-    },
-    {
-      "name": "可露希尔"
-    },
-    {
-      "name": "矩"
-    },
-    {
-      "name": "拜松"
-    },
-    {
-      "name": "褐果"
-    },
-    {
-      "name": "风丸"
-    },
-    {
-      "name": "鸿雪"
-    },
-    {
-      "name": "仇白"
-    },
-    {
-      "name": "星极"
-    },
-    {
-      "name": "焰尾"
-    },
-    {
-      "name": "瑰盐"
-    },
-    {
-      "name": "烈夏"
-    },
-    {
-      "name": "至简"
-    },
-    {
-      "name": "陨星"
-    },
-    {
-      "name": "机械师"
-    },
-    {
-      "name": "异客"
-    },
-    {
-      "name": "塔露拉"
-    },
-    {
-      "name": "真理"
-    },
-    {
-      "name": "奥尔佳"
-    },
-    {
-      "name": "安洁莉娜"
-    },
-    {
-      "name": "夕"
-    },
-    {
-      "name": "冻河"
-    },
-    {
-      "name": "青枳"
-    },
-    {
-      "name": "铸铁"
-    },
-    {
-      "name": "华法琳"
-    },
-    {
-      "name": "拉普兰德"
-    },
-    {
-      "name": "蕾缪安"
-    },
-    {
-      "name": "星源"
-    },
-    {
-      "name": "寒檀"
-    },
-    {
-      "name": "地灵"
-    },
-    {
-      "name": "缪尔赛思"
-    },
-    {
-      "name": "阿米娅"
-    },
-    {
-      "name": "安哲拉"
-    },
-    {
-      "name": "帕拉斯"
-    },
-    {
-      "name": "暴躁铁皮"
+      "name": "折光",
+      "skills": [
+        {
+          "id": "skchr_kaitou_1"
+        },
+        {
+          "id": "skchr_kaitou_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kaitou"
+        }
+      ]
+    },
+    {
+      "name": "车尔尼",
+      "skills": [
+        {
+          "id": "skchr_pianst_1"
+        },
+        {
+          "id": "skchr_pianst_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pianst"
+        }
+      ]
+    },
+    {
+      "name": "黑键",
+      "skills": [
+        {
+          "id": "skchr_ebnhlz_1"
+        },
+        {
+          "id": "skchr_ebnhlz_2"
+        },
+        {
+          "id": "skchr_ebnhlz_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_ebnhlz"
+        },
+        {
+          "id": "uniequip_002_ebnhlz"
+        },
+        {
+          "id": "uniequip_003_ebnhlz"
+        }
+      ]
+    },
+    {
+      "name": "卡涅利安",
+      "skills": [
+        {
+          "id": "skchr_billro_1"
+        },
+        {
+          "id": "skchr_billro_2"
+        },
+        {
+          "id": "skchr_billro_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_billro"
+        },
+        {
+          "id": "uniequip_003_billro"
+        }
+      ]
+    },
+    {
+      "name": "艾雅法拉",
+      "skills": [
+        {
+          "id": "skchr_amgoat_1"
+        },
+        {
+          "id": "skchr_amgoat_2"
+        },
+        {
+          "id": "skchr_amgoat_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_amgoat"
+        },
+        {
+          "id": "uniequip_003_amgoat"
+        }
+      ]
+    },
+    {
+      "name": "纯烬艾雅法拉",
+      "skills": [
+        {
+          "id": "skchr_agoat2_1"
+        },
+        {
+          "id": "skchr_agoat2_2"
+        },
+        {
+          "id": "skchr_agoat2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_agoat2"
+        },
+        {
+          "id": "uniequip_003_agoat2"
+        }
+      ]
+    },
+    {
+      "name": "折桠",
+      "skills": [
+        {
+          "id": "skchr_branch_1"
+        },
+        {
+          "id": "skchr_branch_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_branch"
+        }
+      ]
+    },
+    {
+      "name": "乌啾",
+      "skills": [
+        {
+          "id": "skchr_turdus_1"
+        },
+        {
+          "id": "skchr_turdus_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_turdus"
+        }
+      ]
+    },
+    {
+      "name": "赫拉格",
+      "skills": [
+        {
+          "id": "skchr_helage_1"
+        },
+        {
+          "id": "skchr_helage_2"
+        },
+        {
+          "id": "skchr_helage_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_helage"
+        },
+        {
+          "id": "uniequip_003_helage"
+        }
+      ]
+    },
+    {
+      "name": "维伊",
+      "skills": [
+        {
+          "id": "skchr_veen_1"
+        },
+        {
+          "id": "skchr_veen_2"
+        },
+        {
+          "id": "skchr_veen_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_veen"
+        }
+      ]
+    },
+    {
+      "name": "怒潮凛冬",
+      "skills": [
+        {
+          "id": "skchr_headb2_1"
+        },
+        {
+          "id": "skchr_headb2_2"
+        },
+        {
+          "id": "skchr_headb2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_headb2"
+        }
+      ]
+    },
+    {
+      "name": "蓝毒",
+      "skills": [
+        {
+          "id": "skchr_bluep_1"
+        },
+        {
+          "id": "skchr_bluep_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bluep"
+        }
+      ]
+    },
+    {
+      "name": "海沫",
+      "skills": [
+        {
+          "id": "skchr_highmo_1"
+        },
+        {
+          "id": "skchr_highmo_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_highmo"
+        }
+      ]
+    },
+    {
+      "name": "旅骨",
+      "skills": [
+        {
+          "id": "skchr_hbound_1"
+        },
+        {
+          "id": "skchr_hbound_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hbound"
+        }
+      ]
+    },
+    {
+      "name": "艾丽妮",
+      "skills": [
+        {
+          "id": "skchr_irene_1"
+        },
+        {
+          "id": "skchr_irene_2"
+        },
+        {
+          "id": "skchr_irene_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_irene"
+        },
+        {
+          "id": "uniequip_003_irene"
+        },
+        {
+          "id": "uniequip_002_irene"
+        }
+      ]
+    },
+    {
+      "name": "温蒂",
+      "skills": [
+        {
+          "id": "skchr_weedy_1"
+        },
+        {
+          "id": "skchr_weedy_2"
+        },
+        {
+          "id": "skchr_weedy_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_weedy"
+        },
+        {
+          "id": "uniequip_003_weedy"
+        }
+      ]
+    },
+    {
+      "name": "流明",
+      "skills": [
+        {
+          "id": "skchr_lumen_1"
+        },
+        {
+          "id": "skchr_lumen_2"
+        },
+        {
+          "id": "skchr_lumen_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lumen"
+        },
+        {
+          "id": "uniequip_003_lumen"
+        }
+      ]
+    },
+    {
+      "name": "棘刺",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_thorns_2"
+        },
+        {
+          "id": "skchr_thorns_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_thorns"
+        },
+        {
+          "id": "uniequip_002_thorns"
+        }
+      ]
+    },
+    {
+      "name": "引星棘刺",
+      "skills": [
+        {
+          "id": "skchr_thorn2_1"
+        },
+        {
+          "id": "skchr_thorn2_2"
+        },
+        {
+          "id": "skchr_thorn2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_thorn2"
+        }
+      ]
+    },
+    {
+      "name": "风絮",
+      "skills": [
+        {
+          "id": "skchr_taraxa_1"
+        },
+        {
+          "id": "skchr_taraxa_2"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "余",
+      "skills": [
+        {
+          "id": "skchr_yu_1"
+        },
+        {
+          "id": "skchr_yu_2"
+        },
+        {
+          "id": "skchr_yu_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yu"
+        }
+      ]
+    },
+    {
+      "name": "黍",
+      "skills": [
+        {
+          "id": "skchr_shu_1"
+        },
+        {
+          "id": "skchr_shu_2"
+        },
+        {
+          "id": "skchr_shu_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_shu"
+        },
+        {
+          "id": "uniequip_003_shu"
+        }
+      ]
+    },
+    {
+      "name": "烛煌",
+      "skills": [
+        {
+          "id": "skchr_blaze2_1"
+        },
+        {
+          "id": "skchr_blaze2_2"
+        },
+        {
+          "id": "skchr_blaze2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_blaze2"
+        },
+        {
+          "id": "uniequip_003_blaze2"
+        }
+      ]
+    },
+    {
+      "name": "艾丝黛尔",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]"
+        },
+        {
+          "id": "skchr_estell_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_estell"
+        }
+      ]
+    },
+    {
+      "name": "泡泡",
+      "skills": [
+        {
+          "id": "skcom_def_up[2]"
+        },
+        {
+          "id": "skchr_bubble_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bubble"
+        }
+      ]
+    },
+    {
+      "name": "莎草",
+      "skills": [
+        {
+          "id": "skchr_papyrs_1"
+        },
+        {
+          "id": "skchr_papyrs_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_papyrs"
+        }
+      ]
+    },
+    {
+      "name": "森蚺",
+      "skills": [
+        {
+          "id": "skchr_zumama_1"
+        },
+        {
+          "id": "skchr_zumama_2"
+        },
+        {
+          "id": "skchr_zumama_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_zumama"
+        },
+        {
+          "id": "uniequip_002_zumama"
+        },
+        {
+          "id": "uniequip_003_zumama"
+        }
+      ]
+    },
+    {
+      "name": "佩佩",
+      "skills": [
+        {
+          "id": "skchr_pepe_1"
+        },
+        {
+          "id": "skchr_pepe_2"
+        },
+        {
+          "id": "skchr_pepe_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_pepe"
+        },
+        {
+          "id": "uniequip_002_pepe"
+        }
+      ]
+    },
+    {
+      "name": "极光",
+      "skills": [
+        {
+          "id": "skchr_aurora_1"
+        },
+        {
+          "id": "skchr_aurora_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aurora"
+        }
+      ]
+    },
+    {
+      "name": "雪猎",
+      "skills": [
+        {
+          "id": "skchr_snhunt_1"
+        },
+        {
+          "id": "skchr_snhunt_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_snhunt"
+        }
+      ]
+    },
+    {
+      "name": "耶拉",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_kjera_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kjera"
+        }
+      ]
+    },
+    {
+      "name": "初雪",
+      "skills": [
+        {
+          "id": "skchr_slbell_1"
+        },
+        {
+          "id": "skchr_slbell_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_slbell"
+        }
+      ]
+    },
+    {
+      "name": "灵知",
+      "skills": [
+        {
+          "id": "skchr_gnosis_1"
+        },
+        {
+          "id": "skchr_gnosis_2"
+        },
+        {
+          "id": "skchr_gnosis_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_gnosis"
+        },
+        {
+          "id": "uniequip_002_gnosis"
+        },
+        {
+          "id": "uniequip_003_gnosis"
+        }
+      ]
+    },
+    {
+      "name": "圣聆初雪",
+      "skills": [
+        {
+          "id": "skchr_sbell2_1"
+        },
+        {
+          "id": "skchr_sbell2_2"
+        },
+        {
+          "id": "skchr_sbell2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sbell2"
+        }
+      ]
+    },
+    {
+      "name": "凛御银灰",
+      "skills": [
+        {
+          "id": "skchr_svash2_1"
+        },
+        {
+          "id": "skchr_svash2_2"
+        },
+        {
+          "id": "skchr_svash2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_svash2"
+        }
+      ]
+    },
+    {
+      "name": "幽灵鲨",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_ghost_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ghost"
+        }
+      ]
+    },
+    {
+      "name": "深巡",
+      "skills": [
+        {
+          "id": "skchr_udflow_1"
+        },
+        {
+          "id": "skchr_udflow_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_udflow"
+        }
+      ]
+    },
+    {
+      "name": "斯卡蒂",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_skadi_2"
+        },
+        {
+          "id": "skchr_skadi_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_skadi"
+        },
+        {
+          "id": "uniequip_002_skadi"
+        }
+      ]
+    },
+    {
+      "name": "歌蕾蒂娅",
+      "skills": [
+        {
+          "id": "skchr_glady_1"
+        },
+        {
+          "id": "skchr_glady_2"
+        },
+        {
+          "id": "skchr_glady_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_glady"
+        },
+        {
+          "id": "uniequip_003_glady"
+        }
+      ]
+    },
+    {
+      "name": "归溟幽灵鲨",
+      "skills": [
+        {
+          "id": "skchr_ghost2_1"
+        },
+        {
+          "id": "skchr_ghost2_2"
+        },
+        {
+          "id": "skchr_ghost2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_ghost2"
+        },
+        {
+          "id": "uniequip_002_ghost2"
+        },
+        {
+          "id": "uniequip_003_ghost2"
+        }
+      ]
+    },
+    {
+      "name": "乌尔比安",
+      "skills": [
+        {
+          "id": "skchr_ulpia_1"
+        },
+        {
+          "id": "skchr_ulpia_2"
+        },
+        {
+          "id": "skchr_ulpia_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ulpia"
+        },
+        {
+          "id": "uniequip_003_ulpia"
+        }
+      ]
+    },
+    {
+      "name": "浊心斯卡蒂",
+      "skills": [
+        {
+          "id": "skchr_skadi2_1"
+        },
+        {
+          "id": "skchr_skadi2_2"
+        },
+        {
+          "id": "skchr_skadi2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_skadi2"
+        },
+        {
+          "id": "uniequip_003_skadi2"
+        }
+      ]
+    },
+    {
+      "name": "克莱门莎",
+      "skills": [
+        {
+          "id": "skchr_clemnt_1"
+        },
+        {
+          "id": "skchr_clemnt_2"
+        },
+        {
+          "id": "skchr_clemnt_3"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "水月",
+      "skills": [
+        {
+          "id": "skchr_mizuki_1"
+        },
+        {
+          "id": "skchr_mizuki_2"
+        },
+        {
+          "id": "skchr_mizuki_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_mizuki"
+        },
+        {
+          "id": "uniequip_002_mizuki"
+        },
+        {
+          "id": "uniequip_003_mizuki"
+        }
+      ]
+    },
+    {
+      "name": "砾",
+      "skills": [
+        {
+          "id": "skchr_gravel_1"
+        },
+        {
+          "id": "skchr_gravel_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_gravel"
+        }
+      ]
+    },
+    {
+      "name": "野鬃",
+      "skills": [
+        {
+          "id": "skchr_wildmn_1"
+        },
+        {
+          "id": "skchr_wildmn_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wildmn"
+        }
+      ]
+    },
+    {
+      "name": "瑕光",
+      "skills": [
+        {
+          "id": "skchr_blemsh_1"
+        },
+        {
+          "id": "skchr_blemsh_2"
+        },
+        {
+          "id": "skchr_blemsh_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_blemsh"
+        },
+        {
+          "id": "uniequip_002_blemsh"
+        }
+      ]
+    },
+    {
+      "name": "远牙",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_fartth_2"
+        },
+        {
+          "id": "skchr_fartth_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_fartth"
+        },
+        {
+          "id": "uniequip_003_fartth"
+        }
+      ]
+    },
+    {
+      "name": "玛恩纳",
+      "skills": [
+        {
+          "id": "skchr_mlynar_1"
+        },
+        {
+          "id": "skchr_mlynar_2"
+        },
+        {
+          "id": "skchr_mlynar_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mlynar"
+        }
+      ]
+    },
+    {
+      "name": "耀骑士临光",
+      "skills": [
+        {
+          "id": "skchr_nearl2_1"
+        },
+        {
+          "id": "skchr_nearl2_2"
+        },
+        {
+          "id": "skchr_nearl2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nearl2"
+        },
+        {
+          "id": "uniequip_003_nearl2"
+        }
+      ]
+    },
+    {
+      "name": "薇薇安娜",
+      "skills": [
+        {
+          "id": "skchr_vvana_1"
+        },
+        {
+          "id": "skchr_vvana_2"
+        },
+        {
+          "id": "skchr_vvana_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vvana"
+        },
+        {
+          "id": "uniequip_003_vvana"
+        }
+      ]
+    },
+    {
+      "name": "复奏",
+      "skills": [
+        {
+          "id": "skchr_liesel_1"
+        },
+        {
+          "id": "skchr_liesel_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_liesel"
+        }
+      ]
+    },
+    {
+      "name": "奥斯塔",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_aosta_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aosta"
+        }
+      ]
+    },
+    {
+      "name": "忍冬",
+      "skills": [
+        {
+          "id": "skchr_vulpis_1"
+        },
+        {
+          "id": "skchr_vulpis_2"
+        },
+        {
+          "id": "skchr_vulpis_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vulpis"
+        },
+        {
+          "id": "uniequip_003_vulpis"
+        }
+      ]
+    },
+    {
+      "name": "伺夜",
+      "skills": [
+        {
+          "id": "skchr_vigil_1"
+        },
+        {
+          "id": "skchr_vigil_2"
+        },
+        {
+          "id": "skchr_vigil_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_vigil"
+        },
+        {
+          "id": "uniequip_003_vigil"
+        }
+      ]
+    },
+    {
+      "name": "铃兰",
+      "skills": [
+        {
+          "id": "skchr_lisa_1"
+        },
+        {
+          "id": "skchr_lisa_2"
+        },
+        {
+          "id": "skchr_lisa_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lisa"
+        },
+        {
+          "id": "uniequip_003_lisa"
+        }
+      ]
+    },
+    {
+      "name": "贝洛内",
+      "skills": [
+        {
+          "id": "skchr_demetr_1"
+        },
+        {
+          "id": "skchr_demetr_2"
+        },
+        {
+          "id": "skchr_demetr_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_demetr"
+        }
+      ]
+    },
+    {
+      "name": "荒芜拉普兰德",
+      "skills": [
+        {
+          "id": "skchr_whitw2_1"
+        },
+        {
+          "id": "skchr_whitw2_2"
+        },
+        {
+          "id": "skchr_whitw2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_whitw2"
+        }
+      ]
+    },
+    {
+      "name": "慕斯",
+      "skills": [
+        {
+          "id": "skchr_frncat_1"
+        },
+        {
+          "id": "skchr_frncat_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_frncat"
+        }
+      ]
+    },
+    {
+      "name": "水灯心",
+      "skills": [
+        {
+          "id": "skchr_brigid_1"
+        },
+        {
+          "id": "skchr_brigid_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_brigid"
+        }
+      ]
+    },
+    {
+      "name": "Miss.Christine",
+      "skills": [
+        {
+          "id": "skchr_christ_1"
+        },
+        {
+          "id": "skchr_christ_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_christ"
+        }
+      ]
+    },
+    {
+      "name": "涤火杰西卡",
+      "skills": [
+        {
+          "id": "skchr_jesca2_1"
+        },
+        {
+          "id": "skchr_jesca2_2"
+        },
+        {
+          "id": "skchr_jesca2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_jesca2"
+        },
+        {
+          "id": "uniequip_003_jesca2"
+        }
+      ]
+    },
+    {
+      "name": "白铁",
+      "skills": [
+        {
+          "id": "skchr_ironmn_1"
+        },
+        {
+          "id": "skchr_ironmn_2"
+        },
+        {
+          "id": "skchr_ironmn_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ironmn"
+        },
+        {
+          "id": "uniequip_003_ironmn"
+        }
+      ]
+    },
+    {
+      "name": "酒神",
+      "skills": [
+        {
+          "id": "skchr_phatm2_1"
+        },
+        {
+          "id": "skchr_phatm2_2"
+        },
+        {
+          "id": "skchr_phatm2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_phatm2"
+        }
+      ]
+    },
+    {
+      "name": "维娜·维多利亚",
+      "skills": [
+        {
+          "id": "skchr_siege2_1"
+        },
+        {
+          "id": "skchr_siege2_2"
+        },
+        {
+          "id": "skchr_siege2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_siege2"
+        },
+        {
+          "id": "uniequip_003_siege2"
+        }
+      ]
+    },
+    {
+      "name": "角峰",
+      "skills": [
+        {
+          "id": "skchr_yak_1"
+        },
+        {
+          "id": "skchr_yak_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yak"
+        }
+      ]
+    },
+    {
+      "name": "哈洛德",
+      "skills": [
+        {
+          "id": "skcom_heal_up[3]"
+        },
+        {
+          "id": "skchr_harold_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_harold"
+        }
+      ]
+    },
+    {
+      "name": "斥罪",
+      "skills": [
+        {
+          "id": "skchr_judge_1"
+        },
+        {
+          "id": "skchr_judge_2"
+        },
+        {
+          "id": "skchr_judge_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_judge"
+        },
+        {
+          "id": "uniequip_003_judge"
+        }
+      ]
+    },
+    {
+      "name": "逻各斯",
+      "skills": [
+        {
+          "id": "skchr_logos_1"
+        },
+        {
+          "id": "skchr_logos_2"
+        },
+        {
+          "id": "skchr_logos_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_logos"
+        },
+        {
+          "id": "uniequip_003_logos"
+        }
+      ]
+    },
+    {
+      "name": "空弦",
+      "skills": [
+        {
+          "id": "skchr_archet_1"
+        },
+        {
+          "id": "skchr_archet_2"
+        },
+        {
+          "id": "skchr_archet_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_archet"
+        },
+        {
+          "id": "uniequip_003_archet"
+        },
+        {
+          "id": "uniequip_002_archet"
+        }
+      ]
+    },
+    {
+      "name": "迷迭香",
+      "skills": [
+        {
+          "id": "skchr_rosmon_1"
+        },
+        {
+          "id": "skchr_rosmon_2"
+        },
+        {
+          "id": "skchr_rosmon_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_rosmon"
+        },
+        {
+          "id": "uniequip_002_rosmon"
+        }
+      ]
+    },
+    {
+      "name": "真言",
+      "skills": [
+        {
+          "id": "skchr_mantra_1"
+        },
+        {
+          "id": "skchr_mantra_2"
+        },
+        {
+          "id": "skchr_mantra_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mantra"
+        }
+      ]
+    },
+    {
+      "name": "灰喉",
+      "skills": [
+        {
+          "id": "skchr_swllow_1"
+        },
+        {
+          "id": "skchr_swllow_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_swllow"
+        }
+      ]
+    },
+    {
+      "name": "吉星",
+      "skills": [
+        {
+          "id": "skchr_kichi_1"
+        },
+        {
+          "id": "skchr_kichi_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kichi"
+        }
+      ]
+    },
+    {
+      "name": "妮芙",
+      "skills": [
+        {
+          "id": "skchr_nymph_1"
+        },
+        {
+          "id": "skchr_nymph_2"
+        },
+        {
+          "id": "skchr_nymph_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nymph"
+        },
+        {
+          "id": "uniequip_003_nymph"
+        }
+      ]
+    },
+    {
+      "name": "W",
+      "skills": [
+        {
+          "id": "skchr_cqbw_1"
+        },
+        {
+          "id": "skchr_cqbw_2"
+        },
+        {
+          "id": "skchr_cqbw_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cqbw"
+        },
+        {
+          "id": "uniequip_003_cqbw"
+        }
+      ]
+    },
+    {
+      "name": "霍尔海雅",
+      "skills": [
+        {
+          "id": "skchr_heyak_1"
+        },
+        {
+          "id": "skchr_heyak_2"
+        },
+        {
+          "id": "skchr_heyak_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_heyak"
+        },
+        {
+          "id": "uniequip_002_heyak"
+        },
+        {
+          "id": "uniequip_003_heyak"
+        }
+      ]
+    },
+    {
+      "name": "云迹",
+      "skills": [
+        {
+          "id": "skchr_ctrail_1"
+        },
+        {
+          "id": "skchr_ctrail_2"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "隐德来希",
+      "skills": [
+        {
+          "id": "skchr_etlchi_1"
+        },
+        {
+          "id": "skchr_etlchi_2"
+        },
+        {
+          "id": "skchr_etlchi_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_etlchi"
+        },
+        {
+          "id": "uniequip_003_etlchi"
+        }
+      ]
+    },
+    {
+      "name": "伊桑",
+      "skills": [
+        {
+          "id": "skchr_ethan_1"
+        },
+        {
+          "id": "skchr_ethan_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ethan"
+        }
+      ]
+    },
+    {
+      "name": "深靛",
+      "skills": [
+        {
+          "id": "skchr_indigo_1"
+        },
+        {
+          "id": "skchr_indigo_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_indigo"
+        }
+      ]
+    },
+    {
+      "name": "卡达",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]"
+        },
+        {
+          "id": "skchr_cammou_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cammou"
+        }
+      ]
+    },
+    {
+      "name": "蛇屠箱",
+      "skills": [
+        {
+          "id": "skcom_def_up[2]"
+        },
+        {
+          "id": "skchr_snakek_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_snakek"
+        }
+      ]
+    },
+    {
+      "name": "罗比菈塔",
+      "skills": [
+        {
+          "id": "skchr_robrta_1"
+        },
+        {
+          "id": "skchr_robrta_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_robrta"
+        }
+      ]
+    },
+    {
+      "name": "摆渡人",
+      "skills": [
+        {
+          "id": "skchr_varkis_1"
+        },
+        {
+          "id": "skchr_varkis_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_varkis"
+        }
+      ]
+    },
+    {
+      "name": "塞雷娅",
+      "skills": [
+        {
+          "id": "skchr_demkni_1"
+        },
+        {
+          "id": "skchr_demkni_2"
+        },
+        {
+          "id": "skchr_demkni_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_demkni"
+        },
+        {
+          "id": "uniequip_003_demkni"
+        }
+      ]
+    },
+    {
+      "name": "遥",
+      "skills": [
+        {
+          "id": "skchr_haruka_1"
+        },
+        {
+          "id": "skchr_haruka_2"
+        },
+        {
+          "id": "skchr_haruka_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_haruka"
+        }
+      ]
+    },
+    {
+      "name": "魔王",
+      "skills": [
+        {
+          "id": "skchr_cetsyr_1"
+        },
+        {
+          "id": "skchr_cetsyr_2"
+        },
+        {
+          "id": "skchr_cetsyr_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cetsyr"
+        }
+      ]
+    },
+    {
+      "name": "波登可",
+      "skills": [
+        {
+          "id": "skchr_podego_1"
+        },
+        {
+          "id": "skchr_podego_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_podego"
+        }
+      ]
+    },
+    {
+      "name": "史尔特尔",
+      "skills": [
+        {
+          "id": "skchr_surtr_1"
+        },
+        {
+          "id": "skchr_surtr_2"
+        },
+        {
+          "id": "skchr_surtr_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_surtr"
+        },
+        {
+          "id": "uniequip_003_surtr"
+        }
+      ]
+    },
+    {
+      "name": "承曦格雷伊",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_greyy2_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_greyy2"
+        }
+      ]
+    },
+    {
+      "name": "锡人",
+      "skills": [
+        {
+          "id": "skchr_tinman_1"
+        },
+        {
+          "id": "skchr_tinman_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_tinman"
+        }
+      ]
+    },
+    {
+      "name": "溯光星源",
+      "skills": [
+        {
+          "id": "skchr_halo2_1"
+        },
+        {
+          "id": "skchr_halo2_2"
+        },
+        {
+          "id": "skchr_halo2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_halo2"
+        },
+        {
+          "id": "uniequip_002_halo2"
+        }
+      ]
+    },
+    {
+      "name": "宴",
+      "skills": [
+        {
+          "id": "skchr_utage_1"
+        },
+        {
+          "id": "skchr_utage_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_utage"
+        }
+      ]
+    },
+    {
+      "name": "山",
+      "skills": [
+        {
+          "id": "skchr_f12yin_1"
+        },
+        {
+          "id": "skchr_f12yin_2"
+        },
+        {
+          "id": "skchr_f12yin_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_f12yin"
+        },
+        {
+          "id": "uniequip_002_f12yin"
+        }
+      ]
+    },
+    {
+      "name": "锏",
+      "skills": [
+        {
+          "id": "skchr_blkkgt_1"
+        },
+        {
+          "id": "skchr_blkkgt_2"
+        },
+        {
+          "id": "skchr_blkkgt_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_blkkgt"
+        },
+        {
+          "id": "uniequip_003_blkkgt"
+        }
+      ]
+    },
+    {
+      "name": "老鲤",
+      "skills": [
+        {
+          "id": "skchr_lmlee_1"
+        },
+        {
+          "id": "skchr_lmlee_2"
+        },
+        {
+          "id": "skchr_lmlee_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lmlee"
+        },
+        {
+          "id": "uniequip_003_lmlee"
+        }
+      ]
+    },
+    {
+      "name": "淬羽赫默",
+      "skills": [
+        {
+          "id": "skchr_slent2_1"
+        },
+        {
+          "id": "skchr_slent2_2"
+        },
+        {
+          "id": "skchr_slent2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_slent2"
+        },
+        {
+          "id": "uniequip_003_slent2"
+        }
+      ]
+    },
+    {
+      "name": "夏栎",
+      "skills": [
+        {
+          "id": "skchr_quercu_1"
+        },
+        {
+          "id": "skchr_quercu_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_quercu"
+        }
+      ]
+    },
+    {
+      "name": "杰克",
+      "skills": [
+        {
+          "id": "skchr_jaksel_1"
+        },
+        {
+          "id": "skchr_jaksel_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_jaksel"
+        }
+      ]
+    },
+    {
+      "name": "赫德雷",
+      "skills": [
+        {
+          "id": "skchr_hodrer_1"
+        },
+        {
+          "id": "skchr_hodrer_2"
+        },
+        {
+          "id": "skchr_hodrer_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hodrer"
+        },
+        {
+          "id": "uniequip_003_hodrer"
+        }
+      ]
+    },
+    {
+      "name": "夜莺",
+      "skills": [
+        {
+          "id": "skcom_heal_up[3]"
+        },
+        {
+          "id": "skchr_cgbird_2"
+        },
+        {
+          "id": "skchr_cgbird_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cgbird"
+        },
+        {
+          "id": "uniequip_003_cgbird"
+        }
+      ]
+    },
+    {
+      "name": "霜叶",
+      "skills": [
+        {
+          "id": "skchr_frostl_1"
+        },
+        {
+          "id": "skchr_frostl_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_frostl"
+        }
+      ]
+    },
+    {
+      "name": "乌有",
+      "skills": [
+        {
+          "id": "skchr_nothin_1"
+        },
+        {
+          "id": "skchr_nothin_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nothin"
+        }
+      ]
+    },
+    {
+      "name": "历阵锐枪芬",
+      "skills": [
+        {
+          "id": "skchr_fang2_1"
+        },
+        {
+          "id": "skchr_fang2_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_fang2"
+        }
+      ]
+    },
+    {
+      "name": "渡桥",
+      "skills": [
+        {
+          "id": "skchr_mitm_1"
+        },
+        {
+          "id": "skchr_mitm_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mitm"
+        }
+      ]
+    },
+    {
+      "name": "Mon3tr",
+      "skills": [
+        {
+          "id": "skchr_monstr_1"
+        },
+        {
+          "id": "skchr_monstr_2"
+        },
+        {
+          "id": "skchr_monstr_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_monstr"
+        }
+      ]
+    },
+    {
+      "name": "凯瑟琳",
+      "skills": [
+        {
+          "id": "skchr_cathy_1"
+        },
+        {
+          "id": "skchr_cathy_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cathy"
+        }
+      ]
+    },
+    {
+      "name": "可露希尔",
+      "skills": [
+        {
+          "id": "skchr_closur_1"
+        },
+        {
+          "id": "skchr_closur_2"
+        },
+        {
+          "id": "skchr_closur_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_closur"
+        }
+      ]
+    },
+    {
+      "name": "矩",
+      "skills": [
+        {
+          "id": "skchr_ju_1"
+        },
+        {
+          "id": "skchr_ju_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ju"
+        }
+      ]
+    },
+    {
+      "name": "拜松",
+      "skills": [
+        {
+          "id": "skcom_def_up[3]"
+        },
+        {
+          "id": "skchr_bison_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bison"
+        }
+      ]
+    },
+    {
+      "name": "褐果",
+      "skills": [
+        {
+          "id": "skchr_chnut_1"
+        },
+        {
+          "id": "skchr_chnut_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chnut"
+        }
+      ]
+    },
+    {
+      "name": "风丸",
+      "skills": [
+        {
+          "id": "skchr_kazema_1"
+        },
+        {
+          "id": "skchr_kazema_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_kazema"
+        }
+      ]
+    },
+    {
+      "name": "鸿雪",
+      "skills": [
+        {
+          "id": "skchr_bgsnow_1"
+        },
+        {
+          "id": "skchr_bgsnow_2"
+        },
+        {
+          "id": "skchr_bgsnow_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_bgsnow"
+        },
+        {
+          "id": "uniequip_002_bgsnow"
+        }
+      ]
+    },
+    {
+      "name": "仇白",
+      "skills": [
+        {
+          "id": "skchr_qiubai_1"
+        },
+        {
+          "id": "skchr_qiubai_2"
+        },
+        {
+          "id": "skchr_qiubai_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_qiubai"
+        },
+        {
+          "id": "uniequip_003_qiubai"
+        }
+      ]
+    },
+    {
+      "name": "星极",
+      "skills": [
+        {
+          "id": "skchr_astesi_1"
+        },
+        {
+          "id": "skchr_astesi_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_astesi"
+        }
+      ]
+    },
+    {
+      "name": "焰尾",
+      "skills": [
+        {
+          "id": "skchr_flamtl_1"
+        },
+        {
+          "id": "skchr_flamtl_2"
+        },
+        {
+          "id": "skchr_flamtl_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_flamtl"
+        },
+        {
+          "id": "uniequip_002_flamtl"
+        }
+      ]
+    },
+    {
+      "name": "瑰盐",
+      "skills": [
+        {
+          "id": "skchr_rosesa_1"
+        },
+        {
+          "id": "skchr_rosesa_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_rosesa"
+        }
+      ]
+    },
+    {
+      "name": "烈夏",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_leto_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_leto"
+        }
+      ]
+    },
+    {
+      "name": "至简",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_malist_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_malist"
+        }
+      ]
+    },
+    {
+      "name": "陨星",
+      "skills": [
+        {
+          "id": "skchr_meteo_1"
+        },
+        {
+          "id": "skchr_meteo_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_meteo"
+        }
+      ]
+    },
+    {
+      "name": "机械师",
+      "skills": [
+        {
+          "id": "skchr_mcnist_1"
+        },
+        {
+          "id": "skchr_mcnist_2"
+        },
+        {
+          "id": "skchr_mcnist_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mcnist"
+        }
+      ]
+    },
+    {
+      "name": "异客",
+      "skills": [
+        {
+          "id": "skchr_pasngr_1"
+        },
+        {
+          "id": "skchr_pasngr_2"
+        },
+        {
+          "id": "skchr_pasngr_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_pasngr"
+        },
+        {
+          "id": "uniequip_002_pasngr"
+        },
+        {
+          "id": "uniequip_003_pasngr"
+        }
+      ]
+    },
+    {
+      "name": "塔露拉",
+      "skills": [
+        {
+          "id": "skchr_oxi_1"
+        },
+        {
+          "id": "skchr_oxi_2"
+        },
+        {
+          "id": "skchr_oxi_3"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "真理",
+      "skills": [
+        {
+          "id": "skchr_glassb_1"
+        },
+        {
+          "id": "skchr_glassb_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_glassb"
+        }
+      ]
+    },
+    {
+      "name": "奥尔佳",
+      "skills": [
+        {
+          "id": "skchr_alga_1"
+        },
+        {
+          "id": "skchr_alga_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_alga"
+        }
+      ]
+    },
+    {
+      "name": "安洁莉娜",
+      "skills": [
+        {
+          "id": "skchr_aglina_1"
+        },
+        {
+          "id": "skchr_aglina_2"
+        },
+        {
+          "id": "skchr_aglina_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_aglina"
+        },
+        {
+          "id": "uniequip_003_aglina"
+        },
+        {
+          "id": "uniequip_002_aglina"
+        }
+      ]
+    },
+    {
+      "name": "夕",
+      "skills": [
+        {
+          "id": "skchr_dusk_1"
+        },
+        {
+          "id": "skchr_dusk_2"
+        },
+        {
+          "id": "skchr_dusk_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_dusk"
+        },
+        {
+          "id": "uniequip_002_dusk"
+        },
+        {
+          "id": "uniequip_003_dusk"
+        }
+      ]
+    },
+    {
+      "name": "冻河",
+      "skills": [
+        {
+          "id": "skchr_tocka_1"
+        },
+        {
+          "id": "skchr_tocka_2"
+        },
+        {
+          "id": "skchr_tocka_3"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "青枳",
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]"
+        },
+        {
+          "id": "skchr_buildr_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_buildr"
+        }
+      ]
+    },
+    {
+      "name": "铸铁",
+      "skills": [
+        {
+          "id": "skcom_heal_self[3]"
+        },
+        {
+          "id": "skchr_sidero_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sidero"
+        }
+      ]
+    },
+    {
+      "name": "华法琳",
+      "skills": [
+        {
+          "id": "skchr_bldsk_1"
+        },
+        {
+          "id": "skchr_bldsk_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bldsk"
+        }
+      ]
+    },
+    {
+      "name": "拉普兰德",
+      "skills": [
+        {
+          "id": "skchr_whitew_1"
+        },
+        {
+          "id": "skchr_whitew_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_whitew"
+        }
+      ]
+    },
+    {
+      "name": "蕾缪安",
+      "skills": [
+        {
+          "id": "skchr_lemuen_1"
+        },
+        {
+          "id": "skchr_lemuen_2"
+        },
+        {
+          "id": "skchr_lemuen_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lemuen"
+        }
+      ]
+    },
+    {
+      "name": "星源",
+      "skills": [
+        {
+          "id": "skchr_halo_1"
+        },
+        {
+          "id": "skchr_halo_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_halo"
+        }
+      ]
+    },
+    {
+      "name": "寒檀",
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_sntlla_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sntlla"
+        }
+      ]
+    },
+    {
+      "name": "地灵",
+      "skills": [
+        {
+          "id": "skcom_atk_up[2]"
+        },
+        {
+          "id": "skchr_skgoat_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_skgoat"
+        }
+      ]
+    },
+    {
+      "name": "缪尔赛思",
+      "skills": [
+        {
+          "id": "skchr_mlyss_1"
+        },
+        {
+          "id": "skchr_mlyss_2"
+        },
+        {
+          "id": "skchr_mlyss_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_mlyss"
+        },
+        {
+          "id": "uniequip_002_mlyss"
+        },
+        {
+          "id": "uniequip_003_mlyss"
+        }
+      ]
+    },
+    {
+      "name": "阿米娅",
+      "skills": [
+        {
+          "id": "skchr_amiya3_1"
+        },
+        {
+          "id": "skchr_amiya3_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_amiya3"
+        }
+      ]
+    },
+    {
+      "name": "安哲拉",
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_cuttle_2"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cuttle"
+        }
+      ]
+    },
+    {
+      "name": "帕拉斯",
+      "skills": [
+        {
+          "id": "skchr_pallas_1"
+        },
+        {
+          "id": "skchr_pallas_2"
+        },
+        {
+          "id": "skchr_pallas_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pallas"
+        },
+        {
+          "id": "uniequip_003_pallas"
+        }
+      ]
+    },
+    {
+      "name": "暴躁铁皮",
+      "skills": [
+        {
+          "id": "skchr_acrbot_1"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acrbot"
+        }
+      ]
+    },
+    {
+      "name": "凯尔希",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_kalts_1"
+        },
+        {
+          "id": "skchr_kalts_2"
+        },
+        {
+          "id": "skchr_kalts_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_kalts"
+        },
+        {
+          "id": "uniequip_002_kalts"
+        },
+        {
+          "id": "uniequip_003_kalts"
+        }
+      ]
+    },
+    {
+      "name": "陈",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_chen_1"
+        },
+        {
+          "id": "skchr_chen_2"
+        },
+        {
+          "id": "skchr_chen_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen"
+        },
+        {
+          "id": "uniequip_003_chen"
+        }
+      ]
+    },
+    {
+      "name": "煌",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_huang_1"
+        },
+        {
+          "id": "skchr_huang_2"
+        },
+        {
+          "id": "skchr_huang_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_huang"
+        },
+        {
+          "id": "uniequip_003_huang"
+        }
+      ]
+    },
+    {
+      "name": "假日威龙陈",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_chen2_1"
+        },
+        {
+          "id": "skchr_chen2_2"
+        },
+        {
+          "id": "skchr_chen2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen2"
+        },
+        {
+          "id": "uniequip_003_chen2"
+        }
+      ]
+    },
+    {
+      "name": "予愿安洁莉娜",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_aglna2_1"
+        },
+        {
+          "id": "skchr_aglna2_2"
+        },
+        {
+          "id": "skchr_aglna2_3"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "焰影苇草",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_reed2_2"
+        },
+        {
+          "id": "skchr_reed2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_reed2"
+        },
+        {
+          "id": "uniequip_003_reed2"
+        }
+      ]
+    },
+    {
+      "name": "百炼嘉维尔",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_gvial2_1"
+        },
+        {
+          "id": "skchr_gvial2_2"
+        },
+        {
+          "id": "skchr_gvial2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_gvial2"
+        },
+        {
+          "id": "uniequip_002_gvial2"
+        },
+        {
+          "id": "uniequip_003_gvial2"
+        }
+      ]
+    },
+    {
+      "name": "缄默德克萨斯",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_texas2_1"
+        },
+        {
+          "id": "skchr_texas2_2"
+        },
+        {
+          "id": "skchr_texas2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_texas2"
+        },
+        {
+          "id": "uniequip_002_texas2"
+        }
+      ]
+    },
+    {
+      "name": "麒麟R夜刀",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_yato2_1"
+        },
+        {
+          "id": "skchr_yato2_2"
+        },
+        {
+          "id": "skchr_yato2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_yato2"
+        },
+        {
+          "id": "uniequip_003_yato2"
+        }
+      ]
+    },
+    {
+      "name": "圣约送葬人",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_excu2_1"
+        },
+        {
+          "id": "skchr_excu2_2"
+        },
+        {
+          "id": "skchr_excu2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_excu2"
+        },
+        {
+          "id": "uniequip_003_excu2"
+        }
+      ]
+    },
+    {
+      "name": "琳琅诗怀雅",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_swire2_1"
+        },
+        {
+          "id": "skchr_swire2_2"
+        },
+        {
+          "id": "skchr_swire2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_swire2"
+        },
+        {
+          "id": "uniequip_002_swire2"
+        },
+        {
+          "id": "uniequip_003_swire2"
+        }
+      ]
+    },
+    {
+      "name": "维什戴尔",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_wisdel_1"
+        },
+        {
+          "id": "skchr_wisdel_2"
+        },
+        {
+          "id": "skchr_wisdel_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wisdel"
+        }
+      ]
+    },
+    {
+      "name": "能天使",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_angel_1"
+        },
+        {
+          "id": "skchr_angel_2"
+        },
+        {
+          "id": "skchr_angel_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_angel"
+        },
+        {
+          "id": "uniequip_003_angel"
+        }
+      ]
+    },
+    {
+      "name": "新约能天使",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_angel2_1"
+        },
+        {
+          "id": "skchr_angel2_2"
+        },
+        {
+          "id": "skchr_angel2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_angel2"
+        }
+      ]
+    },
+    {
+      "name": "司霆惊蛰",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_leizi2_1"
+        },
+        {
+          "id": "skchr_leizi2_2"
+        },
+        {
+          "id": "skchr_leizi2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_leizi2"
+        }
+      ]
+    },
+    {
+      "name": "斩业星熊",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_hsgma2_1"
+        },
+        {
+          "id": "skchr_hsgma2_2"
+        },
+        {
+          "id": "skchr_hsgma2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_hsgma2"
+        }
+      ]
+    },
+    {
+      "name": "焰狐龙梓兰",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_orchd2_1"
+        },
+        {
+          "id": "skchr_orchd2_2"
+        },
+        {
+          "id": "skchr_orchd2_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_orchd2"
+        }
+      ]
+    },
+    {
+      "name": "赤刃明霄陈",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_chen3_1"
+        },
+        {
+          "id": "skchr_chen3_2"
+        },
+        {
+          "id": "skchr_chen3_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chen3"
+        }
+      ]
+    },
+    {
+      "name": "凯尔希·思衡托",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_kalts2_1"
+        },
+        {
+          "id": "skchr_kalts2_2"
+        },
+        {
+          "id": "skchr_kalts2_3"
+        }
+      ],
+      "modules": []
+    },
+    {
+      "name": "推进之王",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]"
+        },
+        {
+          "id": "skchr_siege_2"
+        },
+        {
+          "id": "skchr_siege_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_siege"
+        },
+        {
+          "id": "uniequip_003_siege"
+        }
+      ]
+    },
+    {
+      "name": "伊芙利特",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ifrit_1"
+        },
+        {
+          "id": "skchr_ifrit_2"
+        },
+        {
+          "id": "skchr_ifrit_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_ifrit"
+        },
+        {
+          "id": "uniequip_002_ifrit"
+        }
+      ]
+    },
+    {
+      "name": "星熊",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_hsguma_1"
+        },
+        {
+          "id": "skchr_hsguma_2"
+        },
+        {
+          "id": "skchr_hsguma_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_hsguma"
+        },
+        {
+          "id": "uniequip_002_hsguma"
+        }
+      ]
+    },
+    {
+      "name": "闪灵",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_shining_1"
+        },
+        {
+          "id": "skchr_shining_2"
+        },
+        {
+          "id": "skchr_shining_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_shining"
+        },
+        {
+          "id": "uniequip_002_shining"
+        }
+      ]
+    },
+    {
+      "name": "弑君者",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_crosly_1"
+        },
+        {
+          "id": "skchr_crosly_2"
+        },
+        {
+          "id": "skchr_crosly_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_crosly"
+        },
+        {
+          "id": "uniequip_003_crosly"
+        }
+      ]
+    },
+    {
+      "name": "银灰",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_svrash_1"
+        },
+        {
+          "id": "skchr_svrash_2"
+        },
+        {
+          "id": "skchr_svrash_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_svrash"
+        }
+      ]
+    },
+    {
+      "name": "早露",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_poca_2"
+        },
+        {
+          "id": "skchr_poca_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_poca"
+        },
+        {
+          "id": "uniequip_003_poca"
+        }
+      ]
+    },
+    {
+      "name": "提丰",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_typhon_2"
+        },
+        {
+          "id": "skchr_typhon_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_typhon"
+        },
+        {
+          "id": "uniequip_002_typhon"
+        },
+        {
+          "id": "uniequip_003_typhon"
+        }
+      ]
+    },
+    {
+      "name": "刻俄柏",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_cerber_1"
+        },
+        {
+          "id": "skchr_cerber_2"
+        },
+        {
+          "id": "skchr_cerber_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cerber"
+        },
+        {
+          "id": "uniequip_003_cerber"
+        }
+      ]
+    },
+    {
+      "name": "年",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_nian_1"
+        },
+        {
+          "id": "skchr_nian_2"
+        },
+        {
+          "id": "skchr_nian_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nian"
+        },
+        {
+          "id": "uniequip_003_nian"
+        }
+      ]
+    },
+    {
+      "name": "令",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ling_1"
+        },
+        {
+          "id": "skchr_ling_2"
+        },
+        {
+          "id": "skchr_ling_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ling"
+        }
+      ]
+    },
+    {
+      "name": "重岳",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_chyue_1"
+        },
+        {
+          "id": "skchr_chyue_2"
+        },
+        {
+          "id": "skchr_chyue_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_chyue"
+        },
+        {
+          "id": "uniequip_003_chyue"
+        }
+      ]
+    },
+    {
+      "name": "望",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_wang_1"
+        },
+        {
+          "id": "skchr_wang_2"
+        },
+        {
+          "id": "skchr_wang_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_wang"
+        }
+      ]
+    },
+    {
+      "name": "莫斯提马",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_atk_up[3]"
+        },
+        {
+          "id": "skchr_mostma_2"
+        },
+        {
+          "id": "skchr_mostma_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_mostma"
+        },
+        {
+          "id": "uniequip_002_mostma"
+        }
+      ]
+    },
+    {
+      "name": "风笛",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_quickattack[3]"
+        },
+        {
+          "id": "skchr_bpipe_2"
+        },
+        {
+          "id": "skchr_bpipe_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_bpipe"
+        },
+        {
+          "id": "uniequip_003_bpipe"
+        }
+      ]
+    },
+    {
+      "name": "阿",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_haak_1"
+        },
+        {
+          "id": "skchr_haak_2"
+        },
+        {
+          "id": "skchr_haak_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_haak"
+        },
+        {
+          "id": "uniequip_003_haak"
+        }
+      ]
+    },
+    {
+      "name": "塑心",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_cello_1"
+        },
+        {
+          "id": "skchr_cello_2"
+        },
+        {
+          "id": "skchr_cello_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_cello"
+        },
+        {
+          "id": "uniequip_003_cello"
+        }
+      ]
+    },
+    {
+      "name": "麦哲伦",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_mgllan_1"
+        },
+        {
+          "id": "skchr_mgllan_2"
+        },
+        {
+          "id": "skchr_mgllan_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mgllan"
+        },
+        {
+          "id": "uniequip_003_mgllan"
+        }
+      ]
+    },
+    {
+      "name": "傀影",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_phatom_1"
+        },
+        {
+          "id": "skchr_phatom_2"
+        },
+        {
+          "id": "skchr_phatom_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_phatom"
+        },
+        {
+          "id": "uniequip_002_phatom"
+        },
+        {
+          "id": "uniequip_003_phatom"
+        }
+      ]
+    },
+    {
+      "name": "菲亚梅塔",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_phenxi_1"
+        },
+        {
+          "id": "skchr_phenxi_2"
+        },
+        {
+          "id": "skchr_phenxi_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_phenxi"
+        },
+        {
+          "id": "uniequip_003_phenxi"
+        },
+        {
+          "id": "uniequip_002_phenxi"
+        }
+      ]
+    },
+    {
+      "name": "泥岩",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_def_up[3]"
+        },
+        {
+          "id": "skchr_mudrok_2"
+        },
+        {
+          "id": "skchr_mudrok_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_mudrok"
+        },
+        {
+          "id": "uniequip_003_mudrok"
+        }
+      ]
+    },
+    {
+      "name": "黑",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_shwaz_1"
+        },
+        {
+          "id": "skchr_shwaz_2"
+        },
+        {
+          "id": "skchr_shwaz_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_shwaz"
+        },
+        {
+          "id": "uniequip_003_shwaz"
+        }
+      ]
+    },
+    {
+      "name": "嵯峨",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_charge_cost[3]"
+        },
+        {
+          "id": "skchr_saga_2"
+        },
+        {
+          "id": "skchr_saga_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_saga"
+        },
+        {
+          "id": "uniequip_002_saga"
+        }
+      ]
+    },
+    {
+      "name": "澄闪",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_gdglow_1"
+        },
+        {
+          "id": "skchr_gdglow_2"
+        },
+        {
+          "id": "skchr_gdglow_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_gdglow"
+        },
+        {
+          "id": "uniequip_003_gdglow"
+        }
+      ]
+    },
+    {
+      "name": "止颂",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_lessng_1"
+        },
+        {
+          "id": "skchr_lessng_2"
+        },
+        {
+          "id": "skchr_lessng_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lessng"
+        },
+        {
+          "id": "uniequip_003_lessng"
+        }
+      ]
+    },
+    {
+      "name": "号角",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_horn_1"
+        },
+        {
+          "id": "skchr_horn_2"
+        },
+        {
+          "id": "skchr_horn_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_004_horn"
+        },
+        {
+          "id": "uniequip_002_horn"
+        },
+        {
+          "id": "uniequip_003_horn"
+        }
+      ]
+    },
+    {
+      "name": "多萝西",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_doroth_1"
+        },
+        {
+          "id": "skchr_doroth_2"
+        },
+        {
+          "id": "skchr_doroth_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_doroth"
+        },
+        {
+          "id": "uniequip_002_doroth"
+        }
+      ]
+    },
+    {
+      "name": "缇缇",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_titi_1"
+        },
+        {
+          "id": "skchr_titi_2"
+        },
+        {
+          "id": "skchr_titi_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_titi"
+        }
+      ]
+    },
+    {
+      "name": "林",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_lin_1"
+        },
+        {
+          "id": "skchr_lin_2"
+        },
+        {
+          "id": "skchr_lin_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_lin"
+        },
+        {
+          "id": "uniequip_003_lin"
+        }
+      ]
+    },
+    {
+      "name": "伊内丝",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ines_1"
+        },
+        {
+          "id": "skchr_ines_2"
+        },
+        {
+          "id": "skchr_ines_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ines"
+        }
+      ]
+    },
+    {
+      "name": "莱伊",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ray_1"
+        },
+        {
+          "id": "skchr_ray_2"
+        },
+        {
+          "id": "skchr_ray_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ray"
+        },
+        {
+          "id": "uniequip_003_ray"
+        }
+      ]
+    },
+    {
+      "name": "左乐",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_zuole_1"
+        },
+        {
+          "id": "skchr_zuole_2"
+        },
+        {
+          "id": "skchr_zuole_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_zuole"
+        },
+        {
+          "id": "uniequip_003_zuole"
+        }
+      ]
+    },
+    {
+      "name": "艾拉",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ela_1"
+        },
+        {
+          "id": "skchr_ela_2"
+        },
+        {
+          "id": "skchr_ela_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ela"
+        }
+      ]
+    },
+    {
+      "name": "阿斯卡纶",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ascln_1"
+        },
+        {
+          "id": "skchr_ascln_2"
+        },
+        {
+          "id": "skchr_ascln_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_ascln"
+        },
+        {
+          "id": "uniequip_003_ascln"
+        }
+      ]
+    },
+    {
+      "name": "娜仁图亚",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_narant_1"
+        },
+        {
+          "id": "skchr_narant_2"
+        },
+        {
+          "id": "skchr_narant_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_narant"
+        },
+        {
+          "id": "uniequip_003_narant"
+        }
+      ]
+    },
+    {
+      "name": "玛露西尔",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_marcil_1"
+        },
+        {
+          "id": "skchr_marcil_2"
+        },
+        {
+          "id": "skchr_marcil_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_marcil"
+        }
+      ]
+    },
+    {
+      "name": "丰川祥子",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_oblvns_1"
+        },
+        {
+          "id": "skchr_oblvns_2"
+        },
+        {
+          "id": "skchr_oblvns_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_oblvns"
+        }
+      ]
+    },
+    {
+      "name": "信仰搅拌机",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_rmixer_1"
+        },
+        {
+          "id": "skchr_rmixer_2"
+        },
+        {
+          "id": "skchr_rmixer_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_rmixer"
+        },
+        {
+          "id": "uniequip_003_rmixer"
+        }
+      ]
+    },
+    {
+      "name": "电弧",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_radian_1"
+        },
+        {
+          "id": "skchr_radian_2"
+        },
+        {
+          "id": "skchr_radian_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_radian"
+        },
+        {
+          "id": "uniequip_003_radian"
+        }
+      ]
+    },
+    {
+      "name": "娜斯提",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_nasti_1"
+        },
+        {
+          "id": "skchr_nasti_2"
+        },
+        {
+          "id": "skchr_nasti_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_nasti"
+        }
+      ]
+    },
+    {
+      "name": "结城理",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_makoto_1"
+        },
+        {
+          "id": "skchr_makoto_2"
+        },
+        {
+          "id": "skchr_makoto_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_makoto"
+        }
+      ]
+    },
+    {
+      "name": "谬因",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_aphris_1"
+        },
+        {
+          "id": "skchr_aphris_2"
+        },
+        {
+          "id": "skchr_aphris_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_aphris"
+        }
+      ]
+    },
+    {
+      "name": "珊比",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_thumpy_1"
+        },
+        {
+          "id": "skchr_thumpy_2"
+        },
+        {
+          "id": "skchr_thumpy_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_thumpy"
+        }
+      ]
+    },
+    {
+      "name": "国度",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_dminon_1"
+        },
+        {
+          "id": "skchr_dminon_2"
+        },
+        {
+          "id": "skchr_dminon_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_dminon"
+        }
+      ]
+    },
+    {
+      "name": "死芒",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_necras_1"
+        },
+        {
+          "id": "skchr_necras_2"
+        },
+        {
+          "id": "skchr_necras_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_necras"
+        }
+      ]
+    },
+    {
+      "name": "灰烬",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_ash_1"
+        },
+        {
+          "id": "skchr_ash_2"
+        },
+        {
+          "id": "skchr_ash_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_003_ash"
+        },
+        {
+          "id": "uniequip_002_ash"
+        }
+      ]
+    },
+    {
+      "name": "琴柳",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skcom_assist_cost[3]"
+        },
+        {
+          "id": "skchr_sleach_2"
+        },
+        {
+          "id": "skchr_sleach_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sleach"
+        },
+        {
+          "id": "uniequip_003_sleach"
+        }
+      ]
+    },
+    {
+      "name": "郁金香",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acpion_1"
+        },
+        {
+          "id": "skchr_acpion_2"
+        },
+        {
+          "id": "skchr_acpion_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acpion"
+        }
+      ]
+    },
+    {
+      "name": "Sharp",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acguad_1"
+        },
+        {
+          "id": "skchr_acguad_2"
+        },
+        {
+          "id": "skchr_acguad_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acguad"
+        }
+      ]
+    },
+    {
+      "name": "Mechanist",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acfend_1"
+        },
+        {
+          "id": "skchr_acfend_2"
+        },
+        {
+          "id": "skchr_acfend_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acfend"
+        }
+      ]
+    },
+    {
+      "name": "Stormeye",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acnipe_1"
+        },
+        {
+          "id": "skchr_acnipe_2"
+        },
+        {
+          "id": "skchr_acnipe_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acnipe"
+        }
+      ]
+    },
+    {
+      "name": "Pith",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_accast_1"
+        },
+        {
+          "id": "skchr_accast_2"
+        },
+        {
+          "id": "skchr_accast_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_accast"
+        }
+      ]
+    },
+    {
+      "name": "Touch",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acmedc_1"
+        },
+        {
+          "id": "skchr_acmedc_2"
+        },
+        {
+          "id": "skchr_acmedc_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acmedc"
+        }
+      ]
+    },
+    {
+      "name": "Raidian",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acsupo_1"
+        },
+        {
+          "id": "skchr_acsupo_2"
+        },
+        {
+          "id": "skchr_acsupo_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acsupo"
+        }
+      ]
+    },
+    {
+      "name": "Misery",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_acspec_1"
+        },
+        {
+          "id": "skchr_acspec_2"
+        },
+        {
+          "id": "skchr_acspec_3"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_acspec"
+        }
+      ]
+    },
+    {
+      "name": "领主·Sharp",
+      "diy": true,
+      "skills": [
+        {
+          "id": "skchr_sharp2_1"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_sharp2"
+        }
+      ]
     }
   ],
   "equipment": [

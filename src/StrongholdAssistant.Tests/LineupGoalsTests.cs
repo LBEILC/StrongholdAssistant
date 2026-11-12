@@ -55,7 +55,14 @@ public sealed class LineupGoalsTests : IDisposable
         await api.SaveSessionAsync(new(lineup.Id, ["塞雷娅"], ["初雪", "夜莺", "暴躁铁皮"]));
         api.SetOperatorBanned("Mon3tr", true);
         Assert.Equal(new[] { "初雪", "夜莺" }, api.TrackedNames);
-        Assert.Equal(new[] { "机械师", "塔露拉", "缪尔赛思", "塞雷娅" }.Order(), api.SecondaryNames.Order());
+        // 当期目录已加入自选干员；候选集合跟随目录，不能固定为旧版的四人。
+        var expected = api.Catalog.GetProperty("operators").EnumerateArray()
+            .Where(o => o.GetProperty("obtain").ValueKind == JsonValueKind.Null
+                && o.GetProperty("core").EnumerateArray().Concat(o.GetProperty("extra").EnumerateArray())
+                    .Any(c => c.GetString() == "empty"))
+            .Select(o => o.GetProperty("name").GetString()!)
+            .Except(["Mon3tr", "初雪", "夜莺"]);
+        Assert.Equal(expected.Order(), api.SecondaryNames.Order());
         foreach (var name in new[] { "Mon3tr", "初雪", "夜莺", "暴躁铁皮" })
             Assert.DoesNotContain(name, api.SecondaryNames);
         var items = new[] { new ShopItem { Name = "初雪" }, new ShopItem { Name = "机械师" } };

@@ -44,6 +44,11 @@ public partial class MainWindow
             && (!double.IsFinite(offset.X) || !double.IsFinite(offset.Y)))
             throw new JsonException("侧栏设置无效。");
         _dock = _dock with { Width = Math.Clamp(_dock.Width, 320, 460) };
+        if (_dock.WorkbenchBounds is { } workbench
+            && (!double.IsFinite(workbench.Left) || !double.IsFinite(workbench.Top)
+                || !double.IsFinite(workbench.Width) || !double.IsFinite(workbench.Height)
+                || workbench.Width <= 0 || workbench.Height <= 0))
+            throw new JsonException("工作台位置无效。");
         ApplyScale(null);
         if (!_api.Settings.FollowGame && _dock.FreeBounds is { } free)
         {
@@ -68,19 +73,33 @@ public partial class MainWindow
             {
                 _scanner.SetBanScreenDetectionPaused(status.Busy || status.Continuous == true || _closing);
                 if (status.Ok == true) _scanner.MarkInformationRecorded();
+                Dispatcher.Invoke(() =>
+                {
+                    bool recognizing = status.Busy || status.Continuous == true;
+                    if (_capturingInformation == recognizing) return;
+                    _capturingInformation = recognizing;
+                    if (recognizing)
+                    {
+                        _overlay.Hide();
+                        // 开始识别时等待覆盖层消失，持续识别期间不再逐帧隐藏。
+                        User32.DwmFlush();
+                    }
+                    else RefreshShopOverlay();
+                });
             }
             Dispatcher.Invoke(() => Browser.CoreWebView2.PostWebMessageAsJson(
                 JsonSerializer.Serialize(new { @event = name, data = value }, HostApi.JsonOptions)));
         };
         _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         _source.AddHook(OnWindowMessage);
+        InitializeHotkey();
+        LocationChanged += (_, _) => RememberWorkbenchBounds();
+        SizeChanged += (_, _) => RememberWorkbenchBounds();
     }
 
     // OCR 加载和预热较慢，放在界面开始加载之后
     private async Task InitializeGameAsync()
     {
-        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial);
-        _capture.Connection.Changed += _ => Dispatcher.BeginInvoke(PublishConnection);
         var data = Path.Combine(AppContext.BaseDirectory, "data");
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
@@ -95,6 +114,7 @@ public partial class MainWindow
             Dispatcher.BeginInvoke(() => { _shopItems = items; RefreshShopOverlay(); });
         };
         _api.ShopChanged += RefreshShopOverlay;
+        _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
         await _api.InitializeRecognitionAsync(data, _ocr, async () =>
         {
             await _scanner.WaitForIdleAsync();
@@ -103,6 +123,13 @@ public partial class MainWindow
         _scanner.AwaitingDetail = () => _api.Match.AwaitingDetail;
         _scanner.BanScreenDetected += solo => _automaticScan = Dispatcher.InvokeAsync(() => RecordAutomaticallyAsync(solo)).Task.Unwrap();
         _scanner.DetailScreenDetected += () => _automaticScan = Dispatcher.InvokeAsync(_api.HandleDetailAsync).Task.Unwrap();
+    }
+
+    // 跟随定位不等待 OCR 预热；首次发现和后续移动共用 UpdateGame。
+    private void InitializeGameTracking()
+    {
+        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial);
+        _capture.Connection.Changed += _ => Dispatcher.BeginInvoke(PublishConnection);
         _tracker.GameWindowMoved += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowPolled += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowLost += () => Dispatcher.BeginInvoke(() =>
@@ -119,7 +146,7 @@ public partial class MainWindow
         });
         _tracker.GameWindowMinimizedChanged += minimized => Dispatcher.BeginInvoke(() =>
         {
-            if (_api.Settings.FollowGame) WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
+            if (!_workbench && _api.Settings.FollowGame) WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
             if (minimized) _overlay.Hide();
             if (!minimized && _tracker.CurrentGameRect is { } rect) UpdateGame(rect);
         });
@@ -149,8 +176,6 @@ public partial class MainWindow
             if (client is null) return (Allowed: false, Hidden: false, Sidebar: sidebar);
             bool hide = IsVisible && WindowGeometry.ShouldHideForCapture(
                 User32.ReadWindowRect(sidebar), client.Value, _collapsed);
-            _capturingInformation = true;
-            _overlay.Hide();
             if (hide)
             {
                 Hide();
@@ -168,8 +193,6 @@ public partial class MainWindow
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                _capturingInformation = false;
-                RefreshShopOverlay();
                 if (!before.Hidden || _closing) return;
                 var activated = ShowActivated;
                 ShowActivated = false;
@@ -187,7 +210,7 @@ public partial class MainWindow
         var client = _tracker.CurrentViewport;
         if (client is null) return;
         _lastClientRect = client;
-        if (!_api.Settings.FollowGame)
+        if (_workbench || !_api.Settings.FollowGame)
         {
             _overlayMode = false;
             ApplyScale(client.Value.Height);
@@ -235,10 +258,23 @@ public partial class MainWindow
 
     private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == User32.WM_HOTKEY && _hotkeyId != 0 && wParam.ToInt32() == _hotkeyId)
+        {
+            handled = true;
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+                Activate();
+                User32.SetForegroundWindow(hwnd);
+            }
+            else Browser.CoreWebView2?.PostWebMessageAsJson("{\"event\":\"hotkey\",\"data\":null}");
+            return IntPtr.Zero;
+        }
         if (message == User32.WM_ENTERSIZEMOVE) _moving = true;
         if (message == User32.WM_EXITSIZEMOVE)
         {
             _moving = false;
+            if (_workbench) { RememberWorkbenchBounds(); return IntPtr.Zero; }
             var rect = User32.ReadWindowRect(hwnd);
             var scale = User32.GetWindowDpiScale(hwnd);
             var placement = new SidePanelPlacement(rect.Left, rect.Top, rect.Width / scale, rect.Height / scale);
@@ -257,9 +293,20 @@ public partial class MainWindow
 
     private void ApplyScale(int? clientHeight)
     {
-        _uiScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, clientHeight,
+        _uiScale = _workbench ? _api.Settings.ScaleValue ?? _uiScale : WindowGeometry.UiScale(_api.Settings.ScaleValue, clientHeight,
             User32.GetWindowDpiScale(new WindowInteropHelper(this).Handle));
         MinWidth = 0;
+        if (_workbench)
+        {
+            MaxWidth = double.PositiveInfinity;
+            var minimum = WorkbenchGeometry.MinimumSize(CurrentWorkArea());
+            MinWidth = minimum.Width; MinHeight = minimum.Height;
+            ResizeMode = ResizeMode.CanResize;
+            if (Browser.CoreWebView2 is not null) Browser.ZoomFactor = _uiScale;
+            Topmost = _api.Settings.AlwaysOnTop;
+            return;
+        }
+        MinHeight = 0;
         MaxWidth = 460 * _uiScale;
         MinWidth = (_collapsed && _collapseUpHeight is null ? 48 : 320) * _uiScale;
         if (_api.Settings.FollowGame)
@@ -288,6 +335,7 @@ public partial class MainWindow
 
     private void SetCollapse(bool collapsed, double? upHeight)
     {
+        if (_workbench) return;
         if (!_collapsed && collapsed)
         {
             _expandedWidth = Width;
@@ -317,7 +365,7 @@ public partial class MainWindow
                     _capture.Connection.FindGameWindow();
             });
         }
-        if (followedBefore && !_api.Settings.FollowGame)
+        if (!_workbench && followedBefore && !_api.Settings.FollowGame)
         {
             RememberFreeBounds();
             _api.SettingsStore.SaveDock(_dock);
@@ -363,6 +411,7 @@ public partial class MainWindow
         await _scanner.WaitForIdleAsync();
         await _automaticScan;
         await _api!.WaitForRecordingAsync();
+        UnregisterHotkey();
         _source?.RemoveHook(OnWindowMessage);
         _overlay.Close();
         _canClose = true;

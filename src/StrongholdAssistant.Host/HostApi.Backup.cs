@@ -15,13 +15,16 @@ public sealed partial class HostApi
     private const string InvalidBackup = "这不是有效的备份文件，或者来自不兼容的版本。";
     private readonly Dictionary<string, BackupDocument> _backups = [];
     private sealed record BackupDocument(string Format, int Version, string AppVersion, DateTime ExportedAt,
-        SettingsDto Settings, LineupDto[] Lineups);
+        SettingsDto Settings, LineupDto[] Lineups)
+    {
+        public MatchRecord[] History { get; init; } = [];
+    }
 
     public async Task ExportBackupAsync(string path)
     {
         var version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0];
-        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings, await LineupsAsync());
+        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings, await LineupsAsync()) { History = History() };
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(backup, JsonOptions));
     }
 
@@ -36,6 +39,11 @@ public sealed partial class HostApi
                 || backup.Settings is null || backup.Lineups is null)
                 throw new ArgumentException(InvalidBackup);
             ValidateSettings(backup.Settings);
+            if (backup.History is null || backup.History.Any(r => r is null || string.IsNullOrEmpty(r.Id)
+                || !DateTimeOffset.TryParse(r.Time, out _) || (r.Local is null && r.Skland is null)
+                || r.Local is { } local && (local.Rounds is null || local.Covenants is null || local.BannedOperators is null
+                    || !DateTimeOffset.TryParse(local.LastSeenAt, out _))))
+                throw new ArgumentException(InvalidBackup);
             foreach (var lineup in backup.Lineups)
             {
                 if (lineup is null) throw new ArgumentException(InvalidBackup);
@@ -65,19 +73,8 @@ public sealed partial class HostApi
         if (mode == "replace")
             foreach (var lineup in await _lineups.LoadAllAsync()) await _lineups.DeleteAsync(lineup.Id);
         foreach (var input in backup.Lineups)
-        {
-            await _lineups.SaveAsync(new Lineup
-            {
-                Id = input.Id, Name = input.Name, Source = input.Source, Note = input.Note, Description = input.Description,
-                UpdatedAt = input.UpdatedAt, Goals = input.Goals, Equipment = input.Equipment, StrategyId = input.StrategyId,
-                Slots = input.Members.Select(m => new LineupSlot
-                {
-                    OperatorName = m.Name, Key = m.Key,
-                    Equipment = m.Equipment.DistinctBy(e => e.Name).ToArray(),
-                    TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform)
-                }).ToList()
-            }, preserveUpdatedAt: true);
-        }
+            await _lineups.SaveAsync(ApplyLineup(input, new Lineup { Id = input.Id }), preserveUpdatedAt: true);
+        MergeHistory(backup.History);
         var session = await SessionAsync();
         if (session.TargetLineupId is not null && !(await LineupsAsync()).Any(l => l.Id == session.TargetLineupId))
             await SaveSessionAsync(session with { TargetLineupId = null });

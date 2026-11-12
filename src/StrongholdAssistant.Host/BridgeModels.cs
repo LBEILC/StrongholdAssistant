@@ -7,11 +7,21 @@ public sealed record LineupMember(string Name,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Transform = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Key = null)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Elite { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Skill { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Module { get; init; }
     public ASPAssistant.Core.Models.MemberEquip[] Equipment { get; init; } = [];
 }
+public sealed record LineupStageDto(string Name, int FromRound, int ToRound,
+    ASPAssistant.Core.Models.CovenantGoal[] Goals, LineupMember[] Members, string[] Equipment);
 public sealed record LineupDto(string Id, string Name, LineupMember[] Members, string Source,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Note, DateTime UpdatedAt)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LineupStageDto[]? Stages { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Description { get; init; }
     public string? StrategyId { get; init; }
@@ -20,14 +30,21 @@ public sealed record LineupDto(string Id, string Name, LineupMember[] Members, s
 }
 public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[] Tracked)
 {
+    public int? Stage { get; init; }
     public string[] TrackedEquipment { get; init; } = [];
 }
+public sealed record CloudDeletedLineup(string Id, string At);
+public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedAt, string? PrefsAt, CloudDeletedLineup[] Deleted);
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
     public string GameSource { get; init; } = "auto";
     public string MumuSerial { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
+    public string ToggleHotkey { get; init; } = "Alt+S";
+    public bool ShareIncome { get; init; }
+    public CloudSyncState CloudSync { get; init; } = new(false, null, null, null, []);
     public string CollapseMode { get; init; } = "strip";
     public string[] FocusCovenants { get; init; } = [];
     public string[] FocusOperators { get; init; } = [];
@@ -35,6 +52,9 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     [JsonIgnore]
     public double? ScaleValue => UiScale.ValueKind == System.Text.Json.JsonValueKind.Number ? UiScale.GetDouble() : null;
 }
+public sealed record OperatorDefaults(
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Skill = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Module = null);
 public sealed record CovenantState(string Id, bool Incomplete);
 public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[] Covenants,
     string[] BannedOperators, string? BossId, string[] EnemyTypes,
@@ -45,6 +65,7 @@ public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[
     public bool Solo { get; init; }
     public bool AwaitingDetail { get; init; }
     public ASPAssistant.Core.Models.GameModeInfo? Mode { get; init; }
+    public Economy? Economy { get; init; }
 }
 public sealed record BanGroup(string Covenant, BanSlot[] Slots, bool Complete);
 public sealed record BanSlot(string? Name, int Tier, string[] Candidates,

@@ -41,7 +41,7 @@
       <a href={REPO + '/releases/latest'} target="_blank" rel="noopener">下载助手<Icon name="external" size={12} /></a>
       {#if session.ready}
         {#if session.me}
-          <a href="/me" use:link class="who" class:on={r.page === 'me'}><Icon name="user" size={15} />{session.me.nickname ?? '起个昵称'}</a>
+          <a href="/me" use:link class="who" class:on={r.page === 'me'}><Icon name="user" size={15} /><span class="nk">{session.me.nickname ?? '起个昵称'}</span></a>
         {:else}
           <a href="/login" use:link class="who" class:on={r.page === 'login'}>登录</a>
         {/if}
@@ -61,7 +61,7 @@
   {:else if r.page === 'me'}
     <MePage />
   {:else if r.page === 'new'}
-    <Editor />
+    {#key r.edit}<Editor edit={r.edit} />{/key}
   {:else if r.page === 'privacy'}
     <Privacy />
   {:else if r.page === 'admin'}
@@ -148,6 +148,7 @@
     padding: 0 10px;
     color: var(--fg-2);
     border-radius: var(--r-1);
+    white-space: nowrap;
   }
   nav a:hover {
     color: var(--fg-1);
@@ -158,6 +159,11 @@
   }
   nav .who {
     box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .nk {
+    max-width: 10em;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   main {
     flex: 1;
@@ -215,12 +221,22 @@
       inset 2px 0 0 var(--red),
       0 8px 24px rgb(0 0 0 / 0.5);
   }
+  /* 手机上顶栏放不下：标题只留图标，外链图标去掉，昵称最多显示 5 个字 */
   @media (max-width: 560px) {
-    .bt .term {
+    .bt {
       display: none;
     }
+    nav {
+      gap: 2px;
+    }
     nav a {
-      padding: 0 8px;
+      padding: 0 6px;
+    }
+    nav a > :global(.ri:last-child) {
+      display: none;
+    }
+    .nk {
+      max-width: 5em;
     }
   }
 </style>

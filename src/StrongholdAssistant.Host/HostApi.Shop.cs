@@ -16,6 +16,7 @@ public sealed partial class HostApi
     public IReadOnlyList<string> SecondaryNames => Volatile.Read(ref _secondaryNames);
     private SessionDto _trackingSession = new(null, [], []);
     private LineupDto? _trackingTarget;
+    private LineupDto? _trackingStage;
     public event Action? ShopChanged;
 
     public ShopReader CreateShopReader(IOcrEngine engine)
@@ -51,6 +52,7 @@ public sealed partial class HostApi
 
     public void SaveSettings(SettingsDto settings)
     {
+        settings = settings with { ToggleHotkey = Settings.ToggleHotkey };
         ValidateSettings(settings);
         var theme = Theme(settings.GameTheme);
         SettingsStore.SaveSettings(settings);
@@ -68,11 +70,13 @@ public sealed partial class HostApi
 
     private void RecomputeTracking()
     {
+        _trackingStage = _trackingTarget is { } target
+            ? TrackingStageView(target, _trackingSession.Stage, Match.Economy?.Round) : null;
         var names = _trackingSession.Tracked
             .Where(n => _operators.Any(o => o.Name == n && o.Obtain is null))
             .Concat(_trackingSession.TrackedEquipment)
             .Distinct().ToArray();
-        var goals = (_trackingTarget?.Goals ?? []).Select(g => CovenantName(g.Id)).ToHashSet();
+        var goals = (_trackingStage?.Goals ?? []).Select(g => CovenantName(g.Id)).ToHashSet();
         var secondary = _operators.Where(o => o.Obtain is null
             && o.CoreCovenants.Concat(o.AdditionalCovenants).Any(goals.Contains)
             && !Match.BannedOperators.Contains(o.Name)
@@ -82,6 +86,22 @@ public sealed partial class HostApi
         ShopChanged?.Invoke();
     }
 
+    // 与界面 stages.ts 的 currentStage、stageView 保持一致。
+    private static LineupDto TrackingStageView(LineupDto lineup, int? fixedStage, int? round)
+    {
+        var stages = lineup.Stages ?? [];
+        int index = fixedStage is { } stage && stage <= stages.Length ? stage
+            : round is { } value ? Array.FindIndex(stages, s => value >= s.FromRound && value <= s.ToRound) : -1;
+        if (index < 0) index = stages.Length;
+        var all = stages.Append(new LineupStageDto("", 0, 0, lineup.Goals, lineup.Members, lineup.Equipment)).ToArray();
+        var current = all[index];
+        var have = current.Members.Select(m => m.Name).ToHashSet();
+        var laterKeys = all.Skip(index + 1).SelectMany(s => s.Members)
+            .Where(m => m.Key == true && have.Add(m.Name))
+            .Select(m => new LineupMember(m.Name, m.Transform, true));
+        return lineup with { Goals = current.Goals, Members = [.. current.Members, .. laterKeys], Equipment = current.Equipment };
+    }
+
     public void UpdateShopTracking(IReadOnlyList<ShopItem> items)
     {
         var names = TrackedNames;
@@ -89,7 +109,7 @@ public sealed partial class HostApi
         foreach (var item in items)
         {
             item.IsTracked = names.Contains(item.Name);
-            item.IsKey = item.IsTracked && (_trackingTarget?.Members.Any(m =>
+            item.IsKey = item.IsTracked && (_trackingStage?.Members.Any(m =>
                 (m.Name == item.Name && m.Key == true)
                 || m.Equipment.Any(e => e.Name == item.Name && e.Priority)) ?? false);
             item.IsSecondary = secondary.Contains(item.Name);
@@ -105,9 +125,20 @@ public sealed partial class HostApi
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
+    public bool HotkeyFailed { get; set; }
+
+    public void SaveHotkey(string combo)
+    {
+        var settings = Settings with { ToggleHotkey = combo };
+        SettingsStore.SaveSettings(settings);
+        Settings = settings;
+        HotkeyFailed = false;
+    }
+
     private object AppInfo() => new
     {
         dataDir = DataDirectory,
+        hotkeyFailed = HotkeyFailed,
         version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0]
     };

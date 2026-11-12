@@ -4,7 +4,7 @@ export type Route =
   | { page: 'post'; id: string }
   | { page: 'login'; next: string }
   | { page: 'me' }
-  | { page: 'new' }
+  | { page: 'new'; edit: string | null }
   | { page: 'privacy' }
   | { page: 'admin' }
   | { page: 'notfound' }
@@ -17,7 +17,7 @@ function parse(): Route {
   if (m) return { page: 'post', id: decodeURIComponent(m[1]) }
   if (p === '/login') return { page: 'login', next: q.get('next') ?? '/me' }
   if (p === '/me') return { page: 'me' }
-  if (p === '/new') return { page: 'new' }
+  if (p === '/new') return { page: 'new', edit: q.get('edit') }
   if (p === '/privacy') return { page: 'privacy' }
   if (p === '/admin') return { page: 'admin' }
   return { page: 'notfound' }

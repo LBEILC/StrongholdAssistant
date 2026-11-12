@@ -20,6 +20,9 @@ public struct RECT
 
 public static class User32
 {
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmFlush();
+
     private delegate bool EnumWindowProc(IntPtr hwnd, IntPtr lParam);
 
     [DllImport("user32.dll")]

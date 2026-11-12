@@ -8,9 +8,9 @@
   import OpAvatar from '../components/OpAvatar.svelte'
   import Icon from '../components/Icon.svelte'
 
-  // 网页上新建阵容并发布。和助手编辑器同样的结构：目标盟约（点一次 I 档、再点 II 档、再点取消）、想抓的干员（关键、候选装备），
+  // 网页上新建阵容并发布，或保存到「我的阵容」（v0.7.0，跟着账号云同步到助手）；从「我的阵容」点编辑时 edit 是那套阵容的 id。和助手编辑器同样的结构：目标盟约（点一下选上，有 II 档的再点升 II 档，再点取消）、想抓的干员（关键、候选装备），
   // 通用装备、策略、简介。草稿存在本机浏览器里，去登录再回来不会丢
-  type Member = { name: string; key?: boolean; equipment?: { name: string; priority: boolean }[] }
+  type Member = { name: string; key?: boolean; elite?: boolean; skill?: string; module?: string; equipment?: { name: string; priority: boolean }[] }
   interface Draft {
     name: string
     goals: { id: string; level: 1 | 2 }[]
@@ -18,17 +18,36 @@
     equipment: string[]
     strategyId: string | null
     description: string
+    /** 回合阶段：网页上暂时只改成型阵容，阶段原样保留（助手里改） */
+    stages?: Lineup['stages']
   }
+  let { edit = null }: { edit?: string | null } = $props()
   const empty = (): Draft => ({ name: '', goals: [], members: [], equipment: [], strategyId: null, description: '' })
   function loadDraft(): Draft {
     try {
-      return { ...empty(), ...JSON.parse(localStorage.getItem('sa_draft') ?? '{}') }
+      const r: Draft = { ...empty(), ...JSON.parse(localStorage.getItem('sa_draft') ?? '{}') }
+      // 早先的草稿里可能有只有一档的盟约被点成了 II 档，降回 I 档
+      r.goals = r.goals.map((g) => ({ ...g, level: Math.min(g.level, cov(g.id).thresholds.length) as 1 | 2 }))
+      return r
     } catch {
       return empty()
     }
   }
-  let d = $state<Draft>(loadDraft())
+  let d = $state<Draft>(edit ? empty() : loadDraft())
+  // 编辑我的阵容：从云端取那一套；改的不进草稿
+  let loadingEdit = $state(!!edit)
+  if (edit)
+    api
+      .myLineups()
+      .then((ls) => {
+        const l = ls.find((c) => c.id === edit)?.data
+        if (!l) return (err = '这套阵容不在你的「我的阵容」里，可能已经删除了。')
+        d = { name: l.name, goals: l.goals as Draft['goals'], members: l.members, equipment: l.equipment, strategyId: l.strategyId, description: l.description ?? '', ...(l.stages?.length && { stages: l.stages }) }
+      })
+      .catch((e) => (err = e.message))
+      .finally(() => (loadingEdit = false))
   $effect(() => {
+    if (edit) return
     const s = JSON.stringify(d)
     try {
       localStorage.setItem('sa_draft', s)
@@ -41,25 +60,29 @@
   let paste = $state('')
   let pasteErr = $state('')
   function fromCode() {
+    // 网页读不了森空岛的页面，只有助手能读
+    if (/game\.skland\.com\/arknights\/stronghold-guide/.test(paste))
+      return (pasteErr = '森空岛的攻略链接要在卫戍协议助手里导入：「阵容 → 我的阵容 → 导入」里粘贴这个链接，导入后再发布到广场。')
     const r = decode(paste)
     if (!r.ok) return (pasteErr = r.error)
     const l = r.lineup
-    d = { name: l.name, goals: l.goals, members: l.members, equipment: l.equipment, strategyId: l.strategyId, description: d.description }
+    d = { name: l.name, goals: l.goals, members: l.members, equipment: l.equipment, strategyId: l.strategyId, description: d.description, ...(l.stages?.length && { stages: l.stages }) }
     paste = ''
     pasteErr = ''
     toast.show('已从分享码载入，可以接着改。')
   }
 
-  // 目标盟约
+  // 目标盟约：只有一档的（调和、独行、协防干员等）点一下选上、再点取消；有 II 档的 I → II → 取消
   const levelOf = (id: string) => d.goals.find((g) => g.id === id)?.level
+  const hasII = (id: string) => cov(id).thresholds.length >= 2
   function cycleGoal(id: string) {
     const lv = levelOf(id)
-    d.goals = !lv ? [...d.goals, { id, level: 1 }] : lv === 1 ? d.goals.map((g) => (g.id === id ? { ...g, level: 2 } : g)) : d.goals.filter((g) => g.id !== id)
+    d.goals = !lv ? [...d.goals, { id, level: 1 }] : lv === 1 && hasII(id) ? d.goals.map((g) => (g.id === id ? { ...g, level: 2 } : g)) : d.goals.filter((g) => g.id !== id)
   }
   const progress = $derived(
     d.goals.map((g) => {
       const have = d.members.filter((m) => [...op(m.name).core, ...op(m.name).extra].includes(g.id)).length
-      return { ...g, have, need: cov(g.id).thresholds[g.level - 1] ?? have }
+      return { ...g, have, need: cov(g.id).thresholds[g.level - 1] }
     }),
   )
   const autoName = $derived(d.goals.slice(0, 3).map((g) => cov(g.id).name + (g.level === 2 ? ' II' : '')).join(' · ') || '未命名阵容')
@@ -97,6 +120,38 @@
     if (sel) tab = 'eq'
   }
 
+  const toLineup = (id: string): Lineup => ({
+    id,
+    name: d.name.trim() || autoName,
+    goals: d.goals,
+    members: $state.snapshot(d.members),
+    equipment: d.equipment,
+    strategyId: d.strategyId,
+    ...(d.stages?.length && { stages: $state.snapshot(d.stages) }),
+    ...(d.description.trim() && { description: d.description.trim() }),
+    source: 'user',
+    updatedAt: new Date().toISOString(),
+  })
+
+  // 保存到我的阵容（v0.7.0）：推一条到云端；云端那套更新（助手刚同步过）就不覆盖
+  async function saveMine() {
+    if (!session.me) return router.go(`/login?next=${encodeURIComponent(location.pathname + location.search)}`)
+    busy = true
+    err = ''
+    try {
+      const l = toLineup(edit ?? crypto.randomUUID().replace(/-/g, ''))
+      const r = await api.sync({ since: new Date().toISOString(), lineups: [{ id: l.id, data: l, updatedAt: l.updatedAt, deleted: false }] })
+      if (r.conflicts.length) return (err = '云端有更新的版本（可能助手刚同步过），刷新页面后再改。')
+      if (!edit) d = empty()
+      toast.show('已保存到我的阵容。助手里打开「同步我的阵容和偏好」就能用。')
+      router.go('/me')
+    } catch (e) {
+      err = (e as Error).message
+    } finally {
+      busy = false
+    }
+  }
+
   // 发布
   let busy = $state(false)
   let err = $state('')
@@ -106,17 +161,7 @@
     busy = true
     err = ''
     try {
-      const l: Lineup = {
-        id: '',
-        name: d.name.trim() || autoName,
-        goals: d.goals,
-        members: $state.snapshot(d.members),
-        equipment: d.equipment,
-        strategyId: d.strategyId,
-        source: 'user',
-        updatedAt: new Date().toISOString(),
-      }
-      const p = await api.publish(encode(l), d.description)
+      const p = await api.publish(encode(toLineup('')), d.description)
       d = empty()
       toast.show('发布成功。')
       router.go(`/p/${p.id}`)
@@ -143,14 +188,14 @@
   <div class="cols">
     <div class="left">
       <section>
-        <h2 class="sec-h">目标盟约<small>点一次 I 档，再点 II 档，再点取消</small></h2>
+        <h2 class="sec-h">目标盟约<small>点一下选上，有 II 档的再点升 II 档，再点取消</small></h2>
         <div class="goals">
           {#each covenants as c (c.id)}
             {@const lv = levelOf(c.id)}
             <button class="gp" class:on={!!lv} class:core={c.kind === 'core'} title={c.name} onclick={() => cycleGoal(c.id)}>
               <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
               <span class="gn">{c.name}</span>
-              {#if lv}<b class="term">{lv === 2 ? 'II' : 'I'}</b>{/if}
+              {#if lv && hasII(c.id)}<b class="term">{lv === 2 ? 'II' : 'I'}</b>{/if}
             </button>
           {/each}
         </div>
@@ -249,11 +294,17 @@
         <textarea bind:value={d.description} rows="4" maxlength="500" placeholder="这套阵容的思路、运营要点、适合打哪个首领……可以不写"></textarea>
 
         {#if err}<p class="err">{err}</p>{/if}
-        <button class="btn primary full" disabled={!canPublish || busy} onclick={publish}>
-          {busy ? '发布中…' : session.me ? `以「${session.me.nickname ?? '…'}」发布` : '登录后发布'}
+        {#if d.stages?.length}<p class="muted small">这套阵容前面还有 {d.stages.length} 个回合阶段，网页上只改成型阵容，阶段原样保留；要改阶段请在助手里改。</p>{/if}
+        <button class="btn full" class:primary={!!edit} disabled={!canPublish || busy || loadingEdit} onclick={saveMine}>
+          {busy ? '保存中…' : session.me ? (edit ? '保存修改' : '保存到我的阵容') : '登录后保存到我的阵容'}
         </button>
+        {#if !edit}
+          <button class="btn primary full" disabled={!canPublish || busy} onclick={publish}>
+            {busy ? '发布中…' : session.me ? `以「${session.me.nickname ?? '…'}」发布到广场` : '登录后发布'}
+          </button>
+        {/if}
         <div class="foot">
-          <span class="muted small">草稿自动存在这台电脑的浏览器里。</span>
+          <span class="muted small">{edit ? '正在编辑「我的阵容」里的一套。' : '草稿自动存在这台电脑的浏览器里。'}</span>
           <button class="lnk" class:danger={armReset} onclick={() => (armReset ? ((d = empty()), (sel = null), (armReset = false)) : (armReset = true))}>{armReset ? '确认清空' : '清空'}</button>
         </div>
       </div>
@@ -347,15 +398,24 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* 挑选区跟着页面一起滚（不再套一层滚动，手机上手指按在列表里也能把页面滚回去）；分段和搜索吸在顶栏下面 */
   .ptabs {
+    position: sticky;
+    top: 56px;
+    z-index: 2;
     display: flex;
     gap: 2px;
     align-items: center;
-    margin-bottom: 8px;
+    padding: 8px 0;
+    background: rgb(11 12 13 / 0.86);
+    backdrop-filter: blur(8px);
   }
+  /* 手机上一行放不下时让搜索框变窄，按钮文字不折行 */
   .ptabs > button {
+    flex: none;
+    white-space: nowrap;
     height: 32px;
-    padding: 0 16px;
+    padding: 0 14px;
     color: var(--fg-2);
     background: var(--bg-2);
   }
@@ -367,6 +427,7 @@
   .ptabs input {
     margin-left: 8px;
     flex: 1;
+    width: 0;
     max-width: 260px;
     padding: 6px 10px;
   }
@@ -408,8 +469,6 @@
     padding: 10px;
     background: var(--bg-1);
     box-shadow: inset 0 0 0 1px var(--line-soft);
-    max-height: 640px;
-    overflow-y: auto;
   }
   .pi {
     position: relative;

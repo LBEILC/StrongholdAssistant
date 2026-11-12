@@ -19,8 +19,10 @@
     ontitle?: () => void
     /** 右键弹阵容菜单；导入预览这类还没保存的阵容关掉 */
     menu?: boolean
+    /** 只留标题、盟约一行，不列头像和装备（下面另有明细时用，如广场详情） */
+    headOnly?: boolean
   }
-  let { lineup, target = false, sub, actions, ontitle, menu = true }: Props = $props()
+  let { lineup, target = false, sub, actions, ontitle, menu = true, headOnly = false }: Props = $props()
   const title = $derived(lineup.name)
   const members = $derived(lineup.members)
   // 装备：通用装备 + 干员的候选装备；干员的优先装备描金框
@@ -41,6 +43,7 @@
       {/if}
       <p>
         {#if strat}<span class="st"><img src={asset.strategy(strat.id)} alt="" />{strat.name}</span>{/if}
+        {#if lineup.stages?.length}<span class="stg" title="卡片上是成型阵容；前面还有 {lineup.stages.length} 个回合阶段">{lineup.stages.length + 1} 阶段</span>{/if}
         {#if bannedHere.length}<span class="bad">{bannedHere.length} 名本局禁用</span>{/if}
         {@render sub?.()}
       </p>
@@ -59,6 +62,7 @@
       <span class="none">没有目标盟约</span>
     {/each}
   </div>
+  {#if !headOnly}
   <div class="ops">
     {#each members as m (m.name)}
       <OpTile
@@ -77,6 +81,7 @@
       {/each}
     {/if}
   </div>
+  {/if}
 </article>
 
 <style>
@@ -153,6 +158,14 @@
     gap: 3px;
     margin-right: 8px;
     color: var(--fg-2);
+    vertical-align: middle;
+  }
+  .stg {
+    margin-right: 8px;
+    padding: 0 4px;
+    font-size: 10px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
     vertical-align: middle;
   }
   .st img {

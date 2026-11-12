@@ -39,6 +39,7 @@ public partial class MainWindow : Window
 #endif
         var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
+        _ = _api.DownloadIncomeTableAsync();
         _api.DialogOwner = this;
         InitializeWindow();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(userDirectory, "WebView2"));
@@ -84,10 +85,13 @@ public partial class MainWindow : Window
         if (!dev)
             web.SetVirtualHostNameToFolderMapping("app.local", Path.Combine(AppContext.BaseDirectory, "ui"), CoreWebView2HostResourceAccessKind.DenyCors);
         web.Navigate(dev ? origin + "/" : origin + "/index.html");
+        InitializeGameTracking();
+        if (_connectGame && !_closing) _tracker.Start();
         await InitializeGameAsync();
         if (_connectGame && !_closing)
         {
-            _tracker.Start();
+            // 初始化完成后再按已连接窗口定位，避免停留在启动尺寸与位置。
+            RefreshScale();
             _scanner.Start();
         }
     }
@@ -102,7 +106,7 @@ public partial class MainWindow : Window
             var request = JsonSerializer.Deserialize<BridgeRequest>(e.WebMessageAsJson, HostApi.JsonOptions)!;
             id = request.Id;
             // 重扫由识别锁判忙；登录复用窗口结果，不占用存储请求锁。
-            if (request.Method is not ("rescan" or "scanContinuous" or "plazaLogin"))
+            if (request.Method is not ("rescan" or "scanContinuous" or "plazaLogin" or "sklandGuide" or "sklandHistory"))
             {
                 await _requests.WaitAsync();
                 locked = true;
@@ -112,7 +116,12 @@ public partial class MainWindow : Window
             if (request.Method == "windowCommand")
             {
                 windowCommand = request.Params[0].GetString();
-                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready")) throw new ArgumentException("窗口命令无效。");
+                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready" or "workbench" or "sidebar")) throw new ArgumentException("窗口命令无效。");
+                result = null;
+            }
+            else if (request.Method == "setHotkey")
+            {
+                SetHotkey(request.Params[0].GetString()!);
                 result = null;
             }
             else if (request.Method == "collapseUp")
@@ -156,6 +165,8 @@ public partial class MainWindow : Window
         if (windowCommand == "collapse") SetCollapsed(true);
         if (windowCommand == "expand") SetCollapsed(false);
         if (windowCommand == "ready") ShowUi();
+        if (windowCommand == "workbench") SetWorkbench(true);
+        if (windowCommand == "sidebar") SetWorkbench(false);
         if (_api.UpdatePrepared)
         {
             try

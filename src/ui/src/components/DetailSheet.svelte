@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { fly, fade } from 'svelte/transition'
-  import { cubicOut } from 'svelte/easing'
+  import { sheet } from '../lib/sheet'
+  import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN, fmtHp } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
@@ -8,19 +8,27 @@
   import OpTile from './OpTile.svelte'
   import GameText from './GameText.svelte'
   import Icon from './Icon.svelte'
+  import { effective, defaultsFor, setMyDefault } from '../lib/opconfig'
+  import type { Operator } from '../lib/api'
 
   // 底部详情面板：点击打开，固定不随鼠标消失；Esc 或点遮罩关闭
   const d = $derived(app.detail)
   const close = () => (app.detail = null)
   const showEq = (name: string) => (app.detail = { kind: 'equipment', name })
   const showOp = (name: string) => (app.detail = { kind: 'operator', name })
+  // 我的默认（v0.7.0）：加干员进阵容时按这个预填，已存的阵容不变
+  const my = $derived(app.settings.operatorDefaults)
+  function setDef(o: Operator, patch: { skill?: string; module?: string } | null) {
+    app.settings.operatorDefaults = setMyDefault(my, o, patch)
+    app.saveSettings()
+  }
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
 
 {#if d}
-  <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
+  <div class="scrim dock" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
+  <aside class="sheet" transition:sheet={{ y: 320, duration: 240 }}>
     <span class="grip"></span>
     <button class="x" onclick={close} aria-label="关闭">
       <Icon name="close" size={16} />
@@ -29,7 +37,9 @@
     {#if d.kind === 'operator'}
       {@const o = app.op(d.name)}
       {@const banned = app.banned.has(o.name)}
-      {@const inTarget = app.target?.members.some((m) => m.name === o.name)}
+      {@const tm = app.active?.members.find((m) => m.name === o.name)}
+      {@const inTarget = !!tm}
+      {@const ef = tm ? effective(tm, o, app.settings.operatorDefaults) : null}
       <div class="hero">
         <span class="pic" style:--c="var(--tier-{o.tier})"><img src={asset.operator(o.name)} alt="" /></span>
         <div class="meta">
@@ -39,7 +49,12 @@
             {#each o.extra as c (c)}<span class="bchip"><BondIcon id={c} size={18} />{app.cov(c).name}</span>{/each}
           </div>
           {#if o.obtain}<span class="obtain">不可招募 · {o.obtain}</span>{/if}
+          {#if o.diy}<span class="obtain">自选干员 · 开局选好后会在商店刷出</span>{/if}
           {#if banned}<span class="warn">本局已被禁用</span>{/if}
+          <!-- 目标阵容里这名干员的配置（v0.7.0） -->
+          {#if tm && ef}
+            <span class="cfgl">本阵容：{[tm.elite && '精锐', o.skills?.find((k) => k.id === ef.skill)?.name, o.modules?.length ? (o.modules.find((k) => k.id === ef.module)?.name ?? '不带模组') : ''].filter(Boolean).join(' · ')}</span>
+          {/if}
         </div>
       </div>
       <!-- 普通和精锐并排一屏看，精锐里变化的数字高亮 -->
@@ -56,6 +71,37 @@
             {/if}
           </div>
         {/each}
+        {#if o.skills?.length > 1 || o.modules?.length}
+          {@const dd = defaultsFor(o, my)}
+          {@const changed = !!my[o.name]}
+          <div class="mydef">
+            <div class="mdh">
+              <span class="tt">我的默认</span>
+              {#if changed}<em class="chg">已改</em><button class="link" onclick={() => setDef(o, null)}>恢复</button>{/if}
+              <span class="hint">加进阵容时按这个预填</span>
+            </div>
+            <div class="mdo">
+              {#if o.skills.length > 1}
+                <span class="cl">技能</span>
+                {#each o.skills as k (k.id)}
+                  <button class="opt" class:on={dd.skill === k.id} title={k.name} onclick={() => setDef(o, { skill: k.id })}>
+                    <img src={asset.skill(k.id)} alt={k.name} />{#if changed && k.id === o.defaultSkill}<em title="数据默认">原</em>{/if}
+                  </button>
+                {/each}
+              {/if}
+              {#if o.modules?.length}
+                <span class="cl">模组</span>
+                <button class="opt txt" class:on={dd.module === ''} onclick={() => setDef(o, { module: '' })}>不带{#if changed && !o.defaultModule}<em title="数据默认">原</em>{/if}</button>
+                {#each o.modules as k (k.id)}
+                  <button class="opt" class:on={dd.module === k.id} title={k.name} onclick={() => setDef(o, { module: k.id })}>
+                    <img src={asset.module(k.id)} alt={k.name} />{#if changed && k.id === o.defaultModule}<em title="数据默认">原</em>{/if}
+                  </button>
+                {/each}
+              {/if}
+            </div>
+            <p class="mdn">{o.skills.find((k) => k.id === dd.skill)?.name ?? ''}{o.modules?.length ? ` · ${o.modules.find((k) => k.id === dd.module)?.name ?? '不带模组'}` : ''}</p>
+          </div>
+        {/if}
         {#if o.givesEquipment?.length}
           <div class="rel">
             <span class="tt">提供装备</span>
@@ -84,7 +130,7 @@
       </div>
     {:else if d.kind === 'equipment'}
       {@const e = app.eq(d.name)}
-      {@const inTarget = !!app.target?.equipment.includes(e.name)}
+      {@const inTarget = !!app.active?.equipment.includes(e.name)}
       {@const trk = app.trackedEq.has(e.name)}
       <div class="hero">
         <span class="pic eqp" style:--c="var(--tier-{e.tier})"><img src={asset.equipment(e.name)} alt="" /></span>
@@ -539,5 +585,88 @@
     margin: 6px 0 0;
     font-size: 11px;
     color: var(--fg-4);
+  }
+  .cfgl {
+    font-size: 11px;
+    color: var(--mint);
+  }
+  .mydef {
+    padding: 6px 8px;
+    border: 1px dashed var(--line);
+  }
+  .mdh {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .chg {
+    font-style: normal;
+    font-size: 10px;
+    padding: 0 4px;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .mdh .link {
+    font-size: 11px;
+    color: var(--mint);
+  }
+  .hint {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--fg-4);
+  }
+  .mdo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .cl {
+    margin: 0 2px 0 6px;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .cl:first-child {
+    margin-left: 0;
+  }
+  .opt {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .opt img {
+    width: 24px;
+    height: 24px;
+  }
+  .opt.txt {
+    width: auto;
+    padding: 0 8px;
+    font-size: 11px;
+    color: var(--fg-2);
+  }
+  .opt.on {
+    box-shadow: inset 0 0 0 1.5px var(--mint);
+    background: var(--mint-tint);
+  }
+  .opt em {
+    position: absolute;
+    right: -3px;
+    top: -6px;
+    padding: 0 2px;
+    font-style: normal;
+    font-size: 8px;
+    line-height: 11px;
+    color: var(--fg-1);
+    background: var(--bg-4);
+  }
+  .mdn {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: var(--fg-3);
   }
 </style>

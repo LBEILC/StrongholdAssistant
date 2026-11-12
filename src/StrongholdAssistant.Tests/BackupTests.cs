@@ -33,10 +33,10 @@ public sealed class BackupTests : IDisposable
         var dock = api.SettingsStore.LoadDock();
         await api.ExportBackupAsync(BackupPath);
         var root = JsonNode.Parse(await File.ReadAllTextAsync(BackupPath))!.AsObject();
-        Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups" }, root.Select(p => p.Key));
+        Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups", "history" }, root.Select(p => p.Key));
         Assert.Equal("stronghold-assistant-backup", root["format"]!.GetValue<string>());
         Assert.Equal(1, root["version"]!.GetValue<int>());
-        Assert.Equal(11, root["settings"]!.AsObject().Count);
+        Assert.Equal(15, root["settings"]!.AsObject().Count);
         var selection = await api.ReadBackupAsync(BackupPath);
         Assert.Equal(1, selection.Summary.Lineups);
         Assert.Equal(1, selection.Summary.FocusCovenants);

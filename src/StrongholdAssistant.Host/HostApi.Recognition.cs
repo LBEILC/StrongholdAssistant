@@ -19,6 +19,7 @@ public sealed partial class HostApi
     private BanScreenResult? _scanResult;
     private EnemyResult? _scanEnemy;
     private string? _scanFailure;
+    private bool _scanOpening;
     private readonly BossDataService _bosses = new();
     private readonly EnemyTypeDataService _enemyTypes = new();
     public Connection Connection { get; private set; } = new("searching");
@@ -48,6 +49,8 @@ public sealed partial class HostApi
     {
         if (Connection == connection) return;
         Connection = connection;
+        if (connection.State != "connected")
+            lock (_historyGate) { _observedRound = null; _openingObserved = false; _canReadStart = false; }
         Changed?.Invoke("connection", connection);
     }
 
@@ -65,8 +68,10 @@ public sealed partial class HostApi
         {
             Changed?.Invoke("scan", new ScanStatus(true, Continuous: continuous ? true : null));
             _scanAvatars = null;
+            _scanOpening = false;
             var (next, avatars) = await ReadInformation();
-            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars, opening);
+            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars, opening || (_scanOpening && _observedRound > 1));
+            _openingObserved |= _scanOpening;
             if (continuous) Match = Match with { BansScanned = true };
             Changed?.Invoke("match", Match);
             if (!continuous)
@@ -102,7 +107,8 @@ public sealed partial class HostApi
             var (png, width, height) = ScreenshotNormalizer.EnsureAnalysable(_scanShot, rawWidth, rawHeight);
             if (await _informationDetector.IsSoloOpeningAsync(png, width, height))
                 throw new RecognitionException("这是单人模式的开局页：选好盟约进入对局后，点顶部回合数左边的放大镜打开对局详情再识别。");
-            if (await _informationDetector.IsOpeningScreenAsync(png, width, height))
+            _scanOpening = await _informationDetector.IsOpeningScreenAsync(png, width, height);
+            if (_scanOpening)
                 mode = await _informationDetector.ReadModeAsync(png, width, height, _modes);
         }
         var avatars = _scanShot == null ? null : await _avatars.RecognizeAsync(_scanShot);
@@ -133,6 +139,11 @@ public sealed partial class HostApi
     {
         bool sameMatch = Match.BossId == next.BossId
             && Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
+        bool newMatch = opening || !sameMatch;
+        if (newMatch)
+        {
+            lock (_historyGate) CompleteHistory();
+        }
         var previous = sameMatch ? Match.BannedOperators.ToHashSet() : [];
         if (!sameMatch)
         {
@@ -142,10 +153,11 @@ public sealed partial class HostApi
         }
         if (grid is null) _avatarBans.UnionWith(avatars);
         else MergeBanGroups(grid);
-        Match = next with { Solo = Match.Solo, AwaitingDetail = false,
+        Match = next with { StrategyId = newMatch ? null : Match.StrategyId, Solo = Match.Solo, AwaitingDetail = false, Economy = sameMatch && !opening ? Match.Economy : null,
             BansScanned = Match.BansScanned && !(opening && !sameMatch) };
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };
+        RecordRecognizedMatch(opening || !sameMatch, opening);
         return Match.BannedOperators.Except(previous).Count();
     }
 
@@ -159,6 +171,7 @@ public sealed partial class HostApi
     {
         if (solo)
         {
+            lock (_historyGate) CompleteHistory();
             await ResetMatchAsync(true);
             Match = Match with { Mode = await ReadOpeningMode() };
             Changed?.Invoke("match", Match);

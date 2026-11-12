@@ -2,10 +2,16 @@
   import { app } from '../lib/state.svelte'
   import Icon from './Icon.svelte'
   import { api } from '../lib/api'
+  import { cloud } from '../lib/sync.svelte'
+  import { plaza } from '../lib/plaza.svelte'
 
   // 标题栏：产品里是无边框窗口的拖动区
   const conn = $derived(app.connection)
   const onTop = $derived(!!conn.overlay || app.settings.alwaysOnTop)
+  // 云同步状态（v0.7.0）：打开了才显示；点一下立即同步，出错时打开设置看原因
+  const syncTip = $derived(
+    !plaza.token ? '云同步：登录阵容广场后才会同步' : cloud.status === 'syncing' ? '正在同步…' : cloud.status === 'error' ? `同步失败：${cloud.error}（点开设置）` : cloud.lastAt ? '已同步，点一下立即同步' : '云同步已打开，点一下立即同步',
+  )
 </script>
 
 <div class="bar">
@@ -25,8 +31,16 @@
     {#if conn.state !== 'connected'}<span class="txt">{conn.problem ? '无法连接' : '寻找游戏窗口…'}</span>{/if}
     {#if conn.overlay}<em class="fs" title="侧栏盖在游戏画面左侧。买东西、布阵时可以点右边的按钮收成细条">覆盖</em>{/if}
   </span>
-  <!-- 收起常驻，按设置里的收起方式；向上收起后这里变成展开 -->
-  {#if app.collapsed === 'up'}
+  <!-- 工作台：宽窗口编阵容、逛广场；工作台里不收起，只有「收回侧栏」 -->
+  {#if app.workbench}
+    <button class="wbtn on" title="收回侧栏，回到游戏旁边" aria-label="收回侧栏" onclick={() => app.setWorkbench(false)}><Icon name="sidebar" size={15} /></button>
+  {:else}
+    {#if !app.collapsed}
+      <button class="wbtn" title="展开为工作台（宽窗口，编阵容、逛广场更方便）" aria-label="展开为工作台" onclick={() => app.setWorkbench(true)}><Icon name="workbench" size={15} /></button>
+    {/if}
+    <!-- 收起：按设置里的收起方式；向上收起后这里变成展开 -->
+  {/if}
+  {#if app.workbench}<!-- 工作台里不收起 -->{:else if app.collapsed === 'up'}
     <button class="wbtn on" title="展开侧栏" aria-label="展开侧栏" onclick={() => app.setCollapsed(false)}><Icon name="arrowDown" size={16} /></button>
   {:else if app.settings.collapseMode === 'up'}
     <button class="wbtn" title="向上收起，只留追踪列表" aria-label="向上收起" onclick={() => app.collapse()}><Icon name="arrowUp" size={16} /></button>
@@ -45,6 +59,18 @@
   >
     <Icon name={onTop ? 'pinFill' : 'pin'} size={15} />
   </button>
+  {#if app.settings.cloudSync.enabled}
+    <button
+      class="wbtn sync"
+      class:busy={cloud.status === 'syncing'}
+      class:bad={cloud.status === 'error' || !plaza.token}
+      title={syncTip}
+      aria-label={syncTip}
+      onclick={() => (cloud.status === 'error' || !plaza.token ? (app.settingsOpen = true) : cloud.run())}
+    >
+      <Icon name={cloud.status === 'error' || !plaza.token ? 'cloudOff' : cloud.status === 'syncing' ? 'refresh' : 'cloud'} size={15} />
+    </button>
+  {/if}
   <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.collapsed && app.setCollapsed(false), (app.settingsOpen = true))}>
     <Icon name="settings" size={15} />
   </button>
@@ -183,5 +209,16 @@
   }
   .wbtn.close:hover {
     background: #c42b1c;
+  }
+  .sync.bad {
+    color: var(--red);
+  }
+  .sync.busy :global(svg) {
+    animation: sync-spin 0.9s linear infinite;
+  }
+  @keyframes sync-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { fly, fade } from 'svelte/transition'
-  import { cubicOut } from 'svelte/easing'
+  import { sheet } from '../lib/sheet'
+  import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN } from '../lib/assets'
   import OpTile from './OpTile.svelte'
@@ -45,7 +45,7 @@
 
 {#if app.banPicker}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="ed" transition:fly={{ y: 400, duration: 260, easing: cubicOut }}>
+  <aside class="ed" transition:sheet={{ y: 400, duration: 260 }}>
     <header>
       <img src={asset.stage('img_chess_banned')} alt="" class="hi" />
       <h3>添加禁用干员{#if bond}<em>· {app.cov(bond).name}</em>{/if}</h3>

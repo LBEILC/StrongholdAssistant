@@ -100,7 +100,8 @@ public sealed partial class HostApi
         var result = new List<BanGroup>();
         foreach (var (covenant, group) in _banGroups)
         {
-            var ordered = _operators.Where(o => o.Obtain is null
+            // 自选干员参与盟约禁用推算，但不出现在游戏的禁用列表格子里。
+            var ordered = _operators.Where(o => o.Obtain is null && !o.Diy
                     && (o.CoreCovenants.Contains(covenant) || o.AdditionalCovenants.Contains(covenant)))
                 .OrderByDescending(o => o.Tier).ToArray();
             var ranks = ordered.Select((o, i) => (o.Name, i)).ToDictionary(p => p.Name, p => p.i);

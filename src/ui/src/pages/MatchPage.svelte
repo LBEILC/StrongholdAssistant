@@ -8,6 +8,8 @@
   import OpTile from '../components/OpTile.svelte'
   import LineupCard from '../components/LineupCard.svelte'
   import Icon from '../components/Icon.svelte'
+  import EconomyBar from '../components/EconomyBar.svelte'
+  import StrategyGrid from '../components/StrategyGrid.svelte'
   import { openMenu, operatorMenu } from '../lib/menu.svelte'
 
   // 本局：开局识别到的信息，排版仿游戏「确认本局信息」页；可手动修正；后面接本局能用的已存阵容
@@ -18,6 +20,14 @@
   // 本局模式读到了才显示血量（开局页左上角的「规程等级16」「险境模拟」）
   const bossHp = $derived(boss && m.mode ? boss.hp.find((h) => h.mode === m.mode!.id) : undefined)
   const strategy = $derived(app.catalog.strategies.find((s) => s.id === m.strategyId))
+  // 策略识别不了（v0.7.0），用户自己选：资金预测和学习要看策略
+  let pickingSt = $state(false)
+  let stq = $state('')
+  const pickSt = (id: string) => {
+    app.setMatchStrategy(id === m.strategyId ? null : id)
+    pickingSt = false
+    stq = ''
+  }
   // 我的阵容先按目标盟约里阵容不完整的个数、再按名单被禁人数排序，取前 3
   const usable = $derived(
     app.lineups
@@ -129,6 +139,7 @@
       {/if}
     </span>
   </div>
+  <EconomyBar />
   {#if m.awaitingDetail && !app.continuous}
     <div class="solo-guide">
       <div class="sg-h">单人模式 · 开局页不识别</div>
@@ -175,14 +186,27 @@
     {/if}
   {/if}
 
-  {#if strategy}
+  {#if pickingSt}
+    <div class="stpick">
+      <div class="sph">
+        <b>选本局策略</b>
+        <input bind:value={stq} placeholder="搜名字、发起者、效果" />
+        <button class="tool" onclick={() => ((pickingSt = false), (stq = ''))}>取消</button>
+      </div>
+      <StrategyGrid selected={m.strategyId} q={stq} onpick={pickSt} />
+    </div>
+  {:else if strategy}
     <div class="strategy">
       <img src={asset.strategy(strategy.id)} alt="" />
       <div>
-        <div class="sn"><b>{strategy.name}</b><span>{strategy.initiator}</span></div>
+        <div class="sn"><b>{strategy.name}</b><span>{strategy.initiator}</span><button class="chg" onclick={() => (pickingSt = true)}>换</button></div>
         <p>{strategy.description}</p>
       </div>
     </div>
+  {:else if m.source !== 'none'}
+    <button class="stnone" onclick={() => (pickingSt = true)}>
+      <Icon name="add" size={14} />选本局策略<em>识别读不到策略；选上后资金预测会按策略算</em>
+    </button>
   {/if}
 
   <section>
@@ -574,6 +598,56 @@
       transform: rotate(360deg);
     }
   }
+  .stpick {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .sph {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .sph b {
+    flex: none;
+    font-size: 13px;
+  }
+  .sph input {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--fg-1);
+    background: var(--bg-0);
+    border: 1px solid var(--line);
+  }
+  .stnone {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    padding: 8px 9px;
+    font-size: 12.5px;
+    color: var(--fg-2);
+    border: 1px dashed var(--line);
+  }
+  .stnone:hover {
+    color: var(--fg-1);
+    border-color: var(--fg-4);
+  }
+  .stnone em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--fg-4);
+  }
+  .chg {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--mint);
+  }
   .strategy {
     display: flex;
     gap: 9px;
@@ -875,5 +949,20 @@
   }
   .all:hover {
     color: var(--mint);
+  }
+  /* 宽（工作台）：状态行占满，下面各区块分两列从上往下排 */
+  @container (min-width: 820px) {
+    .page {
+      display: block;
+      columns: 2;
+      column-gap: 16px;
+    }
+    .page > :global(*) {
+      break-inside: avoid;
+      margin-bottom: 12px;
+    }
+    .status {
+      column-span: all;
+    }
   }
 </style>

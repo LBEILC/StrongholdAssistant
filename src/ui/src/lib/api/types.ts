@@ -38,6 +38,20 @@ export interface Operator {
   equipSlots: { normal: number; elite: number }
   /** 这名干员会提供的装备（v0.5.0，整备能力「获得一件××」，含获得时和进入休整期时）：给的是一个系列时写系列里的基础件名。没有就不写 */
   givesEquipment?: string[]
+  /** 游戏数据表里的干员编号（v0.5.2），如 'char_171_bldsk'；从森空岛导入时用 */
+  charId: string
+  /**
+   * 自选干员（v0.7.0）：开局自选后会在商店刷出（数据表棋子编号 chess_char_…_diy…，如凯尔希·思衡托、予愿安洁莉娜）。
+   * 能追踪、能进阵容、商店标记照常；图鉴里单独归到「自选」组。普通干员没有这个字段
+   */
+  diy?: true
+  /** 可选技能（v0.7.0），按游戏里的顺序；素材在 data/skills/<id>.webp */
+  skills: OperatorOption[]
+  /** 可选模组（v0.7.0），没有就是空数组；素材在 data/modules/<id>.webp（模组类型图标） */
+  modules: OperatorOption[]
+  /** 数据默认的技能、模组 id（v0.7.0）；没有模组为 null */
+  defaultSkill: string
+  defaultModule: string | null
 }
 
 export interface Equipment {
@@ -53,6 +67,13 @@ export interface Equipment {
   transformBond?: CovenantId
   /** 来源（v0.5.0）：获得时会给这件装备的干员（Operator.givesEquipment 的反查，含给同系列装备的）。没有就不写 */
   sources?: string[]
+  /**
+   * 游戏数据表里这件装备的道具编号（v0.7.0），如 'chess_item_6_03_e_a'；森空岛攻略和历史战绩里用它表示装备。
+   * 同名装备有普通 / 进阶等多个道具编号时取普通的；对照表另外认得进阶版的编号（见 itemAliases）
+   */
+  itemId: string
+  /** 同一件装备的其他道具编号（如进阶版），森空岛数据里可能出现；没有就不写 */
+  itemAliases?: string[]
 }
 
 export interface Boss {
@@ -95,6 +116,8 @@ export interface Catalog {
   bosses: Boss[]
   enemyTypes: EnemyType[]
   strategies: Strategy[]
+  /** 识别不了、要用户自己点上的收入来源（v0.7.0），见 IncomeSource */
+  incomeSources: IncomeSource[]
 }
 
 /** 游戏窗口连接状态 */
@@ -172,6 +195,99 @@ export interface MatchInfo {
   bansScanned: boolean
   /** 本局的游戏模式（v0.5.0）：开局页左上角读到的「规程等级16」「险境模拟」等，对上 BossHp.mode；没读到为 null */
   mode: { id: string; name: string } | null
+  /** 回合与资金（v0.7.0）：休整期扫描商店时顺带读出；这一局还没读到过为 null。新局、清空本局时清空 */
+  economy: Economy | null
+}
+
+/**
+ * 回合与资金（v0.7.0，设计见 docs/design.md「回合与资金」）。资金都是游戏里的「资金」数
+ */
+export interface Economy {
+  round: number
+  /** 最近一次读到的当前资金 */
+  money: number
+  /** 本回合第一次读到的资金；这回合中途才开始读的为 null */
+  startMoney: number | null
+  /** 调度中心等级；没读到为 null */
+  level: number | null
+  /** 升级要花的钱；满级或没读到为 null */
+  upgradeCost: number | null
+  /** 最近一次读到的时间（ISO）。不在休整期时不更新，界面据此变灰 */
+  readAt: string
+  /**
+   * 下回合预计资金：下回合基础资金 + extra + 策略效果（利滚利按 money 实时算；得闲饮茶第 1、2 回合为 null，
+   * 第 3 回合是三回合基础合计）。没有下回合的基础资金数据时为 null
+   */
+  next: number | null
+  /**
+   * 本局其他额外收入（击倒等）= 本回合起始资金 − 本回合基础资金 − 本回合生效的 incomes，不小于 0；算不出为 0。
+   * 当作下回合也会有，算进 next
+   */
+  extra: number
+  /** 用户自己点上的收入来源（识别不了的经济装备、售出的波登可），算进 next；新局清空 */
+  incomes: Income[]
+  /**
+   * 本局策略的经济规则，界面据此写小字：carry 利滚利、deferred 得闲饮茶、kazimier 业务指标、
+   * random 私募基金 / 献身护卫 / 宝藏探机 / 神秘顾客 / 量体裁衣；没有为 null
+   */
+  rule: 'carry' | 'deferred' | 'kazimier' | 'random' | null
+  /** 基础资金来自：own 自己的对局、shared 大家的资金表、none 还没有这个模式的数据 */
+  basis: 'own' | 'shared' | 'none'
+}
+
+/** 一条用户点上的收入（v0.7.0） */
+export interface Income {
+  id: string
+  /** IncomeSource.name */
+  source: string
+  elite: boolean
+  /** 实际金额（按 elite 取 amount 或 eliteAmount） */
+  amount: number
+  kind: 'each' | 'once'
+  /** 点上时的回合；从下一回合起生效，once 只在下一回合生效 */
+  round: number
+}
+
+/**
+ * 会给以后回合加资金、但识别不了的东西（v0.7.0），由宿主从数据表效果文字里整理：
+ * 「之后每回合开始时额外获得 N 资金」→ each，「下回合额外获得 N 资金」→ once。
+ * 立即给钱的（盟约之币、驮兽储蓄罐、定期存折）不在里面：当前资金读得到
+ */
+export interface IncomeSource {
+  /** 装备名或干员名 */
+  name: string
+  /** equipment 装备（装上时）、sell 售出这名干员时 */
+  trigger: 'equipment' | 'sell'
+  kind: 'each' | 'once'
+  amount: number
+  /** 进阶版 / 精锐时的金额 */
+  eliteAmount: number
+}
+
+/** 历史记录里的一局（v0.7.0）：本地自动记录，和森空岛战绩按时间对上后合成一条 */
+export interface MatchRecord {
+  id: string
+  /** 开始时间（ISO）：本地记录为认到这一局的时间，只有森空岛战绩时为它的时间 */
+  time: string
+  /** 本地记录：开局信息和资金。只有森空岛战绩时为 null */
+  local: {
+    mode: { id: string; name: string } | null
+    solo: boolean
+    strategyId: string | null
+    covenants: { id: CovenantId; incomplete: boolean }[]
+    bannedOperators: string[]
+    bossId: string | null
+    /** 当时的目标阵容（快照，不随之后的修改变） */
+    lineup: Lineup | null
+    /** 每回合的起始资金，没读到的回合不在里面 */
+    rounds: { round: number; startMoney: number }[]
+    /** 最后看到的回合数；没读到过为 null */
+    lastRound: number | null
+    /** 最后一次读到画面的时间（ISO） */
+    lastSeenAt: string
+  } | null
+  /** 对上的森空岛战绩：结果、最终干员和装备。没对上为 null */
+  skland: SklandRecord | null
 }
 
 /** 禁用列表里一个盟约组 */
@@ -209,6 +325,19 @@ export interface LineupMember {
    * 其余是「候选」（普通追踪标记）。优先的件数可以超过装备栏，界面只提醒。没有候选装备时可以不写
    */
   equipment?: MemberEquip[]
+  /** 目标精锐（v0.7.0）：这名干员要凑到精锐（进阶） */
+  elite?: true
+  /** 技能（Operator.skills 的 id，v0.7.0）；不写 = 用默认（我的默认 → 数据默认） */
+  skill?: string
+  /** 模组（Operator.modules 的 id，v0.7.0）；不写 = 用默认；'' = 不带模组 */
+  module?: string
+}
+
+/** 干员可选的一个技能或模组（v0.7.0） */
+export interface OperatorOption {
+  /** 游戏数据编号，如 'skchr_estell_2'、'uniequip_002_estell'（和森空岛一致） */
+  id: string
+  name: string
 }
 
 /** 干员的一件候选装备 */
@@ -227,9 +356,24 @@ export interface CovenantGoal {
  * 阵容（2026-11-11 起）：目标盟约 + 想抓的干员，不限人数。
  * 盟约进度按本局所有已持有的干员算，不只 members。
  */
+/**
+ * 阵容的一个回合阶段（v0.7.0，照森空岛攻略的「1-4 回合」页签）。成型阵容不在这里：它就是 Lineup 顶层的 goals / members / equipment
+ */
+export interface LineupStage {
+  /** 阶段名；空串时界面按回合叫「1～4 回合」 */
+  name: string
+  /** 适用回合（含两端，可以相同），1 起 */
+  fromRound: number
+  toRound: number
+  goals: CovenantGoal[]
+  members: LineupMember[]
+  equipment: string[]
+}
+
 export interface Lineup {
   id: string
   name: string
+  /** 成型阵容的目标盟约；有回合阶段时，各阶段自己的在 stages 里 */
   goals: CovenantGoal[]
   members: LineupMember[]
   /**
@@ -243,6 +387,11 @@ export interface Lineup {
   note?: string
   /** 简介（v0.6），纯文本最多 500 字、可换行；发布到广场时默认带上。不进分享码 */
   description?: string
+  /**
+   * 成型之前的回合阶段（v0.7.0），按回合先后，个数不限、回合不重叠；没有就不写。宿主原样保存（和 goals 一样整段存取），
+   * 旧版本不认这一项，只用顶层（成型阵容）
+   */
+  stages?: LineupStage[]
   updatedAt: string // ISO 时间
 }
 
@@ -281,12 +430,44 @@ export interface Settings {
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
+  /**
+   * 收起 / 展开的全局快捷键（v0.7.0，默认 'Alt+S'；原定 Alt+Q 在用户电脑上被别的软件占用）。写法：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键，用 + 连接，
+   * 如 'Ctrl+Shift+F2'；'' 为关闭。只能经 setHotkey 改，saveSettings 里改了这一项宿主忽略
+   */
+  toggleHotkey: string
+  /**
+   * 我的默认（v0.7.0）：干员名 → 默认技能、模组（模组 '' = 不带）。编辑器「设为我的默认」或历史页「从森空岛战绩生成」写入；
+   * 加干员时优先用这里，没有再用数据默认。没有就是空对象
+   */
+  operatorDefaults: Record<string, { skill?: string; module?: string }>
+  /** 帮大家补全资金表（v0.7.0，默认 false）：每局结束匿名上报各回合起始资金，见 docs/design.md「回合与资金」 */
+  shareIncome: boolean
+  /**
+   * 账号云同步（v0.7.0）：同步逻辑在界面里（直接调广场的 POST /api/sync），宿主只负责把这一项原样存下来。
+   * 默认 { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] }
+   */
+  cloudSync: CloudSyncState
+}
+
+/** 云同步在本机记的状态（v0.7.0），只有界面读写 */
+export interface CloudSyncState {
+  enabled: boolean
+  /** 上次同步服务端返回的 now；下次只下载这之后变了的。null = 还没同步过 */
+  since: string | null
+  /** 上次上传成功时的本机时间；updatedAt 比它新的阵容下次要上传。null = 全部上传 */
+  pushedAt: string | null
+  /** 本机改同步偏好（特别关注、游戏主题、商店标记、我的默认）的时间；比 pushedAt 新就上传 */
+  prefsAt: string | null
+  /** 删掉、还没传上去的阵容 */
+  deleted: { id: string; at: string }[]
 }
 
 export interface AppInfo {
   version: string // 如 "0.1.0"；开发构建为 "0.0.0"
   /** 数据文件夹的完整路径（%AppData%\StrongholdAssistant 展开后），只用来显示 */
   dataDir: string
+  /** 启动时快捷键注册失败（被别的软件占用）为 true，设置里红字提示 */
+  hotkeyFailed: boolean
 }
 
 /** 备份文件的预览：导入前给用户确认 */
@@ -345,6 +526,83 @@ export interface Session {
   tracked: string[]
   /** 追踪的装备，规则同 tracked。旧数据没有这项时宿主补空数组 */
   trackedEquipment: string[]
+  /**
+   * 目标阵容固定在哪个阶段（v0.7.0）：stages 的下标，等于 stages.length 表示成型阵容；null 或没有 = 自动（按读到的回合数）。
+   * 换目标时界面写回 null
+   */
+  stage?: number | null
+}
+
+/**
+ * 森空岛阵容攻略（v0.7.0）。编号都是游戏数据表里的原样，界面按目录里的 charId / itemId / 策略 id 换成名字。
+ * 来自 zonai.skland.com/web/v1/game/garrison/guide/info 的 data（设计 2026-11-12 在页面里看到的结构）：
+ * guide.title、guide.strategyIds[]、guide.tabs[]、guide.versionId、poster.nickname、isInvalid
+ */
+export interface SklandGuide {
+  /** 攻略页地址（只留 guideId） */
+  url: string
+  title: string
+  /** poster.nickname */
+  author: string
+  /** guide.strategyIds：备选策略，如 'band_bonus'；可能为空 */
+  strategies: string[]
+  /** guide.versionId，如 'V3_1'；和当期数据不一致时界面提示「这篇攻略是其他赛季的」 */
+  versionId: string
+  /** guide.tabs：一篇攻略里的几个阵容（阶段），按页面顺序；至少一个 */
+  stages: SklandStage[]
+}
+export interface SklandStage {
+  /** tab.tabType（数字）：1 → 'FORMATION'（成型阵容），其他值转成字符串原样给，界面按顺序叫「阶段 N」 */
+  type: string
+  /** tab.startRound / endRound：适用回合，0 表示没填 */
+  startRound: number
+  endRound: number
+  /** tab.recChars[].charId，按顺序，如 'char_171_bldsk'；elite 来自 mergeLevel（1 = 精锐）；skill / module 来自 skillId / moduleId（空串不写） */
+  operators: { id: string; elite: boolean; skill?: string; module?: string }[]
+  /** tab.recItems[].itemId，如 'chess_item_6_03_e_a' */
+  equipment: string[]
+  /** tab.activeBonds 的 seasonBondIds + regularBondIds，去掉 Ship 后缀（只作参考，界面按干员人数自己算档位） */
+  covenants: string[]
+  /** tab.operationIdea：运营思路，纯文本 */
+  notes: string
+}
+
+/**
+ * 森空岛历史战绩里的一局（v0.7.0）。来自 zonai.skland.com/web/v1/game/garrison/guide/history-log?seasonId=… 的
+ * data.records[]（2026-11-12 设计在本机看到的原始结构，见 docs/specs/041）。一次返回本赛季全部，不分页
+ */
+export interface SklandRecord {
+  id: string
+  /** bandId；空串为 null */
+  strategyId: string | null
+  /** chessSquad[].charId，按顺序；elite = chessId 等于 chessInfo.goldenChessId（编号以 _b 结尾）；skill / module 来自 skillId / moduleId（空串不写） */
+  operators: { id: string; elite: boolean; skill?: string; module?: string }[]
+  /** chessSquad[].equips[].equipId 按干员顺序摊平（森空岛的装备是装在干员身上的） */
+  equipment: string[]
+  /** completeState === 1 */
+  success: boolean
+  /** gameEndTs（秒）→ ISO 时间 */
+  time: string
+  /** gameStartTs（秒）→ ISO 时间 */
+  startTime: string
+  /** coinCost：这局一共花掉的资金 */
+  coinSpent: number
+  /** killCnt：击倒敌人数 */
+  kills: number
+  /** bondInfo[]：结束时的盟约（bondId 去掉 Ship 后缀）和层数 */
+  covenants: { id: string; layer: number }[]
+  /**
+   * acBossInfo[]：这局遇到的首领。bossId 是森空岛的 'boss_2' 这种编号，宿主能对上数据表就换成 Boss.id，对不上原样给；
+   * killed = isKilled
+   */
+  bosses: { id: string; killed: boolean }[]
+  /** modeType：'MULTI' 联机 / 'SINGLE' 单人 */
+  mode: string
+  /** 'NORMAL' / 'HARD' / 'ABYSS' / 'FUNNY' 等，原样给 */
+  difficulty: string
+  /** 打到第几回合 */
+  passRound: number
+  versionId: string
 }
 
 export interface Api {
@@ -360,6 +618,11 @@ export interface Api {
    * 停止时推送 scan { busy: false, continuous: false, ok, message }，message 说明本次结果。
    */
   scanContinuous(on: boolean): Promise<void>
+  /**
+   * 手动选本局策略（v0.7.0）：开局识别读不到策略，用户在本局页自己选；null = 清掉。
+   * 更新 MatchInfo.strategyId、economy.rule 和当前历史记录，推送 match；新局（开局识别）清空
+   */
+  setMatchStrategy(id: string | null): Promise<MatchInfo>
   /** 手动修正：盟约是否灰掉（会重新推算禁用干员） */
   setCovenantIncomplete(id: CovenantId, incomplete: boolean): Promise<MatchInfo>
   /**
@@ -373,8 +636,16 @@ export interface Api {
    */
   resetMatch(): Promise<MatchInfo>
   lineups(): Promise<Lineup[]>
-  /** 新建（id 为空串）或覆盖保存，返回保存后的阵容 */
+  /**
+   * 新建（id 为空串）或覆盖保存，返回保存后的阵容；updatedAt 改成现在。
+   * 整套原样存下，包括回合阶段 stages、成员的 elite / skill / module（v0.7.0）
+   */
   saveLineup(l: Lineup): Promise<Lineup>
+  /**
+   * 云同步写入（v0.7.0）：按 id 原样写入或新建（保留传进来的 id 和 updatedAt，不改成现在），再删掉 removed 里的 id；
+   * 返回全部阵容。只有同步逻辑用；目标阵容被删时和 deleteLineup 一样处理
+   */
+  putLineups(lineups: Lineup[], removed: string[]): Promise<Lineup[]>
   deleteLineup(id: string): Promise<void>
   session(): Promise<Session>
   saveSession(s: Session): Promise<void>
@@ -414,15 +685,57 @@ export interface Api {
   plazaToken(): Promise<string | null>
   /** 删除本地保存的广场凭据（界面先调后端的退出接口） */
   plazaLogout(): Promise<void>
+  /**
+   * 读森空岛阵容攻略（v0.7.0）：宿主在一个看不见的 WebView2 里正常打开这个攻略页，由页面自己去请求森空岛的接口，
+   * 宿主用 WebResourceResponseReceived 读 guide/info 的返回（不自己调接口、不算签名、不读写凭据），整理成 SklandGuide。
+   * url 必须是 https://game.skland.com/arknights/stronghold-guide/detail?…guideId=… ；一次只读一页，20 秒内没拿到数据就失败。
+   * 失败时 reject 一个 Error，message 是给用户看的中文（打不开、超时、攻略不存在或已失效）
+   */
+  sklandGuide(url: string): Promise<SklandGuide>
+  /**
+   * 森空岛历史战绩（v0.7.0）：宿主弹一个看得见的森空岛小窗口（和 sklandGuide 共用登录状态的存储），打开攻略编辑页
+   * https://game.skland.com/arknights/stronghold-guide/edit 。没登录时用户在窗口里自己登录；登录后用户点页面上的
+   * 「导入历史战绩」（宿主可以在页面就绪后替用户点一次），宿主读 history-log 的返回，关窗，返回这些对局，新到旧。
+   * 用户关掉窗口返回 null。不在森空岛里保存草稿、不发布任何东西。
+   * 041 起先在看不见的页面里读，读不到（没登录）才弹窗。silent（v0.7.0，历史页打开时自动更新用）：读不到就返回 null，不弹窗
+   */
+  sklandHistory(opts?: { silent?: boolean }): Promise<SklandRecord[] | null>
+  /**
+   * 改收起 / 展开快捷键（v0.7.0）：先注册新组合，成功才保存进 Settings.toggleHotkey 并注销旧的；'' 为关闭。
+   * 被占用或写法不对时 reject，message 给用户看（如「这个组合被别的软件占用了，换一个试试。」），旧的照旧生效
+   */
+  setHotkey(combo: string): Promise<void>
+  /** 点上一条收入来源（v0.7.0），记在本回合；返回更新了 economy 的 MatchInfo，也会推送 match */
+  addIncome(source: string, elite: boolean): Promise<MatchInfo>
+  removeIncome(id: string): Promise<MatchInfo>
+  /**
+   * 后端推送：用户按了快捷键（v0.7.0）。窗口最小化时宿主自己恢复并放到前面，不推送；否则推送，界面决定：
+   * 侧栏展开 → 收起，收起 → 展开，工作台 → minimize。宿主处理快捷键时不激活助手窗口，焦点留在游戏上
+   */
+  onHotkey(cb: () => void): () => void
+  /** 历史记录（v0.7.0），新到旧 */
+  history(): Promise<MatchRecord[]>
+  deleteRecord(id: string): Promise<void>
+  /**
+   * 把 sklandHistory 拿到的战绩存进历史（v0.7.0）：按森空岛编号去重，和本地记录按时间对上就合成一条
+   * （森空岛时间在本地开始之后、lastSeenAt 后 30 分钟内，单人或联机一致），返回合并后的全部历史
+   */
+  saveSklandRecords(records: SklandRecord[]): Promise<MatchRecord[]>
+  /** 重新生成匿名上报用的本机随机编号（v0.7.0） */
+  resetShareId(): Promise<void>
   /** 后端推送：更新状态变化 */
   onUpdate(cb: (u: UpdateStatus) => void): () => void
   /** 无边框窗口的按钮 */
   /**
    * 窗口操作。ready：见 onWindow。collapse：收成竖条（宽 48 DIP × 界面缩放，左边和上边位置不变，高度不变）；
    * expand：恢复收起前的宽度和高度。v0.4.2 起任何模式都能收起；进出覆盖模式、游戏窗口丢失都不再自动展开，
-   * 只有界面发 expand 才展开
+   * 只有界面发 expand 才展开。
+   * workbench（v0.7.0）：进工作台。窗口脱离游戏，用上次工作台的位置和大小（第一次：1280×800 DIP × 界面缩放，
+   * 在游戏所在的屏幕居中；放不下就按屏幕工作区缩小），可拖动改大小（最小 960×640）；期间不跟随游戏、不自动进覆盖模式，
+   * 置顶按用户设置。sidebar：回到侧栏，位置和大小照「跟随游戏窗口」设置恢复（跟随就重新贴到游戏旁，不跟随就回到侧栏的自由位置）。
+   * 每次启动都是侧栏；收起（collapse / collapseUp）只在侧栏里用
    */
-  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready'): Promise<void>
+  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready' | 'workbench' | 'sidebar'): Promise<void>
   /**
    * 向上收起（v0.4.2）：宽度和左上角不变，高度改成 height（界面 CSS 像素，宿主乘界面缩放）。
    * 收起期间内容高度变了（追踪列表增减）界面会再发一次；跟随游戏时上边仍和游戏对齐。expand 恢复

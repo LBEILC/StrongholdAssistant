@@ -1,6 +1,8 @@
 <script lang="ts" module>
   // 游戏素材里没有的通用图标用 Remix Icon（Apache-2.0），按需引入单个 SVG
   import settings from 'remixicon/icons/System/settings-3-line.svg?raw'
+  import cloud from 'remixicon/icons/Business/cloud-line.svg?raw'
+  import cloudOff from 'remixicon/icons/Business/cloud-off-line.svg?raw'
   import subtract from 'remixicon/icons/System/subtract-line.svg?raw'
   import close from 'remixicon/icons/System/close-line.svg?raw'
   import refresh from 'remixicon/icons/System/refresh-line.svg?raw'
@@ -36,8 +38,15 @@
   import cut from 'remixicon/icons/Design/scissors-cut-line.svg?raw'
   import copy from 'remixicon/icons/Document/file-copy-line.svg?raw'
   import selectAll from 'remixicon/icons/Editor/text.svg?raw'
+  import chat from 'remixicon/icons/Communication/chat-3-line.svg?raw'
+  import flag from 'remixicon/icons/Business/flag-2-line.svg?raw'
+  import reply from 'remixicon/icons/Business/reply-line.svg?raw'
+  import workbench from 'remixicon/icons/Design/layout-left-line.svg?raw'
+  import sidebar from 'remixicon/icons/System/side-bar-line.svg?raw'
+  import history from 'remixicon/icons/System/history-line.svg?raw'
+  import chart from 'remixicon/icons/Business/bar-chart-2-line.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll }
+  const icons = { settings, cloud, cloudOff, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll, chat, flag, reply, workbench, sidebar, history, chart }
   export type IconName = keyof typeof icons
 </script>
 

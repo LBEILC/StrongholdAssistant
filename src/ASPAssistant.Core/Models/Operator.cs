@@ -28,6 +28,9 @@ public class Operator
     [JsonPropertyName("obtain")]
     public string? Obtain { get; set; }
 
+    [JsonPropertyName("diy")]
+    public bool Diy { get; set; }
+
     [JsonPropertyName("coreCovenants")]
     public List<string> CoreCovenants { get; set; } = [];
 

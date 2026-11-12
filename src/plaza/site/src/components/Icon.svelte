@@ -8,6 +8,7 @@
   import close from 'remixicon/icons/System/close-line.svg?raw'
   import user from 'remixicon/icons/User & Faces/user-3-line.svg?raw'
   import star from 'remixicon/icons/System/star-fill.svg?raw'
+  import starLine from 'remixicon/icons/System/star-line.svg?raw'
   import arrowLeft from 'remixicon/icons/Arrows/arrow-left-s-line.svg?raw'
   import mail from 'remixicon/icons/Business/mail-line.svg?raw'
   import shield from 'remixicon/icons/System/shield-check-line.svg?raw'
@@ -18,8 +19,11 @@
   import forbid from 'remixicon/icons/System/forbid-line.svg?raw'
   import github from 'remixicon/icons/Logos/github-line.svg?raw'
   import external from 'remixicon/icons/System/external-link-line.svg?raw'
+  import chat from 'remixicon/icons/Communication/chat-3-line.svg?raw'
+  import flag from 'remixicon/icons/Business/flag-2-line.svg?raw'
+  import reply from 'remixicon/icons/Business/reply-line.svg?raw'
 
-  const icons = { heart, heartFill, download, copy, check, close, user, star, arrowLeft, mail, shield, trash, pencil, eyeOff, eye, forbid, github, external }
+  const icons = { heart, heartFill, download, copy, check, close, user, star, starLine, arrowLeft, mail, shield, trash, pencil, eyeOff, eye, forbid, github, external, chat, flag, reply }
   export type IconName = keyof typeof icons
 </script>
 

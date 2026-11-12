@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { api, type PostDetail } from '../api'
+  import { api, type PostDetail, type ReportTarget } from '../api'
   import { router, link } from '../router.svelte'
   import { session, toast } from '../session.svelte'
-  import { ago, asset, cov, eq, op, strategy, ROMAN } from '../data'
+  import { ago, asset, config, cov, eq, op, strategy, ROMAN } from '../data'
   import OpAvatar from '../components/OpAvatar.svelte'
   import BondChip from '../components/BondChip.svelte'
   import Icon from '../components/Icon.svelte'
+  import Comments from '../components/Comments.svelte'
+  import ReportDialog from '../components/ReportDialog.svelte'
 
   let { id }: { id: string } = $props()
   let p = $state<PostDetail | null>(null)
@@ -17,13 +19,18 @@
   })
 
   const l = $derived(p?.lineup)
+  // 回合阶段（v0.7.0）：标签依次是各回合阶段、成型；默认成型。干员、通用装备、目标盟约跟着切
+  const stages = $derived(l ? [...(l.stages ?? []).map((s) => ({ ...s, label: s.name.trim() || (s.fromRound === s.toRound ? `第 ${s.fromRound} 回合` : `${s.fromRound}～${s.toRound} 回合`) })), { label: '成型', goals: l.goals, members: l.members, equipment: l.equipment }] : [])
+  let six = $state(-1)
+  const part = $derived(stages[six < 0 || six >= stages.length ? stages.length - 1 : six])
+  const sel = $derived(six < 0 || six >= stages.length ? stages.length - 1 : six)
   const st = $derived(strategy(l?.strategyId ?? null))
   const mine = $derived(!!p && session.me?.id === p.author.id)
   // 目标盟约人数：按名单里带这个盟约的干员数，和助手里的算法一样
   const goalRows = $derived(
-    (l?.goals ?? []).map((g) => {
+    (part?.goals ?? []).map((g) => {
       const c = cov(g.id)
-      const have = l!.members.filter((m) => {
+      const have = part!.members.filter((m) => {
         const o = op(m.name)
         return o.core.includes(g.id) || o.extra.includes(g.id) || m.transform === g.id
       }).length
@@ -44,6 +51,20 @@
       .imported(p!.id)
       .then((r) => (p!.imports = r.imports))
       .catch(() => {})
+  }
+
+  let faving = $state(false)
+  async function fav() {
+    if (!session.me) return router.go(`/login?next=${encodeURIComponent(location.pathname)}`)
+    faving = true
+    try {
+      p!.favorited = (await api.favorite(p!.id, !p!.favorited)).favorited
+      toast.show(p!.favorited ? '已收藏，在「我的」里的收藏能找到；助手广场的「收藏」里也有。' : '已取消收藏。')
+    } catch (e) {
+      toast.show((e as Error).message, true)
+    } finally {
+      faving = false
+    }
   }
 
   let liking = $state(false)
@@ -78,6 +99,8 @@
       saving = false
     }
   }
+  let reporting = $state<{ target: ReportTarget; what: string } | null>(null)
+
   let armDelete = $state(false)
   async function remove() {
     try {
@@ -112,7 +135,11 @@
         <button class="btn ghost like" class:on={p.liked} disabled={liking} onclick={like} title={session.me ? '' : '登录后点赞'}>
           <Icon name={p.liked ? 'heartFill' : 'heart'} size={16} />{p.likes}
         </button>
+        <button class="btn ghost like" class:on={p.favorited} disabled={faving} onclick={fav} title={session.me ? '收藏后在「我的」和助手广场里都找得到' : '登录后收藏'}>
+          <Icon name={p.favorited ? 'star' : 'starLine'} size={16} />{p.favorited ? '已收藏' : '收藏'}
+        </button>
         <span class="imp" title="导入次数"><Icon name="download" size={15} />{p.imports}</span>
+        {#if !mine}<button class="btn ghost rep" title="举报这个阵容" onclick={() => (reporting = { target: { kind: 'post', id: p!.id }, what: `${l!.name} · ${p!.author.nickname}` })}><Icon name="flag" size={15} /></button>{/if}
       </div>
     </div>
     <p class="how">装了卫戍协议助手的话，点「在助手里打开」直接导入；没反应就复制分享码，到助手「阵容 → 我的阵容 → 导入」里粘贴。</p>
@@ -135,16 +162,30 @@
           {/if}
         </section>
 
+        {#if stages.length > 1}
+          <div class="stabs" role="tablist" aria-label="回合阶段">
+            {#each stages as x, i (i)}
+              <button role="tab" aria-selected={sel === i} class:on={sel === i} onclick={() => (six = i)}>{x.label}</button>
+            {/each}
+          </div>
+        {/if}
         <section>
-          <h2 class="sec-h">干员<small>Operators · {l.members.length}</small></h2>
+          <h2 class="sec-h">干员<small>Operators · {part.members.length}</small></h2>
           <div class="members">
-            {#each l.members as m (m.name)}
+            {#each part.members as m (m.name)}
               {@const o = op(m.name)}
+              {@const cf = config(m)}
               <div class="mem" class:key={m.key}>
-                <OpAvatar name={m.name} size={56} isKey={m.key} />
+                <OpAvatar name={m.name} size={56} isKey={m.key} elite={m.elite} />
                 <div class="mi">
-                  <div class="mn"><b>{m.name}</b><span class="tier" style:--c="var(--tier-{o.tier})">{ROMAN[o.tier]}</span>{#if m.key}<span class="keyt">关键</span>{/if}</div>
+                  <div class="mn"><b>{m.name}</b><span class="tier" style:--c="var(--tier-{o.tier})">{ROMAN[o.tier]}</span>{#if m.elite}<span class="elt">精锐</span>{/if}{#if m.key}<span class="keyt">关键</span>{/if}</div>
                   <div class="mb">{[...o.core, ...o.extra].map((c) => cov(c).name).join(' · ')}</div>
+                  {#if cf}
+                    <div class="cfg">
+                      {#if cf.skill}<span class="ci" title="技能"><img src={asset.skill(cf.skill.id)} alt="" />{cf.skill.name}</span>{/if}
+                      {#if cf.module}<span class="ci" title="模组"><img class="mo" src={asset.module(cf.module.id)} alt="" />{cf.module.name}</span>{:else if cf.hasModules}<span class="ci none">不带模组</span>{/if}
+                    </div>
+                  {/if}
                   {#if m.equipment?.length}
                     <div class="me">
                       {#each m.equipment as x (x.name)}
@@ -159,19 +200,21 @@
           <p class="legend"><i class="lk"></i>关键干员 <i class="lp"></i>优先装备 <i class="lc"></i>候选装备</p>
         </section>
 
-        {#if l.equipment.length}
+        {#if part.equipment.length}
           <section>
             <h2 class="sec-h">通用装备<small>Equipment</small></h2>
             <div class="eqs">
-              {#each l.equipment as n (n)}<span class="eqc"><img src={asset.equipment(n)} alt="" />{n}</span>{/each}
+              {#each part.equipment as n (n)}<span class="eqc"><img src={asset.equipment(n)} alt="" />{n}</span>{/each}
             </div>
           </section>
         {/if}
+
+        <Comments postId={p.id} count={p.comments} oncount={(d) => (p!.comments += d)} onreport={(target, what) => (reporting = { target, what })} />
       </div>
 
       <aside class="side">
         <section>
-          <h2 class="sec-h">目标盟约<small>Pacts</small></h2>
+          <h2 class="sec-h">目标盟约<small>Pacts{#if stages.length > 1} · {part.label}{/if}</small></h2>
           {#if goalRows.length}
             <div class="goals">{#each goalRows as g (g.id)}<BondChip id={g.id} level={g.level} have={g.have} need={g.need} />{/each}</div>
           {:else}
@@ -208,6 +251,8 @@
     </div>
   {/if}
 </div>
+
+{#if reporting}<ReportDialog target={reporting.target} what={reporting.what} onclose={() => (reporting = null)} />{/if}
 
 <style>
   .in {
@@ -290,6 +335,14 @@
     font-family: var(--font-term);
     color: var(--fg-3);
   }
+  .rep {
+    width: 36px;
+    padding: 0;
+    color: var(--fg-4);
+  }
+  .rep:hover:not(:disabled) {
+    color: #f2b8ba;
+  }
   .how {
     margin: 10px 0 22px;
     font-size: 12.5px;
@@ -366,6 +419,57 @@
     padding: 0 4px;
     color: var(--c);
     box-shadow: inset 0 0 0 1px var(--c);
+  }
+  .stabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .stabs button {
+    height: 30px;
+    padding: 0 14px;
+    font-size: 13px;
+    color: var(--fg-2);
+    background: var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .stabs button.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+    box-shadow: none;
+    font-weight: 700;
+  }
+  .elt {
+    font-size: 11px;
+    padding: 0 5px;
+    color: var(--tier-6);
+    box-shadow: inset 0 0 0 1px rgb(242 122 18 / 0.5);
+  }
+  .cfg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 4px;
+  }
+  .ci {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--fg-2);
+  }
+  .ci img {
+    width: 20px;
+    height: 20px;
+    background: rgb(0 0 0 / 0.4);
+  }
+  .ci .mo {
+    object-fit: contain;
+    padding: 1px;
+  }
+  .ci.none {
+    color: var(--fg-4);
   }
   .keyt {
     font-size: 11px;

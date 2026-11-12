@@ -20,6 +20,8 @@
   }
 </script>
 
+<svelte:window onkeydown={(e) => n && e.key === 'Escape' && done()} />
+
 {#if n}
   <div class="scrim" transition:fade={{ duration: 200 }}></div>
   <div class="wrap">
@@ -56,6 +58,8 @@
     z-index: 71;
     display: grid;
     place-items: center;
+    /* 行高固定成窗口高度，卡片的 max-height: 100% 才生效；不然窗口矮时卡片撑出窗口，「知道了」按不到（用户 2026-11-12 反馈） */
+    grid-template-rows: minmax(0, 1fr);
     padding: 16px 12px;
   }
   .card {

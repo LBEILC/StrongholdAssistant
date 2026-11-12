@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { api, type Post } from '../api'
+  import { api, type CloudLineup, type Post } from '../api'
   import { router, link } from '../router.svelte'
   import { session, toast } from '../session.svelte'
   import { ago } from '../data'
+  import { encode } from '../share'
+  import OpAvatar from '../components/OpAvatar.svelte'
+  import BondChip from '../components/BondChip.svelte'
   import PostCard from '../components/PostCard.svelte'
   import Icon from '../components/Icon.svelte'
 
-  // 我的：昵称、我发的阵容（含旧赛季）、退出登录、注销账号
+  // 我的：昵称、我的阵容（云同步，v0.7.0）/ 我发布的（含旧赛季）/ 收藏，退出登录、注销账号
   $effect(() => {
     if (session.ready && !session.me) router.go('/login?next=/me')
   })
@@ -17,6 +20,10 @@
   let posts = $state<Post[] | null>(null)
   let error = $state('')
 
+  type Tab = 'mine' | 'posts' | 'fav'
+  let tab = $state<Tab>((new URLSearchParams(location.search).get('tab') as Tab) || 'mine')
+  let mine = $state<CloudLineup[] | null>(null)
+  let favs = $state<Post[] | null>(null)
   $effect(() => {
     const me = session.me
     if (!me) return
@@ -25,7 +32,42 @@
       .posts({ author: me.id, season: 'all', sort: 'new' })
       .then((r) => (posts = r.posts))
       .catch((e) => (error = e.message))
+    api
+      .myLineups()
+      .then((r) => (mine = r.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))))
+      .catch((e) => (error = e.message))
+    api
+      .posts({ favorite: true })
+      .then((r) => (favs = r.posts))
+      .catch((e) => (error = e.message))
   })
+
+  // 我的阵容：复制分享码、删除（点两次）
+  async function copyMine(c: CloudLineup) {
+    try {
+      await navigator.clipboard.writeText(`【卫戍协议助手阵容】${c.data!.name} ${encode(c.data!)}`)
+      toast.show('已复制分享码。')
+    } catch {
+      toast.show('复制失败，这套阵容可能用到了当前数据里没有的干员或装备。', true)
+    }
+  }
+  let armDel = $state<string | null>(null)
+  async function removeMine(c: CloudLineup) {
+    if (armDel !== c.id) return (armDel = c.id)
+    armDel = null
+    try {
+      await api.sync({ since: new Date().toISOString(), lineups: [{ id: c.id, data: null, updatedAt: new Date().toISOString(), deleted: true }] })
+      mine = mine!.filter((x) => x.id !== c.id)
+      toast.show('已删除。助手同步后也会删掉。')
+    } catch (e) {
+      toast.show((e as Error).message, true)
+    }
+  }
+  const tabs: { v: Tab; label: string; n: () => number | null }[] = [
+    { v: 'mine', label: '我的阵容', n: () => mine?.length ?? null },
+    { v: 'posts', label: '我发布的', n: () => posts?.length ?? null },
+    { v: 'fav', label: '收藏', n: () => favs?.length ?? null },
+  ]
 
   async function saveName() {
     busy = true
@@ -143,19 +185,66 @@
       {/if}
     </div>
 
-    <h2 class="sec-h">我发布的阵容<small>My lineups</small></h2>
+    <div class="tabs" role="tablist">
+      {#each tabs as t (t.v)}
+        <button role="tab" aria-selected={tab === t.v} class:on={tab === t.v} onclick={() => (tab = t.v)}>{t.label}{#if t.n() !== null}<em>{t.n()}</em>{/if}</button>
+      {/each}
+      <span class="sp"></span>
+      <a class="btn sm" href="/new" use:link><Icon name="pencil" size={13} />新建阵容</a>
+    </div>
     {#if error}
       <p class="err">{error}</p>
-    {:else if !posts}
+    {:else if tab === 'mine'}
+      {#if !mine}
+        <p class="muted">加载中…</p>
+      {:else if !mine.length}
+        <p class="muted">还没有。在卫戍协议助手的设置里打开「同步我的阵容和偏好」，助手里的阵容就会出现在这里；也可以在网页上<a href="/new" use:link class="hl">新建</a>后「保存到我的阵容」。只有你自己看得到。</p>
+      {:else}
+        <p class="muted small">只有你自己看得到。在助手里打开「同步我的阵容和偏好」后，两边自动同步。</p>
+        <div class="grid">
+          {#each mine as c (c.id)}
+            {@const l = c.data!}
+            <div class="ml">
+              <div class="mlh">
+                <b>{l.name}</b>
+                {#if l.stages?.length}<span class="stg">{l.stages.length + 1} 阶段</span>{/if}
+                <span class="muted small">{ago(c.updatedAt)}</span>
+              </div>
+              {#if l.goals.length}<div class="goals">{#each l.goals as g (g.id)}<BondChip id={g.id} level={g.level} />{/each}</div>{/if}
+              <div class="ops">
+                {#each l.members.slice(0, 14) as m (m.name)}<OpAvatar name={m.name} size={36} isKey={m.key} elite={m.elite} />{/each}
+                {#if l.members.length > 14}<span class="muted small">+{l.members.length - 14}</span>{/if}
+                {#if !l.members.length}<span class="muted small">没有干员</span>{/if}
+              </div>
+              {#if l.description}<p class="mld">{l.description}</p>{/if}
+              <div class="mla">
+                <a class="btn sm" href="/new?edit={encodeURIComponent(c.id)}" use:link><Icon name="pencil" size={13} />编辑</a>
+                <button class="btn ghost sm" onclick={() => copyMine(c)}><Icon name="copy" size={13} />分享码</button>
+                <span class="sp"></span>
+                <button class="btn ghost sm" class:danger={armDel === c.id} onclick={() => removeMine(c)}><Icon name="trash" size={13} />{armDel === c.id ? '确认删除' : '删除'}</button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    {:else if tab === 'posts'}
+      {#if !posts}
+        <p class="muted">加载中…</p>
+      {:else if !posts.length}
+        <p class="muted">还没有发布过。<a href="/new" use:link class="hl">新建一个阵容</a>，或者在卫戍协议助手里右键阵容卡「发布到广场」。</p>
+      {:else}
+        <div class="grid">{#each posts as p (p.id)}<PostCard post={p} />{/each}</div>
+      {/if}
+    {:else if !favs}
       <p class="muted">加载中…</p>
-    {:else if !posts.length}
-      <p class="muted">还没有发布过。<a href="/new" use:link class="hl">新建一个阵容</a>，或者在卫戍协议助手里右键阵容卡「发布到广场」。</p>
+    {:else if !favs.length}
+      <p class="muted">还没有收藏。打开广场里的阵容，点「收藏」就会出现在这里；助手广场的「收藏」里也看得到。</p>
     {:else}
-      <div class="grid">{#each posts as p (p.id)}<PostCard post={p} />{/each}</div>
+      <div class="grid">{#each favs as p (p.id)}<PostCard post={p} />{/each}</div>
     {/if}
 
     <h2 class="sec-h danger">注销账号<small>Delete account</small></h2>
-    <p class="muted small">注销会删除你的邮箱、昵称、发布的所有阵容和点赞，不能恢复。</p>
+    <p class="muted small">注销会删除你的邮箱、昵称、发布的所有阵容、点赞、收藏和云端的「我的阵容」，不能恢复。</p>
     <button class="btn sm" class:danger={arm > 0} disabled={busy} onclick={deleteAccount}>
       {arm === 0 ? '注销账号' : arm === 1 ? '确定要注销吗？再点一次' : '最后确认：注销并删除全部数据'}
     </button>
@@ -165,6 +254,88 @@
 {/if}
 
 <style>
+  .tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 8px 0 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .tabs button {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+    color: var(--fg-3);
+    box-shadow: inset 0 -2px 0 transparent;
+  }
+  .tabs button.on {
+    color: var(--fg-1);
+    font-weight: 700;
+    box-shadow: inset 0 -2px 0 var(--mint);
+  }
+  .tabs em {
+    margin-left: 5px;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--fg-4);
+  }
+  .tabs .sp,
+  .mla .sp {
+    flex: 1;
+  }
+  .ml {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .mlh {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mlh b {
+    min-width: 0;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mlh .small {
+    margin-left: auto;
+  }
+  .stg {
+    flex: none;
+    font-size: 11px;
+    padding: 0 5px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .goals,
+  .ops {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+  .mld {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--fg-3);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-line;
+  }
+  .mla {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .in {
     width: min(1200px, 100% - 32px);
     margin: 0 auto;

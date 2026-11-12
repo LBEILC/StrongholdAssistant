@@ -13,6 +13,51 @@ namespace ASPAssistant.Tests.Services;
 [Collection("Native OCR")]
 public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITestOutputHelper output) : IClassFixture<ShopReaderFixture>
 {
+    [Fact]
+    public async Task ClosureUserSample_TracksLiAndBaiduren()
+    {
+        using var engine = new MaaOcrEngine(Path.Combine(AppContext.BaseDirectory, "data"));
+        var recording = new Mock<IOcrEngine>();
+        recording.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<int>(), It.IsAny<int>())).Returns(async (byte[] bytes, int x, int y, int w, int h) =>
+        {
+            var texts = await engine.RecognizeRegionAsync(bytes, x, y, w, h);
+            foreach (var text in texts)
+                output.WriteLine($"OCR：{text.Text}，位置：{text.Box}");
+            return texts;
+        });
+        var reader = new ShopReader(recording.Object, fixture.Names) { Theme = GameShopTheme.Closure };
+        using var source = new Bitmap(fixture.Sample("shop-closure-li-user-1665x1012.jpg"));
+        // 用户图裁掉了顶部和右侧：按约 220px 卡距补到 1080p 画布。
+        // 仅从既有样图补齐缺失的收起区域，保留用户图的卡片和名称像素。
+        using var resized = new Bitmap(1920, 1080);
+        using var control = new Bitmap(fixture.Sample("shop-tier4-gray.png"));
+        using (var graphics = Graphics.FromImage(resized))
+        {
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.Clear(Color.Black);
+            graphics.DrawImage(source, 0, 68, source.Width, source.Height);
+            graphics.DrawImage(control, new Rectangle(1700, 990, 220, 50), 1700, 990, 220, 50, GraphicsUnit.Pixel);
+        }
+        using var stream = new MemoryStream();
+        resized.Save(stream, ImageFormat.Png);
+        var items = await reader.ReadAsync(stream.ToArray(), resized.Width, resized.Height, ["砾", "摆渡人"]);
+        items.Select(i => i.Name).Should().Equal("摆渡人", "砾");
+        items.Single(i => i.Name == "摆渡人").SlotIndex.Should().Be(3);
+        items.Single(i => i.Name == "砾").SlotIndex.Should().Be(4);
+    }
+
+    [Fact]
+    public void Match_SingleCharacterStillRequiresWholeNameAndMerchandiseArea()
+    {
+        var reader = new ShopReader(Mock.Of<IOcrEngine>(), ["砾", "山"]);
+        reader.Match([
+            new("砂砾", (2468, 390, 156, 40)),
+            new("△山", (3500, 390, 100, 40)),
+            new("收起", (3500, 370, 160, 60))], 1920, 1080, 810, ["砾", "山"])
+            .Should().BeEmpty();
+    }
+
     // These run the real bundled PaddleOCR models against anonymized client crops.
     [Theory]
     [InlineData("shop-ui100-2000x1125.png", "盟约之币|深靛|深靛|深靛")]

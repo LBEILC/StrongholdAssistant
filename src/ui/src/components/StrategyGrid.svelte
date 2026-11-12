@@ -250,4 +250,11 @@
     color: var(--mint-ink);
     background: var(--mint);
   }
+  /* 宽（工作台）：头像放大 */
+  @container (min-width: 720px) {
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+      gap: 6px;
+    }
+  }
 </style>

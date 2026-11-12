@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { fly, fade } from 'svelte/transition'
-  import { cubicOut } from 'svelte/easing'
+  import { sheet } from '../lib/sheet'
+  import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { api } from '../lib/api'
-  import { plaza, postToLineup, PLAZA } from '../lib/plaza.svelte'
+  import { plaza, postToLineup, PLAZA, REPORT_REASONS, type ReportReason } from '../lib/plaza.svelte'
+  import PlazaComments from './PlazaComments.svelte'
   import LineupCard from './LineupCard.svelte'
+  import LineupBreakdown from './LineupBreakdown.svelte'
   import Icon from './Icon.svelte'
 
   // 广场的底部面板，两种用途：看广场里的一个阵容（导入、点赞、看简介），发布本地阵容（写简介）。
@@ -15,6 +17,7 @@
   const close = () => {
     plaza.viewing = null
     plaza.publishing = null
+    plaza.reporting = null
   }
 
   let desc = $state('')
@@ -69,15 +72,64 @@
       post!.likes = r.likes
       post!.liked = r.liked
     })
+  const fav = () =>
+    run(async () => {
+      if (!plaza.me && !(await plaza.login())) return
+      post!.favorited = (await plaza.favorite(post!.id, !post!.favorited)).favorited
+      app.showToast(post!.favorited ? '已收藏，在广场「收藏」里找得到' : '已取消收藏')
+    })
   const mine = $derived(!!post && plaza.me?.id === post.author.id)
+  // 从别人的森空岛攻略导入的（简介开头「来自森空岛 · 作者」），发布前提醒征得原作者同意；自己的历史战绩不用
+  const fromSkland = $derived(!!pub?.description?.startsWith('来自森空岛 · '))
+
+  // 举报：面板切成举报页，提交或返回后回到详情
+  const rep = $derived(plaza.reporting)
+  let reason = $state<ReportReason | null>(null)
+  let detail = $state('')
+  $effect(() => {
+    if (rep) {
+      reason = null
+      detail = ''
+      err = ''
+      plaza.check()
+    }
+  })
+  const reasons = $derived((Object.keys(REPORT_REASONS) as ReportReason[]).filter((r) => r !== 'broken' || rep?.target.kind === 'post'))
+  const sendReport = () =>
+    run(async () => {
+      if (!plaza.me && !(await plaza.login())) return
+      await plaza.report({ target: rep!.target, reason: reason!, ...(detail.trim() && { detail: detail.trim() }) })
+      plaza.reporting = null
+      app.showToast('已收到举报，管理员会尽快处理')
+    })
 </script>
 
-<svelte:window onkeydown={(e) => open && e.key === 'Escape' && close()} />
+<svelte:window onkeydown={(e) => open && e.key === 'Escape' && (rep ? (plaza.reporting = null) : close())} />
 
 {#if open}
-  <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:fly={{ y: 320, duration: 240, easing: cubicOut }}>
-    {#if post}
+  <div class="scrim dock" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
+  <aside class="sheet" transition:sheet={{ y: 320, duration: 240 }}>
+    {#if post && rep}
+      <header>
+        <span class="hi"><Icon name="flag" size={16} /></span>
+        <h3>举报{rep.target.kind === 'post' ? '阵容' : '评论'}</h3>
+        <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
+      </header>
+      <p class="what">{rep.what}</p>
+      <div class="rs" role="radiogroup" aria-label="举报理由">
+        {#each reasons as r (r)}
+          <button class="r" class:on={reason === r} role="radio" aria-checked={reason === r} onclick={() => (reason = r)}><i class="dot"></i>{REPORT_REASONS[r]}</button>
+        {/each}
+      </div>
+      <textarea class="detail" bind:value={detail} maxlength="200" placeholder="补充说明（选填）"></textarea>
+      <p class="hint">举报不会公开，只有管理员能看到。{plaza.me ? '' : '提交前要先登录阵容广场。'}</p>
+      {#if err}<p class="err">{err}</p>{/if}
+      <footer>
+        <button class="ghost" onclick={() => (plaza.reporting = null)}>返回</button>
+        <span class="sp"></span>
+        <button class="primary" disabled={!reason || busy || plaza.loggingIn} onclick={sendReport}>{busy ? '提交中…' : '提交'}</button>
+      </footer>
+    {:else if post}
       <header>
         <span class="hi"><Icon name="grid" size={16} /></span>
         <h3>阵容广场</h3>
@@ -86,22 +138,28 @@
       </header>
       {#if !post.current}<p class="warn">这是旧赛季的阵容，数据对不上，只能看，不能导入。</p>{/if}
       <div class="preview">
-        <LineupCard lineup={postToLineup(post)} menu={false}>
+        <LineupCard lineup={postToLineup(post)} menu={false} headOnly>
           {#snippet sub()}
             <span class="by">{post.author.nickname}{#if mine}（我）{/if}{#if post.featured} · <b class="feat">精选</b>{/if}</span>
           {/snippet}
         </LineupCard>
       </div>
+      <LineupBreakdown lineup={postToLineup(post)} />
       {#if post.description}<p class="desc">{post.description}</p>{/if}
       <div class="stats">
         <button class="like" class:on={post.liked} disabled={busy} onclick={like} title={plaza.me ? '' : '登录后点赞'}>
           <Icon name={post.liked ? 'heartFill' : 'heart'} size={14} />{post.likes}
         </button>
         <span title="导入次数"><Icon name="download" size={14} />{post.imports}</span>
+        <button class="like" class:on={post.favorited} disabled={busy} onclick={fav} title={plaza.me ? '收藏后在广场「收藏」里找得到' : '登录后收藏'}>
+          <Icon name={post.favorited ? 'starFill' : 'star'} size={14} />{post.favorited ? '已收藏' : '收藏'}
+        </button>
         <span class="sp"></span>
+        {#if !mine}<button class="lnk rep" onclick={() => (plaza.reporting = { target: { kind: 'post', id: post.id }, what: `${post.lineup.name} · ${post.author.nickname}` })}><Icon name="flag" size={12} />举报</button>{/if}
         <button class="lnk" onclick={() => api.openUrl(`${PLAZA}/p/${post.id}`)}>在网站上看<Icon name="arrowRight" size={12} /></button>
       </div>
       {#if err}<p class="err">{err}</p>{/if}
+      <PlazaComments {post} />
       <footer>
         <button class="ghost" onclick={close}>关闭</button>
         <span class="sp"></span>
@@ -115,6 +173,7 @@
         <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
       </header>
       <div class="preview"><LineupCard lineup={pub} menu={false} /></div>
+      {#if fromSkland}<p class="warn">这套阵容来自森空岛，发布前请先征得原作者同意（森空岛规则不允许转载、搬运他人攻略）。</p>{/if}
 
       {#if !plaza.checked}
         <p class="hint">正在检查登录状态…</p>
@@ -261,6 +320,61 @@
     gap: 2px;
     font-size: 12px;
     color: var(--mint);
+  }
+  .lnk.rep {
+    color: var(--fg-4);
+  }
+  .lnk.rep:hover {
+    color: #f2b8ba;
+  }
+  .what {
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rs {
+    display: grid;
+    gap: 2px;
+  }
+  .r {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12.5px;
+    text-align: left;
+    color: var(--fg-2);
+    background: var(--bg-2);
+  }
+  .r:hover {
+    color: var(--fg-1);
+    background: var(--bg-3);
+  }
+  .r.on {
+    color: var(--fg-1);
+    background: var(--bg-3);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px var(--fg-4);
+  }
+  .on .dot {
+    background: var(--mint);
+    box-shadow:
+      inset 0 0 0 3px #1d2023,
+      0 0 0 1px var(--mint);
+  }
+  .detail {
+    field-sizing: content;
+    min-height: 52px;
+    max-height: 120px;
   }
   .warn {
     margin: 0;

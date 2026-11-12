@@ -6,7 +6,8 @@ namespace StrongholdAssistant.Host;
 
 public sealed record FreeWindowBounds(double Left, double Top, double Width, double Height);
 public sealed record DockSettings(double Width = 380, SidePanelOffset? FollowOffsetDip = null,
-    SidePanelOffset? OverlayOffsetDip = null, FreeWindowBounds? FreeBounds = null);
+    SidePanelOffset? OverlayOffsetDip = null, FreeWindowBounds? FreeBounds = null,
+    FreeWindowBounds? WorkbenchBounds = null);
 
 // 同步合并写入，让窗口位置与界面设置共用文件而不相互覆盖。
 public sealed class HostSettingsStore(string path)
@@ -26,9 +27,13 @@ public sealed class HostSettingsStore(string path)
             GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
             MumuSerial = json["mumuSerial"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
+            ToggleHotkey = json["toggleHotkey"]?.GetValue<string>() ?? "Alt+S",
+            CloudSync = json["cloudSync"]?.Deserialize<CloudSyncState>(HostApi.JsonOptions) ?? new(false, null, null, null, []),
+            ShareIncome = json["shareIncome"]?.GetValue<bool>() ?? false,
             CollapseMode = json["collapseMode"]?.GetValue<string>() ?? "strip",
             FocusCovenants = json["focusCovenants"]?.Deserialize<string[]>() ?? [],
-            FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? []
+            FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? [],
+            OperatorDefaults = json["operatorDefaults"]?.Deserialize<Dictionary<string, OperatorDefaults>>(HostApi.JsonOptions) ?? []
         };
     }
 

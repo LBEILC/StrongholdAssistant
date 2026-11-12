@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { fly, fade, slide } from 'svelte/transition'
+  import { sheet } from '../lib/sheet'
+  import { fade, slide } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
   import { CHANGELOG } from '../lib/changelog'
@@ -18,7 +19,7 @@
 
 {#if app.changelogOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:fly={{ y: 360, duration: 240, easing: cubicOut }}>
+  <aside class="sheet" transition:sheet={{ y: 360, duration: 240 }}>
     <header>
       <h3>更新日志</h3>
       <span class="term">Changelog</span>

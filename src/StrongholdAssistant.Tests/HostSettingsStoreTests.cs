@@ -1,0 +1,65 @@
+using StrongholdAssistant.Host;
+
+namespace StrongholdAssistant.Tests;
+
+public sealed class HostSettingsStoreTests : IDisposable
+{
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
+
+    [Fact]
+    public void NewAndMissingHotkeySettingsDefaultToAltS()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        var store = new HostSettingsStore(path);
+        Assert.Equal("Alt+S", store.LoadSettings().ToggleHotkey);
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, """{"followGame":true,"alwaysOnTop":true,"collapseMode":"up"}""");
+        Assert.Equal("Alt+S", store.LoadSettings().ToggleHotkey);
+        Assert.Equal("Alt+S", new SettingsDto("terminal", true, true).ToggleHotkey);
+        Assert.Empty(store.LoadSettings().OperatorDefaults);
+    }
+
+    [Fact]
+    public async Task OperatorDefaultsSurviveBridgeSaveReloadAndBackup()
+    {
+        var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        var defaults = new Dictionary<string, OperatorDefaults>
+        {
+            ["艾丝黛尔"] = new("skchr_estell_2", "uniequip_002_estell"),
+            ["凯尔希·思衡托"] = new(Skill: "skchr_kalts2_3")
+        };
+        var settings = api.Settings with { OperatorDefaults = defaults };
+        var input = System.Text.Json.JsonSerializer.SerializeToElement(new[] { settings }, HostApi.JsonOptions);
+        await api.InvokeAsync("saveSettings", input.EnumerateArray().ToArray());
+        api.SettingsStore.SaveDock(new(Width: 420));
+        var restored = api.SettingsStore.LoadSettings();
+        Assert.Equal(defaults, restored.OperatorDefaults);
+        var backupPath = Path.Combine(_directory, "backup.json");
+        await api.ExportBackupAsync(backupPath);
+        using var backup = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(backupPath));
+        Assert.Equal("uniequip_002_estell", backup.RootElement.GetProperty("settings")
+            .GetProperty("operatorDefaults").GetProperty("艾丝黛尔").GetProperty("module").GetString());
+    }
+
+    [Theory]
+    [InlineData("Alt+Q")]
+    [InlineData("")]
+    [InlineData("Ctrl+Shift+F2")]
+    public void SavedHotkeySurvivesSettingsAndDockWrites(string combo)
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new { toggleHotkey = combo }));
+        var store = new HostSettingsStore(path);
+        var settings = store.LoadSettings();
+        Assert.Equal(combo, settings.ToggleHotkey);
+        store.SaveSettings(settings with { AlwaysOnTop = true });
+        store.SaveDock(new(FreeBounds: new(100, 200, 380, 900), OverlayOffsetDip: new(12, 34)));
+        Assert.Equal(combo, new HostSettingsStore(path).LoadSettings().ToggleHotkey);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
+    }
+}

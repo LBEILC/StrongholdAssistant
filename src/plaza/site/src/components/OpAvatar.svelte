@@ -6,17 +6,20 @@
     name: string
     size?: number
     isKey?: boolean
+    /** 目标精锐：左下角游戏里的精锐标签（v0.7.0） */
+    elite?: boolean
     priority?: string[]
     showName?: boolean
   }
-  let { name, size = 40, isKey = false, priority = [], showName = false }: Props = $props()
+  let { name, size = 40, isKey = false, elite = false, priority = [], showName = false }: Props = $props()
   const o = $derived(op(name))
 </script>
 
-<span class="oa" style:--s="{size}px" style:--c="var(--tier-{o.tier})" title="{name}（{ROMAN[o.tier]} 阶）{isKey ? ' · 关键' : ''}{priority.length ? ` · 优先装备：${priority.join('、')}` : ''}">
+<span class="oa" style:--s="{size}px" style:--c="var(--tier-{o.tier})" title="{name}（{ROMAN[o.tier]} 阶）{isKey ? ' · 关键' : ''}{elite ? ' · 精锐' : ''}{priority.length ? ` · 优先装备：${priority.join('、')}` : ''}">
   <span class="pic">
     <img src={asset.operator(name)} alt={name} loading="lazy" />
     {#if isKey}<i class="key"></i>{/if}
+    {#if elite}<img class="el" src={asset.card('icon_golden')} alt="精锐" />{/if}
     {#if priority.length}
       <span class="pe">{#each priority.slice(0, 2) as e (e)}<img src={asset.equipment(e)} alt="" />{/each}</span>
     {/if}
@@ -60,6 +63,17 @@
     border-style: solid;
     border-width: calc(var(--s) * 0.32) calc(var(--s) * 0.32) 0 0;
     border-color: var(--gold) transparent transparent transparent;
+  }
+  .pic > img.el {
+    width: auto;
+    position: absolute;
+    left: 0;
+    bottom: 3px;
+    z-index: 2;
+    height: max(11px, calc(var(--s) * 0.26));
+    aspect-ratio: 40 / 27;
+    object-view-box: inset(0px 16px 0px 4px);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
   }
   .pe {
     position: absolute;

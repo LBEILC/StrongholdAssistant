@@ -78,7 +78,7 @@ const tierName = (t: number) => `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][t]} �
 
 export function operatorMenu(name: string): Omit<MenuState, 'x' | 'y'> {
   const o = app.op(name)
-  const inTarget = !!app.target?.members.some((m) => m.name === name)
+  const inTarget = !!app.active?.members.some((m) => m.name === name)
   const items: MenuEntry[] = []
   // 按格位推测的禁用：先让用户确认或否认，否认后那一格变回问号、换候选
   if (app.inferred.has(name))
@@ -100,7 +100,7 @@ export function operatorMenu(name: string): Omit<MenuState, 'x' | 'y'> {
 
 export function equipmentMenu(name: string): Omit<MenuState, 'x' | 'y'> {
   const e = app.eq(name)
-  const inTarget = !!app.target?.equipment.includes(name)
+  const inTarget = !!app.active?.equipment.includes(name)
   const items: MenuEntry[] = [{ label: '查看详情', icon: 'arrowRight', run: () => (app.detail = { kind: 'equipment', name }) }, 'sep']
   items.push({ label: '追踪', icon: 'star', on: app.trackedEq.has(name), run: () => app.toggleTrackedEq(name) })
   if (app.target) items.push({ label: '在目标阵容里', icon: 'focus', on: inTarget, run: () => app.toggleTargetEq(name) })
@@ -125,6 +125,7 @@ export function lineupMenu(l: Lineup): Omit<MenuState, 'x' | 'y'> {
       { label: '编辑', icon: 'pencil', run: () => app.edit(l) },
       { label: '复制分享码', icon: 'share', run: () => app.copyShare(l) },
       { label: '发布到广场', icon: 'upload', run: () => (plaza.publishing = $state.snapshot(l) as Lineup) },
+      { label: '用这套阵容更新我的默认', icon: 'magic', run: () => app.defaultsFromLineup(l) },
       isT ? { label: '取消目标', icon: 'close', run: () => app.setTarget(null) } : { label: '设为目标', icon: 'focus', run: () => app.setTarget(l.id) },
       'sep',
       { label: '删除', icon: 'trash', tone: 'danger', confirm: '再点一次删除', run: () => app.deleteLineup(l.id) },

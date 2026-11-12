@@ -1,9 +1,24 @@
 // 原型用的假后端：数据取自参考项目的当期数据表，本局信息仿照 TestData/info-ingame-1920x1080.png。
 // 禁用推算是粗略的假实现，只为让界面能走通；真实逻辑在参考项目的 BanScreenAnalyzer。
-import type { Api, BanGroup, Catalog, CovenantGoal, Lineup, MatchInfo, ScanStatus, Session, Settings, UpdateStatus } from './types'
+import type { Api, BanGroup, Catalog, CovenantGoal, Economy, Income, Lineup, MatchInfo, MatchRecord, ScanStatus, Session, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 
-const catalog = raw as unknown as Catalog
+// 目录数据重新生成前先用这份收入来源（生成后以数据为准）
+const catalog = {
+  incomeSources: [
+    { name: '精打细算玩偶', trigger: 'equipment', kind: 'each', amount: 1, eliteAmount: 2 },
+    { name: '见钱眼开玩偶', trigger: 'equipment', kind: 'once', amount: 2, eliteAmount: 4 },
+    { name: '波登可', trigger: 'sell', kind: 'once', amount: 1, eliteAmount: 2 },
+  ],
+  ...raw,
+} as unknown as Catalog
+for (const o of catalog.operators as Partial<Catalog['operators'][number]>[])
+  if (!o.skills) {
+    o.skills = [{ id: `${o.charId}_s1`, name: '攻击力强化·β型' }, { id: `${o.charId}_s2`, name: `${o.name}的技能` }]
+    o.modules = o.diy ? [] : [{ id: `${o.charId}_m1`, name: `${o.name}的模组` }]
+    o.defaultSkill = o.skills[1].id
+    o.defaultModule = o.modules[0]?.id ?? null
+  }
 
 // v0.5.0 图鉴增强的假数据：合成从效果文字里解析；变形同构体、来源只填几件示例；首领血量按游戏 boss_1 的比例套
 for (const e of catalog.equipment) {
@@ -100,9 +115,30 @@ function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchI
     awaitingDetail: false,
     bansScanned: !location.search.includes('rule'), // ?rule：只做过入场自动识别
     mode: { id: 'mode_single_16', name: '规程等级16' },
+    economy: economy(),
   }
 }
-const emptyMatch = (): MatchInfo => ({ source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [], banGroups: [], solo: false, awaitingDetail: false, bansScanned: false, mode: null })
+// 回合与资金：?econ=carry|deferred|kazimier|random 换策略规则，?econ=none 没有基础资金数据
+let incomes: Income[] = [{ id: 'i-1', source: '精打细算玩偶', elite: false, amount: 1, kind: 'each', round: 4 }]
+function economy(): Economy {
+  const q = new URLSearchParams(location.search).get('econ')
+  const rule = (['carry', 'deferred', 'kazimier', 'random'] as const).find((r) => r === q) ?? null
+  const known = incomes.reduce((n, i) => n + (i.kind === 'each' || i.round === 6 ? i.amount : 0), 0)
+  return {
+    round: 6,
+    money: 4,
+    startMoney: 14,
+    level: 2,
+    upgradeCost: 5,
+    readAt: new Date().toISOString(),
+    next: q === 'none' ? null : (rule === 'carry' ? 15 : 11) + known,
+    extra: 1,
+    incomes,
+    rule,
+    basis: q === 'none' ? 'none' : 'own',
+  }
+}
+const emptyMatch = (): MatchInfo => ({ source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [], banGroups: [], solo: false, awaitingDetail: false, bansScanned: false, mode: null, economy: null })
 // ?solo：单人开局后、还没读到对局详情的状态
 let match: MatchInfo = location.search.includes('solo')
   ? { ...emptyMatch(), solo: true, awaitingDetail: true }
@@ -118,7 +154,7 @@ function build(id: string, name: string, goals: CovenantGoal[], note?: string): 
   return { id, name, goals, members, equipment: [], strategyId: null, source: 'user', note, updatedAt: new Date(Date.now() - 86400_000).toISOString() }
 }
 
-const lineups: Lineup[] = [
+let lineups: Lineup[] = [
   build('l-siracusa', '叙拉古 · 家族', [{ id: 'siracusa', level: 2 }, { id: 'stead', level: 1 }]),
   build('l-yan', '炎 · 元素', [{ id: 'yan', level: 2 }]),
   build('l-lethania', '莱塔尼亚 · 叠层', [{ id: 'lethania', level: 1 }, { id: 'visi', level: 1 }]),
@@ -134,6 +170,12 @@ lineups[0].members[0].equipment = [
   { name: '汲取者之喙', priority: false },
 ]
 lineups[0].members[1].equipment = [{ name: '汲取者之心', priority: false }]
+// 样例：目标阵容有两个回合阶段（假数据回合 6 → 自动在 4～8 回合）
+const low = catalog.operators.filter((o) => o.tier <= 2 && (hasCov(o, 'siracusa') || hasCov(o, 'stead')))
+lineups[0].stages = [
+  { name: '', fromRound: 1, toRound: 3, goals: [{ id: 'siracusa', level: 1 }], members: low.slice(0, 5).map((o) => ({ name: o.name })), equipment: [] },
+  { name: '过渡', fromRound: 4, toRound: 8, goals: [{ id: 'siracusa', level: 1 }, { id: 'stead', level: 1 }], members: [...low.slice(3, 7), ...lineups[0].members.slice(2, 5)].map((m) => ({ name: m.name })), equipment: [] },
+]
 
 let session: Session = {
   targetLineupId: 'l-siracusa',
@@ -156,7 +198,52 @@ let settings: Settings = {
   mumuSerial: '',
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
+  toggleHotkey: 'Alt+S',
+  shareIncome: false,
+  cloudSync: { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] },
+  operatorDefaults: {},
 }
+// 历史记录假数据：一局本地和森空岛对上了，一局只有本地（还在打）
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString()
+let history: MatchRecord[] = [0.2, 2.5].map((h, i) => {
+  const m = computeMatch('recognized', hoursAgo(h))
+  const rounds = Array.from({ length: i ? 8 : 6 }, (_, r) => ({ round: r + 1, startMoney: [22, 9, 10, 10, 12, 14, 14, 16][r] }))
+  return {
+    id: `h-${i}`,
+    time: hoursAgo(h),
+    local: {
+      mode: m.mode,
+      solo: false,
+      strategyId: m.strategyId,
+      covenants: m.covenants,
+      bannedOperators: m.bannedOperators,
+      bossId: m.bossId,
+      lineup: lineups[i] ?? null,
+      rounds,
+      lastRound: rounds.length,
+      lastSeenAt: hoursAgo(h - 0.5),
+    },
+    skland: i
+      ? {
+          id: 'rec-local-1',
+          strategyId: m.strategyId,
+          operators: catalog.operators.slice(0, 8).map((o) => ({ id: o.charId, elite: false })),
+          equipment: [],
+          success: false,
+          time: hoursAgo(h - 0.6),
+          startTime: hoursAgo(h),
+          coinSpent: 137,
+          kills: 170,
+          covenants: [],
+          bosses: [],
+          mode: 'MULTI',
+          difficulty: 'HARD',
+          passRound: 8,
+          versionId: 'V3_1',
+        }
+      : null,
+  }
+})
 const updateListeners = new Set<(u: UpdateStatus) => void>()
 const pushUpdate = (u: UpdateStatus) => updateListeners.forEach((cb) => cb(u))
 
@@ -205,6 +292,10 @@ export const mockApi: Api = {
     scanListeners.forEach((cb) => cb({ busy: true, continuous: true }))
     continuousTimer = window.setInterval(tick, 1000)
   },
+  setMatchStrategy: async (id) => {
+    match = { ...match, strategyId: id }
+    return wait(match, 0)
+  },
   setCovenantIncomplete: (id, v) => {
     v ? incomplete.add(id) : incomplete.delete(id)
     match = computeMatch('manual', match.recognizedAt!)
@@ -246,11 +337,51 @@ export const mockApi: Api = {
   deleteLineup: async (id) => {
     lineups.splice(lineups.findIndex((x) => x.id === id), 1)
   },
+  putLineups: async (put, removed) => {
+    for (const l of put) {
+      const i = lineups.findIndex((x) => x.id === l.id)
+      i >= 0 ? (lineups[i] = structuredClone(l)) : lineups.unshift(structuredClone(l))
+    }
+    lineups = lineups.filter((x) => !removed.includes(x.id))
+    return wait(structuredClone(lineups), 60)
+  },
   session: () => wait(session),
   saveSession: async (s) => {
     session = structuredClone(s)
   },
   windowCommand: async () => {},
+  // 原型里 F2 当作全局快捷键；?hotkeyBusy：改快捷键总是被占用
+  setHotkey: async (combo) => {
+    if (location.search.includes('hotkeyBusy')) throw new Error('这个组合被别的软件占用了，换一个试试。')
+    settings = { ...settings, toggleHotkey: combo }
+  },
+  onHotkey: (cb) => {
+    const f = (e: KeyboardEvent) => e.key === 'F2' && cb()
+    addEventListener('keydown', f)
+    return () => removeEventListener('keydown', f)
+  },
+  addIncome: async (source, elite) => {
+    const s = catalog.incomeSources.find((x) => x.name === source)!
+    incomes = [...incomes, { id: `i-${Date.now()}`, source, elite, amount: elite ? s.eliteAmount : s.amount, kind: s.kind, round: 6 }]
+    match = { ...match, economy: economy() }
+    return wait(match, 0)
+  },
+  removeIncome: async (id) => {
+    incomes = incomes.filter((i) => i.id !== id)
+    match = { ...match, economy: economy() }
+    return wait(match, 0)
+  },
+  history: () => wait(history, 300),
+  deleteRecord: async (id) => {
+    history = history.filter((r) => r.id !== id)
+  },
+  saveSklandRecords: async (records) => {
+    const have = new Set(history.flatMap((r) => (r.skland ? [r.skland.id] : [])))
+    history = [...history, ...records.filter((r) => !have.has(r.id)).map((r) => ({ id: `h-${r.id}`, time: r.time, local: null, skland: r }))]
+    history.sort((a, b) => b.time.localeCompare(a.time))
+    return history
+  },
+  resetShareId: async () => {},
   collapseUp: async () => {},
   // ?deeplink=…：原型里模拟从网站点「在助手里打开」
   onDeepLink: (cb) => {
@@ -266,7 +397,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
+  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false }, 0),
   openDataFolder: async () => {},
   // ?mumu2：模拟多开两个实例
   mumuInstances: () =>
@@ -313,6 +444,52 @@ export const mockApi: Api = {
   },
   plazaToken: async () => localStorage.getItem('mockPlazaToken'),
   plazaLogout: async () => localStorage.removeItem('mockPlazaToken'),
+  // 假数据：一篇森空岛攻略（编号取自真实页面，文字是示例），1 秒后返回；链接里带 fail 时模拟读取失败，带 multi 时给两个阶段
+  sklandGuide: async (url) => {
+    await new Promise((r) => setTimeout(r, 1000))
+    if (url.includes('fail')) throw new Error('20 秒内没读到攻略内容，可能是森空岛页面改版了，或者这篇攻略已被删除。')
+    const op = (id: string, elite = false) => ({ id, elite })
+    const formation = {
+      type: 'FORMATION',
+      startRound: 0,
+      endRound: 0,
+      operators: ['char_171_bldsk', 'char_206_gnosis', 'char_4027_heyak', 'char_1016_agoat2', 'char_1045_svash2', 'char_1046_sbell2', 'char_391_rosmon', 'char_4244_tocka', 'char_9999_unknown'].map((id, i) => op(id, i === 4 || i === 5)),
+      equipment: ['chess_item_6_03_e_a', 'chess_item_3_02_e_a'],
+      covenants: ['kjerag', 'preci', 'swift', 'skillful', 'sunt', 'doc', 'arcane'],
+      notes: '示例运营思路：前期凑对子升本，迅捷成型后转精准。\n可以把同盟约的其他叠层干员换进来。',
+    }
+    const early = { ...formation, type: 'TRANSITION', startRound: 1, endRound: 8, operators: formation.operators.slice(0, 4), equipment: [], notes: '示例：前期过渡。' }
+    return {
+      url,
+      title: '示例攻略：谢拉格精准速攻',
+      author: '示例作者',
+      strategies: ['band_bonus', 'band_support'],
+      versionId: 'V3_1',
+      stages: url.includes('multi') ? [early, formation] : [formation],
+    }
+  },
+  // 假数据：森空岛历史战绩，1.5 秒后返回三局
+  sklandHistory: async () => {
+    await new Promise((r) => setTimeout(r, 1500))
+    const ids = ['char_1027_greyy2', 'char_171_bldsk', 'char_206_gnosis', 'char_4027_heyak', 'char_391_rosmon', 'char_4244_tocka', 'char_1045_svash2', 'char_1046_sbell2']
+    return [8, 0, 1].map((round, i) => ({
+      id: `rec-${i}`,
+      strategyId: ['band_mech', 'band_bonus', null][i],
+      operators: ids.slice(0, [8, 3, 5][i]).map((id) => ({ id, elite: false })),
+      equipment: i ? [] : ['chess_item_1_06_e_a', 'chess_item_6_03_e_a'],
+      success: i === 2,
+      time: new Date(Date.now() - [2, 4, 11][i] * 3600_000).toISOString(),
+      mode: i === 1 ? 'SINGLE' : 'MULTI',
+      startTime: new Date(Date.now() - [2.6, 4.2, 11.7][i] * 3600_000).toISOString(),
+      coinSpent: [95, 4, 232][i],
+      kills: [92, 0, 245][i],
+      covenants: [{ id: 'skillful', layer: 32 }, { id: 'doc', layer: 16 }],
+      bosses: [{ id: 'enemy_1521_dslily', killed: i === 2 }],
+      difficulty: 'ABYSS',
+      passRound: round,
+      versionId: 'V3_1',
+    }))
+  },
   onUpdate: (cb) => {
     updateListeners.add(cb)
     return () => updateListeners.delete(cb)

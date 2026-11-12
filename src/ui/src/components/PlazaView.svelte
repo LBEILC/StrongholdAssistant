@@ -6,8 +6,8 @@
   import Icon from './Icon.svelte'
 
   // 阵容页的「广场」分段：网站上的阵容。默认按本局排（识别过本局时）：目标盟约阵容不完整的、名单被禁多的往后；
-  // 也能切热门 / 最新 / 精选。点标题看详情、导入
-  type Sort = 'match' | 'hot' | 'new' | 'featured'
+  // 也能切热门 / 最新 / 精选 / 收藏（v0.7.0，要登录）。点标题看详情、导入
+  type Sort = 'match' | 'hot' | 'new' | 'featured' | 'favorite'
   const hasMatch = $derived(app.match.source !== 'none')
   let sort = $state<Sort>(app.match.source !== 'none' ? 'match' : 'hot')
   let posts = $state<Post[]>([])
@@ -18,6 +18,12 @@
 
   async function load(more = false) {
     const my = ++seq
+    // 收藏要登录：没登录时不请求，列表里给登录按钮
+    if (sort === 'favorite' && !plaza.me) {
+      posts = []
+      cursor = null
+      return
+    }
     loading = true
     error = ''
     try {
@@ -33,6 +39,7 @@
   }
   $effect(() => {
     void sort
+    void plaza.me
     load()
   })
   $effect(() => {
@@ -54,6 +61,7 @@
     { v: 'hot', label: '热门' },
     { v: 'new', label: '最新' },
     { v: 'featured', label: '精选' },
+    { v: 'favorite', label: '收藏' },
   ]
 </script>
 
@@ -73,10 +81,12 @@
   {/if}
 </p>
 
-{#if error}
+{#if sort === 'favorite' && !plaza.me}
+  <div class="state"><p>收藏跟着广场账号走，登录后在这里看收藏的阵容。</p><button class="retry" disabled={plaza.loggingIn} onclick={() => plaza.login().catch((e) => app.showToast(e.message, true))}>{plaza.loggingIn ? '等待登录…' : '登录'}</button></div>
+{:else if error}
   <div class="state"><p>{error}</p><button class="retry" onclick={() => load()}>重试</button></div>
 {:else if !shown.length && !loading}
-  <div class="state"><p>{sort === 'featured' ? '还没有精选阵容。' : '广场里还没有阵容。在「我的阵容」里右键阵容卡「发布到广场」，做第一个分享的人。'}</p></div>
+  <div class="state"><p>{sort === 'favorite' ? '还没有收藏。打开广场里的阵容，点「收藏」就会出现在这里。' : sort === 'featured' ? '还没有精选阵容。' : '广场里还没有阵容。在「我的阵容」里右键阵容卡「发布到广场」，做第一个分享的人。'}</p></div>
 {:else}
   <div class="list">
     {#each shown as p (p.id)}
@@ -85,6 +95,7 @@
           <span class="by">{p.author.nickname}</span>
           <span class="num"><Icon name={p.liked ? 'heartFill' : 'heart'} size={11} />{p.likes}</span>
           <span class="num"><Icon name="download" size={11} />{p.imports}</span>
+          <span class="num"><Icon name="chat" size={11} />{p.comments}</span>
           {#if p.featured}<span class="feat">精选</span>{/if}
         {/snippet}
         {#snippet actions()}
@@ -211,5 +222,13 @@
     margin: 10px 0 0;
     font-size: 11px;
     color: var(--fg-4);
+  }
+  /* 宽（工作台）：帖子卡网格 */
+  @container (min-width: 720px) {
+    .list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      align-items: start;
+    }
   }
 </style>

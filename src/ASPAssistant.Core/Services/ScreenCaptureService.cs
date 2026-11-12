@@ -75,8 +75,10 @@ public class ScreenCaptureService
             // Capture at native resolution.
             using var raw = new Bitmap(captureWidth, captureHeight, PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(raw))
+            {
                 g.CopyFromScreen(rect.Left, rect.Top, 0, 0,
                     new System.Drawing.Size(captureWidth, captureHeight));
+            }
 
             // Reject a frame captured while the user switched apps or resized the game.
             var after = User32.GetClientRectScreen(hwnd);

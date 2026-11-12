@@ -34,8 +34,24 @@ public sealed record MemberEquip(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("priority")] bool Priority);
 
+// 2026-11-12：完整保存成员养成和回合阶段。
+public sealed record LineupStage(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("fromRound")] int FromRound,
+    [property: JsonPropertyName("toRound")] int ToRound,
+    [property: JsonPropertyName("goals")] CovenantGoal[] Goals,
+    [property: JsonPropertyName("members")] LineupSlot[] Members,
+    [property: JsonPropertyName("equipment")] string[] Equipment);
+
 public class LineupSlot
 {
+    [JsonPropertyName("elite"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Elite { get; set; }
+    [JsonPropertyName("skill"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Skill { get; set; }
+    [JsonPropertyName("module"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Module { get; set; }
+
     [JsonPropertyName("equipment")]
     public MemberEquip[] Equipment { get; set; } = [];
 
@@ -64,6 +80,9 @@ public class LineupSlot
 
 public class Lineup
 {
+    [JsonPropertyName("stages"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LineupStage[]? Stages { get; set; }
+
     // 2026-11-12：新增本地阵容简介，旧文件不输出该字段。
     [JsonPropertyName("description")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

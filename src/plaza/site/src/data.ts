@@ -14,6 +14,11 @@ interface Operator {
   core: string[]
   extra: string[]
   obtain?: string
+  /** 可选技能、模组和数据默认（v0.7.0） */
+  skills?: { id: string; name: string }[]
+  modules?: { id: string; name: string }[]
+  defaultSkill?: string
+  defaultModule?: string | null
 }
 interface Equipment {
   name: string
@@ -36,7 +41,7 @@ const eqByName = new Map(c.equipment.map((x) => [x.name, x]))
 const stById = new Map(c.strategies.map((x) => [x.id, x]))
 
 export const cov = (id: string) => covById.get(id) ?? { id, name: id, kind: 'extra' as const, thresholds: [] }
-export const op = (name: string) => opByName.get(name) ?? { name, tier: 1, core: [], extra: [] }
+export const op = (name: string): Operator => opByName.get(name) ?? { name, tier: 1, core: [], extra: [] }
 export const eq = (name: string) => eqByName.get(name) ?? { name, tier: 1 }
 export const strategy = (id: string | null) => (id ? stById.get(id) : undefined)
 
@@ -46,6 +51,18 @@ export const asset = {
   operator: (name: string) => `/assets/data/operators/${encodeURIComponent(name)}.webp`,
   equipment: (name: string) => `/assets/data/equipment/${encodeURIComponent(name)}.webp`,
   strategy: (id: string) => `/assets/data/strategies/${encodeURIComponent(id)}.webp`,
+  skill: (id: string) => `/assets/data/skills/${encodeURIComponent(id)}.webp`,
+  module: (id: string) => `/assets/data/modules/${id}.webp`,
+  card: (f: string) => `/assets/game/card/${f}.png`,
+}
+
+/** 帖子里这名干员实际用的技能、模组：没写就是数据默认（看的是作者的配置，不用谁的「我的默认」）；module '' = 不带 */
+export function config(m: { name: string; skill?: string; module?: string }) {
+  const o = op(m.name)
+  if (!o.skills?.length) return null
+  const sid = m.skill ?? o.defaultSkill
+  const mid = m.module ?? o.defaultModule ?? ''
+  return { skill: o.skills.find((k) => k.id === sid), module: o.modules?.find((k) => k.id === mid), hasModules: !!o.modules?.length }
 }
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
