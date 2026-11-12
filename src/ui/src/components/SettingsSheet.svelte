@@ -243,12 +243,34 @@
             >{app.workbench
               ? '工作台里暂停跟随，收回侧栏后照这里的设置恢复'
               : app.settings.followGame
-              ? '侧栏贴在游戏右边，全屏或放不下时盖在游戏左侧'
+              ? '侧栏贴着游戏窗口，全屏或旁边放不下时盖在游戏画面上'
               : '侧栏停在你拖到的位置，不再跟着游戏；要盖在全屏游戏上请打开置顶'}</small
           ></span
         >
         <input type="checkbox" class="sw" checked={app.settings.followGame} onchange={(e) => set('followGame', e.currentTarget.checked)} />
       </label>
+      {#if app.settings.followGame}
+        <!-- 贴哪边、覆盖时盖哪边；收起竖条跟着贴在游戏窗口那条边 -->
+        <div class="hk">
+          <span class="hkl">贴在游戏</span>
+          <div class="scales three grow">
+            <button class:on={app.settings.dockSide === 'auto'} onclick={() => set('dockSide', 'auto')}>自动</button>
+            <button class:on={app.settings.dockSide === 'right'} onclick={() => set('dockSide', 'right')}>右边</button>
+            <button class:on={app.settings.dockSide === 'left'} onclick={() => set('dockSide', 'left')}>左边</button>
+          </div>
+        </div>
+        <div class="hk">
+          <span class="hkl">盖在画面</span>
+          <div class="scales two grow">
+            <button class:on={app.settings.overlaySide === 'left'} onclick={() => set('overlaySide', 'left')}>左侧</button>
+            <button class:on={app.settings.overlaySide === 'right'} onclick={() => set('overlaySide', 'right')}>右侧</button>
+          </div>
+        </div>
+        <p class="note">
+          {app.settings.dockSide === 'auto' ? '右边放得下贴右边，不够就贴左边，两边都放不下（或全屏）时盖在游戏画面上。' : `只贴${app.settings.dockSide === 'right' ? '右' : '左'}边，放不下（或全屏）时盖在游戏画面上。`}
+          {app.settings.overlaySide === 'right' ? '盖在右侧会挡住准备就绪、刷新这些按钮附近。' : ''}收成竖条时，竖条贴着游戏窗口那条边。
+        </p>
+      {/if}
     </section>
 
     <section>
@@ -602,6 +624,9 @@
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 2px;
+  }
+  .scales.grow {
+    flex: 1;
   }
   .scales.four {
     grid-template-columns: repeat(4, 1fr);

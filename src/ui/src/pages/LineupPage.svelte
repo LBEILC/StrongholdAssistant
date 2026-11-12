@@ -286,9 +286,11 @@
     font-size: 13px;
     min-width: 4em;
   }
+  /* 格子等距；到某一档激活人数的那一格高一点（以前用加宽间隔标档位，各盟约档位不同，看起来间隔乱） */
   .ticks {
     flex: 1;
     display: flex;
+    align-items: flex-end;
     gap: 2px;
   }
   .ticks i {
@@ -300,7 +302,7 @@
     background: var(--mint);
   }
   .ticks i.th {
-    margin-right: 5px;
+    height: 11px;
   }
   .brow.done .cnt em {
     color: var(--mint);
@@ -420,7 +422,8 @@
     .list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      align-items: start;
+      /* 同一行的卡片一样高（以前顶对齐，高矮不齐） */
+      align-items: stretch;
       gap: 8px;
     }
   }

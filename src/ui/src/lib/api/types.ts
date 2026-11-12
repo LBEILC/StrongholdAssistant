@@ -130,6 +130,11 @@ export interface Connection {
    * 只有覆盖模式下界面才显示「收起」按钮。
    */
   overlay?: boolean
+  /**
+   * 侧栏在游戏的哪一侧（v0.7.5），connected 时才有：贴靠时是游戏窗口外的左 / 右，覆盖时是游戏画面里的左 / 右。
+   * 收起竖条贴着游戏窗口那条边：贴右侧、盖左侧时竖条在侧栏左边缘；贴左侧、盖右侧时在右边缘。界面据此决定展开箭头朝向
+   */
+  side?: 'left' | 'right'
   /** 连上的是哪种游戏（v0.5.0）：PC 客户端，或 MuMu 模拟器里的安卓版。connected 时才有 */
   source?: 'pc' | 'mumu'
   /**
@@ -425,6 +430,13 @@ export interface Settings {
    * 下次启动还在那里；界面大小 'auto' 仍按游戏画面高度算
    */
   followGame: boolean
+  /**
+   * 贴在游戏哪边（v0.7.5，默认 'auto'）。auto：右边放得下贴右侧，否则左边放得下贴左侧，都放不下进覆盖模式；
+   * right / left：只贴这一边，放不下就进覆盖模式。followGame 为 false 时不起作用
+   */
+  dockSide: 'auto' | 'right' | 'left'
+  /** 覆盖模式盖在游戏画面哪一侧（v0.7.5，默认 'left'，纵向仍是客户区 15%～97%）；两侧分别记拖动后的位置 */
+  overlaySide: 'left' | 'right'
   /**
    * 收起方式（v0.4.2，默认 'strip'）。strip：收成左侧竖条；up：向上收起，只留标题栏和追踪列表。
    * 两种都随时可以收起，不再限于覆盖模式

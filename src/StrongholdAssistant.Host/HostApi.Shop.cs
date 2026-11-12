@@ -37,6 +37,7 @@ public sealed partial class HostApi
 
     private void ValidateSettings(SettingsDto settings)
     {
+        HostSettingsStore.ValidateSides(settings);
         if (settings.StartupMode is not ("remember" or "sidebar" or "workbench"))
             throw new ArgumentException("启动形态无效。");
         if (settings.RefreshKey != "" && HotkeyParser.Parse(settings.RefreshKey) is null)

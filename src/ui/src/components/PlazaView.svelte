@@ -229,7 +229,9 @@
     .list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      align-items: start;
+      /* 同一行的卡片一样高 */
+      align-items: stretch;
+      gap: 8px;
     }
   }
 </style>

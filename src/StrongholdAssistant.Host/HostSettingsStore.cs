@@ -7,7 +7,8 @@ namespace StrongholdAssistant.Host;
 public sealed record FreeWindowBounds(double Left, double Top, double Width, double Height);
 public sealed record DockSettings(double Width = 380, SidePanelOffset? FollowOffsetDip = null,
     SidePanelOffset? OverlayOffsetDip = null, FreeWindowBounds? FreeBounds = null,
-    FreeWindowBounds? WorkbenchBounds = null, bool LastWorkbench = false);
+    FreeWindowBounds? WorkbenchBounds = null, bool LastWorkbench = false,
+    SidePanelOffset? FollowLeftOffsetDip = null, SidePanelOffset? OverlayRightOffsetDip = null);
 
 // 同步合并写入，让窗口位置与界面设置共用文件而不相互覆盖。
 public sealed class HostSettingsStore(string path)
@@ -18,7 +19,7 @@ public sealed class HostSettingsStore(string path)
     public SettingsDto LoadSettings()
     {
         var json = Read();
-        return new(json["gameTheme"]?.GetValue<string>() ?? "terminal",
+        var settings = new SettingsDto(json["gameTheme"]?.GetValue<string>() ?? "terminal",
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
@@ -29,6 +30,8 @@ public sealed class HostSettingsStore(string path)
             GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
             MumuSerial = json["mumuSerial"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
+            DockSide = json["dockSide"]?.GetValue<string>() ?? "auto",
+            OverlaySide = json["overlaySide"]?.GetValue<string>() ?? "left",
             ToggleHotkey = json["toggleHotkey"]?.GetValue<string>() ?? "Alt+S",
             RefreshKey = json["refreshKey"]?.GetValue<string>() ?? "D",
             StartupMode = json["startupMode"]?.GetValue<string>() ?? "remember",
@@ -39,6 +42,8 @@ public sealed class HostSettingsStore(string path)
             FocusOperators = json["focusOperators"]?.Deserialize<string[]>() ?? [],
             OperatorDefaults = json["operatorDefaults"]?.Deserialize<Dictionary<string, OperatorDefaults>>(HostApi.JsonOptions) ?? []
         };
+        ValidateSides(settings);
+        return settings;
     }
 
     public DockSettings LoadDock() => Read().Deserialize<DockSettings>(HostApi.JsonOptions)!;
@@ -48,7 +53,19 @@ public sealed class HostSettingsStore(string path)
         "workbench" => true, "sidebar" => false, _ => LoadDock().LastWorkbench
     };
 
-    public void SaveSettings(SettingsDto settings) => Merge(settings);
+    public static void ValidateSides(SettingsDto settings)
+    {
+        if (settings.DockSide is not ("auto" or "left" or "right"))
+            throw new ArgumentException("侧栏贴靠边无效。");
+        if (settings.OverlaySide is not ("left" or "right"))
+            throw new ArgumentException("侧栏覆盖边无效。");
+    }
+
+    public void SaveSettings(SettingsDto settings)
+    {
+        ValidateSides(settings);
+        Merge(settings);
+    }
     public void SaveDock(DockSettings dock) => Merge(dock);
 
     private void Merge<T>(T value)

@@ -460,13 +460,14 @@
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
   }
+  /* margin-top: auto：工作台里面板是右侧全高，内容少时底栏也贴底边 */
   footer {
     position: sticky;
     bottom: 0;
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 4px -12px 0;
+    margin: auto -12px 0;
     padding: 10px 12px;
     border-top: 1px solid var(--line);
     background: var(--bg-1);

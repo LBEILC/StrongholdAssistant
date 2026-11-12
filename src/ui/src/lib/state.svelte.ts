@@ -296,7 +296,8 @@ export class AppState {
       this.matchEdit = false
       if (this.connection.overlay && !this.collapsed) {
         this.autoCollapsed = true
-        this.setCollapsed('strip')
+        // 按设置里的收起方式（以前写死成竖条，用户设了向上收起也收成竖条）
+        this.setCollapsed(this.settings.collapseMode)
       }
     } else this.endContinuous()
     api.scanContinuous(on)

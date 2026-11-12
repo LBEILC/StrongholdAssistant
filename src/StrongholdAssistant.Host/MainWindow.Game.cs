@@ -24,6 +24,7 @@ public partial class MainWindow
     private bool _capturingInformation;
     private bool _moving;
     private bool _overlayMode;
+    private string _side = "right";
     private bool _collapsed;
     private double? _collapseUpHeight;
     private double _expandedWidth;
@@ -40,8 +41,9 @@ public partial class MainWindow
     private void InitializeWindow()
     {
         _dock = _api.SettingsStore.LoadDock();
-        if (!double.IsFinite(_dock.Width) || _dock.FollowOffsetDip is { } offset
-            && (!double.IsFinite(offset.X) || !double.IsFinite(offset.Y)))
+        if (!double.IsFinite(_dock.Width) || new[] { _dock.FollowOffsetDip, _dock.FollowLeftOffsetDip,
+                _dock.OverlayOffsetDip, _dock.OverlayRightOffsetDip }
+            .Any(offset => offset is not null && (!double.IsFinite(offset.X) || !double.IsFinite(offset.Y))))
             throw new JsonException("侧栏设置无效。");
         _dock = _dock with { Width = Math.Clamp(_dock.Width, 320, 460) };
         if (_dock.WorkbenchBounds is { } workbench
@@ -225,6 +227,9 @@ public partial class MainWindow
         if (_workbench || !_api.Settings.FollowGame)
         {
             _overlayMode = false;
+            var bounds = User32.ReadWindowRect(new WindowInteropHelper(this).Handle);
+            // TODO(design): 自由窗口和工作台暂按窗口中心判断所在侧，待明确这两种形态的 side 语义。
+            _side = (long)bounds.Left + bounds.Right < (long)game.Left + game.Right ? "left" : "right";
             ApplyScale(client.Value.Height);
             PublishConnection();
             return;
@@ -235,13 +240,14 @@ public partial class MainWindow
         var scale = User32.GetWindowDpiScale(hwnd);
         var gameMonitor = User32.GetMonitorGeometry(game.Right - 1, game.Top + game.Height / 2);
         var desiredScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
-        var needsOverlay = WindowGeometry.NeedsOverlay(game, gameMonitor.WorkArea, scale,
-            _dock.Width * desiredScale, _tracker.IsFullscreen);
-        var offset = needsOverlay ? null : _dock.FollowOffsetDip;
+        var selection = WindowGeometry.SelectSide(game, gameMonitor.WorkArea, scale,
+            _dock.Width * desiredScale, _tracker.IsFullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
+        var offset = selection.Overlay ? null : selection.Side == "left" ? _dock.FollowLeftOffsetDip : _dock.FollowOffsetDip;
+        var origin = selection.Side == "left" ? game.Left - _dock.Width * desiredScale * scale : game.Right;
         var monitor = offset is null
             ? User32.GetMonitorGeometry(game.Right - 1, game.Top + game.Height / 2)
             : User32.GetMonitorGeometry(
-                (int)Math.Clamp(game.Right + offset.X * scale + current.Width / 2, int.MinValue, int.MaxValue),
+                (int)Math.Clamp(origin + offset.X * scale + current.Width / 2, int.MinValue, int.MaxValue),
                 (int)Math.Clamp(game.Top + offset.Y * scale + current.Height / 2, int.MinValue, int.MaxValue));
         var centerX = current.Left + current.Width / 2;
         var centerY = current.Top + current.Height / 2;
@@ -255,16 +261,22 @@ public partial class MainWindow
         }
         scale = User32.GetWindowDpiScale(hwnd);
         _uiScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
-        _overlayMode = WindowGeometry.NeedsOverlay(game, monitor.WorkArea, scale, _dock.Width * _uiScale, _tracker.IsFullscreen);
+        (_overlayMode, _side) = WindowGeometry.SelectSide(game, gameMonitor.WorkArea, scale,
+            _dock.Width * _uiScale, _tracker.IsFullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
+        offset = _side == "left" ? _dock.FollowLeftOffsetDip : _dock.FollowOffsetDip;
         ApplyScale(client.Value.Height);
         PublishConnection();
+        var expandedWidth = _dock.Width * _uiScale;
         var target = _overlayMode
-            ? WindowGeometry.OverlayBounds(client.Value, scale, Width, _dock.OverlayOffsetDip)
+            ? WindowGeometry.OverlayBounds(client.Value, scale, expandedWidth,
+                _side == "right" ? _dock.OverlayRightOffsetDip : _dock.OverlayOffsetDip, _side)
             : offset is null
-            ? WindowGeometry.SidePanelBounds(game, monitor.WorkArea, scale, Width, null, false)
-            : WindowGeometry.FollowBounds(game, monitor.WorkArea, scale, Width, null, false, offset);
-        if (_collapsed && _collapseUpHeight is { } height)
-            target.Bottom = target.Top + (int)Math.Round(height * _uiScale * scale);
+            ? WindowGeometry.SidePanelBounds(game, gameMonitor.WorkArea, scale, expandedWidth, null, false, _side)
+            : WindowGeometry.FollowBounds(game, monitor.WorkArea, scale, expandedWidth, null, false, offset, _side);
+        if (_collapsed)
+            target = WindowGeometry.CollapseBounds(target, (int)Math.Round(48 * _uiScale * scale),
+                _collapseUpHeight is { } height ? (int)Math.Round(height * _uiScale * scale) : null,
+                WindowGeometry.AnchorsRight(_overlayMode, _side));
         User32.SetWindowBounds(hwnd, target);
     }
 
@@ -287,9 +299,16 @@ public partial class MainWindow
             _dock = _dock with { Width = _collapsed ? _dock.Width : Math.Clamp(placement.WidthDip / _uiScale, 320, 460) };
             if (!_api.Settings.FollowGame) RememberFreeBounds();
             else if (_overlayMode && _lastClientRect is { } client)
-                _dock = _dock with { OverlayOffsetDip = new((rect.Left - client.Left) / scale, (rect.Top - client.Top) / scale) };
+            {
+                var offset = new SidePanelOffset((_side == "right" ? rect.Right - client.Right : rect.Left - client.Left) / scale,
+                    (rect.Top - client.Top) / scale);
+                _dock = _side == "right" ? _dock with { OverlayRightOffsetDip = offset } : _dock with { OverlayOffsetDip = offset };
+            }
             else if (_lastGameRect is { } game)
-                _dock = _dock with { FollowOffsetDip = WindowGeometry.CaptureFollowOffset(game, placement, scale) };
+            {
+                var offset = WindowGeometry.CaptureFollowOffset(game, placement, scale, _side);
+                _dock = _side == "left" ? _dock with { FollowLeftOffsetDip = offset } : _dock with { FollowOffsetDip = offset };
+            }
             _api.SettingsStore.SaveDock(_dock);
         }
         if (message == 0x02E0) // WM_DPICHANGED：等 WPF 应用新的 DPI 后重新计算。
@@ -352,7 +371,7 @@ public partial class MainWindow
         _collapseUpHeight = upHeight;
         ApplyScale(_lastClientRect?.Height);
         (Width, Height) = WindowGeometry.CollapsedSize(_expandedWidth, _expandedHeight, _uiScale, collapsed, upHeight);
-        if (!collapsed && _api.Settings.FollowGame && _lastGameRect is { } game) UpdateGame(game);
+        if (_api.Settings.FollowGame && _lastGameRect is { } game) UpdateGame(game);
     }
 
     private void RememberFreeBounds()
@@ -393,7 +412,7 @@ public partial class MainWindow
             ? $"{state.Width}×{state.Height}" : $"{viewport!.Value.Width}×{viewport.Value.Height}";
         _api.UpdateConnection(new(connected ? "connected" : "searching", resolution,
             connected ? _tracker.IsFullscreen : null, connected && _overlayMode,
-            connected ? state.Source : null, state.Problem));
+            connected ? state.Source : null, state.Problem, connected ? _side : null));
     }
 
     protected override async void OnClosing(CancelEventArgs e)

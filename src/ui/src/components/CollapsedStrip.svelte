@@ -7,11 +7,13 @@
   // 覆盖模式下收起的竖条：侧栏盖在游戏画面上时，买东西、布阵前收成一条，只留追踪列表
   const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
   const expand = () => app.setCollapsed(false)
+  // 竖条贴着游戏窗口那条边：贴左侧、盖右侧时竖条在右边缘，展开方向朝左
+  const atRight = $derived(app.connection.side === (app.connection.overlay ? 'right' : 'left'))
 </script>
 
 <div class="strip">
   <span class="grip" aria-hidden="true"><i></i></span>
-  <button class="open" title="展开侧栏" aria-label="展开侧栏" onclick={expand}><Icon name="expandRight" size={18} /></button>
+  <button class="open" title="展开侧栏" aria-label="展开侧栏" onclick={expand}><Icon name={atRight ? 'contractLeft' : 'expandRight'} size={18} /></button>
   {#if app.continuous}
     <button class="stopscan" title="持续识别中，点这里停止" aria-label="停止持续识别" onclick={() => app.toggleContinuous()}>
       <span class="live-dot"></span>

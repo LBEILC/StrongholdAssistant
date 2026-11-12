@@ -326,7 +326,7 @@
       max-height: 100%;
       overflow-y: auto;
       padding-right: 4px;
-      scrollbar-width: thin;
+      /* 不写 scrollbar-width：写了 Chromium 就改用系统滚动条（带箭头），全局的细滚动条样式失效 */
     }
     .stats {
       order: 0;

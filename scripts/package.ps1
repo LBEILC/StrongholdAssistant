@@ -48,6 +48,7 @@ $timer.Restart()
 $release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
 $publish = Join-Path $release ('publish-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $publish -Force | Out-Null
+Write-Output "发布中间目录（成功后删除，失败时保留）：$publish"
 # 项目依赖变化或测试 restore 覆盖了 RID 资产时才重新恢复。
 $restoreFiles = & git ls-files -- '*.csproj' '*.props' '*.targets' '*NuGet.Config' '*nuget.config' 'global.json'
 if ($LASTEXITCODE -ne 0) { throw '读取 restore 输入失败。' }
@@ -112,6 +113,8 @@ $sums = foreach ($file in @($zip, $setup, $notes)) {
 [IO.File]::WriteAllText((Join-Path $release 'SHA256SUMS.txt'), ($sums -join "`n") + "`n", [Text.Encoding]::ASCII)
 Write-Output "打包完成：$zip ($((Get-Item -LiteralPath $zip).Length) bytes)"
 Write-Output "安装包：$setup ($((Get-Item -LiteralPath $setup).Length) bytes)"
+# 发布目录只是 zip 和安装包的输入，打包成功后不再需要。
+Remove-Item -LiteralPath $publish -Recurse -Force
 
 if ($clean -and !(& git status --porcelain --untracked-files=all -- $paths)) {
     @{ fingerprint = $fingerprint; checked = $false } | ConvertTo-Json | Set-Content -LiteralPath $packageCache -Encoding UTF8

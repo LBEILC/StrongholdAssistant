@@ -9,6 +9,48 @@ namespace ASPAssistant.Tests.Services;
 public class WindowGeometryTests
 {
     [Theory]
+    [InlineData("auto", 500, 1500, false, "right")]
+    [InlineData("auto", 500, 1800, false, "left")]
+    [InlineData("auto", 100, 1800, true, "left")]
+    [InlineData("left", 500, 1500, false, "left")]
+    [InlineData("left", 100, 1500, true, "left")]
+    [InlineData("right", 500, 1800, true, "left")]
+    public void ChoosesOnlyAllowedDockSides(string preference, int left, int right, bool overlay, string side)
+    {
+        var game = new RECT { Left = left, Top = 50, Right = right, Bottom = 950 };
+        var work = new RECT { Right = 1920, Bottom = 1040 };
+        Assert.Equal((overlay, side), WindowGeometry.SelectSide(game, work, 1, 380, false, preference, "left"));
+        if (!overlay)
+        {
+            var bounds = WindowGeometry.SidePanelBounds(game, work, 1, 380, null, false, side);
+            Assert.Equal(side == "left" ? game.Left : game.Right, side == "left" ? bounds.Right : bounds.Left);
+            Assert.Equal(game.Top, bounds.Top);
+        }
+    }
+
+    [Fact]
+    public void RightOverlayUsesClientRightAndVerticalRatios()
+    {
+        var client = new RECT { Left = 100, Top = 50, Right = 1700, Bottom = 1050 };
+        var bounds = WindowGeometry.OverlayBounds(client, 1.5, 380, null, "right");
+        Assert.Equal((1700, 200, 1020, 570), (bounds.Right, bounds.Top, bounds.Bottom, bounds.Width));
+    }
+
+    [Theory]
+    [InlineData(false, "left", true)]
+    [InlineData(true, "right", true)]
+    [InlineData(false, "right", false)]
+    [InlineData(true, "left", false)]
+    public void CollapsedStripKeepsGameFacingEdge(bool overlay, string side, bool anchorRight)
+    {
+        var expanded = new RECT { Left = 400, Top = 100, Right = 780, Bottom = 900 };
+        var strip = WindowGeometry.CollapseBounds(expanded, 48, null, WindowGeometry.AnchorsRight(overlay, side));
+        Assert.Equal(anchorRight ? expanded.Right : expanded.Left, anchorRight ? strip.Right : strip.Left);
+        Assert.Equal(48, strip.Width);
+        Assert.Equal((100, 900), (strip.Top, strip.Bottom));
+    }
+
+    [Theory]
     [InlineData(1600, 1024, true)]
     [InlineData(1620, 1080, true)]
     [InlineData(1920, 1080, true)]

@@ -244,7 +244,8 @@
     position: absolute;
     inset: 0;
     background: rgb(0 0 0 / 0.55);
-    z-index: 10;
+    /* 详情盖在编辑器、导入、挑选面板上面：编辑阵容时也能看干员详情（编辑器 20/21） */
+    z-index: 30;
   }
   .sheet {
     position: absolute;
@@ -253,7 +254,7 @@
     bottom: 0;
     max-height: 72%;
     overflow-y: auto;
-    z-index: 11;
+    z-index: 31;
     padding: 14px 12px 16px;
     background:
       var(--noise),

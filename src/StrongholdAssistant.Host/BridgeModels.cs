@@ -44,6 +44,8 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public string MumuSerial { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
+    public string DockSide { get; init; } = "auto";
+    public string OverlaySide { get; init; } = "left";
     public string ToggleHotkey { get; init; } = "Alt+S";
     public string RefreshKey { get; init; } = "D";
     public string StartupMode { get; init; } = "remember";
@@ -79,7 +81,8 @@ public sealed record Connection(string State,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Resolution = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Fullscreen = null, bool Overlay = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Source = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Problem = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Problem = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Side = null);
 public sealed record MumuInstance(string Serial, string Name);
 public sealed record ScanStatus(bool Busy,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Message = null,

@@ -1,4 +1,5 @@
-using System.Diagnostics;
+using System.Text.Json;
+using ASPAssistant.Core;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -10,9 +11,65 @@ namespace StrongholdAssistant.Host;
 
 public sealed partial class HostApi
 {
+    // 页面 entry_index-DqRhmnpR.js 的 fetchGameBinding：data.list 按 appCode 映射，再读取 bindingList。
+    private const string SklandBindingPath = "/api/v1/game/player/binding";
+
+    // null 表示接口失败或结构不符，不能当成账号未绑定。
+    internal static bool? SklandHasRole(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (!root.TryGetProperty("code", out var code) || !code.TryGetInt32(out var value) || value != 0
+            || !root.TryGetProperty("data", out var data)
+            || !data.TryGetProperty("list", out var list) || list.ValueKind != JsonValueKind.Array) return null;
+        foreach (var game in list.EnumerateArray())
+        {
+            if (!game.TryGetProperty("appCode", out var app) || app.GetString() != "arknights") continue;
+            if (!game.TryGetProperty("bindingList", out var bindings) || bindings.ValueKind != JsonValueKind.Array) return null;
+            return bindings.GetArrayLength() > 0;
+        }
+        return false;
+    }
+
+    internal static string SklandResponseSummary(string method, string url, int status, string? json)
+    {
+        var summary = $"{method} {new Uri(url).AbsolutePath} HTTP {status}";
+        if (json is null) return summary;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            // 自由文本 message 可能回显凭据；只记录数字业务码，不记录任何字符串值。
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("code", out var code)
+                && code.ValueKind == JsonValueKind.Number && code.TryGetInt64(out var number))
+                summary += $" code={number}";
+            void Lists(JsonElement element, string path)
+            {
+                if (element.ValueKind == JsonValueKind.Array)
+                {
+                    summary += $" {path}={element.GetArrayLength()}";
+                    foreach (var item in element.EnumerateArray()) Lists(item, path + "[]");
+                }
+                else if (element.ValueKind == JsonValueKind.Object)
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (property.Name.Equals("cred", StringComparison.OrdinalIgnoreCase)
+                            || property.Name.Contains("token", StringComparison.OrdinalIgnoreCase)
+                            || property.Name.Contains("cookie", StringComparison.OrdinalIgnoreCase)) continue;
+                        // 字段名也来自网络，只允许普通标识符。
+                        if (property.Name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+                            Lists(property.Value, path + "." + property.Name);
+                    }
+            }
+            Lists(root, "$");
+        }
+        catch (JsonException) { summary += " JSON=invalid"; }
+        return summary;
+    }
+
     private static SklandException SklandReadError(string message, Exception ex)
     {
-        Trace.WriteLine($"{message} {ex}");
+        AppLogger.Info("Skland", $"读取失败 {ex.GetType().Name} HRESULT 0x{ex.HResult:X8}");
         // WebView/IO 异常可能带路径或请求资料，只返回类型和错误码。
         return new SklandException($"{message}\n{ex.GetType().Name}: HRESULT 0x{ex.HResult:X8}");
     }
@@ -179,6 +236,11 @@ public sealed partial class HostApi
         using var silentTimeoutRegistration = silentTimeout.Token.Register(() => completion.TrySetResult(null));
         var retries = 0;
         var historyResponseReceived = false;
+        bool? hasRole = null;
+        var roleDetails = $"GET {SklandBindingPath} HTTP 未收到 code=未知";
+        var generation = 0;
+        var apiRequests = new HashSet<string>();
+        AppLogger.Info("Skland", $"开始读取 visible={visible} silent={silent}");
         using var source = visible ? null : new HwndSource(new HwndSourceParameters("SklandHistory")
         { Width = 800, Height = 600, WindowStyle = unchecked((int)0x80000000) });
         CoreWebView2Controller? controller = null;
@@ -213,14 +275,27 @@ public sealed partial class HostApi
                     core = controller.CoreWebView2;
                 }
                 ConfigureSkland(core, true);
+                core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.XmlHttpRequest);
+                core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.Fetch);
+                core.WebResourceRequested += (_, args) =>
+                {
+                    var uri = new Uri(args.Request.Uri);
+                    if (uri.Scheme == "https" && uri.Host.EndsWith(".skland.com", StringComparison.OrdinalIgnoreCase))
+                        apiRequests.Add(args.Request.Uri);
+                };
                 core.NavigationStarting += (_, _) =>
                 {
                     navigation?.Cancel();
                     historyResponseReceived = false;
+                    hasRole = null;
+                    roleDetails = $"GET {SklandBindingPath} HTTP 未收到 code=未知";
+                    generation++;
+                    apiRequests.Clear();
                 };
                 core.NavigationCompleted += async (_, args) =>
                 {
                     if (closed) return;
+                    AppLogger.Info("Skland", $"导航完成 {new Uri(core.Source).AbsolutePath} success={args.IsSuccess}");
                     if (!args.IsSuccess)
                     {
                         completion.TrySetException(new SklandException(
@@ -238,6 +313,7 @@ public sealed partial class HostApi
                     try
                     {
                         var deadline = DateTime.UtcNow.AddSeconds(15);
+                        var buttonLogged = false;
                         while (DateTime.UtcNow < deadline)
                         {
                             token.ThrowIfCancellationRequested();
@@ -251,8 +327,16 @@ public sealed partial class HostApi
                             token.ThrowIfCancellationRequested();
                             if (result == "true")
                             {
-                                // 按钮先于绑定角色加载完成时，留出页面查询角色的时间。
-                                await Task.Delay(TimeSpan.FromSeconds(1.5), token);
+                                if (!buttonLogged)
+                                {
+                                    AppLogger.Info("Skland", "找到导入历史战绩按钮");
+                                    buttonLogged = true;
+                                }
+                                if (hasRole != true)
+                                {
+                                    await Task.Delay(500, token);
+                                    continue;
+                                }
                                 result = await core.ExecuteScriptAsync("""
                                     (() => {
                                       const button = [...document.querySelectorAll('button')]
@@ -264,6 +348,7 @@ public sealed partial class HostApi
                                     """);
                                 token.ThrowIfCancellationRequested();
                                 if (result != "true") continue;
+                                AppLogger.Info("Skland", "点击导入历史战绩按钮");
                                 var responseDeadline = DateTime.UtcNow.AddSeconds(8);
                                 while (DateTime.UtcNow < responseDeadline)
                                 {
@@ -273,14 +358,18 @@ public sealed partial class HostApi
                                         """);
                                     token.ThrowIfCancellationRequested();
                                     if (missingRole != "true" || historyResponseReceived) continue;
+                                    AppLogger.Info("Skland", "看到未查询到游戏角色提示");
                                     if (retries < (visible ? 2 : 1))
                                     {
                                         retries++;
-                                        // 静默重试重新计时，避免原来的 8 秒时限截断刷新后的读取。
-                                        if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(8));
+                                        AppLogger.Info("Skland", $"重试 {retries}/{(visible ? 2 : 1)}; {roleDetails}");
+                                        // 覆盖角色等待（15 秒）和战绩等待（8 秒），重试时重新计时。
+                                        if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(25));
                                         core.Reload();
                                     }
                                     else if (!visible) completion.TrySetResult(null);
+                                    else completion.TrySetException(new SklandException(
+                                        "森空岛没查到你的游戏角色。\n" + roleDetails));
                                     return;
                                 }
                                 if (!visible) completion.TrySetResult(null);
@@ -288,7 +377,13 @@ public sealed partial class HostApi
                             }
                             await Task.Delay(500, token);
                         }
-                        completion.TrySetException(new SklandException(
+                        if (buttonLogged)
+                        {
+                            if (visible) completion.TrySetException(new SklandException(
+                                "森空岛没查到你的游戏角色。\n" + roleDetails));
+                            else completion.TrySetResult(null);
+                        }
+                        else completion.TrySetException(new SklandException(
                             "打不开森空岛，检查一下网络再试。\nTimeoutException: 15 秒内未找到历史战绩导入按钮。"));
                     }
                     catch (OperationCanceledException) { }
@@ -300,23 +395,42 @@ public sealed partial class HostApi
                 };
                 core.WebResourceResponseReceived += async (_, args) =>
                 {
-                    if (closed || !IsSklandResponse(args.Request.Uri, "history-log")) return;
-                    if (args.Request.Method != "GET") return;
-                    historyResponseReceived = true;
-                    if (args.Response.StatusCode != 200) return;
+                    if (closed) return;
+                    var uri = new Uri(args.Request.Uri);
+                    var isHistory = IsSklandResponse(args.Request.Uri, "history-log") && args.Request.Method == "GET";
+                    var isBinding = uri.Host == "zonai.skland.com" && uri.AbsolutePath == SklandBindingPath
+                        && args.Request.Method == "GET";
+                    if (!apiRequests.Contains(args.Request.Uri) && !isHistory && !isBinding) return;
+                    var responseGeneration = generation;
+                    if (isHistory)
+                    {
+                        historyResponseReceived = true;
+                        AppLogger.Info("Skland", $"收到 history-log 响应 HTTP {args.Response.StatusCode}");
+                    }
                     try
                     {
                         using var stream = await args.Response.GetContentAsync();
-                        using var reader = new StreamReader(stream);
-                        var json = await reader.ReadToEndAsync();
-                        if (closed) return;
+                        using var reader = stream is null ? null : new StreamReader(stream);
+                        var json = reader is null ? null : await reader.ReadToEndAsync();
+                        var detail = SklandResponseSummary(args.Request.Method, args.Request.Uri, args.Response.StatusCode, json);
+                        AppLogger.Info("Skland", "API " + detail);
+                        if (closed || responseGeneration != generation) return;
+                        if (isBinding)
+                        {
+                            roleDetails = detail;
+                            hasRole = args.Response.StatusCode == 200 && json is not null ? SklandHasRole(json) : null;
+                            if (hasRole == false) completion.TrySetException(new SklandException(
+                                "森空岛账号还没有绑定明日方舟角色，先在森空岛 App 里绑定"));
+                        }
+                        if (!isHistory || args.Response.StatusCode != 200 || json is null) return;
                         var records = SklandParser.ParseHistory(json);
                         if (records is not null || !visible) completion.TrySetResult(records);
                     }
                     catch (ArgumentException ex) { completion.TrySetException(ex); }
                     catch (Exception ex)
                     {
-                        completion.TrySetException(SklandReadError("历史战绩的数据结构已变化，暂时无法读取。", ex));
+                        AppLogger.Info("Skland", $"API {SklandResponseSummary(args.Request.Method, args.Request.Uri, args.Response.StatusCode, null)} 读取失败 {ex.GetType().Name}");
+                        if (isHistory) completion.TrySetException(SklandReadError("历史战绩的数据结构已变化，暂时无法读取。", ex));
                     }
 
                 };
@@ -330,14 +444,21 @@ public sealed partial class HostApi
         }
         try
         {
-            if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(8));
+            if (silent) silentTimeout.CancelAfter(TimeSpan.FromSeconds(25));
             if (visible)
             {
                 window.Loaded += async (_, _) => await InitializeAsync();
                 window.Show();
             }
             else _ = InitializeAsync();
-            return await completion.Task;
+            var records = await completion.Task;
+            AppLogger.Info("Skland", records is null ? "最终结果：未读取到战绩或已取消" : $"最终结果：成功，战绩数量={records.Length}");
+            return records;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Info("Skland", $"最终结果：失败 {ex.GetType().Name}; {roleDetails}");
+            throw;
         }
         finally
         {

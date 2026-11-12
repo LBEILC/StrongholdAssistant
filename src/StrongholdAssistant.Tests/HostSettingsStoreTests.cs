@@ -7,6 +7,35 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void SideSettingsDefaultAndSurviveBridgeAndDockWrites()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, """{"followGame":true}""");
+        var store = new HostSettingsStore(path);
+        Assert.Equal(("auto", "left"), (store.LoadSettings().DockSide, store.LoadSettings().OverlaySide));
+        store.SaveSettings(store.LoadSettings() with { DockSide = "left", OverlaySide = "right" });
+        var dock = new DockSettings(FollowOffsetDip: new(1, 2), FollowLeftOffsetDip: new(3, 4),
+            OverlayOffsetDip: new(5, 6), OverlayRightOffsetDip: new(7, 8));
+        store.SaveDock(dock);
+        Assert.Equal(("left", "right"), (store.LoadSettings().DockSide, store.LoadSettings().OverlaySide));
+        Assert.Equal(dock, store.LoadDock());
+    }
+
+    [Theory]
+    [InlineData("invalid", "left")]
+    [InlineData("auto", "auto")]
+    public async Task InvalidSidesAreRejectedOnSaveAndLoad(string dockSide, string overlaySide)
+    {
+        var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        Assert.Throws<ArgumentException>(() => api.SaveSettings(api.Settings with { DockSide = dockSide, OverlaySide = overlaySide }));
+        var path = Path.Combine(_directory, "settings.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new { dockSide, overlaySide }));
+        Assert.Throws<ArgumentException>(() => new HostSettingsStore(path).LoadSettings());
+    }
+
+    [Fact]
     public void NewAndMissingHotkeySettingsDefaultToAltS()
     {
         var path = Path.Combine(_directory, "settings.json");

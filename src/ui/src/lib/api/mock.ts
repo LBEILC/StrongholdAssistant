@@ -195,6 +195,8 @@ let settings: Settings = {
   uiScale: 'auto',
   alwaysOnTop: false,
   followGame: true,
+  dockSide: 'auto',
+  overlaySide: 'left',
   collapseMode: 'strip',
   gameSource: 'auto',
   mumuSerial: '',
@@ -269,7 +271,13 @@ const wait = <T>(v: T, ms = 120) => new Promise<T>((r) => setTimeout(() => r(str
 export const mockApi: Api = {
   catalog: () => wait(catalog, 0),
   // 地址带 ?overlay 时模拟覆盖模式，方便看收起竖条
-  connection: () => wait({ state: 'connected', resolution: '1920×1080', ...(location.search.includes('overlay') && { fullscreen: true, overlay: true }) }),
+  // ?overlay：覆盖模式；?sideright / ?sideleft：侧栏在游戏哪一侧（不写时贴靠在右、覆盖在左）
+  connection: () => {
+    const q = location.search
+    const overlay = q.includes('overlay')
+    const side = q.includes('sideright') ? 'right' : q.includes('sideleft') ? 'left' : overlay ? 'left' : 'right'
+    return wait({ state: 'connected', resolution: '1920×1080', side, ...(overlay && { fullscreen: true, overlay: true }) })
+  },
   match: () => wait(match),
   rescan: () => {
     incomplete.clear()
