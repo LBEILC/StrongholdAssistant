@@ -10,8 +10,8 @@ using Moq;
 
 namespace ASPAssistant.Tests.Services;
 
-[Collection("Native OCR")]
-public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITestOutputHelper output) : IClassFixture<ShopReaderFixture>
+[Collection("Shop OCR")]
+public class ShopReaderTests(ShopReaderFixture fixture, EnemyRecognitionFixture recognition, Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public async Task Closure1600x1024_TracksFourCardsInTheirSlots()
@@ -41,7 +41,7 @@ public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITest
     [Fact]
     public async Task ClosureUserSample_TracksLiAndBaiduren()
     {
-        using var engine = new MaaOcrEngine(Path.Combine(AppContext.BaseDirectory, "data"));
+        var engine = recognition.Engine;
         var recording = new Mock<IOcrEngine>();
         recording.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
             It.IsAny<int>(), It.IsAny<int>())).Returns(async (byte[] bytes, int x, int y, int w, int h) =>
@@ -257,7 +257,7 @@ public class ShopReaderTests(ShopReaderFixture fixture, Xunit.Abstractions.ITest
 
 public sealed class ShopReaderFixture : IDisposable
 {
-    private readonly MaaOcrEngine _engine = new(Path.Combine(AppContext.BaseDirectory, "data"));
+    private readonly MaaOcrEngine _engine = NativeOcrEngines.Create();
     public IReadOnlyList<string> Names { get; }
     public ShopReader Reader { get; }
     public void SelectTheme(string file) => Reader.Theme = file.StartsWith("shop-terminal-", StringComparison.Ordinal)

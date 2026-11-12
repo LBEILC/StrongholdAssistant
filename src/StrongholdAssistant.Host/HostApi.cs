@@ -30,6 +30,7 @@ public sealed partial class HostApi
         List<CovenantInfo> covenants, JsonElement catalog)
     {
         DataDirectory = Path.GetFullPath(userDirectory);
+        _diagnostics = new DiagnosticsStore(DataDirectory);
         _sessionPath = Path.Combine(DataDirectory, "session.json");
         _lineups = new LineupStore(Path.Combine(userDirectory, "lineups"));
         _ids = ids;
@@ -99,6 +100,7 @@ public sealed partial class HostApi
         api._modes = extra["modes"]!.Deserialize<GameModeInfo[]>(JsonOptions)!;
         api.SettingsStore = new HostSettingsStore(Path.Combine(userDirectory, "settings.json"));
         api.Settings = api.SettingsStore.LoadSettings();
+        api.StartupWorkbench = api.SettingsStore.StartInWorkbench();
         await api.RefreshTrackingAsync();
         return api;
     }
@@ -371,6 +373,7 @@ public sealed partial class HostApi
             case "appInfo": return AppInfo();
             case "openDataFolder": OpenDataFolder(); return null;
             case "exportData": return await ExportDataAsync();
+            case "exportDiagnostics": return await ExportDiagnosticsAsync();
             case "pickBackup": return await PickBackupAsync();
             case "importData": await ImportDataAsync(Read<string>(0), Read<string>(1)); return null;
             case "openUrl": OpenUrl(Read<string>(0)); return null;

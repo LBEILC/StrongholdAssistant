@@ -10,7 +10,7 @@ using StrongholdAssistant.Host;
 namespace StrongholdAssistant.Tests;
 
 [Collection("Native OCR")]
-public sealed class SoloModeTests(EnemyRecognitionFixture fixture) : IClassFixture<EnemyRecognitionFixture>
+public sealed class SoloModeTests(EnemyRecognitionFixture fixture)
 {
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
     private static Task<byte[]> Image(string name) => File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "TestData", name));
@@ -144,7 +144,7 @@ public sealed class SoloModeTests(EnemyRecognitionFixture fixture) : IClassFixtu
             await api.HandleOpeningAsync(true);
             Assert.Equal("mode_single_16", api.Match.Mode?.Id);
             var error = await Assert.ThrowsAsync<RecognitionException>(() => api.InvokeAsync("rescan", []));
-            Assert.Equal("这是单人模式的开局页：选好盟约进入对局后，点顶部回合数左边的放大镜打开对局详情再识别。", error.Message);
+            Assert.Equal("这是单人模式的开局页：选好盟约进入对局后，点顶部回合数左边的放大镜打开对局详情再识别。", error.Message.Split('\n')[0]);
             Assert.True(api.Match.AwaitingDetail);
             shot = await Image("mumu-solo-detail-top-1763x992.png");
             await api.InvokeAsync("rescan", []);

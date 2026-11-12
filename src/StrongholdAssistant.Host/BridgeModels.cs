@@ -37,12 +37,16 @@ public sealed record CloudDeletedLineup(string Id, string At);
 public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedAt, string? PrefsAt, CloudDeletedLineup[] Deleted);
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public string UpdateSource { get; init; } = "github";
+    public string MirrorChyanCdk { get; init; } = "";
     public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
     public string GameSource { get; init; } = "auto";
     public string MumuSerial { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
     public string ToggleHotkey { get; init; } = "Alt+S";
+    public string RefreshKey { get; init; } = "D";
+    public string StartupMode { get; init; } = "remember";
     public bool ShareIncome { get; init; }
     public CloudSyncState CloudSync { get; init; } = new(false, null, null, null, []);
     public string CollapseMode { get; init; } = "strip";

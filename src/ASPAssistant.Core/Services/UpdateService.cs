@@ -24,6 +24,8 @@ public record UpdateInfo(
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Notes { get; init; }
+    public string Source { get; init; } = "github";
+    public string? Sha256 { get; init; }
 }
 
 /// <summary>Thrown when the downloaded package does not match the published SHA-256.</summary>
@@ -81,6 +83,8 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         if (IsDevBuild) return null;
 
         LastError = null;
+        CdkExpiresAt = null;
+        CdkProblem = false;
         try
         {
             var release = await _http.GetFromJsonAsync<GitHubRelease>(FeedUrl, ct);
@@ -177,11 +181,21 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
 
         // Integrity check against the published SHA256SUMS.txt (fail closed).
         var actualHash = await ComputeSha256Async(zipPath, ct);
-        if (string.IsNullOrWhiteSpace(info.ChecksumsUrl))
-            throw IntegrityFailure($"发布 {info.TagName} 缺少 {ChecksumsAssetName}，已停止更新");
-        var checksumsText = await _http.GetStringAsync(info.ChecksumsUrl, ct);
-        var expectedHash = ParseChecksum(checksumsText, info.AssetName)
-            ?? throw IntegrityFailure($"校验文件中没有 {info.AssetName} 的记录，已停止更新");
+        string expectedHash;
+        if (info.Source == "mirrorchyan")
+        {
+            expectedHash = info.Sha256 ?? "";
+            if (!Regex.IsMatch(expectedHash, "^[0-9a-fA-F]{64}$"))
+                throw IntegrityFailure("Mirror酱 返回的 SHA-256 无效，已停止更新");
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(info.ChecksumsUrl))
+                throw IntegrityFailure($"发布 {info.TagName} 缺少 {ChecksumsAssetName}，已停止更新");
+            var checksumsText = await _http.GetStringAsync(info.ChecksumsUrl, ct);
+            expectedHash = ParseChecksum(checksumsText, info.AssetName)
+                ?? throw IntegrityFailure($"校验文件中没有 {info.AssetName} 的记录，已停止更新");
+        }
         if (!ChecksumMatches(expectedHash, actualHash))
             throw IntegrityFailure(
                 $"安装包校验不通过（期望 {expectedHash[..12]}…，实际 {actualHash[..12]}…），已停止更新");

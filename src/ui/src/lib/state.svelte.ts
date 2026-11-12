@@ -97,7 +97,8 @@ export class AppState {
   /** 收起：strip 收成竖条，up 向上收起（只留标题栏和追踪列表），false 展开 */
   collapsed = $state<false | 'strip' | 'up'>(false)
   /** 工作台（v0.7.0）：宽窗口，编阵容、逛广场、翻图鉴；每次启动都是侧栏 */
-  workbench = $state(false)
+  // 启动形态由宿主按设置决定（v0.7.2），界面跟着它
+  workbench = $state(appInfo.workbench ?? false)
   /** 启动与关闭过渡：boot 等网页可见，in 入场，out 关闭前退场 */
   phase = $state<'boot' | 'in' | 'out'>('boot')
 
@@ -177,7 +178,7 @@ export class AppState {
 
   saveSettings() {
     cloud.beforeSaveSettings()
-    api.saveSettings($state.snapshot(this.settings))
+    return api.saveSettings($state.snapshot(this.settings))
   }
   async checkUpdate() {
     this.update = await api.checkUpdate()

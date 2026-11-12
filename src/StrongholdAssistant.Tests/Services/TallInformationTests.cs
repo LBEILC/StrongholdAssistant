@@ -8,7 +8,6 @@ namespace StrongholdAssistant.Tests.Services;
 
 [Collection("Native OCR")]
 public class TallInformationTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
-    : IClassFixture<EnemyRecognitionFixture>
 {
     [Theory]
     [InlineData("top")]

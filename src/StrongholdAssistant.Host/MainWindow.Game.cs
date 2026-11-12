@@ -93,6 +93,7 @@ public partial class MainWindow
         _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         _source.AddHook(OnWindowMessage);
         InitializeHotkey();
+        if (_api.StartupWorkbench) SetWorkbench(true);
         LocationChanged += (_, _) => RememberWorkbenchBounds();
         SizeChanged += (_, _) => RememberWorkbenchBounds();
     }
@@ -104,14 +105,26 @@ public partial class MainWindow
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
         _iconMatcher = new MaaBanIconMatcher(data);
-        _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(_ocr),
-            _ocr, new ASPAssistant.Core.GameState.GameState(),
+        var scanOcr = new DiagnosticOcrEngine(_ocr);
+        _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(scanOcr),
+            scanOcr, new ASPAssistant.Core.GameState.GameState(),
             () => _api.TrackedNames.Concat(_api.SecondaryNames).Distinct().ToArray(), iconMatcher: _iconMatcher,
             intervalMs: 800);
+        _scanner.RecognitionFailed += (shot, reason, scale, steps) =>
+        {
+            var message = _api.ReportRecognitionFailure(shot, reason, scale, steps);
+            Dispatcher.BeginInvoke(() => Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(
+                new { @event = "scan", data = new ScanStatus(false, message, false) }, HostApi.JsonOptions)));
+        };
         _scanner.GameStateUpdated += state =>
         {
             var items = state.ShopItems.ToArray();
-            Dispatcher.BeginInvoke(() => { _shopItems = items; RefreshShopOverlay(); });
+            var generation = _scanner.ShopGeneration;
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (generation != _scanner.ShopGeneration) return;
+                _shopItems = items; RefreshShopOverlay();
+            });
         };
         _api.ShopChanged += RefreshShopOverlay;
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
@@ -261,13 +274,7 @@ public partial class MainWindow
         if (message == User32.WM_HOTKEY && _hotkeyId != 0 && wParam.ToInt32() == _hotkeyId)
         {
             handled = true;
-            if (WindowState == WindowState.Minimized)
-            {
-                WindowState = WindowState.Normal;
-                Activate();
-                User32.SetForegroundWindow(hwnd);
-            }
-            else Browser.CoreWebView2?.PostWebMessageAsJson("{\"event\":\"hotkey\",\"data\":null}");
+            ToggleFromHotkey();
             return IntPtr.Zero;
         }
         if (message == User32.WM_ENTERSIZEMOVE) _moving = true;
@@ -357,6 +364,7 @@ public partial class MainWindow
 
     private async Task RefreshSettingsAsync(bool followedBefore)
     {
+        _refreshKey = HotkeyParser.Parse(_api.Settings.RefreshKey);
         if (_connectGame)
         {
             await Task.Run(() =>
@@ -396,6 +404,12 @@ public partial class MainWindow
         e.Cancel = true;
         if (_closing) return;
         _closing = true;
+        _keyboardHook?.Dispose();
+        if (_api is not null)
+        {
+            _dock = _dock with { LastWorkbench = _workbench };
+            _api.SettingsStore.SaveDock(_dock);
+        }
         if (_api is not null) await _api.StopContinuousAsync();
         // 网页先播退场（内容淡出到底色），再藏起窗口等后台收尾，收尾和释放 WebView2 时不会露出白底
         if (Browser.Visibility == Visibility.Visible)

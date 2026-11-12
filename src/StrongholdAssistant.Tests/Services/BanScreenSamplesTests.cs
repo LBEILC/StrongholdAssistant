@@ -15,8 +15,8 @@ namespace ASPAssistant.Tests.Services;
 /// 而旧逻辑要求与数据文件里的 18 项数量相等；③ 整行 OCR 读不出名字时没有退回到
 /// 图标槽位匹配。修复后两张图都能完整读出。
 /// </summary>
-[Collection("Native OCR")]
-public sealed class BanScreenSamplesTests : IDisposable
+[Collection("Ban OCR")]
+public sealed class BanScreenSamplesTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture)
 {
     // 与生产一致：候选名单来自 data/covenants.json（该赛季 10 核心 / 16 附加）。
     private static readonly (List<string> Core, List<string> Additional) Names = LoadNames();
@@ -35,9 +35,9 @@ public sealed class BanScreenSamplesTests : IDisposable
         return (season, other);
     }
 
-    private readonly MaaOcrEngine _ocr = new(Path.Combine(AppContext.BaseDirectory, "data"));
+    private readonly MaaOcrEngine _ocr = fixture.Engine;
 
-    public void Dispose() => _ocr.Dispose();
+
 
     /// <summary>
     /// 每张样本的期望值。难度不同，盟约池就不同：

@@ -5,8 +5,7 @@ namespace ASPAssistant.Core;
 /// <summary>
 /// Lightweight file logger. Initialize once at startup with <see cref="Initialize"/>;
 /// all subsequent calls to Info/Warn/Error are thread-safe.
-/// Log files are written to the supplied directory as <c>aspa-yyyy-MM-dd.log</c>.
-/// Files older than 7 days are deleted automatically on startup.
+/// 日志写入数据目录，单文件约 1 MiB，包含当前文件共保留五份。
 /// </summary>
 public static class AppLogger
 {
@@ -23,15 +22,7 @@ public static class AppLogger
         {
             Directory.CreateDirectory(logDir);
 
-            // Prune log files older than 7 days.
-            foreach (var old in Directory.GetFiles(logDir, "aspa-*.log"))
-            {
-                if (File.GetLastWriteTime(old) < DateTime.Now.AddDays(-7))
-                    File.Delete(old);
-            }
-
-            var date = DateTime.Now.ToString("yyyy-MM-dd");
-            _logFilePath = Path.Combine(logDir, $"aspa-{date}.log");
+            _logFilePath = Path.Combine(logDir, "host.log");
 
             var version = Assembly.GetEntryAssembly()
                 ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -78,12 +69,25 @@ public static class AppLogger
     private static void WriteLine(string level, string component, string message)
     {
         var line = $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] [{component}] {message}";
-        System.Diagnostics.Debug.WriteLine(line);
-
         if (_logFilePath == null) return;
         lock (_lock)
         {
-            try { File.AppendAllText(_logFilePath, line + Environment.NewLine); }
+            try
+            {
+                if (File.Exists(_logFilePath) && new FileInfo(_logFilePath).Length
+                    + System.Text.Encoding.UTF8.GetByteCount(line) > 1024 * 1024)
+                {
+                    var folder = Path.GetDirectoryName(_logFilePath)!;
+                    File.Delete(Path.Combine(folder, "host.4.log"));
+                    for (int i = 3; i >= 1; i--)
+                    {
+                        var old = Path.Combine(folder, $"host.{i}.log");
+                        if (File.Exists(old)) File.Move(old, Path.Combine(folder, $"host.{i + 1}.log"));
+                    }
+                    File.Move(_logFilePath, Path.Combine(folder, "host.1.log"));
+                }
+                File.AppendAllText(_logFilePath, line + Environment.NewLine);
+            }
             catch { /* Never let logging crash the app */ }
         }
     }

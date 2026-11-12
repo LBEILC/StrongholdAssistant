@@ -2,6 +2,7 @@
 // 2026-11-11：从卡片间距测量 UI 缩放，以右下角为基准换算名称栏。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Drawing;
+// 2026-11-12：输出商店识别失败步骤及测得缩放，供宿主保存诊断。
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using ASPAssistant.Core.Models;
@@ -19,11 +20,15 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
     private volatile GameShopTheme _theme = GameShopTheme.Terminal;
     public GameShopTheme Theme { get => _theme; set => _theme = value; }
     public bool HasVisibleCards { get; private set; }
+    public string? Failure { get; private set; }
+    public double? UiScale { get; private set; }
 
     public async Task<IReadOnlyList<ShopItem>> ReadAsync(
         byte[] screenshot, int width, int height, IReadOnlyList<string> trackedNames)
     {
         HasVisibleCards = false;
+        Failure = null;
+        UiScale = null;
         if (trackedNames.Count == 0)
             return [];
         var theme = Theme;
@@ -44,6 +49,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         }
         var workingImage = enlarged ?? source;
         double k = GameUiScale.Shop(workingImage);
+        UiScale = k;
         double scale = Math.Min(width / 1920.0, height / 1080.0);
         HasVisibleCards = ShopLayout.HasCards(workingImage, k, theme);
         int ShopY(double y) => (int)Math.Round(height - (1080 - y) * scale * k);
@@ -113,7 +119,10 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         var texts = (await engine.RecognizeRegionAsync(ocrInput, 0, 0, strip.Width, strip.Height))
             .Where(t => t.Text.Trim() is not [< (char)128] || t.Box.W <= t.Box.H * 2).ToList();
         if (!texts.Any(t => t.Text.Contains("收起", StringComparison.Ordinal) && t.Box.X + t.Box.W > width * 1.6))
+        {
+            if (HasVisibleCards) Failure = $"没认出商店画面。\n没找到「收起」文字；{OcrSummary(texts)}";
             return [];
+        }
         var originalTexts = texts.Where(t => t.Box.Y + t.Box.H / 2.0 >= height * 300 / 1080.0
             || t.Text.Contains("收起", StringComparison.Ordinal)).ToList();
         var items = MatchNames(originalTexts, width, height, canvasTop, _names).ToList();
@@ -161,7 +170,15 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 }
             }
         }
+        if (HasVisibleCards && items.Count == 0) Failure = $"商店卡片的名字没读出来。\n{OcrSummary(texts)}";
+        AppLogger.Info("Shop", $"UI 缩放={k:F3}; 可见卡片={HasVisibleCards}; 识别名称={string.Join('|', items.Select(i => i.Name))}");
         return ShopLayout.Snap(items.Where(i => trackedNames.Contains(i.Name)), width, height, k, theme);
+    }
+
+    private static string OcrSummary(IReadOnlyList<OcrTextResult> texts)
+    {
+        var text = string.Join(" | ", texts.Select(t => t.Text));
+        return $"OCR：{text[..Math.Min(text.Length, 240)]}";
     }
 
     public IReadOnlyList<ShopItem> Match(IReadOnlyList<OcrTextResult> texts,

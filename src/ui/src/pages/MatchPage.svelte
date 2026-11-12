@@ -10,6 +10,8 @@
   import Icon from '../components/Icon.svelte'
   import EconomyBar from '../components/EconomyBar.svelte'
   import StrategyGrid from '../components/StrategyGrid.svelte'
+  import ErrorNote from '../components/ErrorNote.svelte'
+  import { api } from '../lib/api'
   import { openMenu, operatorMenu } from '../lib/menu.svelte'
 
   // 本局：开局识别到的信息，排版仿游戏「确认本局信息」页；可手动修正；后面接本局能用的已存阵容
@@ -19,6 +21,15 @@
   const boss = $derived(app.catalog.bosses.find((b) => b.id === m.bossId))
   // 本局模式读到了才显示血量（开局页左上角的「规程等级16」「险境模拟」）
   const bossHp = $derived(boss && m.mode ? boss.hp.find((h) => h.mode === m.mode!.id) : undefined)
+  // 导出诊断包：识别不了时直接从这里导，发群里反馈
+  async function exportDiag() {
+    try {
+      const path = await api.exportDiagnostics()
+      if (path) app.showToast(`诊断包已保存到 ${path}，发到群里就行`)
+    } catch (e) {
+      app.showToast((e as Error).message, true)
+    }
+  }
   const strategy = $derived(app.catalog.strategies.find((s) => s.id === m.strategyId))
   // 策略识别不了（v0.7.0），用户自己选：资金预测和学习要看策略
   let pickingSt = $state(false)
@@ -156,8 +167,16 @@
     <div class="note">
       <span>持续识别中，已识别 <b>{m.bannedOperators.length}</b> 名禁用干员。在游戏里慢慢往下滚动禁用列表，看全后点「停止」。</span>
     </div>
+  {:else if app.scanNote?.message && !app.scanNote.ok}
+    <!-- 识别失败（v0.7.2）：醒目的提示，详情里是技术细节；识别不了的问题很常见，直接给导出诊断包 -->
+    <ErrorNote title="识别没成功" error={app.scanNote.message} context={{ 游戏来源: app.connection.source ?? '—', 画面: app.connection.resolution ?? '—' }} onclose={() => (app.scanNote = null)}>
+      {#snippet actions()}
+        <button disabled={app.scanning} onclick={() => app.rescan()}><Icon name="refresh" size={12} />重新识别</button>
+        <button onclick={exportDiag}><Icon name="download" size={12} />导出诊断包</button>
+      {/snippet}
+    </ErrorNote>
   {:else if app.scanNote?.message}
-    <div class="note" class:bad={!app.scanNote.ok}>
+    <div class="note">
       <span>{app.scanNote.message}</span>
       <button class="nx" aria-label="关闭提示" onclick={() => (app.scanNote = null)}><Icon name="close" size={13} /></button>
     </div>
@@ -517,11 +536,6 @@
   .nx:hover {
     opacity: 1;
     background: rgb(255 255 255 / 0.08);
-  }
-  .note.bad {
-    color: #f2b8ba;
-    background: var(--red-tint);
-    box-shadow: inset 2px 0 0 var(--red);
   }
   .focus {
     display: flex;

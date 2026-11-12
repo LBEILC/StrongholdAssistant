@@ -3,10 +3,10 @@ using ASPAssistant.Core.Models;
 
 namespace StrongholdAssistant.Tests.Services;
 
-[Collection("Native OCR")]
-public sealed class EconomyReaderTests : IDisposable
+[Collection("Shop OCR")]
+public sealed class EconomyReaderTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture)
 {
-    private readonly MaaOcrEngine _ocr = new(Path.Combine(AppContext.BaseDirectory, "data"));
+    private readonly MaaOcrEngine _ocr = fixture.Engine;
 
     [Fact]
     public async Task ReadsClosure1600x1024()
@@ -38,5 +38,5 @@ public sealed class EconomyReaderTests : IDisposable
         Assert.Equal(new EconomyReading(null, money, level, cost, false), result);
     }
 
-    public void Dispose() => _ocr.Dispose();
+
 }

@@ -77,6 +77,7 @@ export const bridgeApi: Api = {
   sklandGuide: call('sklandGuide'),
   sklandHistory: call('sklandHistory'),
   setHotkey: call('setHotkey'),
+  exportDiagnostics: call('exportDiagnostics'),
   addIncome: call('addIncome'),
   removeIncome: call('removeIncome'),
   history: call('history'),

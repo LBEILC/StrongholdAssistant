@@ -14,8 +14,10 @@
     /** 复制时一起带上的现场信息，如 { 链接: url } */
     context?: Record<string, string>
     actions?: Snippet
+    /** 传了就在右上角显示关闭 */
+    onclose?: () => void
   }
-  let { title, error, context = {}, actions }: Props = $props()
+  let { title, error, context = {}, actions, onclose }: Props = $props()
   const lines = $derived(error.split('\n').map((l) => l.trim()).filter(Boolean))
   const reason = $derived(lines[0] ?? '')
   const detail = $derived(lines.slice(1))
@@ -42,6 +44,7 @@
       <span>{reason}</span>
     </div>
     <button class="tg" class:on={open} onclick={() => (open = !open)} aria-expanded={open}>详情<Icon name="arrowDown" size={12} /></button>
+    {#if onclose}<button class="x" aria-label="关闭" onclick={onclose}><Icon name="close" size={13} /></button>{/if}
   </div>
   {#if actions}<div class="acts">{@render actions()}</div>{/if}
   {#if open}
@@ -112,6 +115,17 @@
     transform: rotate(180deg);
   }
   .tg:hover {
+    color: #fff;
+  }
+  .x {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    color: #f2b8ba;
+  }
+  .x:hover {
     color: #fff;
   }
   .acts {

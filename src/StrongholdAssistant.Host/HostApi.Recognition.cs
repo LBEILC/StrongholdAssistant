@@ -20,6 +20,14 @@ public sealed partial class HostApi
     private EnemyResult? _scanEnemy;
     private string? _scanFailure;
     private bool _scanOpening;
+    private DiagnosticOcrEngine? _scanOcr;
+    private double? _scanScale;
+    private string _scanStep = "截取游戏画面";
+    private void ScanStep(string step)
+    {
+        _scanStep = step;
+        ASPAssistant.Core.AppLogger.Info("Information", step);
+    }
     private readonly BossDataService _bosses = new();
     private readonly EnemyTypeDataService _enemyTypes = new();
     public Connection Connection { get; private set; } = new("searching");
@@ -27,6 +35,8 @@ public sealed partial class HostApi
 
     public async Task InitializeRecognitionAsync(string dataDirectory, IOcrEngine ocr, Func<Task<byte[]?>> capture)
     {
+        _scanOcr = new DiagnosticOcrEngine(ocr);
+        ocr = _scanOcr;
         await Task.WhenAll(_bosses.LoadAsync(dataDirectory), _enemyTypes.LoadAsync(dataDirectory));
         _avatars = await Task.Run(() => new BanAvatarRecognizer(ocr, _operators,
             Path.Combine(dataDirectory, "operator_avatars")));
@@ -69,6 +79,10 @@ public sealed partial class HostApi
             Changed?.Invoke("scan", new ScanStatus(true, Continuous: continuous ? true : null));
             _scanAvatars = null;
             _scanOpening = false;
+            _scanShot = null;
+            _scanScale = null;
+            _scanOcr?.Clear();
+            ScanStep("截取游戏画面");
             var (next, avatars) = await ReadInformation();
             int added = ApplyRecognizedMatch(next, avatars, _scanAvatars, opening || (_scanOpening && _observedRound > 1));
             _openingObserved |= _scanOpening;
@@ -82,8 +96,10 @@ public sealed partial class HostApi
         }
         catch (Exception ex)
         {
-            if (!continuous) Changed?.Invoke("scan", new ScanStatus(false, ex.Message, false));
-            throw;
+            var message = ReportRecognitionFailure(_scanShot, ex.Message, _scanScale,
+                ["失败步骤: " + _scanStep, .. _scanOcr?.Steps ?? []]);
+            if (!continuous) Changed?.Invoke("scan", new ScanStatus(false, message, false));
+            throw new RecognitionException(message);
         }
         finally
         {
@@ -105,12 +121,15 @@ public sealed partial class HostApi
             int rawWidth = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(_scanShot.AsSpan(16, 4));
             int rawHeight = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(_scanShot.AsSpan(20, 4));
             var (png, width, height) = ScreenshotNormalizer.EnsureAnalysable(_scanShot, rawWidth, rawHeight);
+            _scanScale = GameUiScale.Information(png);
+            ScanStep($"画面 {rawWidth}×{rawHeight}; UI 缩放 {_scanScale:F3}; 检查信息页标题");
             if (await _informationDetector.IsSoloOpeningAsync(png, width, height))
                 throw new RecognitionException("这是单人模式的开局页：选好盟约进入对局后，点顶部回合数左边的放大镜打开对局详情再识别。");
             _scanOpening = await _informationDetector.IsOpeningScreenAsync(png, width, height);
             if (_scanOpening)
                 mode = await _informationDetector.ReadModeAsync(png, width, height, _modes);
         }
+        ScanStep("定位禁用区并识别头像");
         var avatars = _scanShot == null ? null : await _avatars.RecognizeAsync(_scanShot);
         _scanAvatars = avatars;
         // TODO(design): 盟约已滚出画面时沿用已录入的盟约；首领须仍可读且相同，无法据此区分同首领的新局。
@@ -121,10 +140,15 @@ public sealed partial class HostApi
             if (Match.BossId == null || enemy == null || _bosses.Lookup(enemy.BossName)?.EnemyId != Match.BossId)
                 _scanFailure = "未找到完整的核心/附加盟约区域，请打开本局信息页并保持面板顶部可见。";
         }
-        else await Task.Run(_analyzer.RunAnalysisAsync);
+        else
+        {
+            ScanStep("读取核心/附加盟约标题、槽位及敌方领袖");
+            await Task.Run(_analyzer.RunAnalysisAsync);
+        }
         if (_scanFailure is { } failure) throw new RecognitionException(failure);
 
         var result = _scanResult;
+        ScanStep($"识别完成: 核心 {result?.CoreCovenants.Count}; 附加 {result?.AdditionalCovenants.Count}; 禁用头像 {avatars?.Names.Length}; 首领 {_scanEnemy?.BossName}");
         var next = supplement ? Match : new MatchInfo("recognized", null,
             result!.CoreCovenants.Concat(result.AdditionalCovenants)
                 .Select(c => new CovenantState(_ids[c.Name], c.IsBanned)).ToArray(),

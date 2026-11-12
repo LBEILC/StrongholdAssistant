@@ -6,15 +6,15 @@ using Xunit.Abstractions;
 
 namespace StrongholdAssistant.Tests;
 
-[Collection("Native OCR")]
-public sealed class BanGroupTests(ITestOutputHelper output)
+[Collection("Avatar OCR")]
+public sealed class BanGroupTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture, ITestOutputHelper output)
 {
     [Fact]
     public async Task CompleteSamplesHaveGameOrderAndSlotsMergeInferConfirmRejectAndReset()
     {
         var data = Path.Combine(AppContext.BaseDirectory, "data");
         var directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
-        using var ocr = new MaaOcrEngine(data);
+        var ocr = fixture.Engine;
         await ocr.WarmUpAsync();
         var operators = await new JsonDataStore(data).LoadOperatorsAsync();
         var reader = new BanAvatarRecognizer(ocr, operators, Path.Combine(data, "operator_avatars"));

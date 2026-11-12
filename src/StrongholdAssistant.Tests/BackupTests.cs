@@ -36,7 +36,8 @@ public sealed class BackupTests : IDisposable
         Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups", "history" }, root.Select(p => p.Key));
         Assert.Equal("stronghold-assistant-backup", root["format"]!.GetValue<string>());
         Assert.Equal(1, root["version"]!.GetValue<int>());
-        Assert.Equal(15, root["settings"]!.AsObject().Count);
+        Assert.Equal("github", root["settings"]!["updateSource"]!.GetValue<string>());
+        Assert.Equal("", root["settings"]!["mirrorChyanCdk"]!.GetValue<string>());
         var selection = await api.ReadBackupAsync(BackupPath);
         Assert.Equal(1, selection.Summary.Lineups);
         Assert.Equal(1, selection.Summary.FocusCovenants);
@@ -118,6 +119,25 @@ public sealed class BackupTests : IDisposable
         Assert.Null(session.TargetLineupId);
         Assert.Equal(new[] { "折光" }, session.Owned);
         Assert.Equal(new[] { "车尔尼" }, session.Tracked);
+    }
+
+    [Theory]
+    [InlineData("replace")]
+    [InlineData("merge")]
+    public async Task BackupOmitsCdkAndImportKeepsLocalCdk(string mode)
+    {
+        var api = await CreateApi();
+        api.SaveSettings(api.Settings with { UpdateSource = "mirrorchyan", MirrorChyanCdk = "export-secret" });
+        await api.ExportBackupAsync(BackupPath);
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(BackupPath))!;
+        Assert.Equal("", root["settings"]!["mirrorChyanCdk"]!.GetValue<string>());
+        root["settings"]!["mirrorChyanCdk"] = "import-secret";
+        await File.WriteAllTextAsync(BackupPath, root.ToJsonString());
+        var selection = await api.ReadBackupAsync(BackupPath);
+        api.SaveSettings(api.Settings with { MirrorChyanCdk = "local-secret" });
+        await api.ImportDataAsync(selection.Token, mode);
+        Assert.Equal("local-secret", api.Settings.MirrorChyanCdk);
+        Assert.Equal("local-secret", api.SettingsStore.LoadSettings().MirrorChyanCdk);
     }
 
     public void Dispose()

@@ -6,15 +6,15 @@ using System.Diagnostics;
 
 namespace StrongholdAssistant.Tests;
 
-[Collection("Native OCR")]
-public sealed class BanAvatarTests(ITestOutputHelper output)
+[Collection("Avatar OCR")]
+public sealed class BanAvatarTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture, ITestOutputHelper output)
 {
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
 
     [Fact]
     public async Task RemainingSamplesKeepRejectingIncompleteAvatars()
     {
-        using var ocr = new MaaOcrEngine(Data);
+        var ocr = fixture.Engine;
         await ocr.WarmUpAsync();
         var operators = await new JsonDataStore(Data).LoadOperatorsAsync();
         var reader = new BanAvatarRecognizer(ocr, operators, Path.Combine(Data, "operator_avatars"));
@@ -35,7 +35,7 @@ public sealed class BanAvatarTests(ITestOutputHelper output)
     [Fact]
     public async Task CompleteVisibleAvatarsRecognizeAllEighteenWithinOneSecond()
     {
-        using var ocr = new MaaOcrEngine(Data);
+        var ocr = fixture.Engine;
         await ocr.WarmUpAsync();
         var operators = await new JsonDataStore(Data).LoadOperatorsAsync();
         var timer = Stopwatch.StartNew();

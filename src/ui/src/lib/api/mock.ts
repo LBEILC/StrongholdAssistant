@@ -190,6 +190,8 @@ let settings: Settings = {
   gameTheme: 'terminal',
   shopMarkers: true,
   autoCheckUpdate: true,
+  updateSource: 'github',
+  mirrorChyanCdk: '',
   uiScale: 'auto',
   alwaysOnTop: false,
   followGame: true,
@@ -199,6 +201,8 @@ let settings: Settings = {
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
   toggleHotkey: 'Alt+S',
+  refreshKey: 'D',
+  startupMode: 'remember',
   shareIncome: false,
   cloudSync: { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] },
   operatorDefaults: {},
@@ -351,6 +355,7 @@ export const mockApi: Api = {
   },
   windowCommand: async () => {},
   // 原型里 F2 当作全局快捷键；?hotkeyBusy：改快捷键总是被占用
+  exportDiagnostics: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-诊断-2026-11-12.zip`, 600),
   setHotkey: async (combo) => {
     if (location.search.includes('hotkeyBusy')) throw new Error('这个组合被别的软件占用了，换一个试试。')
     settings = { ...settings, toggleHotkey: combo }
@@ -397,7 +402,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false }, 0),
+  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false, workbench: location.search.includes('wb') }, 0),
   openDataFolder: async () => {},
   // ?mumu2：模拟多开两个实例
   mumuInstances: () =>
@@ -406,11 +411,21 @@ export const mockApi: Api = {
   pickBackup: () =>
     wait({ token: 'mock', summary: { appVersion: '0.2.0', exportedAt: new Date(Date.now() - 3 * 86400_000).toISOString(), lineups: 6, focusCovenants: 2, focusOperators: 4 } }, 300),
   importData: () => wait(undefined, 400),
-  // 假数据：每次检查都发现 0.2.0，方便看界面
+  // 假数据：每次检查都发现 0.4.3，方便看界面。更新源选 Mirror酱 时：CDK 填 bad 算 CDK 错误，填别的算有效
   checkUpdate: async () => {
     pushUpdate({ state: 'checking' })
+    const mirror = settings.updateSource === 'mirrorchyan'
+    const cdk = mirror ? settings.mirrorChyanCdk.trim() : ''
+    if (cdk.toLowerCase() === 'bad') {
+      await new Promise((r) => setTimeout(r, 500))
+      const f: UpdateStatus = { state: 'failed', message: 'Mirror酱 CDK 不对，请检查有没有填错。', cdkProblem: true }
+      pushUpdate(f)
+      return f
+    }
     const u: UpdateStatus = {
       state: 'available',
+      source: cdk ? 'mirrorchyan' : 'github',
+      ...(cdk ? { cdkExpiresAt: new Date(Date.now() + 87 * 86400_000).toISOString() } : {}),
       version: '0.4.3',
       notesUrl: 'https://github.com/LBEILC/StrongholdAssistant/releases',
       notes: {

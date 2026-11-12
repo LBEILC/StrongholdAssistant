@@ -5,7 +5,7 @@ using StrongholdAssistant.Host;
 namespace StrongholdAssistant.Tests;
 
 [Collection("Native OCR")]
-public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture) : IClassFixture<EnemyRecognitionFixture>
+public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
 {
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
 
@@ -68,6 +68,10 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture) : IC
         Assert.Equal(new[] { "scan", "scan" }, events.Select(e => e.Name));
         Assert.Equal(new ScanStatus(true), events[0].Value);
         Assert.Equal(new ScanStatus(false, error.Message, false), events[1].Value);
-        Assert.Equal("当前画面不是本局信息页，请打开开局信息页或对局详情后重试。", error.Message);
+        Assert.StartsWith("当前画面不是本局信息页，请打开开局信息页或对局详情后重试。\n", error.Message);
+        Assert.Contains("OCR (", error.Message);
+        Assert.Contains("UI 缩放", error.Message);
+        Assert.Single(Directory.GetFiles(Path.Combine(api.DataDirectory, "diagnostics"), "*.png"));
+        Assert.Single(Directory.GetFiles(Path.Combine(api.DataDirectory, "diagnostics"), "*.json"));
     }
 }

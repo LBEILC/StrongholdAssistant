@@ -36,7 +36,9 @@ public sealed class ContinuousScanTests
         Assert.Equal(succeedFirst, api.Match.BansScanned);
         Assert.Equal(succeedFirst
             ? "连续 3 次没找到本局信息页，持续识别已结束。本次新识别到 1 名禁用干员，共 1 名。"
-            : "没找到本局信息页，持续识别已结束。请先打开开局信息页或对局详情再点「持续识别」。", final.Message);
+            : "没找到本局信息页，持续识别已结束。请先打开开局信息页或对局详情再点「持续识别」。", final.Message!.Split('\n')[0]);
+        Assert.Contains("失败步骤:", final.Message);
+        Assert.Equal(3, Directory.GetFiles(Path.Combine(api.DataDirectory, "diagnostics"), "*.json").Length);
         Assert.Equal(captures * 2 + 1, events.Count);
         Assert.All(events.SkipLast(1), scan => { Assert.True(scan.Continuous); Assert.Null(scan.Message); });
         Assert.Equal(Enumerable.Range(0, captures * 2).Select(i => i % 2 == 0), events.SkipLast(1).Select(s => s.Busy));

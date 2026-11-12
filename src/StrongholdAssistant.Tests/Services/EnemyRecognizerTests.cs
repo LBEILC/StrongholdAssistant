@@ -10,7 +10,6 @@ namespace ASPAssistant.Tests.Services;
 
 [Collection("Native OCR")]
 public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
-    : IClassFixture<EnemyRecognitionFixture>
 {
     [Theory]
     [InlineData("ban-sample-1920x1080.png", "假想敌：鳍", "特训敌人·元素|特训敌人·频次|特训敌人·致命")]
@@ -89,7 +88,7 @@ public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHe
 
 public sealed class EnemyRecognitionFixture : IDisposable
 {
-    public MaaOcrEngine Engine { get; } = new(Path.Combine(AppContext.BaseDirectory, "data"));
+    public MaaOcrEngine Engine { get; } = NativeOcrEngines.Create();
     public BossDataService Bosses { get; } = new();
     public EnemyTypeDataService Types { get; } = new();
 

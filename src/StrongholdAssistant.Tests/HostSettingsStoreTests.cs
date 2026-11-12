@@ -17,6 +17,31 @@ public sealed class HostSettingsStoreTests : IDisposable
         Assert.Equal("Alt+S", store.LoadSettings().ToggleHotkey);
         Assert.Equal("Alt+S", new SettingsDto("terminal", true, true).ToggleHotkey);
         Assert.Empty(store.LoadSettings().OperatorDefaults);
+        Assert.Equal("D", store.LoadSettings().RefreshKey);
+        Assert.Equal("remember", store.LoadSettings().StartupMode);
+        Assert.False(store.StartInWorkbench());
+        Assert.Equal("github", store.LoadSettings().UpdateSource);
+        Assert.Equal("", store.LoadSettings().MirrorChyanCdk);
+        store.SaveSettings(store.LoadSettings() with { UpdateSource = "mirrorchyan", MirrorChyanCdk = "test-cdk" });
+        Assert.Equal("mirrorchyan", store.LoadSettings().UpdateSource);
+        Assert.Equal("test-cdk", store.LoadSettings().MirrorChyanCdk);
+    }
+
+    [Fact]
+    public void StartupChoiceAndLastLayoutSurviveSettingsWrites()
+    {
+        var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));
+        store.SaveDock(new(LastWorkbench: true));
+        Assert.True(store.StartInWorkbench());
+        store.SaveSettings(store.LoadSettings() with { StartupMode = "sidebar", RefreshKey = "Tab" });
+        Assert.False(store.StartInWorkbench());
+        Assert.Equal("Tab", store.LoadSettings().RefreshKey);
+        store.SaveSettings(store.LoadSettings() with { StartupMode = "workbench", RefreshKey = "" });
+        store.SaveDock(new(LastWorkbench: false));
+        Assert.True(store.StartInWorkbench());
+        Assert.Equal("", store.LoadSettings().RefreshKey);
+        store.SaveSettings(store.LoadSettings() with { StartupMode = "remember" });
+        Assert.False(store.StartInWorkbench());
     }
 
     [Fact]
@@ -56,6 +81,24 @@ public sealed class HostSettingsStoreTests : IDisposable
         store.SaveSettings(settings with { AlwaysOnTop = true });
         store.SaveDock(new(FreeBounds: new(100, 200, 380, 900), OverlayOffsetDip: new(12, 34)));
         Assert.Equal(combo, new HostSettingsStore(path).LoadSettings().ToggleHotkey);
+    }
+
+    [Theory]
+    [InlineData("sidebar", true, false)]
+    [InlineData("workbench", false, true)]
+    [InlineData("remember", true, true)]
+    [InlineData("remember", false, false)]
+    public async Task AppInfoReturnsStartupLayout(string mode, bool lastWorkbench, bool expected)
+    {
+        var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));
+        store.SaveSettings(store.LoadSettings() with { StartupMode = mode });
+        store.SaveDock(new(LastWorkbench: lastWorkbench));
+        var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        // 修改下次启动设置，不应改变本次启动结果。
+        api.SaveSettings(api.Settings with { StartupMode = expected ? "sidebar" : "workbench" });
+        var info = System.Text.Json.JsonSerializer.SerializeToElement(await api.InvokeAsync("appInfo", []));
+        Assert.Equal(expected, info.GetProperty("workbench").GetBoolean());
+        Assert.Equal(expected, api.StartupWorkbench);
     }
 
     public void Dispose()

@@ -20,7 +20,9 @@ try {
     $archive = Join-Path $temp 'commit.zip'
     git -C $root archive HEAD --format=zip -o $archive
     if ($LASTEXITCODE -ne 0) { throw '读取当前提交失败。' }
-    Expand-Archive -LiteralPath $archive -DestinationPath $snapshot
+    # 直接解压 Git 快照，避免 PowerShell 对每个文件的管道与进度处理开销。
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [IO.Compression.ZipFile]::ExtractToDirectory($archive, $snapshot)
     $policy = [IO.File]::ReadAllText((Join-Path $snapshot 'docs/internal.md'))
     $block = [regex]::Match($policy, '(?s)```forbidden\s*\r?\n(.*?)```')
     if (!$block.Success) { throw '未找到禁用词规则。' }
@@ -32,17 +34,20 @@ try {
     $hits = @()
     foreach ($file in $files) {
         $source = Join-Path $snapshot $file
-        if ((Get-Item -LiteralPath $source).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "不导出符号链接：$file" }
+        if ([IO.File]::GetAttributes($source) -band [IO.FileAttributes]::ReparsePoint) { throw "不导出符号链接：$file" }
         $bytes = [IO.File]::ReadAllBytes($source)
         # 二进制同样按字节映射扫描，并覆盖 UTF-16 文本。
         $texts = @([Text.Encoding]::UTF8.GetString($bytes), [Text.Encoding]::Unicode.GetString($bytes), [Text.Encoding]::BigEndianUnicode.GetString($bytes))
         foreach ($rule in $rules) {
-            if ($texts | Where-Object { [regex]::IsMatch($_, $rule, [Text.RegularExpressions.RegexOptions]::IgnoreCase) }) {
-                $hits += "$file : $rule"
+            foreach ($text in $texts) {
+                if ([regex]::IsMatch($text, $rule, [Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+                    $hits += "$file : $rule"
+                    break
+                }
             }
         }
         $output = Join-Path $stage $file
-        New-Item -ItemType Directory -Path (Split-Path -Parent $output) -Force | Out-Null
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output)) | Out-Null
         [IO.File]::WriteAllBytes($output, $bytes)
     }
     if ($hits.Count) { throw ("导出命中禁用词，目标未修改：`n" + ($hits -join "`n")) }

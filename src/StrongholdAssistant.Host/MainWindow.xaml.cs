@@ -32,12 +32,9 @@ public partial class MainWindow : Window
 
     private async Task InitializeAsync()
     {
-#if DEBUG
-        Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "logs"));
-        Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(AppContext.BaseDirectory, "logs", "host.log")));
-        Trace.AutoFlush = true;
-#endif
         var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
+        ASPAssistant.Core.AppLogger.Initialize(Path.Combine(userDirectory, "logs"));
+        Trace.Listeners.Add(new HostTraceListener());
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
         _ = _api.DownloadIncomeTableAsync();
         _api.DialogOwner = this;
@@ -222,4 +219,10 @@ public partial class MainWindow : Window
     }
 
     private sealed record BridgeRequest(int Id, string Method, JsonElement[] Params);
+
+    private sealed class HostTraceListener : TraceListener
+    {
+        public override void Write(string? message) => WriteLine(message);
+        public override void WriteLine(string? message) => ASPAssistant.Core.AppLogger.Info("Host", message ?? "");
+    }
 }

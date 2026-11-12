@@ -32,6 +32,7 @@ public sealed partial class HostApi
     {
         int failures = 0;
         bool succeeded = false;
+        string? lastFailure = null;
         var added = new HashSet<string>();
         while (!stop.IsCancellationRequested)
         {
@@ -43,7 +44,7 @@ public sealed partial class HostApi
                 failures = 0;
                 succeeded = true;
             }
-            catch (Exception) { failures++; } // 截屏和识别边界的错误均计作本次失败。
+            catch (Exception ex) { failures++; lastFailure = ex.Message; } // 截屏和识别边界的错误均计作本次失败。
             if (stop.IsCancellationRequested || failures == 3) break;
             try { await Task.Delay(500, stop.Token); }
             catch (OperationCanceledException) { break; }
@@ -61,6 +62,7 @@ public sealed partial class HostApi
             message = "没找到本局信息页，持续识别已结束。请先打开开局信息页或对局详情再点「持续识别」。";
         }
         _continuousStop = null;
+        if (failures == 3 && lastFailure is not null) message += "\n" + lastFailure;
         stop.Dispose();
         Changed?.Invoke("scan", new ScanStatus(false, message, ok, false));
     }

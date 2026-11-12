@@ -31,6 +31,38 @@
   }
   const u = $derived(app.update)
 
+  // Mirror酱：新 CDK 第一个带它检查的 app 拿分成，所以填完（失焦或回车）立刻检查一次，顺便校验 CDK、显示到期日
+  const MIRROR = 'https://mirrorchyan.com/zh/projects?rid=StrongholdAssistant&source=strongholdassistant-settings'
+  const mirror = $derived(app.settings.updateSource === 'mirrorchyan')
+  let cdkDraft = $state('')
+  let showCdk = $state(false)
+  // 设置是启动后异步读进来的，导入备份也可能换掉：跟着设置走
+  $effect(() => {
+    cdkDraft = app.settings.mirrorChyanCdk
+  })
+  // 先等宿主存好设置再检查，检查才会用上新的更新源和 CDK
+  const setUpdateSource = async (v: Settings['updateSource']) => {
+    if (app.settings.updateSource === v) return
+    app.settings.updateSource = v
+    await app.saveSettings()
+    app.checkUpdate()
+  }
+  const commitCdk = async () => {
+    const v = cdkDraft.trim()
+    cdkDraft = v
+    if (v === app.settings.mirrorChyanCdk) return
+    app.settings.mirrorChyanCdk = v
+    await app.saveSettings()
+    app.checkUpdate()
+  }
+  const toGithub = () => setUpdateSource('github')
+  const expiry = $derived.by(() => {
+    if (!u.cdkExpiresAt) return null
+    const d = new Date(u.cdkExpiresAt)
+    const days = Math.ceil((d.getTime() - Date.now()) / 86400_000)
+    return { date: d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-'), soon: days <= 7, days }
+  })
+
   // 游戏来源：多开 MuMu 时才列出实例让用户选
   const sources: { v: Settings['gameSource']; label: string; note: string }[] = [
     { v: 'auto', label: '自动', note: '先找 PC 客户端，没开再找 MuMu 模拟器。' },
@@ -50,21 +82,26 @@
     loadInstances()
   }
 
-  // 快捷键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）
-  let recording = $state(false)
+  // 按键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）。
+  // v0.7.2 起允许单键：单键只在游戏或助手在前台时生效、不拦截按键（宿主实现）
+  let recording = $state<'toggle' | 'refresh' | null>(null)
   let hkMsg = $state('')
+  const keyName = (e: KeyboardEvent) =>
+    e.key === ' ' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
   function recordKey(e: KeyboardEvent) {
     if (!recording) return
     e.preventDefault()
     e.stopPropagation()
-    if (e.key === 'Escape') return void (recording = false)
+    if (e.key === 'Escape') return void (recording = null)
     if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
-    const key = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
     const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
-    if (!mods.length && !/^F([1-9]|1[0-2])$/.test(key)) return void (hkMsg = '要带上 Ctrl、Alt 或 Shift，或者单按 F1～F12。')
-    recording = false
-    applyHotkey([...mods, key].join('+'))
+    const combo = [...mods, keyName(e)].join('+')
+    const target = recording
+    recording = null
+    if (target === 'toggle') applyHotkey(combo)
+    else set('refreshKey', combo)
   }
+  const single = (combo: string) => !!combo && !/(Ctrl|Alt|Shift|Win)\+/.test(combo)
   async function applyHotkey(combo: string) {
     try {
       await api.setHotkey(combo)
@@ -73,6 +110,22 @@
       hkMsg = ''
     } catch (e) {
       hkMsg = (e as Error).message
+    }
+  }
+
+  // 诊断包（v0.7.2）：识别不了时导出，发群里反馈
+  let diagBusy = $state(false)
+  let diagMsg = $state<{ text: string; bad?: boolean } | null>(null)
+  async function exportDiag() {
+    diagBusy = true
+    diagMsg = null
+    try {
+      const path = await api.exportDiagnostics()
+      if (path) diagMsg = { text: `已保存到 ${path}` }
+    } catch (e) {
+      diagMsg = { text: (e as Error).message, bad: true }
+    } finally {
+      diagBusy = false
     }
   }
 
@@ -203,20 +256,40 @@
       <!-- 全局快捷键：游戏在前台也能按；点按钮后按下新组合 -->
       <div class="hk">
         <span class="hkl">快捷键收起 / 展开</span>
-        <button class="hkb" class:rec={recording} onclick={() => ((recording = !recording), (hkMsg = ''))} onkeydown={recordKey}>
-          {recording ? '按下新的组合…' : app.settings.toggleHotkey || '未设置'}
+        <button class="hkb" class:rec={recording === 'toggle'} onclick={() => ((recording = recording === 'toggle' ? null : 'toggle'), (hkMsg = ''))} onkeydown={recordKey}>
+          {recording === 'toggle' ? '按下新的按键…' : app.settings.toggleHotkey || '未设置'}
         </button>
-        {#if app.settings.toggleHotkey && !recording}<button class="link" onclick={() => applyHotkey('')}>关闭</button>{/if}
+        {#if app.settings.toggleHotkey && recording !== 'toggle'}<button class="link" onclick={() => applyHotkey('')}>关闭</button>{/if}
       </div>
       {#if hkMsg}
         <p class="note bad">{hkMsg}</p>
-      {:else if recording}
-        <p class="note">按 Ctrl / Alt / Shift 加一个键，或单按 F1～F12；Esc 取消。</p>
+      {:else if recording === 'toggle'}
+        <p class="note">单按一个键（如 Tab、`）或 Ctrl / Alt / Shift 加一个键；Esc 取消。</p>
       {:else if app.appInfo.hotkeyFailed && app.settings.toggleHotkey}
         <p class="note bad">「{app.settings.toggleHotkey}」被别的软件占用了，没生效，换一个试试。</p>
+      {:else if single(app.settings.toggleHotkey)}
+        <p class="note">单键只在游戏或助手在前台时生效，按键照样会传给游戏，别选游戏里有用的键。</p>
       {:else}
         <p class="note">游戏在前台时也能按：侧栏里收起、展开；工作台里最小化、恢复。</p>
       {/if}
+      <!-- 商店刷新键：游戏里刷新商店时先把旧标记藏起来 -->
+      <div class="hk">
+        <span class="hkl">商店刷新键</span>
+        <button class="hkb" class:rec={recording === 'refresh'} onclick={() => ((recording = recording === 'refresh' ? null : 'refresh'), (hkMsg = ''))} onkeydown={recordKey}>
+          {recording === 'refresh' ? '按下游戏里的刷新键…' : app.settings.refreshKey || '未设置'}
+        </button>
+        {#if app.settings.refreshKey && recording !== 'refresh'}<button class="link" onclick={() => set('refreshKey', '')}>关闭</button>{/if}
+      </div>
+      <p class="note">游戏里按这个键刷新商店时，旧的商店标记马上消失，认到新的商店再标；游戏默认是 D。</p>
+    </section>
+
+    <section>
+      <h4>启动时打开 <small>侧栏贴着游戏，工作台是宽窗口</small></h4>
+      <div class="scales three">
+        <button class:on={app.settings.startupMode === 'remember'} onclick={() => set('startupMode', 'remember')}>记住上次</button>
+        <button class:on={app.settings.startupMode === 'sidebar'} onclick={() => set('startupMode', 'sidebar')}>侧栏</button>
+        <button class:on={app.settings.startupMode === 'workbench'} onclick={() => set('startupMode', 'workbench')}>工作台</button>
+      </div>
     </section>
 
     <section>
@@ -296,6 +369,15 @@
     </section>
 
     <section>
+      <h4>反馈问题 <small>识别不了、没反应时用</small></h4>
+      <div class="dataops">
+        <button class="btn" disabled={diagBusy} onclick={exportDiag}><Icon name="download" size={14} />{diagBusy ? '正在打包…' : '导出诊断包'}</button>
+      </div>
+      <p class="note">把日志、最近几次识别失败的截图和原因打成一个 zip，发到 QQ 群或 GitHub Issues。不含账号、登录凭据和 CDK。</p>
+      {#if diagMsg}<p class="dmsg" class:bad={diagMsg.bad}>{diagMsg.text}</p>{/if}
+    </section>
+
+    <section>
       <h4>版本 <small class="term">v{app.appInfo.version}</small></h4>
       <div class="upd">
         {#if u.state === 'available'}
@@ -312,9 +394,13 @@
           <span class="msg" class:bad={u.state === 'failed'}>
             {u.state === 'checking' ? '正在检查…' : u.state === 'latest' ? '已是最新版本' : u.state === 'failed' ? u.message : ''}
           </span>
-          <button class="btn" disabled={u.state === 'checking'} onclick={() => app.checkUpdate()}>
-            <Icon name="refresh" size={14} />检查更新
-          </button>
+          {#if u.state === 'failed' && u.cdkProblem && mirror}
+            <button class="btn" onclick={toGithub}>改用 GitHub</button>
+          {:else}
+            <button class="btn" disabled={u.state === 'checking'} onclick={() => app.checkUpdate()}>
+              <Icon name="refresh" size={14} />检查更新
+            </button>
+          {/if}
         {/if}
       </div>
       {#if u.state === 'available'}
@@ -326,12 +412,43 @@
           {#if u.notesUrl}<button class="link" onclick={() => api.openUrl(u.notesUrl!)}>{u.notes ? '在发版页查看' : '查看更新内容'}</button>{/if}
         </div>
       {/if}
+      <div class="usrc">
+        <span class="hkl">更新源</span>
+        <div class="scales two">
+          <button class:on={!mirror} onclick={() => setUpdateSource('github')}>GitHub</button>
+          <button class:on={mirror} onclick={() => setUpdateSource('mirrorchyan')}>Mirror酱</button>
+        </div>
+      </div>
+      {#if mirror}
+        <div class="cdk">
+          <input
+            type={showCdk ? 'text' : 'password'}
+            bind:value={cdkDraft}
+            placeholder="Mirror酱 CDK（选填）"
+            spellcheck="false"
+            autocomplete="off"
+            onblur={commitCdk}
+            onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+          <button class="btn icon" title={showCdk ? '隐藏' : '显示'} aria-label={showCdk ? '隐藏 CDK' : '显示 CDK'} onclick={() => (showCdk = !showCdk)}>
+            <Icon name={showCdk ? 'eyeOff' : 'eye'} size={14} />
+          </button>
+        </div>
+        <p class="note">
+          {#if expiry}
+            <span class:ok={!expiry.soon} class:warn={expiry.soon}>CDK 有效至 {expiry.date}{expiry.soon ? `，还剩 ${Math.max(expiry.days, 0)} 天` : ''}</span>
+          {:else if !app.settings.mirrorChyanCdk}
+            国内下载更快，需要 CDK；不填也能检查更新，下载走 GitHub。
+          {/if}
+          <button class="link" onclick={() => api.openUrl(MIRROR)}>{expiry ? '续费 CDK' : '获取 CDK'}</button>
+        </p>
+      {/if}
       <button class="logbtn" onclick={() => (app.changelogOpen = true)}>
         <span><b>更新日志</b><small>每个版本更新了什么</small></span>
         <Icon name="arrowRight" size={16} />
       </button>
       <label class="row">
-        <span class="lbl"><b>自动检查更新</b><small>启动时检查一次，从 GitHub Releases 获取</small></span>
+        <span class="lbl"><b>自动检查更新</b><small>启动时检查一次，从{mirror ? ' Mirror酱 ' : ' GitHub '}获取</small></span>
         <input type="checkbox" class="sw" checked={app.settings.autoCheckUpdate} onchange={(e) => set('autoCheckUpdate', e.currentTarget.checked)} />
       </label>
     </section>
@@ -643,6 +760,46 @@
   }
   .msg.bad {
     color: #f2b8ba;
+  }
+  .usrc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .usrc .scales {
+    flex: 1;
+  }
+  .cdk {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .cdk input {
+    flex: 1;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    font-family: var(--font-term);
+    font-size: 12px;
+    color: var(--fg-1);
+    background: var(--bg-1);
+    border: 0;
+    outline: 0;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .cdk input:focus {
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .cdk input::placeholder {
+    font-family: var(--font-ui);
+    color: var(--fg-4);
+  }
+  .note .ok {
+    color: var(--mint);
+  }
+  .note .warn {
+    color: var(--gold);
   }
   .bar {
     flex: 1;

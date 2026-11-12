@@ -24,7 +24,7 @@ public sealed partial class HostApi
     {
         var version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0];
-        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings, await LineupsAsync()) { History = History() };
+        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings with { MirrorChyanCdk = "" }, await LineupsAsync()) { History = History() };
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(backup, JsonOptions));
     }
 
@@ -80,7 +80,7 @@ public sealed partial class HostApi
             await SaveSessionAsync(session with { TargetLineupId = null });
         else
             await RefreshTrackingAsync();
-        SaveSettings(mode == "replace" ? backup.Settings : Settings with
+        SaveSettings(mode == "replace" ? backup.Settings with { MirrorChyanCdk = Settings.MirrorChyanCdk } : Settings with
         {
             FocusCovenants = Settings.FocusCovenants.Union(backup.Settings.FocusCovenants).ToArray(),
             FocusOperators = Settings.FocusOperators.Union(backup.Settings.FocusOperators).ToArray()

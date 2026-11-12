@@ -5,8 +5,8 @@ using StrongholdAssistant.Host;
 
 namespace StrongholdAssistant.Tests;
 
-[Collection("Native OCR")]
-public sealed class ShopBridgeTests : IDisposable
+[Collection("Shop OCR")]
+public sealed class ShopBridgeTests(ASPAssistant.Tests.Services.EnemyRecognitionFixture fixture) : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
@@ -41,7 +41,7 @@ public sealed class ShopBridgeTests : IDisposable
     public async Task TerminalSettingsProduceTrackedItemWithValidRegion()
     {
         var api = await CreateApi();
-        using var engine = new MaaOcrEngine(Path.Combine(AppContext.BaseDirectory, "data"));
+        var engine = fixture.Engine;
         var reader = api.CreateShopReader(engine);
         foreach (var (theme, expected) in new[] { ("closure", GameShopTheme.Closure), ("ursus", GameShopTheme.Ursus), ("terminal", GameShopTheme.Terminal) })
         {

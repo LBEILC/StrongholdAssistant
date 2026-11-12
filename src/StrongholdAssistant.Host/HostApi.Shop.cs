@@ -37,6 +37,10 @@ public sealed partial class HostApi
 
     private void ValidateSettings(SettingsDto settings)
     {
+        if (settings.StartupMode is not ("remember" or "sidebar" or "workbench"))
+            throw new ArgumentException("启动形态无效。");
+        if (settings.RefreshKey != "" && HotkeyParser.Parse(settings.RefreshKey) is null)
+            throw new ArgumentException("刷新键无效。");
         if (settings.CollapseMode is not ("strip" or "up")) throw new ArgumentException("收起方式无效。");
         if (settings.FocusCovenants is null || settings.FocusOperators is null
             || settings.FocusCovenants.Any(id => !_names.ContainsKey(id))
@@ -126,6 +130,7 @@ public sealed partial class HostApi
     }
 
     public bool HotkeyFailed { get; set; }
+    public bool StartupWorkbench { get; private set; }
 
     public void SaveHotkey(string combo)
     {
@@ -139,6 +144,7 @@ public sealed partial class HostApi
     {
         dataDir = DataDirectory,
         hotkeyFailed = HotkeyFailed,
+        workbench = StartupWorkbench,
         version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0]
     };

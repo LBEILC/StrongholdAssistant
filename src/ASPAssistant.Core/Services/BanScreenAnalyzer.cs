@@ -2,6 +2,7 @@
 // 2026-11-11：StrongholdAssistant 将禁用推算委托给可复用的 OperatorBanCalculator。
 ﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using ASPAssistant.Core.GameModes;
+// 2026-11-12：失败截图由宿主限量保存，异常细节随失败事件传递。
 using ASPAssistant.Core.Models;
 
 namespace ASPAssistant.Core.Services;
@@ -131,7 +132,6 @@ public sealed class BanScreenAnalyzer
             }
 
             var (rawWidth, rawHeight) = GetPngDimensions(shot);
-            AppLogger.SaveArtifact("ban-attempt", shot, ".png");
             AppLogger.Info("BanAnalyzer", $"Screenshot ready: {rawWidth}x{rawHeight}");
 
             // 小图（例如被缩放过的录像截图）先把文字放大到 OCR 能读的尺寸；
@@ -195,7 +195,7 @@ public sealed class BanScreenAnalyzer
         catch (Exception ex)
         {
             AppLogger.Error("BanAnalyzer", "Analysis failed", ex);
-            AnalysisFailed?.Invoke("本次录入失败，未替换现有结果；详细原因已记录到日志。");
+            AnalysisFailed?.Invoke("本次录入失败，未替换现有结果；详细原因已记录到日志。\n" + ex.Message);
         }
         finally
         {

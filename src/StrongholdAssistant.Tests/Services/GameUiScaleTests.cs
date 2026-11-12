@@ -10,7 +10,6 @@ namespace ASPAssistant.Tests.Services;
 
 [Collection("Native OCR")]
 public sealed class GameUiScaleTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
-    : IClassFixture<EnemyRecognitionFixture>
 {
     [Fact]
     public void IntermediateScaleIsMeasuredFromGeometry()

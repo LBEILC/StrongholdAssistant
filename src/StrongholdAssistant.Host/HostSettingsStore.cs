@@ -7,7 +7,7 @@ namespace StrongholdAssistant.Host;
 public sealed record FreeWindowBounds(double Left, double Top, double Width, double Height);
 public sealed record DockSettings(double Width = 380, SidePanelOffset? FollowOffsetDip = null,
     SidePanelOffset? OverlayOffsetDip = null, FreeWindowBounds? FreeBounds = null,
-    FreeWindowBounds? WorkbenchBounds = null);
+    FreeWindowBounds? WorkbenchBounds = null, bool LastWorkbench = false);
 
 // 同步合并写入，让窗口位置与界面设置共用文件而不相互覆盖。
 public sealed class HostSettingsStore(string path)
@@ -22,12 +22,16 @@ public sealed class HostSettingsStore(string path)
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
+            UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",
+            MirrorChyanCdk = json["mirrorChyanCdk"]?.GetValue<string>() ?? "",
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
             GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
             MumuSerial = json["mumuSerial"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
             ToggleHotkey = json["toggleHotkey"]?.GetValue<string>() ?? "Alt+S",
+            RefreshKey = json["refreshKey"]?.GetValue<string>() ?? "D",
+            StartupMode = json["startupMode"]?.GetValue<string>() ?? "remember",
             CloudSync = json["cloudSync"]?.Deserialize<CloudSyncState>(HostApi.JsonOptions) ?? new(false, null, null, null, []),
             ShareIncome = json["shareIncome"]?.GetValue<bool>() ?? false,
             CollapseMode = json["collapseMode"]?.GetValue<string>() ?? "strip",
@@ -38,6 +42,11 @@ public sealed class HostSettingsStore(string path)
     }
 
     public DockSettings LoadDock() => Read().Deserialize<DockSettings>(HostApi.JsonOptions)!;
+
+    public bool StartInWorkbench() => LoadSettings().StartupMode switch
+    {
+        "workbench" => true, "sidebar" => false, _ => LoadDock().LastWorkbench
+    };
 
     public void SaveSettings(SettingsDto settings) => Merge(settings);
     public void SaveDock(DockSettings dock) => Merge(dock);

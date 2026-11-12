@@ -1,6 +1,6 @@
 # 素材来源与归属
 
-本项目使用的《明日方舟》游戏美术与数据，著作权归 **上海鹰角网络科技有限公司（Hypergryph）** 所有。本项目是非商业的玩家自制工具，与鹰角网络无关，未获其认可或授权。权利方提出要求时，我们会移除相关素材。
+本项目使用的《明日方舟》游戏美术与数据，著作权归 **上海鹰角网络科技有限公司（Hypergryph）** 所有。本项目是免费的玩家自制工具，与鹰角网络无关，未获其认可或授权。权利方提出要求时，我们会移除相关素材。
 
 `LICENSE`（Apache-2.0）只覆盖本项目的代码，不覆盖下列素材。
 
@@ -43,6 +43,7 @@
 | `data/model/ocr/` | 文字识别模型（`det.onnx`、`rec.onnx`、`keys.txt`），由 MaaFramework 加载 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/model/ocr/`，为 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 模型（Apache-2.0） |
 | `src/StrongholdAssistant.Tests/TestData/*.png` | 测试用的游戏截图（开局信息页、商店、局内画面），只用于测试，不进发布包 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `src/ASPAssistant.Tests/TestData/`；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/user-ban-4-1920x1080.png` | 用户提供的禁用信息页截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/info-user-window-1648x933.png` | 用户提供的窗口模式信息页截图，含两行附加盟约，只用于测试，不进发布包 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/info-1610-*-1600x1024.png` | 用户提供的高画面信息页顶部及禁用列表截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/shop-closure-li-user-1665x1012.jpg` | 用户提供的可露希尔商店截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；游戏画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/*-ui100-2000x1125.png` | 用户提供的 UI 100 信息页、禁用头像页和商店截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |

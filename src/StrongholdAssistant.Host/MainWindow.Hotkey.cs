@@ -7,19 +7,53 @@ public partial class MainWindow
 {
     private int _hotkeyId;
     private Hotkey? _hotkey;
+    private KeyboardHook? _keyboardHook;
+    private readonly KeyboardRouter _keyboardRouter = new();
+    private Hotkey? _refreshKey;
 
     private void InitializeHotkey()
     {
+        if (!_connectGame) return;
+        _refreshKey = HotkeyParser.Parse(_api.Settings.RefreshKey);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        _keyboardHook = new KeyboardHook((key, down, modifiers, foreground) =>
+        {
+            var actions = _keyboardRouter.Observe(key, down, modifiers, foreground,
+                _tracker.CurrentGameWindowHandle, hwnd, _hotkey, _refreshKey);
+            if (actions.Toggle || actions.Refresh) Dispatcher.BeginInvoke(() =>
+            {
+                if (_closing) return;
+                if (actions.Refresh)
+                {
+                    _scanner?.RefreshShop();
+                    _shopItems = [];
+                    _overlay.UpdateShopItems([]);
+                    _overlay.Hide();
+                }
+                if (actions.Toggle) ToggleFromHotkey();
+            });
+        });
         var combo = _api.Settings.ToggleHotkey;
         if (combo.Length == 0) return;
         var hotkey = HotkeyParser.Parse(combo);
-        if (hotkey is not { } key || !RegisterHotkey(1, key))
+        if (hotkey is not { } key || !key.UsesHook && !RegisterHotkey(1, key))
         {
             _api.HotkeyFailed = true;
             return;
         }
-        _hotkeyId = 1;
+        _hotkeyId = key.UsesHook ? 0 : 1;
         _hotkey = key;
+    }
+
+    private void ToggleFromHotkey()
+    {
+        if (WindowState == System.Windows.WindowState.Minimized)
+        {
+            WindowState = System.Windows.WindowState.Normal;
+            Activate();
+            User32.SetForegroundWindow(new WindowInteropHelper(this).Handle);
+        }
+        else Browser.CoreWebView2?.PostWebMessageAsJson("{\"event\":\"hotkey\",\"data\":null}");
     }
 
     private bool RegisterHotkey(int id, Hotkey key) => User32.RegisterHotKey(
@@ -41,14 +75,14 @@ public partial class MainWindow
             return;
         }
         var key = HotkeyParser.Parse(combo)
-            ?? throw new ArgumentException("这个组合用不了，请带上 Ctrl、Alt、Shift 或 Win，或者用 F1～F12。");
+            ?? throw new ArgumentException("这个按键用不了，请换一个试试。");
         if (_hotkey != key)
         {
             var nextId = _hotkeyId == 1 ? 2 : 1;
-            if (!RegisterHotkey(nextId, key))
+            if (!key.UsesHook && !RegisterHotkey(nextId, key))
                 throw new ArgumentException("这个组合被别的软件占用了，换一个试试。");
             UnregisterHotkey();
-            _hotkeyId = nextId;
+            _hotkeyId = key.UsesHook ? 0 : nextId;
             _hotkey = key;
         }
         _api.SaveHotkey(combo);

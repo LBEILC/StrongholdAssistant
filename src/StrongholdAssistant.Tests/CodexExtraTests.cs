@@ -9,7 +9,7 @@ using StrongholdAssistant.Host;
 namespace StrongholdAssistant.Tests;
 
 [Collection("Native OCR")]
-public sealed class CodexExtraTests(EnemyRecognitionFixture fixture) : IClassFixture<EnemyRecognitionFixture>
+public sealed class CodexExtraTests(EnemyRecognitionFixture fixture)
 {
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
 

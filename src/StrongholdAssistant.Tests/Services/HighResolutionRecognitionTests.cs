@@ -7,15 +7,15 @@ using StrongholdAssistant.Host;
 
 namespace StrongholdAssistant.Tests.Services;
 
-[Collection("Native OCR")]
-public class HighResolutionRecognitionTests(ShopReaderFixture fixture) : IClassFixture<ShopReaderFixture>
+[Collection("Shop OCR")]
+public class HighResolutionRecognitionTests(ShopReaderFixture fixture, EnemyRecognitionFixture recognition)
 {
     [Theory]
     [InlineData(2560, 1440)]
     [InlineData(3840, 2160)]
     public async Task EnlargedSamplesMatchOriginalThroughCapturePath(int width, int height)
     {
-        using var engine = new MaaOcrEngine(Path.Combine(AppContext.BaseDirectory, "data"));
+        var engine = recognition.Engine;
         var original = File.ReadAllBytes(fixture.Sample("info-ingame-1920x1080.png"));
         var scaled = Capture("info-ingame-1920x1080.png", width, height);
         async Task<MatchInfo> Read(byte[] png)

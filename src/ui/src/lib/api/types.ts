@@ -152,7 +152,10 @@ export interface ScanStatus {
   busy: boolean
   /** 持续识别进行中为 true（两次识别之间 busy 为 false，continuous 仍为 true）；结束时推送 false */
   continuous?: boolean
-  /** 结束时的结果说明：成功时是一句确认，失败时是原因和怎么办，直接显示给用户 */
+  /**
+   * 结束时的结果说明：成功时是一句确认，失败时是原因和怎么办，直接显示给用户。
+   * v0.7.2：失败时第二行起是技术细节（截到的画面尺寸、界面缩放、哪一步没认出、OCR 读到了什么等），界面折叠显示，同消息桥的错误约定
+   */
   message?: string
   ok?: boolean
 }
@@ -403,6 +406,13 @@ export interface Settings {
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
   autoCheckUpdate: boolean // 启动时检查新版本
   /**
+   * 更新源（v0.7.2，默认 'github'）。mirrorchyan：检查走 Mirror酱；填了有效 CDK 时从 Mirror酱 下载，
+   * 没填就从 GitHub 下载（UpdateStatus.source 告诉界面实际从哪下）
+   */
+  updateSource: 'github' | 'mirrorchyan'
+  /** Mirror酱 CDK（v0.7.2，默认 ''）。宿主不写日志、不进诊断包；导出备份时置空，导入时保留本机的 */
+  mirrorChyanCdk: string
+  /**
    * 界面大小（侧栏整体缩放）。'auto' 跟随游戏画面：缩放 = 游戏客户区高度（DIP）/ 1080，限制在 1–2；
    * 数字为固定倍数，取 1、1.25、1.5、1.75、2。侧栏宽度范围也按同样倍数放大。
    */
@@ -432,9 +442,18 @@ export interface Settings {
   focusOperators: string[]
   /**
    * 收起 / 展开的全局快捷键（v0.7.0，默认 'Alt+S'；原定 Alt+Q 在用户电脑上被别的软件占用）。写法：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键，用 + 连接，
-   * 如 'Ctrl+Shift+F2'；'' 为关闭。只能经 setHotkey 改，saveSettings 里改了这一项宿主忽略
+   * 如 'Ctrl+Shift+F2'；'' 为关闭。只能经 setHotkey 改，saveSettings 里改了这一项宿主忽略。
+   * v0.7.2 起允许单键（不带修饰键，如 'Tab'、'D'、'F2'、'`'）：单键不注册系统热键（那样别的程序里就按不出这个键了），
+   * 改为只在游戏或助手在前台时生效，而且不拦截，按键照样传给游戏。带修饰键的仍是全局热键
    */
   toggleHotkey: string
+  /**
+   * 商店刷新键（v0.7.2，默认 'D'，'' 为关闭）：游戏在前台时按下这个键（游戏里刷新商店），商店标记立刻隐藏，
+   * 识别到新的商店画面再显示，免得旧标记挂在新卡上。写法同 toggleHotkey，一般是单键；只看不拦，按键照样传给游戏
+   */
+  refreshKey: string
+  /** 启动时打开（v0.7.2，默认 'remember'）：remember 上次关闭时是侧栏还是工作台就打开哪个；sidebar 总是侧栏；workbench 总是工作台 */
+  startupMode: 'remember' | 'sidebar' | 'workbench'
   /**
    * 我的默认（v0.7.0）：干员名 → 默认技能、模组（模组 '' = 不带）。编辑器「设为我的默认」或历史页「从森空岛战绩生成」写入；
    * 加干员时优先用这里，没有再用数据默认。没有就是空对象
@@ -468,6 +487,8 @@ export interface AppInfo {
   dataDir: string
   /** 启动时快捷键注册失败（被别的软件占用）为 true，设置里红字提示 */
   hotkeyFailed: boolean
+  /** 启动时宿主打开的是工作台（v0.7.2，按 Settings.startupMode 决定）；界面据此初始化 app.workbench */
+  workbench: boolean
 }
 
 /** 备份文件的预览：导入前给用户确认 */
@@ -512,6 +533,12 @@ export interface UpdateStatus {
   notes?: ReleaseNotes
   progress?: number // downloading 时 0–1
   message?: string // failed 时给用户看的原因
+  /** available 时：这次实际从哪下载。updateSource 是 mirrorchyan 但没填 CDK 时为 'github' */
+  source?: 'github' | 'mirrorchyan'
+  /** 带 CDK 检查且 CDK 有效时：CDK 到期时间（ISO）。latest、available 都可能带 */
+  cdkExpiresAt?: string
+  /** failed 时：是 CDK 的问题（过期、填错、今日次数用完、类型不对、被封），界面在旁边给「改用 GitHub」 */
+  cdkProblem?: boolean
 }
 
 /** 本局进行中的状态，界面改动后整体回写 */
@@ -705,6 +732,11 @@ export interface Api {
    * 被占用或写法不对时 reject，message 给用户看（如「这个组合被别的软件占用了，换一个试试。」），旧的照旧生效
    */
   setHotkey(combo: string): Promise<void>
+  /**
+   * 导出诊断包（v0.7.2）：弹保存对话框，把日志、最近几次识别失败的截图和原因、版本、画面和设置摘要打成一个 zip，返回保存路径；取消返回 null。
+   * 不含广场和森空岛凭据、云同步状态、CDK，路径里的用户名打码
+   */
+  exportDiagnostics(): Promise<string | null>
   /** 点上一条收入来源（v0.7.0），记在本回合；返回更新了 economy 的 MatchInfo，也会推送 match */
   addIncome(source: string, elite: boolean): Promise<MatchInfo>
   removeIncome(id: string): Promise<MatchInfo>

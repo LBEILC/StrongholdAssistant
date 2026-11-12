@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 namespace ASPAssistant.Tests.Services;
 
 [Collection("Native OCR")]
-public class InformationRecordingTests(EnemyRecognitionFixture fixture, ITestOutputHelper output) : IClassFixture<EnemyRecognitionFixture>
+public class InformationRecordingTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
 {
     [Theory]
     [InlineData("ban-sample-1920x1080.png", true)]

@@ -1,4 +1,4 @@
-﻿param([Parameter(Mandatory = $true, Position = 0)][string]$Version)
+﻿param([Parameter(Mandatory = $true, Position = 0)][string]$Version, [switch]$ForceTests)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
@@ -12,13 +12,40 @@ function Run([scriptblock]$Command) {
     & $Command
     if ($LASTEXITCODE -ne 0) { throw "命令执行失败：$Command" }
 }
-Run { npm --prefix src/ui ci }
+$timer = [Diagnostics.Stopwatch]::StartNew()
+& (Join-Path $PSScriptRoot 'test-all.ps1') -ForceTests:$ForceTests
+Write-Output "测试阶段：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
+$timer.Restart()
+$lockHash = (Get-FileHash -LiteralPath 'src/ui/package-lock.json' -Algorithm SHA256).Hash
+$npmCache = 'out/npm-lock.txt'
+if (!(Test-Path 'src/ui/node_modules') -or !(Test-Path $npmCache) -or (Get-Content $npmCache -Raw).Trim() -ne $lockHash) {
+    if (Test-Path $npmCache) { Remove-Item -LiteralPath $npmCache }
+    Run { npm --prefix src/ui ci }
+    New-Item -ItemType Directory -Path out -Force | Out-Null
+    Set-Content -LiteralPath $npmCache -Value $lockHash -Encoding ASCII
+} else { Write-Output '依赖锁未变，跳过 npm ci。' }
 Run { npm --prefix src/ui run build }
-Run { dotnet test src/StrongholdAssistant.Tests -c Release }
+Write-Output "界面构建：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
+$timer.Restart()
 $release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
 $publish = Join-Path $release ('publish-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $publish -Force | Out-Null
-Run { dotnet publish src/StrongholdAssistant.Host -c Release -r win-x64 --self-contained true -p:ReleaseBuild=true -p:DebugType=None -p:DebugSymbols=false -o $publish }
+# 项目依赖变化或测试 restore 覆盖了 RID 资产时才重新恢复。
+$restoreFiles = & git ls-files -- '*.csproj' '*.props' '*.targets' '*NuGet.Config' '*nuget.config' 'global.json'
+if ($LASTEXITCODE -ne 0) { throw '读取 restore 输入失败。' }
+$restoreHash = (@($restoreFiles | ForEach-Object { (Get-FileHash -LiteralPath $_).Hash }) -join ':')
+$restoreCache = 'out/publish-restore.txt'
+$assetsPath = 'src/StrongholdAssistant.Host/obj/project.assets.json'
+$hasRid = $false
+if (Test-Path $assetsPath) {
+    $assets = Get-Content $assetsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $hasRid = @($assets.targets.PSObject.Properties.Name | Where-Object { $_ -like '*/win-x64' }).Count -gt 0
+}
+if (!$hasRid -or !(Test-Path $restoreCache) -or (Get-Content $restoreCache -Raw).Trim() -ne $restoreHash) {
+    Run { dotnet restore src/StrongholdAssistant.Host -r win-x64 -p:ReleaseBuild=true }
+    Set-Content $restoreCache $restoreHash -Encoding ASCII
+}
+Run { dotnet publish src/StrongholdAssistant.Host -c Release -r win-x64 --self-contained true --no-restore -p:ReleaseBuild=true -p:DebugType=None -p:DebugSymbols=false -o $publish }
 foreach ($name in @('LICENSE','LICENSE.upstream','NOTICE','ASSETS.md')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination $publish
 }
@@ -38,18 +65,25 @@ foreach ($item in $unused) {
     Remove-Item -LiteralPath $target -Recurse -Force
 }
 $zip = Join-Path $release "StrongholdAssistant-v$Version-win-x64.zip"
-if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip }
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-Add-Type -AssemblyName System.IO.Compression
-$archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Create, [Text.Encoding]::UTF8)
+Write-Output "发布目录：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
+$timer.Restart()
+$zipJob = Start-Job -ScriptBlock {
+    param($script, $publish, $zip)
+    & $script -Publish $publish -Zip $zip
+} -ArgumentList (Join-Path $PSScriptRoot 'package-zip.ps1'), $publish, $zip
 try {
-    foreach ($file in Get-ChildItem -LiteralPath $publish -File -Recurse) {
-        $entry = $file.FullName.Substring($publish.Length + 1).Replace('\', '/')
-        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $file.FullName, $entry, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    # 仅项目文件变化或资产不存在时恢复安装器依赖。
+    $compilerHash = (Get-FileHash installer/Compiler.csproj).Hash
+    $compilerCache = 'out/installer-restore.txt'
+    if (!(Test-Path installer/obj/project.assets.json) -or !(Test-Path $compilerCache) -or (Get-Content $compilerCache -Raw).Trim() -ne $compilerHash) {
+        Run { dotnet restore installer/Compiler.csproj }
+        Set-Content $compilerCache $compilerHash -Encoding ASCII
     }
-} finally { $archive.Dispose() }
-Run { dotnet restore installer/Compiler.csproj }
-Run { dotnet msbuild installer/Compiler.csproj -t:CompileInstaller "-p:InstallerVersion=$declared" "-p:PublishDir=$publish" "-p:ReleaseDir=$release" }
+    Run { dotnet msbuild installer/Compiler.csproj -t:CompileInstaller "-p:InstallerVersion=$declared" "-p:PublishDir=$publish" "-p:ReleaseDir=$release" }
+    $zipJob | Wait-Job | Receive-Job -ErrorAction Stop
+    if ($zipJob.State -ne 'Completed') { throw 'ZIP 压缩失败。' }
+} finally { $zipJob | Stop-Job; $zipJob | Remove-Job }
+Write-Output "压缩与安装包并行：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
 $setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
 $notes = Join-Path $release 'release-notes.json'
 Copy-Item -LiteralPath (Join-Path $root "src/ui/release-notes/$Version.json") -Destination $notes

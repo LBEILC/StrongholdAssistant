@@ -1,6 +1,9 @@
 namespace StrongholdAssistant.Host;
 
-public readonly record struct Hotkey(uint Modifiers, uint Key);
+public readonly record struct Hotkey(uint Modifiers, uint Key)
+{
+    public bool UsesHook => Modifiers == 0;
+}
 
 public static class HotkeyParser
 {
@@ -29,6 +32,10 @@ public static class HotkeyParser
         {
             vk = key switch
             {
+                "TAB" => 9, "SPACE" or " " => 32, "ENTER" => 13,
+                "BACKSPACE" => 8, "DELETE" => 46, "INSERT" => 45,
+                "HOME" => 36, "END" => 35, "PAGEUP" => 33, "PAGEDOWN" => 34,
+                "ARROWLEFT" => 37, "ARROWUP" => 38, "ARROWRIGHT" => 39, "ARROWDOWN" => 40,
                 ";" or ":" => 0xBA, "=" or "+" => 0xBB, "," or "<" => 0xBC,
                 "-" or "_" => 0xBD, "." or ">" => 0xBE, "/" or "?" => 0xBF,
                 "`" or "~" => 0xC0, "[" or "{" => 0xDB, "\\" or "|" => 0xDC,
@@ -38,7 +45,7 @@ public static class HotkeyParser
                 _ => 0
             };
         }
-        if (vk == 0 || modifiers == 0 && !function) return null;
+        if (vk == 0) return null;
         // KeyboardEvent.key 返回按下 Shift 后的符号，注册时还原到对应物理键。
         if (key.Length == 1 && ":+<_>?~{|}\"!@#$%^&*()".Contains(key)) modifiers |= 4;
         return new(modifiers, vk);

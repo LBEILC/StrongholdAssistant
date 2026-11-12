@@ -281,7 +281,6 @@ public class UpdateScriptExecutionTests
         var result = await RunPowerShellAsync(path, app);
         if (File.Exists(Path.Combine(app, "new.running")))
         {
-            await File.WriteAllTextAsync(Path.Combine(app, "release.new"), "release");
             await WaitForFileAsync(Path.Combine(app, "new.exited"));
         }
         return result;
@@ -308,6 +307,10 @@ public class UpdateScriptExecutionTests
             await process.WaitForExitAsync();
             throw new TimeoutException("The isolated update test did not finish.");
         }
+        // 更新脚本已退出，但测试宿主继承着输出管道。先释放宿主再读取到 EOF，
+        // 避免等待其 30 秒自停计时；真实更新、就绪握手与全部断言保持不变。
+        if (File.Exists(Path.Combine(workingDirectory, "new.running")))
+            await File.WriteAllTextAsync(Path.Combine(workingDirectory, "release.new"), "release");
         return (process.ExitCode, await output + await error);
     }
 

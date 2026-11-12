@@ -1,6 +1,7 @@
 ﻿// 2026-11-12：复用商店扫描截图读取回合与资金，通过事件交给宿主记录。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Threading.Channels;
+// 2026-11-12：刷新键清空商店状态并过滤旧截图；收集失败现场和 OCR 步骤。
 using System.Timers;
 using ASPAssistant.Core.GameModes;
 using ASPAssistant.Core.Models;
@@ -14,12 +15,24 @@ public class OcrScannerService : IDisposable
     private readonly IOcrStrategy _ocrStrategy;
     private readonly ShopReader _shopReader;
     private readonly IOcrEngine _ocrEngine;
+    private readonly DiagnosticOcrEngine _trace;
+    public event Action<byte[]?, string, double?, string[]>? RecognitionFailed;
     private readonly GameState.GameState _gameState;
     private readonly Func<IReadOnlyList<string>> _getTrackedNames;
     private readonly Func<IReadOnlyList<(string Name, IReadOnlyList<string> CoreCovenants, IReadOnlyList<string> AdditionalCovenants, IReadOnlyList<string> TemplateNames)>>? _getAllOperators;
     private readonly MaaBanIconMatcher? _iconMatcher;
     private readonly Timer _scanTimer;
-    private readonly ShopStateStabilizer _stabilizer = new();
+    private readonly object _shopGate = new();
+    private readonly ShopRefreshWindow _refreshWindow = new();
+    public int ShopGeneration { get { lock (_shopGate) return _refreshWindow.Generation; } }
+    public void RefreshShop()
+    {
+        lock (_shopGate)
+        {
+            _refreshWindow.Refresh();
+            _gameState.ShopItems = [];
+        }
+    }
     private int _scanning; // re-entry guard (0=idle, 1=busy)
 
     // Accumulated ban set for manual screenshot scans.
@@ -79,8 +92,9 @@ public class OcrScannerService : IDisposable
         _captureService = captureService;
         _ocrStrategy = ocrStrategy;
         _shopReader = shopReader;
-        _ocrEngine = ocrEngine;
-        _informationDetector = new InformationScreenDetector(ocrEngine, ocrStrategy);
+        _trace = ocrEngine as DiagnosticOcrEngine ?? new DiagnosticOcrEngine(ocrEngine);
+        _ocrEngine = _trace;
+        _informationDetector = new InformationScreenDetector(_trace, ocrStrategy);
         _gameState = gameState;
         _getTrackedNames = getTrackedNames;
         _getAllOperators = getAllOperators;
@@ -126,13 +140,16 @@ public class OcrScannerService : IDisposable
         if (Interlocked.CompareExchange(ref _scanning, 1, 0) != 0)
             return;
 
+        byte[]? screenshot = null;
+        _trace.Clear();
         try
         {
-            var screenshot = _captureService.CaptureScreen();
+            var capturedAt = _refreshWindow.CaptureStarted();
+            screenshot = _captureService.CaptureScreen();
             if (screenshot == null)
             {
                 _informationState.Suspend();
-                PublishShopItems([], false);
+                PublishShopItems([], false, capturedAt);
                 return;
             }
 
@@ -151,20 +168,23 @@ public class OcrScannerService : IDisposable
 
             if (_pauseBanScreenDetection || _banScreenActive)
             {
-                PublishShopItems([], false);
+                PublishShopItems([], false, capturedAt);
                 return;
             }
 
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _getTrackedNames());
+            if (_shopReader.Failure is { } failure)
+                RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
             if (EconomyRead is not null)
                 EconomyRead.Invoke(await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadAsync(screenshot, imgWidth, imgHeight));
-            PublishShopItems(rawItems, _shopReader.HasVisibleCards);
+            PublishShopItems(rawItems, _shopReader.HasVisibleCards, capturedAt);
         }
         catch (Exception ex)
         {
             // Swallow unexpected errors (e.g. capture failure during window state change)
             // so the timer-driven async void method never propagates an unhandled exception.
             AppLogger.Error("OcrScanner", "Scan tick failed", ex);
+            RecognitionFailed?.Invoke(screenshot, "商店识别失败。\n" + ex.Message, _shopReader.UiScale, _trace.Steps);
         }
         finally
         {
@@ -172,12 +192,14 @@ public class OcrScannerService : IDisposable
         }
     }
 
-    private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible)
+    private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible, DateTimeOffset capturedAt)
     {
-        if (!_stabilizer.TryUpdate(items, out var stableItems, shopVisible))
-            return;
-        _gameState.ShopItems = stableItems.ToList();
-        GameStateUpdated?.Invoke(_gameState);
+        lock (_shopGate)
+        {
+            if (!_refreshWindow.TryUpdate(items, capturedAt, shopVisible, out var stableItems)) return;
+            _gameState.ShopItems = stableItems.ToList();
+            GameStateUpdated?.Invoke(_gameState);
+        }
     }
 
     /// <summary>
