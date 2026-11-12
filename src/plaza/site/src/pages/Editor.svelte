@@ -23,7 +23,8 @@
     stages?: Part[] & Lineup['stages']
   }
   type Part = { name: string; fromRound: number; toRound: number; goals: Draft['goals']; members: Member[]; equipment: string[] }
-  let { edit = null }: { edit?: string | null } = $props()
+  // post：修改已发布的帖子（v0.7.4）。载入帖子当前的阵容和简介，「保存修改」换掉原帖子的阵容，点赞、收藏、评论保留
+  let { edit = null, post = null }: { edit?: string | null; post?: string | null } = $props()
   const empty = (): Draft => ({ name: '', goals: [], members: [], equipment: [], strategyId: null, description: '' })
   function loadDraft(): Draft {
     try {
@@ -35,9 +36,21 @@
       return empty()
     }
   }
-  let d = $state<Draft>(edit ? empty() : loadDraft())
+  let d = $state<Draft>(edit || post ? empty() : loadDraft())
   // 编辑我的阵容：从云端取那一套；改的不进草稿
-  let loadingEdit = $state(!!edit)
+  let loadingEdit = $state(!!edit || !!post)
+  if (post)
+    api
+      .post(post)
+      .then((p) => {
+        // 是不是本人由服务端判断（不是本人保存时 403）
+        const r = decode(p.code)
+        if (!r.ok) return (err = r.error)
+        const l = r.lineup
+        d = { name: l.name, goals: l.goals, members: l.members, equipment: l.equipment, strategyId: l.strategyId, description: p.description, ...(l.stages?.length && { stages: l.stages }) }
+      })
+      .catch((e) => (err = e.message))
+      .finally(() => (loadingEdit = false))
   if (edit)
     api
       .myLineups()
@@ -49,7 +62,7 @@
       .catch((e) => (err = e.message))
       .finally(() => (loadingEdit = false))
   $effect(() => {
-    if (edit) return
+    if (edit || post) return
     const s = JSON.stringify(d)
     try {
       localStorage.setItem('sa_draft', s)
@@ -79,7 +92,17 @@
   let six = $state(-1)
   const P = $derived((six >= 0 && d.stages?.[six]) || d) as { goals: Draft['goals']; members: Member[]; equipment: string[] }
   const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
-  const goStage = (i: number) => ((six = i), (sel = null), (armStage = ''))
+  const goStage = (i: number) => ((six = i), (sel = null), (armStage = ''), (ranging = false), (pickFrom = null))
+  // 改回合：照助手，点开回合格子，先点起始回合、再点结束回合（可以相同）；别的阶段占用的回合点不了
+  let ranging = $state(false)
+  let pickFrom = $state<number | null>(null)
+  function pickRound(r: number) {
+    if (pickFrom === null) return void (pickFrom = r)
+    const from = pickFrom
+    pickFrom = null
+    ranging = false
+    setRounds(from, r)
+  }
   const taken = (r: number, except: number) => (d.stages ?? []).some((x, i) => i !== except && r >= x.fromRound && r <= x.toRound)
   /** 新加的阶段放在最后一个阶段后面一回合，内容先复制前一个阶段（没有就复制成型阵容） */
   function addStage() {
@@ -223,13 +246,27 @@
       busy = false
     }
   }
+  // 修改已发布的帖子：换掉原帖子的阵容和简介，回到帖子页
+  async function savePost() {
+    busy = true
+    err = ''
+    try {
+      await api.updatePost(post!, d.description, encode(toLineup('')))
+      toast.show('已更新，点赞和评论都保留着。')
+      router.go(`/p/${post}`)
+    } catch (e) {
+      err = (e as Error).message
+    } finally {
+      busy = false
+    }
+  }
   let armReset = $state(false)
 </script>
 
 <div class="in">
   <div class="top">
     <a class="back" href="/" use:link><Icon name="arrowLeft" size={16} />回到广场</a>
-    <h1>新建阵容<span class="term">New lineup</span></h1>
+    <h1>{post ? '修改已发布的阵容' : edit ? '编辑我的阵容' : '新建阵容'}<span class="term">{post || edit ? 'Edit lineup' : 'New lineup'}</span></h1>
     <div class="paste">
       <input bind:value={paste} placeholder="从分享码开始：粘贴助手里复制的分享码" onkeydown={(e) => e.key === 'Enter' && paste.trim() && fromCode()} />
       <button class="btn ghost sm" disabled={!paste.trim()} onclick={fromCode}>载入</button>
@@ -251,21 +288,25 @@
     {@const x = d.stages[six]}
     <div class="stagecfg">
       <input class="snm" bind:value={x.name} maxlength="20" placeholder={x.fromRound === x.toRound ? `第 ${x.fromRound} 回合` : `${x.fromRound}～${x.toRound} 回合`} />
-      <label>回合
-        <select value={x.fromRound} onchange={(e) => (setRounds(+e.currentTarget.value, x.toRound), (e.currentTarget.value = String(x.fromRound)))}>
-          {#each Array.from({ length: MAX_ROUND }, (_, k) => k + 1) as r (r)}<option value={r} disabled={taken(r, six)}>{r}</option>{/each}
-        </select>
-        ～
-        <select value={x.toRound} onchange={(e) => (setRounds(x.fromRound, +e.currentTarget.value), (e.currentTarget.value = String(x.toRound)))}>
-          {#each Array.from({ length: MAX_ROUND }, (_, k) => k + 1) as r (r)}<option value={r} disabled={taken(r, six)}>{r}</option>{/each}
-        </select>
-      </label>
+      <button class="rng" class:on={ranging} title="改这个阶段的回合" onclick={() => ((ranging = !ranging), (pickFrom = null))}>
+        <span class="term">{x.fromRound === x.toRound ? `第 ${x.fromRound}` : `${x.fromRound}～${x.toRound}`}</span> 回合<Icon name="pencil" size={12} />
+      </button>
       <span class="cf">复制自
         {#each d.stages as y, j (j)}{#if j !== six}<button class="lnk" class:danger={armStage === `copy${j}`} onclick={() => copyFrom(j)}>{armStage === `copy${j}` ? '确认覆盖' : stageLabel(y)}</button>{/if}{/each}
         <button class="lnk" class:danger={armStage === 'copy-1'} onclick={() => copyFrom(-1)}>{armStage === 'copy-1' ? '确认覆盖' : '成型'}</button>
       </span>
       <span class="sp"></span>
       <button class="lnk" class:danger={armStage === 'del'} onclick={removeStage}>{armStage === 'del' ? '确认删除' : '删除这个阶段'}</button>
+      {#if ranging}
+        <div class="rpick">
+          <p>{pickFrom === null ? '点起始回合' : `从第 ${pickFrom} 回合到第几回合？（可以相同）`}</p>
+          <div class="rounds">
+            {#each Array.from({ length: MAX_ROUND }, (_, k) => k + 1) as r (r)}
+              <button class:on={pickFrom === r || (pickFrom === null && r >= x.fromRound && r <= x.toRound)} disabled={taken(r, six)} title={taken(r, six) ? '这个回合已经在别的阶段里' : undefined} onclick={() => pickRound(r)}>{r}</button>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -398,16 +439,21 @@
         <textarea bind:value={d.description} rows="4" maxlength="500" placeholder="这套阵容的思路、运营要点、适合打哪个首领……可以不写"></textarea>
 
         {#if err}<p class="err">{err}</p>{/if}
-        <button class="btn full" class:primary={!!edit} disabled={!canPublish || busy || loadingEdit} onclick={saveMine}>
-          {busy ? '保存中…' : session.me ? (edit ? '保存修改' : '保存到我的阵容') : '登录后保存到我的阵容'}
-        </button>
-        {#if !edit}
-          <button class="btn primary full" disabled={!canPublish || busy} onclick={publish}>
-            {busy ? '发布中…' : session.me ? `以「${session.me.nickname ?? '…'}」发布到广场` : '登录后发布'}
+        {#if post}
+          <button class="btn primary full" disabled={!canPublish || busy || loadingEdit} onclick={savePost}>{busy ? '保存中…' : '保存修改'}</button>
+          <a class="btn ghost full" href="/p/{post}" use:link>不改了，回到帖子</a>
+        {:else}
+          <button class="btn full" class:primary={!!edit} disabled={!canPublish || busy || loadingEdit} onclick={saveMine}>
+            {busy ? '保存中…' : session.me ? (edit ? '保存修改' : '保存到我的阵容') : '登录后保存到我的阵容'}
           </button>
+          {#if !edit}
+            <button class="btn primary full" disabled={!canPublish || busy} onclick={publish}>
+              {busy ? '发布中…' : session.me ? `以「${session.me.nickname ?? '…'}」发布到广场` : '登录后发布'}
+            </button>
+          {/if}
         {/if}
         <div class="foot">
-          <span class="muted small">{edit ? '正在编辑「我的阵容」里的一套。' : '草稿自动存在这台电脑的浏览器里。'}</span>
+          <span class="muted small">{post ? '改的是广场上已发布的这个阵容，点赞、收藏、评论都保留。' : edit ? '正在编辑「我的阵容」里的一套。' : '草稿自动存在这台电脑的浏览器里。'}</span>
           <button class="lnk" class:danger={armReset} onclick={() => (armReset ? ((d = empty()), (sel = null), (armReset = false)) : (armReset = true))}>{armReset ? '确认清空' : '清空'}</button>
         </div>
       </div>
@@ -473,13 +519,53 @@
     height: 30px;
     padding: 0 8px;
   }
-  .stagecfg select {
+  .stagecfg .rng {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     height: 30px;
-    margin: 0 2px;
-    padding: 0 4px;
+    padding: 0 10px;
     color: var(--fg-1);
     background: var(--bg-0);
     border: 1px solid var(--line);
+  }
+  .stagecfg .rng:hover,
+  .stagecfg .rng.on {
+    color: var(--mint);
+    border-color: var(--mint);
+  }
+  .rpick {
+    flex: 1 1 100%;
+  }
+  .rpick p {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: var(--fg-3);
+  }
+  .rounds {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 4px;
+  }
+  .rounds button {
+    height: 30px;
+    font-size: 13px;
+    color: var(--fg-2);
+    background: var(--bg-0);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .rounds button:hover:not(:disabled) {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .rounds button.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+    box-shadow: none;
+  }
+  .rounds button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
   .stagecfg .cf {
     display: inline-flex;

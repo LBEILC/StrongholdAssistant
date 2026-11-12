@@ -98,7 +98,9 @@ export const api = {
     return req<PostList>('GET', '/posts?' + p)
   },
   post: (id: string) => req<PostDetail>('GET', `/posts/${encodeURIComponent(id)}`),
-  updatePost: (id: string, description: string) => req<Post>('PATCH', `/posts/${encodeURIComponent(id)}`, { description }),
+  /** 带 code 时连阵容一起换（v0.7.4），点赞、收藏、评论保留 */
+  updatePost: (id: string, description: string, code?: string) =>
+    req<Post>('PATCH', `/posts/${encodeURIComponent(id)}`, { description, ...(code && { code }) }),
   deletePost: (id: string) => req<void>('DELETE', `/posts/${encodeURIComponent(id)}`),
   /** 云同步（v0.7.0）：网站「我的阵容」读写都走它 */
   sync: (r: SyncRequest) => req<SyncResponse>('POST', '/sync', r),

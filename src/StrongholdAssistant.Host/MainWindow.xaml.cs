@@ -33,7 +33,6 @@ public partial class MainWindow : Window
     private async Task InitializeAsync()
     {
         var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
-        ASPAssistant.Core.AppLogger.Initialize(Path.Combine(userDirectory, "logs"));
         Trace.Listeners.Add(new HostTraceListener());
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
         _ = _api.DownloadIncomeTableAsync();
@@ -183,6 +182,7 @@ public partial class MainWindow : Window
     // 网页挂载完成：把骨架换成网页（两者都只有同样的标题栏），网页变为可见后自己播入场动画
     private void ShowUi()
     {
+        if (Application.Current is App app) app.UiReady = true;
         Browser.Visibility = Visibility.Visible;
         Splash.Visibility = Visibility.Collapsed;
         _uiReady = true;

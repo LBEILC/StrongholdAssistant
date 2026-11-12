@@ -1,9 +1,10 @@
 // 右键菜单：界面里所有右键都走这里，不弹 WebView2 自带的浏览器菜单；输入框也用自己的「剪切 / 复制 / 粘贴 / 全选」。
 // 干员、装备、盟约、阵容各有一份菜单，在任何页面右键都一样，不用先进「修正」。
 import type { IconName } from '../components/Icon.svelte'
-import type { Lineup } from './api'
+import { api, type Lineup } from './api'
 import { app } from './state.svelte'
-import { plaza } from './plaza.svelte'
+import { plaza, postToLineup, PLAZA, type Post } from './plaza.svelte'
+import { allStages, stageLabel } from './stages'
 
 export interface MenuItem {
   label: string
@@ -116,6 +117,73 @@ export function covenantMenu(id: string): Omit<MenuState, 'x' | 'y'> {
   return { title: c.name, sub: c.kind === 'core' ? '核心盟约' : '附加盟约', items }
 }
 
+/** 禁用里没认出的格子：候选直接列在菜单里，点一下就填上（宿主按禁用填进这一格） */
+export function slotMenu(cov: string, i: number): Omit<MenuState, 'x' | 'y'> {
+  const slot = app.match.banGroups.find((g) => g.covenant === cov)?.slots[i]
+  const cands = slot?.candidates ?? []
+  const items: MenuEntry[] = cands.slice(0, 8).map((n) => ({ label: n, icon: 'forbid', run: () => app.setBanned(n, true) }))
+  if (items.length) items.push('sep')
+  items.push({ label: '打开挑选面板…', icon: 'search', run: () => (app.banPicker = { cov, slot: i }) })
+  return {
+    title: `${app.cov(cov).name} · 第 ${i + 1} 格`,
+    sub: `${slot ? tierName(slot.tier) : ''}${cands.length ? ` · ${cands.length} 个候选，点一个填上` : ' · 没有候选，打开面板手动补'}`,
+    items,
+  }
+}
+
+/** 顶栏目标阵容名：换目标、切阶段、追踪 */
+export function targetMenu(): Omit<MenuState, 'x' | 'y'> {
+  const t = app.target
+  const cur = app.session.targetLineupId
+  const recent = [...app.lineups].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
+  const items: MenuEntry[] = recent.map((l) => ({ label: l.name, icon: 'focus', on: l.id === cur, run: () => app.setTarget(l.id === cur ? null : l.id) }))
+  if (t?.stages?.length)
+    items.push(
+      'sep',
+      { label: '阶段：按回合自动', on: app.session.stage === null, run: () => app.setStage(null) },
+      ...allStages(t).map((s, i) => ({ label: s.final ? '成型阵容' : stageLabel(s), on: app.session.stage === i, run: () => app.setStage(i) })),
+    )
+  items.push('sep')
+  if (app.untrackedInTarget) items.push({ label: `全部追踪（还有 ${app.untrackedInTarget} 个没追踪）`, icon: 'refresh', run: () => app.trackTarget() })
+  const total = app.session.tracked.length + app.session.trackedEquipment.length
+  items.push({ label: '清空追踪', icon: 'close', tone: 'danger', disabled: !total, confirm: '再点一次清空', run: () => app.clearTracked() })
+  if (cur) items.push({ label: '取消目标', icon: 'close', run: () => app.setTarget(null) })
+  return { title: '目标阵容', sub: t ? t.name : '还没有目标；点一个设为目标', items }
+}
+
+/** 策略：本局策略、目标阵容的策略 */
+export function strategyMenu(id: string): Omit<MenuState, 'x' | 'y'> {
+  const s = app.catalog.strategies.find((x) => x.id === id)!
+  const isMatch = app.match.strategyId === id
+  const items: MenuEntry[] = [{ label: '本局策略', icon: 'focus', on: isMatch, run: () => app.setMatchStrategy(isMatch ? null : id) }]
+  if (app.target) {
+    const inT = app.target.strategyId === id
+    items.push({ label: '目标阵容的策略', icon: 'star', on: inT, run: () => app.setTargetStrategy(inT ? null : id) })
+  }
+  return { title: s.name, sub: `策略 · ${s.initiator}`, items }
+}
+
+/** 应用内广场的阵容卡 */
+export function plazaPostMenu(p: Post): Omit<MenuState, 'x' | 'y'> {
+  const imp = (asTarget: boolean) => {
+    plaza.imported(p.id).catch(() => {})
+    app.importLineup(postToLineup(p), asTarget)
+  }
+  return {
+    title: p.lineup.name,
+    sub: `阵容广场 · ${p.author.nickname}${p.current ? '' : ' · 旧赛季'}`,
+    items: [
+      { label: '查看', icon: 'arrowRight', run: () => (plaza.viewing = p) },
+      'sep',
+      { label: '导入到我的阵容', icon: 'download', disabled: !p.current, run: () => imp(false) },
+      { label: '导入并设为目标', icon: 'focus', disabled: !p.current, run: () => imp(true) },
+      { label: '复制分享码', icon: 'share', disabled: !p.current, run: () => app.copyShare(postToLineup(p)) },
+      'sep',
+      { label: '在浏览器里打开', icon: 'arrowRight', run: () => api.openUrl(`${PLAZA}/p/${p.id}`) },
+    ],
+  }
+}
+
 export function lineupMenu(l: Lineup): Omit<MenuState, 'x' | 'y'> {
   const isT = app.session.targetLineupId === l.id
   return {
@@ -123,6 +191,7 @@ export function lineupMenu(l: Lineup): Omit<MenuState, 'x' | 'y'> {
     sub: '阵容',
     items: [
       { label: '编辑', icon: 'pencil', run: () => app.edit(l) },
+      { label: '复制一份', icon: 'copy', run: () => app.duplicateLineup(l) },
       { label: '复制分享码', icon: 'share', run: () => app.copyShare(l) },
       { label: '发布到广场', icon: 'upload', run: () => (plaza.publishing = $state.snapshot(l) as Lineup) },
       { label: '用这套阵容更新我的默认', icon: 'magic', run: () => app.defaultsFromLineup(l) },

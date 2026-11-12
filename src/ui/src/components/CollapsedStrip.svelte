@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import Icon from './Icon.svelte'
+  import { openMenu, operatorMenu, equipmentMenu } from '../lib/menu.svelte'
 
   // 覆盖模式下收起的竖条：侧栏盖在游戏画面上时，买东西、布阵前收成一条，只留追踪列表
   const total = $derived(app.trackedOps.length + app.session.trackedEquipment.length)
@@ -21,14 +22,14 @@
   <span class="cnt" title="追踪 {total} 项"><b>{total}</b><em>追踪</em></span>
   <div class="list">
     {#each app.trackedOps as n (n)}
-      <button class="av" class:banned={app.banned.has(n)} title="{n}：点一下取消追踪" onclick={() => app.toggleTracked(n)}>
+      <button class="av" class:banned={app.banned.has(n)} title="{n}：点一下取消追踪，右键看更多" onclick={() => app.toggleTracked(n)} oncontextmenu={(e) => openMenu(e, operatorMenu(n))}>
         <img src={asset.operator(n)} alt={n} />
           {#if app.banned.has(n)}<img class="ban" src={asset.stage('img_chess_banned')} alt="禁用" />{/if}
         <span class="x"><Icon name="close" size={13} /></span>
       </button>
     {/each}
     {#each app.session.trackedEquipment as n (n)}
-      <button class="av eq" title="{n}：点一下取消追踪" onclick={() => app.toggleTrackedEq(n)}>
+      <button class="av eq" title="{n}：点一下取消追踪，右键看更多" onclick={() => app.toggleTrackedEq(n)} oncontextmenu={(e) => openMenu(e, equipmentMenu(n))}>
         <img src={asset.equipment(n)} alt={n} />
         <span class="x"><Icon name="close" size={13} /></span>
       </button>

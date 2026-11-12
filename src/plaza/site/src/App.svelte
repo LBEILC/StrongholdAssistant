@@ -61,7 +61,7 @@
   {:else if r.page === 'me'}
     <MePage />
   {:else if r.page === 'new'}
-    {#key r.edit}<Editor edit={r.edit} />{/key}
+    {#key `${r.edit}|${r.post}`}<Editor edit={r.edit} post={r.post} />{/key}
   {:else if r.page === 'privacy'}
     <Privacy />
   {:else if r.page === 'admin'}

@@ -16,6 +16,8 @@
   ]
   const scales: { v: 'auto' | number; label: string }[] = [
     { v: 'auto', label: '自动' },
+    { v: 0.5, label: '50%' },
+    { v: 0.75, label: '75%' },
     { v: 1, label: '100%' },
     { v: 1.25, label: '125%' },
     { v: 1.5, label: '150%' },
@@ -217,11 +219,14 @@
 
     <section>
       <h4>界面大小 <small>自动：和游戏界面一样大</small></h4>
-      <div class="scales">
+      <div class="scales four">
         {#each scales as s (s.v)}
           <button class:on={app.settings.uiScale === s.v} onclick={() => set('uiScale', s.v)}>{s.label}</button>
         {/each}
       </div>
+      {#if typeof app.settings.uiScale === 'number' && app.settings.uiScale < 1}
+        <p class="note">比 100% 小的档适合系统缩放开到 150% 以上的屏幕；系统缩放是 100% 时字会很小。</p>
+      {/if}
     </section>
 
     <section>
@@ -597,6 +602,9 @@
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 2px;
+  }
+  .scales.four {
+    grid-template-columns: repeat(4, 1fr);
   }
   .scales.two {
     grid-template-columns: repeat(2, 1fr);

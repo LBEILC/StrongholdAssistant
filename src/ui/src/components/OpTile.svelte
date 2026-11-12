@@ -21,15 +21,17 @@
     skill?: string | null
     /** 右键弹干员菜单；编辑器、挑选面板里关掉 */
     menu?: boolean
+    /** 自己的右键菜单（编辑器里已选的干员），优先于 menu */
+    oncontext?: (e: MouseEvent) => void
     onclick?: (e: MouseEvent) => void
   }
-  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, elite = false, skill = null, menu = true, onclick }: Props = $props()
+  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, elite = false, skill = null, menu = true, oncontext, onclick }: Props = $props()
   const op = $derived(app.op(name))
   const banned = $derived(app.banned.has(name))
   const focus = $derived(app.focusOps.has(name))
 </script>
 
-<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} oncontextmenu={menu ? (e) => openMenu(e, operatorMenu(name)) : undefined} title="{name} · {ROMAN[op.tier]} 阶">
+<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} oncontextmenu={oncontext ?? (menu ? (e) => openMenu(e, operatorMenu(name)) : undefined)} title="{name} · {ROMAN[op.tier]} 阶">
   <span class="pic">
     <img class="av" src={asset.operator(name)} alt="" loading="lazy" />
     {#if owned}<span class="check"><Icon name="check" size={11} /></span>{/if}

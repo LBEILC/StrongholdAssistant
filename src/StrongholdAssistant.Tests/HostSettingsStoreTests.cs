@@ -101,6 +101,26 @@ public sealed class HostSettingsStoreTests : IDisposable
         Assert.Equal(expected, api.StartupWorkbench);
     }
 
+    [Fact]
+    public async Task HalfUiScaleSurvivesSaveAndReload()
+    {
+        var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        api.SaveSettings(api.Settings with { UiScale = System.Text.Json.JsonSerializer.SerializeToElement(0.5) });
+
+        var restored = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        Assert.Equal(0.5, restored.Settings.UiScale.GetDouble());
+    }
+
+    [Fact]
+    public async Task UiScaleBelowHalfIsRejected()
+    {
+        var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
+        var settings = api.Settings with { UiScale = System.Text.Json.JsonSerializer.SerializeToElement(0.4) };
+
+        var error = Assert.Throws<ArgumentException>(() => api.SaveSettings(settings));
+        Assert.Equal("界面缩放无效。", error.Message);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);

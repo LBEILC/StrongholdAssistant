@@ -4,6 +4,7 @@
   import { asset } from '../lib/assets'
   import Icon from './Icon.svelte'
   import GameText from './GameText.svelte'
+  import { openMenu, strategyMenu } from '../lib/menu.svelte'
 
   // 策略网格，仿游戏「策略报告」：上面是当前看的那个策略的详情，下面按「泛用型 / 盟约型」分组排头像。
   // 编辑器里点头像就是选上（再点取消）；图鉴里点头像只是看详情
@@ -63,6 +64,7 @@
           class:focus={viewing?.id === s.id}
           title="{s.name} · {s.initiator}"
           onclick={() => pick(s.id)}
+          oncontextmenu={(e) => openMenu(e, strategyMenu(s.id))}
         >
           <img src={asset.strategy(s.id)} alt={s.name} loading="lazy" />
           {#if cov}<span class="cv"><span class="glyph" style:--src="url({asset.bond(cov)})"></span></span>{/if}

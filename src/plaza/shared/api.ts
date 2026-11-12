@@ -145,9 +145,15 @@ export interface CreatePostRequest {
   description: string
 }
 
-/** PATCH /api/posts/:id：作者改简介。DELETE /api/posts/:id：作者删除 */
+/**
+ * PATCH /api/posts/:id：作者修改帖子，返回最新的 Post。DELETE /api/posts/:id：作者删除。
+ * 只带 description 就只改简介（和原来一样）。带 code（v0.7.4）就连阵容一起换：校验和发布一样
+ * （分享码格式、当期指纹 season_mismatch、阵容名和简介敏感词 blocked_words）；点赞、收藏、导入数、评论都保留。
+ * 换成的分享码和自己另一个帖子相同时 409 + `duplicate`「你已经发过一模一样的阵容。」。不计入每天 10 个的发布次数
+ */
 export interface UpdatePostRequest {
   description: string
+  code?: string
 }
 
 /** POST /api/posts/:id/like、DELETE /api/posts/:id/like：点赞 / 取消（要登录、有昵称）。返回最新的 { likes, liked } */

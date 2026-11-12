@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte'
   import type { Lineup } from '../lib/api'
   import { app, goalProgress, lineupEquipment } from '../lib/state.svelte'
-  import { openMenu, lineupMenu } from '../lib/menu.svelte'
+  import { openMenu, lineupMenu, type MenuState } from '../lib/menu.svelte'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
   import EqTile from './EqTile.svelte'
@@ -18,7 +18,8 @@
     /** 点标题（如打开编辑） */
     ontitle?: () => void
     /** 右键弹阵容菜单；导入预览这类还没保存的阵容关掉 */
-    menu?: boolean
+    /** 右键菜单：默认是阵容菜单；false 不弹；传函数用自己的菜单（广场卡片） */
+    menu?: boolean | (() => Omit<MenuState, 'x' | 'y'>)
     /** 只留标题、盟约一行，不列头像和装备（下面另有明细时用，如广场详情） */
     headOnly?: boolean
   }
@@ -33,7 +34,7 @@
   const progress = $derived(goalProgress(lineup.goals, members, members.map((m) => m.name)))
 </script>
 
-<article class="lc" class:target oncontextmenu={menu ? (e) => openMenu(e, lineupMenu(lineup)) : undefined}>
+<article class="lc" class:target oncontextmenu={menu ? (e) => openMenu(e, typeof menu === 'function' ? menu() : lineupMenu(lineup)) : undefined}>
   <header>
     <div class="ttl">
       {#if ontitle}

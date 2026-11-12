@@ -139,6 +139,7 @@
           <Icon name={p.favorited ? 'star' : 'starLine'} size={16} />{p.favorited ? '已收藏' : '收藏'}
         </button>
         <span class="imp" title="导入次数"><Icon name="download" size={15} />{p.imports}</span>
+        {#if mine && p.current}<a class="btn ghost" href="/new?post={encodeURIComponent(p.id)}" use:link title="改这个阵容的干员、盟约、阶段，点赞和评论都保留"><Icon name="pencil" size={15} />改阵容</a>{/if}
         {#if !mine}<button class="btn ghost rep" title="举报这个阵容" onclick={() => (reporting = { target: { kind: 'post', id: p!.id }, what: `${l!.name} · ${p!.author.nickname}` })}><Icon name="flag" size={15} /></button>{/if}
       </div>
     </div>

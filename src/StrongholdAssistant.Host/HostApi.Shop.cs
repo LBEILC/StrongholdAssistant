@@ -49,7 +49,7 @@ public sealed partial class HostApi
         var scale = settings.UiScale;
         if (!(scale.ValueKind == System.Text.Json.JsonValueKind.String && scale.GetString() == "auto")
             && !(scale.ValueKind == System.Text.Json.JsonValueKind.Number
-                && scale.TryGetDouble(out var number) && double.IsFinite(number) && number >= 1 && number <= 2))
+                && scale.TryGetDouble(out var number) && double.IsFinite(number) && number >= 0.5 && number <= 2))
             throw new ArgumentException("界面缩放无效。");
         _ = Theme(settings.GameTheme);
     }

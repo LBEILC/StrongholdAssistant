@@ -12,7 +12,7 @@
   import StrategyGrid from '../components/StrategyGrid.svelte'
   import ErrorNote from '../components/ErrorNote.svelte'
   import { api } from '../lib/api'
-  import { openMenu, operatorMenu } from '../lib/menu.svelte'
+  import { openMenu, operatorMenu, slotMenu } from '../lib/menu.svelte'
 
   // 本局：开局识别到的信息，排版仿游戏「确认本局信息」页；可手动修正；后面接本局能用的已存阵容
   const m = $derived(app.match)
@@ -85,8 +85,11 @@
   // 没有任何阵容不完整的盟约时，只剩一个「手动添加」组，点开列全部。
   const rank = new Map(app.catalog.operators.map((o, i) => [o.name, i]))
   const byTier = (a: string, b: string) => app.op(b).tier - app.op(a).tier || rank.get(a)! - rank.get(b)!
+  // 自选干员会被规则禁用（商店标记、详情照常按禁用算），但游戏的禁用列表里不显示它们，这里也不进分组和人数
+  const diyBanned = $derived(m.bannedOperators.filter((n) => app.op(n).diy))
+  const listedBans = $derived(m.bannedOperators.length - diyBanned.length)
   const bannedGroups = $derived.by(() => {
-    const banned = m.bannedOperators
+    const banned = m.bannedOperators.filter((n) => !app.op(n).diy)
     const groups: { id: string | null; names: string[] }[] = [
       ...core.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).core.includes(c.id)) })),
       ...extra.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).extra.includes(c.id)) })),
@@ -271,7 +274,7 @@
   <section>
     <SectionHeader
       title="本局禁用干员"
-      tag="{m.bannedOperators.length} 名{ruleOnly ? ' · 推算' : ''}"
+      tag="{listedBans} 名{ruleOnly ? ' · 推算' : ''}"
       tagTone="warn"
       ontoggle={edit ? undefined : fold('banned')}
       folded={!open('banned', edit)}
@@ -308,6 +311,7 @@
                     class="slot"
                     style:--c="var(--tier-{c.tier})"
                     onclick={() => (app.banPicker = { cov: g.id!, slot: c.i })}
+                    oncontextmenu={(ev) => openMenu(ev, slotMenu(g.id!, c.i))}
                     title="第 {c.i + 1} 格没认出（{ROMAN[c.tier]} 阶）{c.n ? `，有 ${c.n} 个候选，点开选` : '，点开手动补'}"
                   >
                     <span class="q"><b>?</b><i class="term">{ROMAN[c.tier]}</i></span>
@@ -331,6 +335,9 @@
             </div>
           </div>
         {/each}
+        {#if diyBanned.length}
+          <p class="rule">另有 {diyBanned.length} 名自选干员按规则被禁，游戏的禁用列表里不显示，在「确定自选编队」页能看到。</p>
+        {/if}
       </div>
     {/if}
   </section>

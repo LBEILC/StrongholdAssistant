@@ -4,7 +4,7 @@
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
-  import { openMenu, operatorMenu, equipmentMenu } from '../lib/menu.svelte'
+  import { openMenu, operatorMenu, equipmentMenu, targetMenu } from '../lib/menu.svelte'
   import Icon from './Icon.svelte'
   import { allStages, stageLabel } from '../lib/stages'
 
@@ -27,7 +27,8 @@
 {#if t || total || !app.folded['hint.noTarget']}
 <section class="tracker">
   {#if t || total}
-    <div class="head">
+    <!-- 右键标题行：换目标、切阶段、全部追踪、清空追踪 -->
+    <div class="head" role="presentation" oncontextmenu={(e) => openMenu(e, targetMenu())}>
       <span class="lbl term">Track</span>
       {#if t}
         <button class="name" onclick={goTarget} title="目标阵容：{t.name}">{t.name}{#if stageName}<em class="stg">{stageName}</em>{/if}</button>

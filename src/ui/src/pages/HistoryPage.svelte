@@ -9,6 +9,8 @@
   import Seg from '../components/Seg.svelte'
   import BondIcon from '../components/BondIcon.svelte'
   import Icon from '../components/Icon.svelte'
+  import { openMenu } from '../lib/menu.svelte'
+  import { api } from '../lib/api'
 
   // 历史记录：上面统计（只算有结果的局），下面一局一行，点开看详情
   $effect(() => {
@@ -63,6 +65,25 @@
     open = null
   }
 
+  // 右键一局：展开、生成阵容、复制摘要、删除
+  function recordMenu(ev: MouseEvent, r: MatchRecord) {
+    const sk = r.skland
+    const lo = r.local
+    const canMake = !!sk || !!lo?.lineup
+    const summary = [when(r.time), modeText(r), strategyName(sk?.strategyId ?? lo?.strategyId ?? null), sk ? (sk.success ? '通关' : resultText(sk)) : lo?.lastRound ? `到第 ${lo.lastRound} 回合` : ''].filter(Boolean).join(' · ')
+    openMenu(ev, {
+      title: when(r.time),
+      sub: modeText(r),
+      items: [
+        { label: open === r.id ? '收起' : '展开', icon: open === r.id ? 'arrowUp' : 'arrowDown', run: () => ((open = open === r.id ? null : r.id), (confirmDel = null)) },
+        { label: '生成阵容', icon: 'add', disabled: !canMake, run: () => toLineup(r) },
+        { label: '复制这局的摘要', icon: 'copy', run: () => api.copyText(summary).then(() => app.showToast('已复制')) },
+        'sep',
+        { label: '删除这条记录', icon: 'trash', tone: 'danger', confirm: '再点一次删除', run: () => history.remove(r.id) },
+      ],
+    })
+  }
+
   // 分组可折叠，状态记在本机（同本局页）
   const shown = (key: string) => !app.folded[`history.${key}`]
   const fold = (key: string) => () => app.toggleFold(`history.${key}`)
@@ -102,7 +123,7 @@
         {@const lo = r.local}
         {@const isOpen = open === r.id}
         <div class="row" class:open={isOpen} class:win={sk?.success}>
-          <button class="head" onclick={() => ((open = isOpen ? null : r.id), (confirmDel = null))} aria-expanded={isOpen}>
+          <button class="head" onclick={() => ((open = isOpen ? null : r.id), (confirmDel = null))} oncontextmenu={(ev) => recordMenu(ev, r)} aria-expanded={isOpen}>
             <span class="time term">{when(r.time)}</span>
             <span class="mode">{modeText(r)}</span>
             <span class="strat">{strategyName(sk?.strategyId ?? lo?.strategyId ?? null)}</span>

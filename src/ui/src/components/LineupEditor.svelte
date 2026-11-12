@@ -13,6 +13,8 @@
   import Seg from './Seg.svelte'
   import StrategyGrid from './StrategyGrid.svelte'
   import Icon from './Icon.svelte'
+  import { openMenu, type MenuEntry } from '../lib/menu.svelte'
+  import { tick } from 'svelte'
 
   // 阵容编辑器：几乎全高的面板。上半是阵容本身（名字、目标盟约、想抓的干员），下半是挑干员。
   // 阵容不限人数；选了目标盟约后干员池默认只列这些盟约的干员，覆盖目标越多越靠前。
@@ -106,9 +108,11 @@
   // 加回合阶段：依次点起始、结束回合（可以相同），照森空岛
   let addingStage = $state(false)
   let pickFrom = $state<number | null>(null)
+  // 改已有阶段的回合范围：用同一个回合选择器重选起止回合，阶段内容不动
+  let rangeFor = $state<number | null>(null)
   $effect.pre(() => {
     app.editing
-    untrack(() => ((cur = -1), (finalBuf = null), (addingStage = false)))
+    untrack(() => ((cur = -1), (finalBuf = null), (addingStage = false), (rangeFor = null)))
   })
   function swapTo(i: number) {
     if (!e || i === cur) return
@@ -123,13 +127,22 @@
     cur = i
     sel = null
   }
-  // 每个回合都能单独做一个阶段（照森空岛），回合不能重叠：已经被别的阶段占用的回合点不了
-  const covered = (r: number) => !!e?.stages?.some((x) => r >= x.fromRound && r <= x.toRound)
+  // 每个回合都能单独做一个阶段（照森空岛），回合不能重叠：已经被别的阶段占用的回合点不了（改范围时不算它自己）
+  const covered = (r: number) => !!e?.stages?.some((x, i) => i !== rangeFor && r >= x.fromRound && r <= x.toRound)
   function pickRound(r: number) {
     if (pickFrom === null) return void (pickFrom = r)
     const [from, to] = pickFrom <= r ? [pickFrom, r] : [r, pickFrom]
     pickFrom = null
     for (let k = from; k <= to; k++) if (covered(k)) return
+    if (rangeFor !== null) {
+      // 当前阶段的内容在顶层，stages 里这一项只改回合；重新排序后 cur 跟着它走
+      const moved = { ...e!.stages![rangeFor], fromRound: from, toRound: to }
+      const stages = e!.stages!.map((x, i) => (i === rangeFor ? moved : x)).sort((a, b) => a.fromRound - b.fromRound)
+      e!.stages = stages
+      cur = stages.indexOf(moved)
+      rangeFor = null
+      return
+    }
     swapTo(-1)
     // 新阶段先从它前面最近的回合阶段复制一份，接着改最方便；前面没有就空着
     const prev = (e!.stages ?? []).filter((x) => x.toRound < from).at(-1)
@@ -150,12 +163,45 @@
   const curEmpty = $derived(!e?.members.length && !e?.goals.length && !e?.equipment.length)
   function copyFrom(i: number) {
     if (!curEmpty && confirmCopy !== i) return void (confirmCopy = i)
+    overwriteFrom(i)
+  }
+  function overwriteFrom(i: number) {
     const src = structuredClone($state.snapshot(partOf(i)))
     e!.goals = src.goals
     e!.members = src.members
     e!.equipment = src.equipment
     confirmCopy = null
     sel = null
+  }
+
+  // 右键菜单（编辑器里自己的，不弹全局的干员菜单）：已选干员、阶段页签
+  function memberMenu(ev: MouseEvent, n: string) {
+    const m = e!.members.find((x) => x.name === n)!
+    openMenu(ev, {
+      title: n,
+      sub: '这套阵容里',
+      items: [
+        { label: '关键干员', icon: 'star', on: !!m.key, run: () => toggleKey(n) },
+        { label: '候选装备、技能、模组…', icon: 'pencil', run: () => sel !== n && pickMember(n) },
+        { label: '查看详情', icon: 'arrowRight', run: () => (app.detail = { kind: 'operator', name: n }) },
+        'sep',
+        { label: '从阵容里移出', icon: 'close', tone: 'danger', run: () => add(n) },
+      ],
+    })
+  }
+  // i = -1 是成型阵容
+  function stageMenu(ev: MouseEvent, i: number) {
+    const parts = [...(e!.stages ?? []).map((x, j) => ({ j, label: stageLabel(x) })), { j: -1, label: '成型阵容' }].filter((x) => x.j !== i)
+    const items: MenuEntry[] = []
+    if (i >= 0)
+      items.push(
+        { label: '改回合', icon: 'pencil', run: () => (swapTo(i), (rangeFor = i), (pickFrom = null), (addingStage = false)) },
+        { label: '改名', icon: 'pencil', run: async () => (swapTo(i), await tick(), document.querySelector<HTMLInputElement>('.ed .sname')?.focus()) },
+        'sep',
+      )
+    items.push(...parts.map((x): MenuEntry => ({ label: `用「${x.label}」覆盖`, icon: 'copy', confirm: '再点一次覆盖', run: () => (swapTo(i), overwriteFrom(x.j)) })))
+    if (i >= 0) items.push('sep', { label: '删除这个阶段', icon: 'trash', tone: 'danger', confirm: '再点一次删除', run: () => removeStage(i) })
+    openMenu(ev, { title: i >= 0 ? stageLabel(e!.stages![i]) : '成型阵容', sub: '阶段', items })
   }
 
   const save = async () => {
@@ -186,16 +232,19 @@
     <div class="stages">
       {#each e.stages ?? [] as s, i (i)}
         <span class="stab" class:on={cur === i}>
-          <button onclick={() => swapTo(i)}>{stageLabel(s)}</button>
+          <button onclick={() => swapTo(i)} oncontextmenu={(ev) => stageMenu(ev, i)}>{stageLabel(s)}</button>
           <button class="sx" aria-label="删除这个阶段" title="删除这个阶段" onclick={() => removeStage(i)}><Icon name="close" size={11} /></button>
         </span>
       {/each}
-      <span class="stab final" class:on={cur === -1}><button onclick={() => swapTo(-1)}>成型阵容</button></span>
-      <button class="sadd" class:on={addingStage} title="按回合加一个阶段，每个回合都可以单独一个" onclick={() => ((addingStage = !addingStage), (pickFrom = null))}><Icon name="add" size={14} />回合阶段</button>
+      <span class="stab final" class:on={cur === -1}><button onclick={() => swapTo(-1)} oncontextmenu={(ev) => e?.stages?.length && stageMenu(ev, -1)}>成型阵容</button></span>
+      <button class="sadd" class:on={addingStage} title="按回合加一个阶段，每个回合都可以单独一个" onclick={() => ((addingStage = !addingStage), (pickFrom = null), (rangeFor = null))}><Icon name="add" size={14} />回合阶段</button>
     </div>
-    {#if addingStage}
+    {#if addingStage || rangeFor !== null}
       <div class="rpick" transition:fly={{ y: -6, duration: 160 }}>
-        <p>{pickFrom === null ? '点起始回合' : `从第 ${pickFrom} 回合到第几回合？（可以相同）`}</p>
+        <p>
+          {pickFrom === null ? (rangeFor !== null ? '改成从第几回合开始？' : '点起始回合') : `从第 ${pickFrom} 回合到第几回合？（可以相同）`}
+          {#if rangeFor !== null}<button class="link" onclick={() => ((rangeFor = null), (pickFrom = null))}>取消</button>{/if}
+        </p>
         <div class="rounds">
           {#each Array.from({ length: MAX_ROUND }, (_, k) => k + 1) as r (r)}
             <button class:on={pickFrom === r} disabled={covered(r)} title={covered(r) ? '这个回合已经在别的阶段里' : undefined} onclick={() => pickRound(r)}>{r}</button>
@@ -206,7 +255,10 @@
       {#if cur >= 0 && e.stages}
         {@const st = e.stages[cur]}
         <div class="sbar">
-          <input class="sname" bind:value={st.name} placeholder="阶段名（不填就叫「{st.fromRound === st.toRound ? `第 ${st.fromRound} 回合` : `${st.fromRound}～${st.toRound} 回合`}」）" maxlength="12" />
+          <button class="srange" title="改这个阶段的回合" onclick={() => ((rangeFor = cur), (pickFrom = null), (addingStage = false))}>
+            <span class="term">{st.fromRound === st.toRound ? `第 ${st.fromRound}` : `${st.fromRound}～${st.toRound}`}</span> 回合<Icon name="pencil" size={12} />
+          </button>
+          <input class="sname" bind:value={st.name} placeholder="阶段名（不填就按回合叫）" maxlength="12" />
         </div>
       {/if}
       {#if e.stages?.length}
@@ -248,7 +300,7 @@
       <div class="chosen">
         {#each e.members as m (m.name)}
           <span class="mt" class:sel={sel === m.name}>
-            <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), my)} size={34} showName={false} menu={false} onclick={() => pickMember(m.name)} />
+            <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), my)} size={34} showName={false} oncontext={(ev) => memberMenu(ev, m.name)} onclick={() => pickMember(m.name)} />
             {#if priCount(m)}<b class="pc" title="{priCount(m)} 件优先装备">{priCount(m)}</b>{:else if m.equipment?.length}<b class="pc soft" title="{m.equipment.length} 件候选装备">{m.equipment.length}</b>{/if}
           </span>
         {:else}
@@ -1022,6 +1074,27 @@
     gap: 8px;
     align-items: center;
     padding: 6px 12px 0;
+  }
+  .srange {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--fg-2);
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+  }
+  .srange:hover {
+    color: var(--mint);
+    border-color: var(--mint-lo);
+  }
+  .rpick .link {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--mint);
   }
   .sname {
     flex: 1;

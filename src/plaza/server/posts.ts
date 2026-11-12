@@ -22,6 +22,18 @@ export const toAdminPost = (p: PostRow): AdminPost => ({
 export async function getPost(env: Env, id: string, viewer: string | null) {
  return stmt(env, select + ' FROM posts p JOIN users u ON u.id=p.user_id WHERE p.id=?', viewer, viewer, id).first<PostRow>()
 }
+function decodePostCode(text: string) {
+ const decoded = decodeLineup(text, catalog)
+ if (!decoded.ok) {
+  if (decoded.error.includes('其他赛季')) fail(400, 'season_mismatch', '这个分享码来自其他赛季或其他版本的数据，请先把助手更新到最新版。')
+  fail(400, 'bad_share_code', decoded.error)
+ }
+ const { name, goals, members, equipment, strategyId, stages } = decoded.lineup
+ if (hasBlocked(name)) fail(400, 'blocked_words', '阵容名或简介里有不允许的词。')
+ // 提取分享码正文，格式已由 decodeLineup 校验。
+ const code = text.match(/SA\d+-[A-Za-z0-9_-]+/)![0]
+ return { code, lineup: JSON.stringify({ name, goals, members, equipment, strategyId, ...(stages && { stages }) }) }
+}
 export async function listPosts(ctx: Context, viewer: string | null, admin = false) {
  const q = new URL(ctx.request.url).searchParams, env = ctx.env
  const favorite = !admin && q.get('favorite') === '1'
@@ -81,15 +93,7 @@ export async function posts(ctx: Context, path: string) {
   if (!u) fail(401, 'unauthorized', '请先登录。')
   needNickname(u)
   const input = await body(request), text = string(input.code), desc = description(input.description)
-  const decoded = decodeLineup(text, catalog)
-  if (!decoded.ok) {
-   if (decoded.error.includes('其他赛季')) fail(400, 'season_mismatch', '这个分享码来自其他赛季或其他版本的数据，请先把助手更新到最新版。')
-   fail(400, 'bad_share_code', decoded.error)
-  }
-  const { name, goals, members, equipment, strategyId, stages } = decoded.lineup
-  if (hasBlocked(name)) fail(400, 'blocked_words', '阵容名或简介里有不允许的词。')
-  // SA1 和 SA2（带干员候选装备）都认，decodeLineup 已经校验过格式
-  const code = text.match(/SA\d+-[A-Za-z0-9_-]+/)![0]
+  const { code, lineup } = decodePostCode(text)
   const existing = await stmt(env, 'SELECT id,status FROM posts WHERE user_id=? AND code=?', u.id, code).first<{ id: string; status: string }>()
   if (existing) {
    // TODO(design): 重发已下架或删除的分享码暂不恢复可见状态，需确认后续产品提示。
@@ -100,7 +104,7 @@ export async function posts(ctx: Context, path: string) {
   const inserted = await stmt(env, `INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,created_at,updated_at)
    SELECT ?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM posts WHERE user_id=? AND created_at>=?)<10
    ON CONFLICT(user_id,code) DO UPDATE SET description=excluded.description,updated_at=excluded.updated_at RETURNING id`,
-   id, u.id, code, fingerprint, JSON.stringify({ name, goals, members, equipment, strategyId, ...(stages && { stages }) }), desc, now, now, u.id, dayStart()).first<{ id: string }>()
+   id, u.id, code, fingerprint, lineup, desc, now, now, u.id, dayStart()).first<{ id: string }>()
   if (!inserted) fail(429, 'rate_limited', '今天发布次数已用完，请明天再试。')
   return json(toPost((await getPost(env, inserted.id, u.id))!))
  }
@@ -136,8 +140,13 @@ export async function posts(ctx: Context, path: string) {
  if (!action && ['PATCH', 'DELETE'].includes(method)) {
   if (p.user_id !== u.id) fail(403, 'forbidden', '只能修改自己的帖子。')
   if (method === 'PATCH') {
-   const desc = description((await body(request)).description)
-   await stmt(env, 'UPDATE posts SET description=?,updated_at=? WHERE id=?', desc, iso(), id).run()
+   const input = await body(request), desc = description(input.description)
+   if (input.code !== undefined && input.code !== p.code) {
+    const { code, lineup } = decodePostCode(string(input.code))
+    const updated = await stmt(env, `UPDATE OR IGNORE posts SET code=?,fingerprint=?,lineup=?,description=?,updated_at=? WHERE id=? RETURNING id`,
+     code, fingerprint, lineup, desc, iso(), id).first<{ id: string }>()
+    if (!updated) fail(409, 'duplicate', '你已经发过一模一样的阵容。')
+   } else await stmt(env, 'UPDATE posts SET description=?,updated_at=? WHERE id=?', desc, iso(), id).run()
    return json(toPost((await getPost(env, id, u.id))!))
   }
   await stmt(env, "UPDATE posts SET status='deleted',updated_at=? WHERE id=?", iso(), id).run()

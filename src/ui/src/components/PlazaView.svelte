@@ -2,6 +2,7 @@
   import { app } from '../lib/state.svelte'
   import { api } from '../lib/api'
   import { plaza, postToLineup, PLAZA, type Post } from '../lib/plaza.svelte'
+  import { plazaPostMenu } from '../lib/menu.svelte'
   import LineupCard from './LineupCard.svelte'
   import Icon from './Icon.svelte'
 
@@ -90,7 +91,7 @@
 {:else}
   <div class="list">
     {#each shown as p (p.id)}
-      <LineupCard lineup={postToLineup(p)} menu={false} ontitle={() => (plaza.viewing = p)}>
+      <LineupCard lineup={postToLineup(p)} menu={() => plazaPostMenu(p)} ontitle={() => (plaza.viewing = p)}>
         {#snippet sub()}
           <span class="by">{p.author.nickname}</span>
           <span class="num"><Icon name={p.liked ? 'heartFill' : 'heart'} size={11} />{p.likes}</span>

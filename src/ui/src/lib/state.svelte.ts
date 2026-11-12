@@ -370,6 +370,29 @@ export class AppState {
     }
   }
   /** 复制分享码（连同阵容名的一整句，贴到群里也看得懂） */
+  /** 右键「复制一份」：存成一套新阵容（名字加「副本」），在它基础上改 */
+  duplicateLineup(l: Lineup) {
+    return this.attempt(async () => {
+      const saved = await api.saveLineup({ ...$state.snapshot(l), id: '', name: `${l.name} 副本`.slice(0, 30), updatedAt: new Date().toISOString() })
+      this.lineups = await api.lineups()
+      this.showToast(`已复制成「${saved.name}」`)
+    })
+  }
+  /** 右键改目标阵容的策略（不进编辑器） */
+  setTargetStrategy(id: string | null) {
+    const t = this.target
+    if (!t) return
+    return this.attempt(async () => {
+      await api.saveLineup({ ...$state.snapshot(t), strategyId: id, updatedAt: new Date().toISOString() })
+      this.lineups = await api.lineups()
+    })
+  }
+  /** 顶栏右键「清空追踪」：干员和装备都不追踪了，目标不变 */
+  clearTracked() {
+    this.session.tracked = []
+    this.session.trackedEquipment = []
+    this.save()
+  }
   copyShare(l: Lineup) {
     return this.attempt(async () => {
       await api.copyText(shareText($state.snapshot(l), this.catalog))

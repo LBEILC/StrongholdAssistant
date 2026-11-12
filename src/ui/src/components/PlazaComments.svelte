@@ -1,6 +1,9 @@
 <script lang="ts">
   import { plaza, type Comment, type Post } from '../lib/plaza.svelte'
   import Icon from './Icon.svelte'
+  import { api } from '../lib/api'
+  import { app } from '../lib/state.svelte'
+  import { openMenu, type MenuEntry } from '../lib/menu.svelte'
 
   // 广场详情面板里的评论：只有一层，回复也排在同一列表里写「回复 某某」，新到旧。
   // 没登录给「登录」，没昵称就地起一个
@@ -79,6 +82,16 @@
     })
   }
 
+  // 右键一条评论：回复、复制、举报、删除（删除在菜单里点两次）
+  function commentMenu(ev: MouseEvent, c: Comment) {
+    const items: MenuEntry[] = []
+    if (plaza.me?.nickname) items.push({ label: '回复', icon: 'reply', run: () => reply(c) })
+    items.push({ label: '复制内容', icon: 'copy', run: () => api.copyText(c.body).then(() => app.showToast('已复制')) })
+    if (c.author.id !== plaza.me?.id) items.push('sep', { label: '举报', icon: 'flag', tone: 'danger', run: () => (plaza.reporting = { target: { kind: 'comment', id: c.id }, what: `${c.author.nickname}：${c.body}` }) })
+    if (c.canDelete) items.push('sep', { label: '删除', icon: 'trash', tone: 'danger', confirm: '再点一次删除', run: () => ((armed = c.id), remove(c)) })
+    openMenu(ev, { title: c.author.nickname, sub: '评论', items })
+  }
+
   function ago(iso: string) {
     const m = Math.floor((Date.now() - Date.parse(iso)) / 60000)
     if (m < 1) return '刚刚'
@@ -125,7 +138,7 @@
   {#if list.length}
     <ul>
       {#each list as c (c.id)}
-        <li>
+        <li oncontextmenu={(ev) => commentMenu(ev, c)}>
           <div class="top">
             <b class:me={c.author.id === plaza.me?.id}>{c.author.nickname}</b>
             {#if c.replyTo}<span class="to"><Icon name="reply" size={11} />{c.replyTo.nickname}</span>{/if}

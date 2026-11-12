@@ -146,6 +146,49 @@ test('发布内容一致、指纹和敏感词拒绝、重复发布更新简介',
  assert.deepEqual(post2.lineup.members[0].equipment, withEq.members[0].equipment)
 })
 
+test('065 作者修改分享码更新阵容并保留点赞', async () => {
+ const user = await login(), post = await publish(user)
+ await ok('/api/posts/' + post.id + '/like', { method: 'POST', token: user.token })
+ const replacement = lineup('修改后的阵容')
+ replacement.members = replacement.members.slice(0, 3)
+ const code = encodeLineup(replacement, catalog)
+ const updated = await ok('/api/posts/' + post.id, { method: 'PATCH', token: user.token,
+  body: { code, description: '修改后的简介' } })
+ const { id, source, updatedAt, ...expected } = replacement
+ assert.equal(updated.id, post.id)
+ assert.equal(updated.code, code)
+ assert.deepEqual(updated.lineup, expected)
+ assert.equal(updated.description, '修改后的简介')
+ assert.equal(updated.likes, 1)
+ assert.equal(updated.liked, true)
+ assert.deepEqual(await ok('/api/posts/' + post.id, { token: user.token }), updated)
+})
+
+test('065 非作者不能修改阵容', async () => {
+ const author = await login(), other = await login(), post = await publish(author)
+ const result = await request('/api/posts/' + post.id, { method: 'PATCH', token: other.token,
+  body: { code: encodeLineup(lineup('其他阵容'), catalog), description: '' } })
+ assert.equal(result.status, 403)
+})
+
+test('065 修改成作者另一帖的分享码返回 duplicate', async () => {
+ const author = await login(), a = await publish(author, '阵容甲'), b = await publish(author, '阵容乙')
+ const result = await request('/api/posts/' + a.id, { method: 'PATCH', token: author.token,
+  body: { code: b.code, description: '重复阵容' } })
+ assert.equal(result.status, 409)
+ assert.deepEqual(result.data, { error: 'duplicate', message: '你已经发过一模一样的阵容。' })
+ assert.deepEqual(await ok('/api/posts/' + a.id), a)
+})
+
+test('065 修改为旧赛季分享码返回 season_mismatch', async () => {
+ const author = await login(), post = await publish(author)
+ const bytes = Buffer.from(post.code.slice(4), 'base64url'); bytes[1] ^= 1
+ const result = await request('/api/posts/' + post.id, { method: 'PATCH', token: author.token,
+  body: { code: post.code.slice(0, 4) + bytes.toString('base64url'), description: '' } })
+ assert.equal(result.status, 400)
+ assert.deepEqual(result.data, { error: 'season_mismatch', message: '这个分享码来自其他赛季或其他版本的数据，请先把助手更新到最新版。' })
+})
+
 test('点赞取消、导入去重、热度/最新/精选、盟约策略筛选和游标翻页', async () => {
  const user = await login(), headers = await access('admin@example.com')
  const a = await publish(user, '阵容甲')
