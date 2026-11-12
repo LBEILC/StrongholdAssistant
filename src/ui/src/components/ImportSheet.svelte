@@ -17,7 +17,8 @@
   // 每次打开清空，并把光标放进输入框，直接 Ctrl+V
   $effect(() => {
     if (!app.importOpen) return
-    text = ''
+    text = app.importPrefill
+    app.importPrefill = ''
     name = ''
     queueMicrotask(() => box?.focus())
   })
@@ -38,7 +39,7 @@
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
     <p class="hint">粘贴别人发来的分享码，整句消息也可以。</p>
-    <textarea bind:this={box} bind:value={text} rows="3" placeholder="【卫戍协议助手阵容】叙拉古 · 家族 SA1-…" spellcheck="false"></textarea>
+    <textarea bind:this={box} bind:value={text} rows="3" placeholder="【卫戍协议助手阵容】叙拉古 · 家族 SA2-…" spellcheck="false"></textarea>
 
     {#if result && !result.ok}
       <p class="err">{result.error}</p>

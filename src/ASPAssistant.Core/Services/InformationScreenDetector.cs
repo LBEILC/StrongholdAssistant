@@ -5,6 +5,15 @@ namespace ASPAssistant.Core.Services;
 /// <summary>Positive visual evidence for the opening, in-game info and gameplay pages.</summary>
 public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strategy)
 {
+    // 开局左上角模式名；仅去掉空白，不纠错或模糊匹配。
+    public async Task<ASPAssistant.Core.Models.GameModeInfo?> ReadModeAsync(byte[] screenshot, int width, int height,
+        IReadOnlyList<ASPAssistant.Core.Models.GameModeInfo> modes)
+    {
+        var texts = await ScanAsync(screenshot, width, height, (.02, .015, .40, .12));
+        static string Compact(string text) => string.Concat(text.Where(c => !char.IsWhiteSpace(c)));
+        return modes.FirstOrDefault(m => texts.Any(t => Compact(t.Text) == Compact(m.Name)));
+    }
+
     /// <summary>
     /// 标题带的位置（比例）。标准模拟与险境两种页面实测都在这个范围：
     /// 核心盟约标题 y≈0.185，附加盟约标题 y≈0.45。只扫这两条窄带比扫整块面板
@@ -62,7 +71,9 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
             (int)(width * region.XPercent), (int)(height * region.YPercent),
             (int)(width * region.WidthPercent), (int)(height * region.HeightPercent));
         return texts.Any(t => t.Text.Replace(" ", "").Contains("确认本局信息"))
-            && await IsInformationScreenAsync(screenshot, width, height);
+            && (await IsInformationScreenAsync(screenshot, width, height)
+                // 单人核心盟约占两行，附加盟约标题比联机页更靠下。
+                || await HasBothHeadersAsync(screenshot, width, height, CoreHeaderBand, (.02, .60, .70, .16)));
     }
 
     public async Task<bool> IsGameplayAsync(byte[] screenshot, int width, int height)
@@ -74,5 +85,22 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
         var upgrade = await ocr.RecognizeRegionAsync(screenshot,
             (int)(width * .10), (int)(height * .88), (int)(width * .35), (int)(height * .09));
         return upgrade.Any(t => t.Text.Contains("升级") || t.Text.Contains("已满级"));
+    }
+
+    public async Task<bool> IsSoloOpeningAsync(byte[] screenshot, int width, int height)
+    {
+        if (!await IsOpeningScreenAsync(screenshot, width, height)) return false;
+        return await HasSoloPromptAsync(screenshot, width, height);
+    }
+
+    // 调用方已经确认是开局页时，直接检查提示带，避免重复标题 OCR。
+    public async Task<bool> HasSoloPromptAsync(byte[] screenshot, int width, int height)
+    {
+        var band = GameUiScale.InformationRegion(
+            new OcrRegionDefinition("SoloPrompt", .07, .225, .63, .035), GameUiScale.Information(screenshot));
+        var texts = await ocr.RecognizeRegionAsync(screenshot,
+            (int)(width * band.XPercent), (int)(height * band.YPercent),
+            (int)(width * band.WidthPercent), (int)(height * band.HeightPercent));
+        return texts.Any(t => Normalize(t.Text).Contains("请选择一组"));
     }
 }

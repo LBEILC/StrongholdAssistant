@@ -10,6 +10,8 @@ public partial class MainWindow : Window
     private HostApi _api = null!;
     private readonly SemaphoreSlim _requests = new(1, 1);
     private bool _catalogReported;
+    private bool _uiReady;
+    private readonly Queue<string> _pendingDeepLinks = new();
     private readonly bool _connectGame;
     private readonly string? _userDirectory;
     private Task _initialization = Task.CompletedTask;
@@ -21,6 +23,7 @@ public partial class MainWindow : Window
     {
         _connectGame = connectGame;
         _userDirectory = userDirectory;
+        _tracker = new(findWindow: _capture.Connection.FindGameWindow, getViewport: _capture.Connection.GetViewport);
         InitializeComponent();
     }
 
@@ -82,8 +85,8 @@ public partial class MainWindow : Window
         {
             var request = JsonSerializer.Deserialize<BridgeRequest>(e.WebMessageAsJson, HostApi.JsonOptions)!;
             id = request.Id;
-            // 重扫由识别锁立即判忙；其余请求保持原有串行存储语义。
-            if (request.Method is not ("rescan" or "scanContinuous"))
+            // 重扫由识别锁判忙；登录复用窗口结果，不占用存储请求锁。
+            if (request.Method is not ("rescan" or "scanContinuous" or "plazaLogin"))
             {
                 await _requests.WaitAsync();
                 locked = true;
@@ -109,7 +112,7 @@ public partial class MainWindow : Window
                 if (request.Method is "rescan" or "scanContinuous") await _initialization;
                 result = await _api.InvokeAsync(request.Method, request.Params);
             }
-            if (request.Method is "saveSettings" or "importData") RefreshSettings(followedBefore);
+            if (request.Method is "saveSettings" or "importData") await RefreshSettingsAsync(followedBefore);
             if (request.Method == "connection")
                 Trace.WriteLine($"connection()={JsonSerializer.Serialize(result, HostApi.JsonOptions)}");
             Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { id, result }, HostApi.JsonOptions));
@@ -158,6 +161,19 @@ public partial class MainWindow : Window
     {
         Browser.Visibility = Visibility.Visible;
         Splash.Visibility = Visibility.Collapsed;
+        _uiReady = true;
+        while (_pendingDeepLinks.TryDequeue(out var url)) ReceiveDeepLink(url);
+    }
+
+    public void ReceiveDeepLink(string url)
+    {
+        if (!DeepLinkChannel.IsValid(url)) return;
+        if (!_uiReady)
+        {
+            _pendingDeepLinks.Enqueue(url);
+            return;
+        }
+        Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { @event = "deepLink", data = url }, HostApi.JsonOptions));
     }
 
     private void PostWindowEvent(string e) =>
@@ -171,6 +187,7 @@ public partial class MainWindow : Window
     {
         _tracker.Dispose();
         _scanner.Dispose();
+        _capture.Connection.Dispose();
         _ocr.Dispose();
         _iconMatcher.Dispose();
         Browser.Dispose();

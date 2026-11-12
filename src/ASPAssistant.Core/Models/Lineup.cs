@@ -29,8 +29,16 @@ public sealed record CovenantGoal(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("level")] int Level);
 
+// 2026-11-12：新增成员候选装备和优先级，旧文件默认空数组。
+public sealed record MemberEquip(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("priority")] bool Priority);
+
 public class LineupSlot
 {
+    [JsonPropertyName("equipment")]
+    public MemberEquip[] Equipment { get; set; } = [];
+
     [JsonPropertyName("operatorName")]
     public string OperatorName { get; set; } = "";
 
@@ -56,6 +64,11 @@ public class LineupSlot
 
 public class Lineup
 {
+    // 2026-11-12：新增本地阵容简介，旧文件不输出该字段。
+    [JsonPropertyName("description")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Description { get; set; }
+
     [JsonPropertyName("strategyId")]
     public string? StrategyId { get; set; }
 

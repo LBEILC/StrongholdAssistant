@@ -8,10 +8,12 @@ public sealed partial class HostApi
 {
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private BanScreenAnalyzer _analyzer = null!;
+    private InformationScreenDetector _informationDetector = null!;
     private BanAvatarRecognizer _avatars = null!;
     private EnemyRecognizer _enemyRecognizer = null!;
     private Func<Task<byte[]?>> _captureInformation = null!;
     internal Func<Task<(MatchInfo Match, string[] Avatars)>> ReadInformation { get; set; } = null!;
+    internal Func<Task<GameModeInfo?>> ReadOpeningMode { get; set; } = null!;
     private byte[]? _scanShot;
     private BanAvatarResult? _scanAvatars;
     private BanScreenResult? _scanResult;
@@ -28,8 +30,10 @@ public sealed partial class HostApi
         _avatars = await Task.Run(() => new BanAvatarRecognizer(ocr, _operators,
             Path.Combine(dataDirectory, "operator_avatars")));
         var strategy = new GarrisonOcrStrategy();
+        _informationDetector = new InformationScreenDetector(ocr, strategy);
         _captureInformation = capture;
         ReadInformation = ReadInformationAsync;
+        ReadOpeningMode = ReadOpeningModeAsync;
         _enemyRecognizer = new EnemyRecognizer(ocr, strategy, _bosses);
         _analyzer = new BanScreenAnalyzer(() => Task.FromResult(_scanShot), ocr, strategy,
             _enemyRecognizer, _operators,
@@ -53,7 +57,7 @@ public sealed partial class HostApi
         return RecordInformationAsync(false);
     }
 
-    private async Task<MatchInfo> RecordInformationAsync(bool continuous)
+    private async Task<MatchInfo> RecordInformationAsync(bool continuous, bool opening = false)
     {
         if (continuous) await _scanGate.WaitAsync();
         else if (!_scanGate.Wait(0)) throw new RecognitionException("正在识别，请稍候。");
@@ -62,7 +66,8 @@ public sealed partial class HostApi
             Changed?.Invoke("scan", new ScanStatus(true, Continuous: continuous ? true : null));
             _scanAvatars = null;
             var (next, avatars) = await ReadInformation();
-            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars);
+            int added = ApplyRecognizedMatch(next, avatars, _scanAvatars, opening);
+            if (continuous) Match = Match with { BansScanned = true };
             Changed?.Invoke("match", Match);
             if (!continuous)
                 Changed?.Invoke("scan", new ScanStatus(false, added > 0
@@ -88,7 +93,18 @@ public sealed partial class HostApi
         _scanEnemy = null;
         _scanShot = null;
         _scanFailure = null;
+        var mode = Match.Mode;
         _scanShot = await _captureInformation();
+        if (_scanShot is not null)
+        {
+            int rawWidth = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(_scanShot.AsSpan(16, 4));
+            int rawHeight = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(_scanShot.AsSpan(20, 4));
+            var (png, width, height) = ScreenshotNormalizer.EnsureAnalysable(_scanShot, rawWidth, rawHeight);
+            if (await _informationDetector.IsSoloOpeningAsync(png, width, height))
+                throw new RecognitionException("这是单人模式的开局页：选好盟约进入对局后，点顶部回合数左边的放大镜打开对局详情再识别。");
+            if (await _informationDetector.IsOpeningScreenAsync(png, width, height))
+                mode = await _informationDetector.ReadModeAsync(png, width, height, _modes);
+        }
         var avatars = _scanShot == null ? null : await _avatars.RecognizeAsync(_scanShot);
         _scanAvatars = avatars;
         // TODO(design): 盟约已滚出画面时沿用已录入的盟约；首领须仍可读且相同，无法据此区分同首领的新局。
@@ -110,10 +126,10 @@ public sealed partial class HostApi
             _scanEnemy?.EnemyTypes.Select(name => _enemyTypes.LookupByTypeName(
                     name.StartsWith("特训敌人·") ? name[5..] : name)?.TypeCode)
                 .OfType<string>().Distinct().ToArray() ?? [], DateTimeOffset.UtcNow.ToString("O"));
-        return (next, avatars?.Names ?? []);
+        return (next with { Mode = mode }, avatars?.Names ?? []);
     }
 
-    internal int ApplyRecognizedMatch(MatchInfo next, IEnumerable<string> avatars, BanAvatarResult? grid = null)
+    internal int ApplyRecognizedMatch(MatchInfo next, IEnumerable<string> avatars, BanAvatarResult? grid = null, bool opening = false)
     {
         bool sameMatch = Match.BossId == next.BossId
             && Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
@@ -126,7 +142,8 @@ public sealed partial class HostApi
         }
         if (grid is null) _avatarBans.UnionWith(avatars);
         else MergeBanGroups(grid);
-        Match = next;
+        Match = next with { Solo = Match.Solo, AwaitingDetail = false,
+            BansScanned = Match.BansScanned && !(opening && !sameMatch) };
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };
         return Match.BannedOperators.Except(previous).Count();
@@ -136,6 +153,38 @@ public sealed partial class HostApi
     {
         await _scanGate.WaitAsync();
         _scanGate.Release();
+    }
+
+    public async Task HandleOpeningAsync(bool solo)
+    {
+        if (solo)
+        {
+            await ResetMatchAsync(true);
+            Match = Match with { Mode = await ReadOpeningMode() };
+            Changed?.Invoke("match", Match);
+            return;
+        }
+        Match = Match with { Solo = false, AwaitingDetail = false, Mode = null };
+        Changed?.Invoke("match", Match);
+        await RecordInformationAsync(false, opening: true);
+    }
+
+    public Task HandleDetailAsync()
+    {
+        if (!Match.AwaitingDetail) return Task.CompletedTask;
+        Match = Match with { AwaitingDetail = false };
+        Changed?.Invoke("match", Match);
+        return ScanContinuousAsync(true);
+    }
+
+    private async Task<GameModeInfo?> ReadOpeningModeAsync()
+    {
+        var shot = await _captureInformation();
+        if (shot == null) return null;
+        int width = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(shot.AsSpan(16, 4));
+        int height = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(shot.AsSpan(20, 4));
+        var (png, w, h) = ScreenshotNormalizer.EnsureAnalysable(shot, width, height);
+        return await _informationDetector.ReadModeAsync(png, w, h, _modes);
     }
 }
 

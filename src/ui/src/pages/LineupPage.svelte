@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { app, type LineupView } from '../lib/state.svelte'
+  import { asset } from '../lib/assets'
+  import { app, type LineupView, lineupEquipment } from '../lib/state.svelte'
   import SectionHeader from '../components/SectionHeader.svelte'
   import BondIcon from '../components/BondIcon.svelte'
   import OpTile from '../components/OpTile.svelte'
@@ -7,6 +8,7 @@
   import LineupCard from '../components/LineupCard.svelte'
   import Icon from '../components/Icon.svelte'
   import Seg from '../components/Seg.svelte'
+  import PlazaView from '../components/PlazaView.svelte'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
@@ -14,12 +16,22 @@
   const views = $derived<{ id: LineupView; label: string; count?: number }[]>([
     { id: 'target', label: '目标' },
     { id: 'mine', label: '我的阵容', count: app.lineups.length },
+    { id: 'plaza', label: '广场' },
   ])
-  const dir = $derived(app.lineupView === 'mine' ? 1 : -1)
+  // 切换方向：按分段顺序，往右的从右边滑入
+  const order: LineupView[] = ['target', 'mine', 'plaza']
+  let prev: LineupView = app.lineupView
+  let dir = $state(1)
+  $effect.pre(() => {
+    const v = app.lineupView
+    dir = order.indexOf(v) >= order.indexOf(prev) ? 1 : -1
+    prev = v
+  })
   const t = $derived(app.target)
   // 「还能抓」默认只露两行，多了点展开
   let allPicks = $state(false)
   const picks = $derived(allPicks ? app.pickable : app.pickable.slice(0, 10))
+  const targetEqs = $derived(app.target ? lineupEquipment(app.target) : [])
 </script>
 
 <div class="page">
@@ -69,16 +81,24 @@
         <div class="sub">想抓的干员<em>{t.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
         <div class="ops">
           {#each t.members as m (m.name)}
-            <OpTile name={m.name} transform={m.transform} isKey={m.key} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
+            {@const pe = m.equipment?.filter((x) => x.priority) ?? []}
+            <span class="mw">
+              <OpTile name={m.name} transform={m.transform} isKey={m.key} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
+              {#if pe.length}
+                <span class="pe" title="优先装备：{pe.map((x) => x.name).join('、')}">
+                  {#each pe.slice(0, 3) as x (x.name)}<img src={asset.equipment(x.name)} alt="" />{/each}
+                </span>
+              {/if}
+            </span>
           {:else}
             <p class="none">还没有想抓的干员。</p>
           {/each}
         </div>
 
-        <div class="sub">想要的装备<em>{t.equipment.length} 件 · 点一下切换追踪</em></div>
+        <div class="sub">装备<em>{targetEqs.length} 件 · 点一下切换追踪；金框是干员的优先装备，商店里按关键标记</em></div>
         <div class="ops">
-          {#each t.equipment as n (n)}
-            <EqTile name={n} size={48} dim={!app.trackedEq.has(n)} onclick={() => app.toggleTrackedEq(n)} />
+          {#each targetEqs as n (n)}
+            <span class="ew" class:pri={app.priorityEq.has(n)}><EqTile name={n} size={48} dim={!app.trackedEq.has(n)} onclick={() => app.toggleTrackedEq(n)} /></span>
           {:else}
             <p class="none wide">还没有。在「编辑」里加，或在装备详情、右键菜单里「加入目标」。</p>
           {/each}
@@ -107,7 +127,7 @@
         </div>
       </div>
     {/if}
-  {:else}
+  {:else if app.lineupView === 'mine'}
     <section>
       <SectionHeader title="我的阵容" tag="{app.lineups.length} 套" en="SAVED LINEUPS">
         {#snippet icon()}
@@ -134,12 +154,41 @@
         {/each}
       </div>
     </section>
+  {:else if app.lineupView === 'plaza'}
+    <PlazaView />
   {/if}
   </div>
   {/key}
 </div>
 
 <style>
+  .mw {
+    position: relative;
+    display: inline-flex;
+  }
+  .pe {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    display: flex;
+    gap: 1px;
+    padding: 1px;
+    background: var(--bg-0);
+    box-shadow: inset 0 0 0 1px var(--gold);
+    pointer-events: none;
+  }
+  .pe img {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
+  }
+  .ew {
+    display: inline-flex;
+  }
+  .ew.pri {
+    outline: 1px solid var(--gold);
+    outline-offset: 1px;
+  }
   .page {
     display: flex;
     flex-direction: column;

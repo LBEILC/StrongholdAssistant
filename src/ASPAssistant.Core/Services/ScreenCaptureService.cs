@@ -1,3 +1,4 @@
+// 2026-11-12：参考上游 PR #5，共享连接来源与内部画面区域。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 // 2026-11-11：信息页截屏允许指定侧栏处于前台，避免不遮挡时切换窗口。
 using System.Drawing;
@@ -9,6 +10,9 @@ namespace ASPAssistant.Core.Services;
 
 public class ScreenCaptureService
 {
+    public GameConnectionService Connection { get; }
+    public ScreenCaptureService(GameConnectionService? connection = null)
+        => Connection = connection ?? new();
     /// <summary>
     /// Maximum capture width in pixels. Screenshots wider than this are scaled down
     /// proportionally before PNG encoding, reducing both encode time and all
@@ -25,7 +29,9 @@ public class ScreenCaptureService
     /// </summary>
     public byte[]? CaptureScreen(IntPtr allowedForeground = default)
     {
-        var hwnd = User32.FindArknightsWindow();
+        if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth);
+        var hwnd = Connection.FindGameWindow();
+        if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth);
         if (hwnd == IntPtr.Zero)
         {
             AppLogger.Warn("ScreenCapture", "Arknights window not found");

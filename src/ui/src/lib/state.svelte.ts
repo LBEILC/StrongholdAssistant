@@ -2,10 +2,11 @@
 import { api } from './api'
 import { shareText } from './share'
 import { unseenNotes } from './changelog'
+import { plaza } from './plaza.svelte'
 import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
 
 export type Tab = 'match' | 'lineup' | 'codex'
-export type LineupView = 'target' | 'mine'
+export type LineupView = 'target' | 'mine' | 'plaza'
 export type Detail =
   | { kind: 'operator'; name: string }
   | { kind: 'equipment'; name: string }
@@ -36,6 +37,9 @@ function readFolded(): Record<string, boolean> {
     return {}
   }
 }
+
+/** 阵容要追踪的全部装备：通用装备 + 每名干员的候选装备，去重 */
+export const lineupEquipment = (l: Lineup) => [...new Set([...l.equipment, ...l.members.flatMap((m) => m.equipment?.map((x) => x.name) ?? [])])]
 
 export const covenantsOf = (m: LineupMember) => {
   const o = operatorByName.get(m.name)!
@@ -70,6 +74,8 @@ class AppState {
   settingsOpen = $state(false)
   /** 「导入分享码」面板 */
   importOpen = $state(false)
+  /** 打开导入面板时预先填进去的文字（从网站「在助手里打开」带过来的分享码） */
+  importPrefill = $state('')
   /** 更新日志面板 */
   changelogOpen = $state(false)
   /** 更新后第一次打开要弹的「这一版有什么新东西」 */
@@ -94,6 +100,8 @@ class AppState {
   // 设为目标时把名单加进来，取消或换目标时把旧名单移出；干员会反复买卖，所以不记「已持有」
   tracked = $derived(new Set(this.session.tracked))
   trackedEq = $derived(new Set(this.session.trackedEquipment))
+  /** 目标阵容里标了「优先」的装备（商店按关键标记，追踪列表里挂在干员旁边） */
+  priorityEq = $derived(new Set(this.target?.members.flatMap((m) => m.equipment?.filter((x) => x.priority).map((x) => x.name) ?? []) ?? []))
   /** 顶栏的追踪列表：目标名单里的在前（关键在最前），再是单独追踪的 */
   trackedOps = $derived.by(() => {
     const order = new Map((this.target?.members ?? []).map((m, i) => [m.name, (m.key ? 0 : 1000) + i]))
@@ -101,7 +109,7 @@ class AppState {
   })
   /** 目标名单里被取消追踪的个数（顶栏给「全部追踪」用） */
   untrackedInTarget = $derived(
-    this.target ? this.target.members.filter((m) => !this.tracked.has(m.name)).length + this.target.equipment.filter((n) => !this.trackedEq.has(n)).length : 0,
+    this.target ? this.target.members.filter((m) => !this.tracked.has(m.name)).length + lineupEquipment(this.target).filter((n) => !this.trackedEq.has(n)).length : 0,
   )
   /** 目标盟约的人数：按目标名单算（盟约在游戏里有没有生效，游戏里看得到） */
   goalProgress = $derived(this.target ? goalProgress(this.target.goals, this.target.members, this.target.members.map((m) => m.name)) : [])
@@ -186,7 +194,7 @@ class AppState {
   setTarget(id: string | null) {
     const old = this.target
     const next = this.lineups.find((l) => l.id === id) ?? null
-    this.retrack(old ? { ops: old.members.map((m) => m.name), eqs: old.equipment } : null, next ? { ops: next.members.map((m) => m.name), eqs: next.equipment } : null)
+    this.retrack(old ? { ops: old.members.map((m) => m.name), eqs: lineupEquipment(old) } : null, next ? { ops: next.members.map((m) => m.name), eqs: lineupEquipment(next) } : null)
     this.session.targetLineupId = id
     this.save()
   }
@@ -201,7 +209,7 @@ class AppState {
   /** 目标名单里取消过追踪的重新全部追踪 */
   trackTarget() {
     const t = this.target!
-    this.retrack(null, { ops: t.members.map((m) => m.name), eqs: t.equipment })
+    this.retrack(null, { ops: t.members.map((m) => m.name), eqs: lineupEquipment(t) })
     this.save()
   }
   toggleTracked(name: string) {
@@ -273,6 +281,8 @@ class AppState {
     this.importOpen = false
     this.settingsOpen = false
     this.changelogOpen = false
+    plaza.viewing = null
+    plaza.publishing = null
     this.tab = t
   }
 
@@ -319,8 +329,8 @@ class AppState {
     const saved = await api.saveLineup($state.snapshot(this.editing!))
     if (before) {
       const names = (l: Lineup) => l.members.map((m) => m.name)
-      const gone = { ops: names(before).filter((n) => !names(saved).includes(n)), eqs: before.equipment.filter((n) => !saved.equipment.includes(n)) }
-      const added = { ops: names(saved).filter((n) => !names(before).includes(n)), eqs: saved.equipment.filter((n) => !before.equipment.includes(n)) }
+      const gone = { ops: names(before).filter((n) => !names(saved).includes(n)), eqs: lineupEquipment(before).filter((n) => !lineupEquipment(saved).includes(n)) }
+      const added = { ops: names(saved).filter((n) => !names(before).includes(n)), eqs: lineupEquipment(saved).filter((n) => !lineupEquipment(before).includes(n)) }
       this.retrack(gone, added)
       this.save()
     }

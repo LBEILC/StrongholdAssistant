@@ -98,7 +98,7 @@ public sealed class HostApiTests : IDisposable
         Assert.Equal(new[] { "炎", "叙拉古", "" }, persisted.Slots.Select(s => s.TransformedCovenant));
         Assert.Equal(new string?[] { "yan", "siracusa", null }, saved.Members.Select(m => m.Transform));
         var reloaded = Assert.Single(await api.LineupsAsync());
-        Assert.Equal(saved.Members, reloaded.Members);
+        Assert.Equal(JsonSerializer.Serialize(saved.Members), JsonSerializer.Serialize(reloaded.Members));
         Assert.Equal(saved.Source, reloaded.Source);
         Assert.Equal(saved.Note, reloaded.Note);
     }

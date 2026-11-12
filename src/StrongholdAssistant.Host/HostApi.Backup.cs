@@ -68,11 +68,12 @@ public sealed partial class HostApi
         {
             await _lineups.SaveAsync(new Lineup
             {
-                Id = input.Id, Name = input.Name, Source = input.Source, Note = input.Note,
+                Id = input.Id, Name = input.Name, Source = input.Source, Note = input.Note, Description = input.Description,
                 UpdatedAt = input.UpdatedAt, Goals = input.Goals, Equipment = input.Equipment, StrategyId = input.StrategyId,
                 Slots = input.Members.Select(m => new LineupSlot
                 {
                     OperatorName = m.Name, Key = m.Key,
+                    Equipment = m.Equipment.DistinctBy(e => e.Name).ToArray(),
                     TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform)
                 }).ToList()
             }, preserveUpdatedAt: true);

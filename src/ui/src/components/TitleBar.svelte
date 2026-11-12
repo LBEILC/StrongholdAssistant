@@ -14,9 +14,15 @@
   <span class="sub term">Stronghold<br />Assistant</span>
   <span class="spacer"></span>
   <!-- 连上游戏只亮绿点（分辨率放进提示里，标题栏窄，显示了会挤掉「覆盖」）；没连上才写字 -->
-  <span class="conn" class:ok={conn.state === 'connected'} title={conn.state === 'connected' ? `已连接游戏窗口 · ${conn.resolution}` : '寻找游戏窗口…'}>
+  <!-- 找到游戏但用不了（MuMu 分辨率不对、多开没选）时写「无法连接」，原因放提示里 -->
+  <span
+    class="conn"
+    class:ok={conn.state === 'connected'}
+    class:warn={!!conn.problem}
+    title={conn.state === 'connected' ? `已连接${conn.source === 'mumu' ? ' MuMu 模拟器' : '游戏窗口'} · ${conn.resolution}` : (conn.problem ?? '寻找游戏窗口…')}
+  >
     <span class="dot"></span>
-    {#if conn.state !== 'connected'}<span class="txt">寻找游戏窗口…</span>{/if}
+    {#if conn.state !== 'connected'}<span class="txt">{conn.problem ? '无法连接' : '寻找游戏窗口…'}</span>{/if}
     {#if conn.overlay}<em class="fs" title="侧栏盖在游戏画面左侧。买东西、布阵时可以点右边的按钮收成细条">覆盖</em>{/if}
   </span>
   <!-- 收起常驻，按设置里的收起方式；向上收起后这里变成展开 -->
@@ -130,6 +136,12 @@
     height: 6px;
     border-radius: 50%;
     background: var(--fg-4);
+  }
+  .warn {
+    color: var(--gold);
+  }
+  .warn .dot {
+    background: var(--gold);
   }
   .ok .dot {
     background: var(--mint);

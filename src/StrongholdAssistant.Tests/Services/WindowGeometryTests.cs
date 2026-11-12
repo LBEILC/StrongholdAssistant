@@ -8,6 +8,16 @@ namespace ASPAssistant.Tests.Services;
 
 public class WindowGeometryTests
 {
+    [Theory]
+    [InlineData(2000, 900, 200, 0, 1600, 900)]
+    [InlineData(1600, 1200, 0, 150, 1600, 900)]
+    [InlineData(1600, 900, 0, 0, 1600, 900)]
+    public void FitsGameInsideLetterboxedViewport(int width, int height, int x, int y, int w, int h)
+    {
+        var actual = WindowGeometry.FitAspectRatio(new RECT { Left = 100, Top = 50, Right = 100 + width, Bottom = 50 + height }, 16, 9);
+        Assert.Equal((100 + x, 50 + y, w, h), (actual.Left, actual.Top, actual.Width, actual.Height));
+    }
+
     [Fact]
     public void CollapseModesPreserveExpandedDimensionsAndRespectScale()
     {

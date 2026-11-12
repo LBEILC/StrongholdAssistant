@@ -1,4 +1,5 @@
 // Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+// 2026-11-12：移植上游 PR #5 的 FitAspectRatio 和横屏比例判断。
 using ASPAssistant.Core.Interop;
 using ASPAssistant.Core.Models;
 
@@ -6,6 +7,22 @@ namespace ASPAssistant.Core.Services;
 
 public static class WindowGeometry
 {
+    public static bool IsSupportedGameAspectRatio(int width, int height)
+        => width > 0 && height > 0 && Math.Abs(width - height * 16.0 / 9) <= 2;
+
+    /// <summary>按画面比例居中裁去显示区域的黑边，坐标为物理像素。</summary>
+    public static RECT FitAspectRatio(RECT bounds, int imageWidth, int imageHeight)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0 || imageWidth <= 0 || imageHeight <= 0)
+            throw new ArgumentOutOfRangeException(nameof(bounds));
+        var scale = Math.Min((double)bounds.Width / imageWidth, (double)bounds.Height / imageHeight);
+        var width = (int)Math.Round(imageWidth * scale);
+        var height = (int)Math.Round(imageHeight * scale);
+        var left = bounds.Left + (bounds.Width - width) / 2;
+        var top = bounds.Top + (bounds.Height - height) / 2;
+        return new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
+    }
+
     public static (double Width, double Height) CollapsedSize(double width, double height,
         double uiScale, bool collapsed, double? upHeight)
         => !collapsed ? (width, height) : upHeight is { } h ? (width, h * uiScale) : (48 * uiScale, height);

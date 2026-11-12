@@ -17,3 +17,6 @@ export const asset = {
 }
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
+
+/** 首领血量：一百万以上取整到万（142万），一万以上保留一位（28.4万） */
+export const fmtHp = (n: number) => (n >= 1e6 ? `${Math.round(n / 1e4)}万` : n >= 1e4 ? `${(n / 1e4).toFixed(1)}万` : String(n))

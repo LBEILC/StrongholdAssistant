@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ASPAssistant.Core.Data;
 using ASPAssistant.Core.Models;
@@ -23,6 +24,7 @@ public sealed partial class HostApi
     private readonly HashSet<string> _avatarBans = [];
     public JsonElement Catalog { get; }
     public MatchInfo Match { get; private set; }
+    private GameModeInfo[] _modes = [];
 
     private HostApi(string userDirectory, Dictionary<string, string> ids, List<Operator> operators,
         List<CovenantInfo> covenants, JsonElement catalog)
@@ -84,7 +86,14 @@ public sealed partial class HostApi
             }),
             strategies = strategies.Select(s => new { id = s.Id, name = s.Name, initiator = s.Initiator, description = Clean(s.Description) })
         }, JsonOptions);
-        var api = new HostApi(userDirectory, ids, operators, covenants, catalog);
+        var extra = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "codex_extra.json")))!;
+        var merged = JsonNode.Parse(catalog.GetRawText())!;
+        foreach (var category in new[] { "equipment", "operators", "bosses" })
+            foreach (var entry in merged[category]!.AsArray())
+                if (extra[category]![entry![category == "bosses" ? "id" : "name"]!.GetValue<string>()] is JsonObject fields)
+                    foreach (var field in fields) entry[field.Key] = field.Value!.DeepClone();
+        var api = new HostApi(userDirectory, ids, operators, covenants, JsonSerializer.SerializeToElement(merged, JsonOptions));
+        api._modes = extra["modes"]!.Deserialize<GameModeInfo[]>(JsonOptions)!;
         api.SettingsStore = new HostSettingsStore(Path.Combine(userDirectory, "settings.json"));
         api.Settings = api.SettingsStore.LoadSettings();
         await api.RefreshTrackingAsync();
@@ -129,9 +138,9 @@ public sealed partial class HostApi
 
     private LineupDto ToDto(Lineup lineup) => new(lineup.Id, lineup.Name,
         lineup.Slots.Select(s => new LineupMember(s.OperatorName,
-            s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key)).ToArray(),
+            s.TransformedCovenant.Length == 0 ? null : _ids[s.TransformedCovenant], s.Key) { Equipment = s.Equipment }).ToArray(),
         lineup.Source, lineup.Note, lineup.UpdatedAt)
-        { Goals = lineup.Goals ?? InferGoals(lineup), Equipment = lineup.Equipment, StrategyId = lineup.StrategyId };
+        { Goals = lineup.Goals ?? InferGoals(lineup), Equipment = lineup.Equipment, StrategyId = lineup.StrategyId, Description = lineup.Description };
 
     private CovenantGoal[] InferGoals(Lineup lineup)
     {
@@ -163,6 +172,7 @@ public sealed partial class HostApi
         {
             var slot = oldSlots.TryGetValue(m.Name, out var old) ? old : new LineupSlot { OperatorName = m.Name };
             slot.Key = m.Key;
+            slot.Equipment = m.Equipment.DistinctBy(e => e.Name).ToArray();
             slot.TransformedCovenant = m.Transform is null ? "" : CovenantName(m.Transform);
             return slot;
         }).ToList();
@@ -172,6 +182,7 @@ public sealed partial class HostApi
         lineup.StrategyId = input.StrategyId;
         lineup.Source = input.Source;
         lineup.Note = input.Note;
+        lineup.Description = input.Description;
         await _lineups.SaveAsync(lineup);
         await RefreshTrackingAsync();
         return ToDto(lineup);
@@ -179,6 +190,7 @@ public sealed partial class HostApi
 
     private void ValidateLineup(LineupDto input)
     {
+        if (input.Description?.Length > 500) throw new ArgumentException("简介最多 500 字。");
         if (input.StrategyId is not null && !Catalog.GetProperty("strategies").EnumerateArray()
                 .Any(s => s.GetProperty("id").GetString() == input.StrategyId))
             throw new ArgumentException("阵容策略无效。");
@@ -196,7 +208,12 @@ public sealed partial class HostApi
                     && g.Level is 1 or 2 && g.Level <= c.GetProperty("thresholds").GetArrayLength())))
             throw new ArgumentException("阵容的目标盟约无效。");
         foreach (var member in input.Members)
+        {
+            if (member.Equipment is null || member.Equipment.Any(e => e is null))
+                throw new ArgumentException("装备不存在。");
+            ValidateEquipment(member.Equipment.Select(e => e.Name).ToArray());
             if (member.Transform is not null) _ = CovenantName(member.Transform);
+        }
     }
 
     private static void ValidateId(string id, bool allowEmpty = false)
@@ -254,7 +271,9 @@ public sealed partial class HostApi
         File.Move(_sessionPath + ".tmp", _sessionPath, overwrite: true);
     }
 
-    public async Task<MatchInfo> ResetMatchAsync()
+    public Task<MatchInfo> ResetMatchAsync() => ResetMatchAsync(false);
+
+    private async Task<MatchInfo> ResetMatchAsync(bool solo)
     {
         await _scanGate.WaitAsync();
         try
@@ -262,7 +281,8 @@ public sealed partial class HostApi
             _manualBans.Clear();
             _avatarBans.Clear();
             _banGroups.Clear();
-            Match = new("none", null, _covenants.Select(c => new CovenantState(_ids[c.Name], false)).ToArray(), [], null, []);
+            Match = new("none", null, _covenants.Select(c => new CovenantState(_ids[c.Name], false)).ToArray(), [], null, [])
+                { Solo = solo, AwaitingDetail = solo };
             RecomputeTracking();
             Changed?.Invoke("match", Match);
             return Match;
@@ -297,6 +317,9 @@ public sealed partial class HostApi
         T Read<T>(int index) => args[index].Deserialize<T>(JsonOptions)!;
         switch (method)
         {
+            case "plazaLogin": return await PlazaLoginAsync();
+            case "plazaToken": return new PlazaTokenStore(DataDirectory).Read();
+            case "plazaLogout": new PlazaTokenStore(DataDirectory).Delete(); return null;
             case "catalog": return Catalog;
             case "settings": return Settings;
             case "saveSettings": SaveSettings(Read<SettingsDto>(0)); return null;
@@ -309,6 +332,8 @@ public sealed partial class HostApi
             case "checkUpdate": return await CheckUpdateAsync();
             case "applyUpdate": await ApplyUpdateAsync(); return null;
             case "connection": return Connection;
+            case "mumuInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverMumuDevices()
+                .Select(d => new MumuInstance(d.Serial, d.Name)).ToArray());
             case "match": return Match;
             case "resetMatch": return await ResetMatchAsync();
             case "copyText": CopyText(Read<string>(0)); return null;

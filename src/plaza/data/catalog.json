@@ -1,0 +1,907 @@
+{
+  "covenants": [
+    {
+      "id": "ursus"
+    },
+    {
+      "id": "iberia"
+    },
+    {
+      "id": "kazimierz"
+    },
+    {
+      "id": "siracusa"
+    },
+    {
+      "id": "yan"
+    },
+    {
+      "id": "victoria"
+    },
+    {
+      "id": "lethania"
+    },
+    {
+      "id": "sargon"
+    },
+    {
+      "id": "kjerag"
+    },
+    {
+      "id": "egir"
+    },
+    {
+      "id": "indom"
+    },
+    {
+      "id": "deput"
+    },
+    {
+      "id": "empty"
+    },
+    {
+      "id": "stead"
+    },
+    {
+      "id": "mira"
+    },
+    {
+      "id": "arcane"
+    },
+    {
+      "id": "invest"
+    },
+    {
+      "id": "skillful"
+    },
+    {
+      "id": "solo"
+    },
+    {
+      "id": "raid"
+    },
+    {
+      "id": "preci"
+    },
+    {
+      "id": "sunt"
+    },
+    {
+      "id": "doc"
+    },
+    {
+      "id": "mani"
+    },
+    {
+      "id": "swift"
+    },
+    {
+      "id": "visi"
+    }
+  ],
+  "operators": [
+    {
+      "name": "折光"
+    },
+    {
+      "name": "车尔尼"
+    },
+    {
+      "name": "黑键"
+    },
+    {
+      "name": "卡涅利安"
+    },
+    {
+      "name": "艾雅法拉"
+    },
+    {
+      "name": "纯烬艾雅法拉"
+    },
+    {
+      "name": "折桠"
+    },
+    {
+      "name": "乌啾"
+    },
+    {
+      "name": "赫拉格"
+    },
+    {
+      "name": "维伊"
+    },
+    {
+      "name": "怒潮凛冬"
+    },
+    {
+      "name": "蓝毒"
+    },
+    {
+      "name": "海沫"
+    },
+    {
+      "name": "旅骨"
+    },
+    {
+      "name": "艾丽妮"
+    },
+    {
+      "name": "温蒂"
+    },
+    {
+      "name": "流明"
+    },
+    {
+      "name": "棘刺"
+    },
+    {
+      "name": "引星棘刺"
+    },
+    {
+      "name": "风絮"
+    },
+    {
+      "name": "余"
+    },
+    {
+      "name": "黍"
+    },
+    {
+      "name": "烛煌"
+    },
+    {
+      "name": "艾丝黛尔"
+    },
+    {
+      "name": "泡泡"
+    },
+    {
+      "name": "莎草"
+    },
+    {
+      "name": "森蚺"
+    },
+    {
+      "name": "佩佩"
+    },
+    {
+      "name": "极光"
+    },
+    {
+      "name": "雪猎"
+    },
+    {
+      "name": "耶拉"
+    },
+    {
+      "name": "初雪"
+    },
+    {
+      "name": "灵知"
+    },
+    {
+      "name": "圣聆初雪"
+    },
+    {
+      "name": "凛御银灰"
+    },
+    {
+      "name": "幽灵鲨"
+    },
+    {
+      "name": "深巡"
+    },
+    {
+      "name": "斯卡蒂"
+    },
+    {
+      "name": "歌蕾蒂娅"
+    },
+    {
+      "name": "归溟幽灵鲨"
+    },
+    {
+      "name": "乌尔比安"
+    },
+    {
+      "name": "浊心斯卡蒂"
+    },
+    {
+      "name": "克莱门莎"
+    },
+    {
+      "name": "水月"
+    },
+    {
+      "name": "砾"
+    },
+    {
+      "name": "野鬃"
+    },
+    {
+      "name": "瑕光"
+    },
+    {
+      "name": "远牙"
+    },
+    {
+      "name": "玛恩纳"
+    },
+    {
+      "name": "耀骑士临光"
+    },
+    {
+      "name": "薇薇安娜"
+    },
+    {
+      "name": "复奏"
+    },
+    {
+      "name": "奥斯塔"
+    },
+    {
+      "name": "忍冬"
+    },
+    {
+      "name": "伺夜"
+    },
+    {
+      "name": "铃兰"
+    },
+    {
+      "name": "贝洛内"
+    },
+    {
+      "name": "荒芜拉普兰德"
+    },
+    {
+      "name": "慕斯"
+    },
+    {
+      "name": "水灯心"
+    },
+    {
+      "name": "Miss.Christine"
+    },
+    {
+      "name": "涤火杰西卡"
+    },
+    {
+      "name": "白铁"
+    },
+    {
+      "name": "酒神"
+    },
+    {
+      "name": "维娜·维多利亚"
+    },
+    {
+      "name": "角峰"
+    },
+    {
+      "name": "哈洛德"
+    },
+    {
+      "name": "斥罪"
+    },
+    {
+      "name": "逻各斯"
+    },
+    {
+      "name": "空弦"
+    },
+    {
+      "name": "迷迭香"
+    },
+    {
+      "name": "真言"
+    },
+    {
+      "name": "灰喉"
+    },
+    {
+      "name": "吉星"
+    },
+    {
+      "name": "妮芙"
+    },
+    {
+      "name": "W"
+    },
+    {
+      "name": "霍尔海雅"
+    },
+    {
+      "name": "云迹"
+    },
+    {
+      "name": "隐德来希"
+    },
+    {
+      "name": "伊桑"
+    },
+    {
+      "name": "深靛"
+    },
+    {
+      "name": "卡达"
+    },
+    {
+      "name": "蛇屠箱"
+    },
+    {
+      "name": "罗比菈塔"
+    },
+    {
+      "name": "摆渡人"
+    },
+    {
+      "name": "塞雷娅"
+    },
+    {
+      "name": "遥"
+    },
+    {
+      "name": "魔王"
+    },
+    {
+      "name": "波登可"
+    },
+    {
+      "name": "史尔特尔"
+    },
+    {
+      "name": "承曦格雷伊"
+    },
+    {
+      "name": "锡人"
+    },
+    {
+      "name": "溯光星源"
+    },
+    {
+      "name": "宴"
+    },
+    {
+      "name": "山"
+    },
+    {
+      "name": "锏"
+    },
+    {
+      "name": "老鲤"
+    },
+    {
+      "name": "淬羽赫默"
+    },
+    {
+      "name": "夏栎"
+    },
+    {
+      "name": "杰克"
+    },
+    {
+      "name": "赫德雷"
+    },
+    {
+      "name": "夜莺"
+    },
+    {
+      "name": "霜叶"
+    },
+    {
+      "name": "乌有"
+    },
+    {
+      "name": "历阵锐枪芬"
+    },
+    {
+      "name": "渡桥"
+    },
+    {
+      "name": "Mon3tr"
+    },
+    {
+      "name": "凯瑟琳"
+    },
+    {
+      "name": "可露希尔"
+    },
+    {
+      "name": "矩"
+    },
+    {
+      "name": "拜松"
+    },
+    {
+      "name": "褐果"
+    },
+    {
+      "name": "风丸"
+    },
+    {
+      "name": "鸿雪"
+    },
+    {
+      "name": "仇白"
+    },
+    {
+      "name": "星极"
+    },
+    {
+      "name": "焰尾"
+    },
+    {
+      "name": "瑰盐"
+    },
+    {
+      "name": "烈夏"
+    },
+    {
+      "name": "至简"
+    },
+    {
+      "name": "陨星"
+    },
+    {
+      "name": "机械师"
+    },
+    {
+      "name": "异客"
+    },
+    {
+      "name": "塔露拉"
+    },
+    {
+      "name": "真理"
+    },
+    {
+      "name": "奥尔佳"
+    },
+    {
+      "name": "安洁莉娜"
+    },
+    {
+      "name": "夕"
+    },
+    {
+      "name": "冻河"
+    },
+    {
+      "name": "青枳"
+    },
+    {
+      "name": "铸铁"
+    },
+    {
+      "name": "华法琳"
+    },
+    {
+      "name": "拉普兰德"
+    },
+    {
+      "name": "蕾缪安"
+    },
+    {
+      "name": "星源"
+    },
+    {
+      "name": "寒檀"
+    },
+    {
+      "name": "地灵"
+    },
+    {
+      "name": "缪尔赛思"
+    },
+    {
+      "name": "阿米娅"
+    },
+    {
+      "name": "安哲拉"
+    },
+    {
+      "name": "帕拉斯"
+    },
+    {
+      "name": "暴躁铁皮"
+    }
+  ],
+  "equipment": [
+    {
+      "name": "维式重锤"
+    },
+    {
+      "name": "坚守盾牌"
+    },
+    {
+      "name": "盟约之币"
+    },
+    {
+      "name": "随身身份牌"
+    },
+    {
+      "name": "源石溶剂"
+    },
+    {
+      "name": "虹彩活血饮料"
+    },
+    {
+      "name": "雪祀之衣"
+    },
+    {
+      "name": "不屈弹射器"
+    },
+    {
+      "name": "紧急调度券"
+    },
+    {
+      "name": "战栗维式重锤"
+    },
+    {
+      "name": "萨尔贡浓茶"
+    },
+    {
+      "name": "精打细算玩偶"
+    },
+    {
+      "name": "简易通讯机"
+    },
+    {
+      "name": "见钱眼开玩偶"
+    },
+    {
+      "name": "卫戍推荐信"
+    },
+    {
+      "name": "聚合急救箱"
+    },
+    {
+      "name": "灵巧涡轮手套"
+    },
+    {
+      "name": "叙拉古正装"
+    },
+    {
+      "name": "精准狙击镜"
+    },
+    {
+      "name": "炎国短刀"
+    },
+    {
+      "name": "迅捷作战粮"
+    },
+    {
+      "name": "歌利亚头盔"
+    },
+    {
+      "name": "阿戈尔重刃"
+    },
+    {
+      "name": "奥术法阵"
+    },
+    {
+      "name": "坚固维式重锤"
+    },
+    {
+      "name": "加速维式重锤"
+    },
+    {
+      "name": "突袭手雷"
+    },
+    {
+      "name": "驮兽储蓄罐"
+    },
+    {
+      "name": "乌萨斯呼吸器"
+    },
+    {
+      "name": "多功能补剂"
+    },
+    {
+      "name": "伊比利亚骨刺刀"
+    },
+    {
+      "name": "定期存折"
+    },
+    {
+      "name": "不退者之盾"
+    },
+    {
+      "name": "寻呼模块"
+    },
+    {
+      "name": "蜂鸣器"
+    },
+    {
+      "name": "伪装服"
+    },
+    {
+      "name": "卡西米尔竞技旗"
+    },
+    {
+      "name": "灼燃维式重锤"
+    },
+    {
+      "name": "护盾无人机"
+    },
+    {
+      "name": "M3茧甲"
+    },
+    {
+      "name": "莱塔尼亚小鼓"
+    },
+    {
+      "name": "谢拉格不融冰"
+    },
+    {
+      "name": "可靠怀表"
+    },
+    {
+      "name": "一次性促销券"
+    },
+    {
+      "name": "驱逐者警棍"
+    },
+    {
+      "name": "动能单手弩"
+    },
+    {
+      "name": "汲取者之喙"
+    },
+    {
+      "name": "双模机械臂"
+    },
+    {
+      "name": "信标"
+    },
+    {
+      "name": "拟态物质"
+    },
+    {
+      "name": "博士投影"
+    },
+    {
+      "name": "天马之盔"
+    },
+    {
+      "name": "电流维式重锤"
+    },
+    {
+      "name": "佣兵名牌"
+    },
+    {
+      "name": "人事部记录"
+    },
+    {
+      "name": "瓶装烈性反应"
+    },
+    {
+      "name": "不退者力场"
+    },
+    {
+      "name": "驱逐者瓦斯"
+    },
+    {
+      "name": "投机骰子"
+    },
+    {
+      "name": "天马之枪"
+    },
+    {
+      "name": "人事部文档"
+    },
+    {
+      "name": "变形同构体"
+    },
+    {
+      "name": "动能加速器"
+    },
+    {
+      "name": "汲取者之心"
+    },
+    {
+      "name": "终极维式重锤"
+    },
+    {
+      "name": "不退者卫护系统"
+    },
+    {
+      "name": "动能轰击弩"
+    },
+    {
+      "name": "汲取者之镰"
+    },
+    {
+      "name": "驱逐者防暴装备"
+    },
+    {
+      "name": "天马之耀"
+    }
+  ],
+  "strategies": [
+    {
+      "id": "band_amiya"
+    },
+    {
+      "id": "band_sarkazb"
+    },
+    {
+      "id": "band_emperor"
+    },
+    {
+      "id": "band_qalaisa"
+    },
+    {
+      "id": "band_ioleta"
+    },
+    {
+      "id": "band_survive"
+    },
+    {
+      "id": "band_price"
+    },
+    {
+      "id": "band_transfer"
+    },
+    {
+      "id": "band_dance"
+    },
+    {
+      "id": "band_copy"
+    },
+    {
+      "id": "band_jenga"
+    },
+    {
+      "id": "band_evolve"
+    },
+    {
+      "id": "band_jesica"
+    },
+    {
+      "id": "band_takecare"
+    },
+    {
+      "id": "band_shield"
+    },
+    {
+      "id": "band_smith"
+    },
+    {
+      "id": "band_weakness"
+    },
+    {
+      "id": "band_lmlee"
+    },
+    {
+      "id": "band_fang"
+    },
+    {
+      "id": "band_amedic"
+    },
+    {
+      "id": "band_mech"
+    },
+    {
+      "id": "band_treasure"
+    },
+    {
+      "id": "band_upgrade"
+    },
+    {
+      "id": "band_breakaway"
+    },
+    {
+      "id": "band_damaztic"
+    },
+    {
+      "id": "band_fund"
+    },
+    {
+      "id": "band_gain"
+    },
+    {
+      "id": "band_prepfin"
+    },
+    {
+      "id": "band_mess"
+    },
+    {
+      "id": "band_protect"
+    },
+    {
+      "id": "band_random"
+    },
+    {
+      "id": "band_cannot"
+    },
+    {
+      "id": "band_ducklord"
+    },
+    {
+      "id": "band_rich"
+    },
+    {
+      "id": "band_substitute"
+    },
+    {
+      "id": "band_sell"
+    },
+    {
+      "id": "band_support"
+    },
+    {
+      "id": "band_high"
+    },
+    {
+      "id": "band_equipment"
+    },
+    {
+      "id": "band_pudd"
+    },
+    {
+      "id": "band_closeout"
+    },
+    {
+      "id": "band_pith"
+    },
+    {
+      "id": "band_limit"
+    },
+    {
+      "id": "band_bonus"
+    },
+    {
+      "id": "band_yan2"
+    },
+    {
+      "id": "band_yan"
+    },
+    {
+      "id": "band_sargon"
+    },
+    {
+      "id": "band_pepe"
+    },
+    {
+      "id": "band_victoria"
+    },
+    {
+      "id": "band_harold"
+    },
+    {
+      "id": "band_egir"
+    },
+    {
+      "id": "band_clementia"
+    },
+    {
+      "id": "band_kazimier"
+    },
+    {
+      "id": "band_mlynar"
+    },
+    {
+      "id": "band_kjerag2"
+    },
+    {
+      "id": "band_kjerag"
+    },
+    {
+      "id": "band_siracusa"
+    },
+    {
+      "id": "band_bond"
+    },
+    {
+      "id": "band_lethania"
+    },
+    {
+      "id": "band_ursus"
+    },
+    {
+      "id": "band_iberia"
+    }
+  ]
+}

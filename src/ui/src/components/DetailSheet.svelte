@@ -2,7 +2,7 @@
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { asset, ROMAN } from '../lib/assets'
+  import { asset, ROMAN, fmtHp } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
   import TierBadge from './TierBadge.svelte'
   import OpTile from './OpTile.svelte'
@@ -12,6 +12,8 @@
   // 底部详情面板：点击打开，固定不随鼠标消失；Esc 或点遮罩关闭
   const d = $derived(app.detail)
   const close = () => (app.detail = null)
+  const showEq = (name: string) => (app.detail = { kind: 'equipment', name })
+  const showOp = (name: string) => (app.detail = { kind: 'operator', name })
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
@@ -54,6 +56,12 @@
             {/if}
           </div>
         {/each}
+        {#if o.givesEquipment?.length}
+          <div class="rel">
+            <span class="tt">提供装备</span>
+            <span class="rr">{#each o.givesEquipment as n (n)}<button class="eqc" onclick={() => showEq(n)}><img src={asset.equipment(n)} alt="" />{n}</button>{/each}</span>
+          </div>
+        {/if}
       </div>
       <div class="actions">
         <button class="btn" class:on={app.tracked.has(o.name)} onclick={() => app.toggleTracked(o.name)}>
@@ -87,7 +95,32 @@
       </div>
       <div class="body">
         <div class="trait"><span class="tt">普通</span><GameText text={e.normal} /></div>
-        <div class="trait"><span class="tt">精锐</span><GameText text={e.elite} compare={e.normal} /></div>
+        {#if e.elite}
+          <div class="trait"><span class="tt">精锐</span><GameText text={e.elite} compare={e.normal} /></div>
+        {:else}
+          <div class="trait"><span class="tt">精锐</span><span class="none">没有进阶效果</span></div>
+        {/if}
+        {#if e.fuse}
+          <div class="rel">
+            <span class="tt">合成</span>
+            <span class="rr">
+              <i>+</i><button class="eqc" onclick={() => showEq(e.fuse!.with)}><img src={asset.equipment(e.fuse.with)} alt="" />{e.fuse.with}</button>
+              <i>→</i><button class="eqc out" onclick={() => showEq(e.fuse!.result)}><img src={asset.equipment(e.fuse.result)} alt="" />{e.fuse.result}</button>
+            </span>
+          </div>
+        {/if}
+        {#if e.transformBond}
+          <div class="rel">
+            <span class="tt">变形</span>
+            <span class="rr"><i>+</i><span class="tag">变形同构体</span><i>→</i><button class="eqc" onclick={() => (app.detail = { kind: 'covenant', id: e.transformBond! })}><BondIcon id={e.transformBond} size={16} on />{app.cov(e.transformBond).name}</button></span>
+          </div>
+        {/if}
+        {#if e.sources?.length}
+          <div class="rel">
+            <span class="tt">来源</span>
+            <span class="rr">{#each e.sources as n (n)}<OpTile name={n} size={32} onclick={() => showOp(n)} />{/each}</span>
+          </div>
+        {/if}
       </div>
       <div class="actions">
         <button class="btn" class:on={trk} onclick={() => app.toggleTrackedEq(e.name)}>
@@ -132,6 +165,7 @@
         <div class="meta">
           <span class="leader">敌方领袖</span>
           <h3>{b.name}</h3>
+          {#if b.hidingCore}<span class="obtain">有隐秘核心</span>{/if}
         </div>
       </div>
       <div class="body">
@@ -139,6 +173,22 @@
           <div class="trait"><span class="tt term">{String(i + 1).padStart(2, '0')}</span><GameText text={a} /></div>
         {/each}
       </div>
+      <!-- 血量：单人按规程等级排成网格，联机四档一行；本局模式高亮 -->
+      {#each [['single', '单人'], ['multi', '联机']] as [g, label] (g)}
+        {@const rows = b.hp.filter((h) => h.group === g)}
+        {#if rows.length}
+          <div class="hph"><b>血量 · {label}</b>{#if b.hidingCore}<em>下行为隐秘核心</em>{/if}</div>
+          <div class="hp" class:multi={g === 'multi'}>
+            {#each rows as h (h.mode)}
+              <div class="hc" class:cur={app.match.mode?.id === h.mode}>
+                <span class="hm">{h.name.replace('规程等级', 'Lv.').replace('模拟', '')}</span>
+                <b>{fmtHp(h.hp)}</b>
+                {#if h.coreHp}<small>{fmtHp(h.coreHp)}</small>{/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      {/each}
     {/if}
   </aside>
 {/if}
@@ -328,6 +378,98 @@
   .cond {
     color: var(--gold);
     font-weight: 600;
+  }
+  .none {
+    color: var(--fg-4);
+  }
+  .rel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: 1px dashed var(--line);
+  }
+  .rr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .rr i {
+    font-style: normal;
+    color: var(--fg-4);
+  }
+  .eqc {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 8px 0 3px;
+    color: var(--fg-1);
+    background: var(--bg-2);
+    box-shadow: inset 0 -2px 0 var(--fg-4);
+  }
+  .eqc:hover {
+    background: var(--bg-3);
+  }
+  .eqc.out {
+    box-shadow: inset 0 -2px 0 var(--gold);
+  }
+  .eqc img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .hph {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 14px 0 6px;
+    font-size: 12px;
+  }
+  .hph em {
+    font-style: normal;
+    font-size: 10.5px;
+    color: var(--fg-4);
+  }
+  .hp {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 2px;
+  }
+  .hp.multi {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .hc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 2px;
+    background: rgb(0 0 0 / 0.25);
+    font-variant-numeric: tabular-nums;
+  }
+  .hc.cur {
+    background: rgb(243 179 34 / 0.14);
+    box-shadow: inset 0 0 0 1px var(--gold);
+  }
+  .hm {
+    font-size: 10px;
+    color: var(--fg-4);
+  }
+  .hc b {
+    font-size: 12.5px;
+    color: var(--fg-1);
+  }
+  .hc small {
+    font-size: 10px;
+    color: var(--gold);
   }
   .members {
     display: flex;

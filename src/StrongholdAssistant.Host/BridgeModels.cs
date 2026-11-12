@@ -5,10 +5,15 @@ namespace StrongholdAssistant.Host;
 // 对应 src/ui/src/lib/api/types.ts；协议仍由界面侧定义。
 public sealed record LineupMember(string Name,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Transform = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Key = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Key = null)
+{
+    public ASPAssistant.Core.Models.MemberEquip[] Equipment { get; init; } = [];
+}
 public sealed record LineupDto(string Id, string Name, LineupMember[] Members, string Source,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Note, DateTime UpdatedAt)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Description { get; init; }
     public string? StrategyId { get; init; }
     public ASPAssistant.Core.Models.CovenantGoal[] Goals { get; init; } = [];
     public string[] Equipment { get; init; } = [];
@@ -19,6 +24,8 @@ public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[]
 }
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public string GameSource { get; init; } = "auto";
+    public string MumuSerial { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
     public string CollapseMode { get; init; } = "strip";
@@ -34,6 +41,10 @@ public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RecognizedAt = null)
 {
     public BanGroup[] BanGroups { get; init; } = [];
+    public bool BansScanned { get; init; }
+    public bool Solo { get; init; }
+    public bool AwaitingDetail { get; init; }
+    public ASPAssistant.Core.Models.GameModeInfo? Mode { get; init; }
 }
 public sealed record BanGroup(string Covenant, BanSlot[] Slots, bool Complete);
 public sealed record BanSlot(string? Name, int Tier, string[] Candidates,
@@ -41,7 +52,10 @@ public sealed record BanSlot(string? Name, int Tier, string[] Candidates,
 
 public sealed record Connection(string State,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Resolution = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Fullscreen = null, bool Overlay = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Fullscreen = null, bool Overlay = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Source = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Problem = null);
+public sealed record MumuInstance(string Serial, string Name);
 public sealed record ScanStatus(bool Busy,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Message = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Ok = null,

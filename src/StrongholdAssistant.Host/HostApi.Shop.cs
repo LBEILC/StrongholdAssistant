@@ -89,7 +89,9 @@ public sealed partial class HostApi
         foreach (var item in items)
         {
             item.IsTracked = names.Contains(item.Name);
-            item.IsKey = item.IsTracked && (_trackingTarget?.Members.Any(m => m.Name == item.Name && m.Key == true) ?? false);
+            item.IsKey = item.IsTracked && (_trackingTarget?.Members.Any(m =>
+                (m.Name == item.Name && m.Key == true)
+                || m.Equipment.Any(e => e.Name == item.Name && e.Priority)) ?? false);
             item.IsSecondary = secondary.Contains(item.Name);
         }
     }

@@ -42,7 +42,9 @@ public class OcrScannerService : IDisposable
     /// Raised when the periodic scan first detects that the game is on the ban selection screen.
     /// Fires once per entry; resets after the screen is left.
     /// </summary>
-    public event Action? BanScreenDetected;
+    public event Action<bool>? BanScreenDetected;
+    public Func<bool> AwaitingDetail { get; set; } = () => false;
+    public event Action? DetailScreenDetected;
 
     /// <summary>
     /// Raised when the ban selection screen is no longer detected.
@@ -363,8 +365,12 @@ public class OcrScannerService : IDisposable
         if (_informationState.Observe(opening, gameplay))
         {
             AppLogger.Info("BanScreen", "Validated opening info screen detected");
-            BanScreenDetected?.Invoke();
+            bool solo = await _informationDetector.HasSoloPromptAsync(screenshot, width, height);
+            BanScreenDetected?.Invoke(solo);
         }
+        if (!opening && AwaitingDetail()
+            && await _informationDetector.IsInformationScreenAsync(screenshot, width, height))
+            DetailScreenDetected?.Invoke();
     }
 
     public void Dispose()

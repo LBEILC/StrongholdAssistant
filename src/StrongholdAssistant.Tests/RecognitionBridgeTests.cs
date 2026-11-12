@@ -68,6 +68,6 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture) : IC
         Assert.Equal(new[] { "scan", "scan" }, events.Select(e => e.Name));
         Assert.Equal(new ScanStatus(true), events[0].Value);
         Assert.Equal(new ScanStatus(false, error.Message, false), events[1].Value);
-        Assert.Equal("当前画面不是本局信息页，请切换到“确认本局信息”后重试。", error.Message);
+        Assert.Equal("当前画面不是本局信息页，请打开开局信息页或对局详情后重试。", error.Message);
     }
 }

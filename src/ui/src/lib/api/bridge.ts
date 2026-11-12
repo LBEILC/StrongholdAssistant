@@ -66,7 +66,11 @@ export const bridgeApi: Api = {
   applyUpdate: call('applyUpdate'),
   openUrl: call('openUrl'),
   copyText: call('copyText'),
+  plazaLogin: call('plazaLogin'),
+  plazaToken: call('plazaToken'),
+  plazaLogout: call('plazaLogout'),
   openDataFolder: call('openDataFolder'),
+  mumuInstances: call('mumuInstances'),
   exportData: call('exportData'),
   pickBackup: call('pickBackup'),
   importData: call('importData'),
@@ -75,4 +79,5 @@ export const bridgeApi: Api = {
   onConnection: listen('connection'),
   onScan: listen('scan'),
   onWindow: listen('window'),
+  onDeepLink: listen('deepLink'),
 }

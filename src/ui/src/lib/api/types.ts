@@ -34,6 +34,10 @@ export interface Operator {
    * 不参与阵容规划和本局禁用推算；图鉴里单独归到「特殊」组。普通干员没有这个字段。
    */
   obtain?: string
+  /** 装备栏数（v0.5.0）：普通干员 2 / 2，暴躁铁皮 4 / 6（数据表 charChessDataDict.equipSlotNum） */
+  equipSlots: { normal: number; elite: number }
+  /** 这名干员会提供的装备（v0.5.0，整备能力「获得一件××」，含获得时和进入休整期时）：给的是一个系列时写系列里的基础件名。没有就不写 */
+  givesEquipment?: string[]
 }
 
 export interface Equipment {
@@ -41,13 +45,34 @@ export interface Equipment {
   tier: Tier
   categories: string[]
   normal: string
+  /** 进阶效果；空串 = 这件装备没有进阶版（界面写「没有进阶效果」） */
   elite: string
+  /** 合成（v0.5.0）：和 with 同时持有时组合成 result（都是装备名）。不能合成的不写 */
+  fuse?: { with: string; result: string }
+  /** 装在变形同构体上时提供的盟约（v0.5.0）。不提供的不写 */
+  transformBond?: CovenantId
+  /** 来源（v0.5.0）：获得时会给这件装备的干员（Operator.givesEquipment 的反查，含给同系列装备的）。没有就不写 */
+  sources?: string[]
 }
 
 export interface Boss {
   id: string
   name: string
   abilities: string[]
+  /** 有隐秘核心（v0.5.0） */
+  hidingCore: boolean
+  /** 各模式的血量（v0.5.0），按游戏里模式的顺序：极速模拟、规程等级 1–20、标准 / 险境 / 绝境 / 终极模拟 */
+  hp: BossHp[]
+}
+
+/** 首领在一个模式下的血量 */
+export interface BossHp {
+  mode: string // 游戏模式 id，如 "mode_single_16"、"mode_multi_normal"
+  name: string // 模式名，如「规程等级16」「险境模拟」
+  group: 'single' | 'multi'
+  hp: number
+  /** 隐秘核心的血量（有隐秘核心、且数据里有这个模式时） */
+  coreHp?: number
 }
 
 export interface EnemyType {
@@ -82,6 +107,21 @@ export interface Connection {
    * 只有覆盖模式下界面才显示「收起」按钮。
    */
   overlay?: boolean
+  /** 连上的是哪种游戏（v0.5.0）：PC 客户端，或 MuMu 模拟器里的安卓版。connected 时才有 */
+  source?: 'pc' | 'mumu'
+  /**
+   * 找到游戏但用不了时给用户看的原因和办法（v0.5.0），state 为 searching 时才有，例如
+   * 「MuMu 画面不是横屏 16:9，请在模拟器设置里改成 1920×1080 之类的分辨率」「找到 2 个 MuMu 实例，请在设置里选一个」
+   */
+  problem?: string
+}
+
+/** 正在运行的一个 MuMu 实例（v0.5.0） */
+export interface MumuInstance {
+  /** ADB 地址，如 "127.0.0.1:16384"，存进 Settings.mumuSerial */
+  serial: string
+  /** 给用户看的名字：MuMu 窗口标题或实例名 */
+  name: string
 }
 
 /** 开局信息页识别的进度（自动触发和「重新识别」都会推送） */
@@ -113,6 +153,25 @@ export interface MatchInfo {
    * 界面据此提示「第几格没认出」并给出候选。新局、清空本局时清空；没识别过的盟约不在里面
    */
   banGroups: BanGroup[]
+  /**
+   * 单人模式（v0.5.0）：这一局的开局页是单人的（核心盟约二选一）。单人开局页不读，等对局里的「对局详情」页。
+   * 识别到下一局开局页（单人或联机）、清空本局时重置
+   */
+  solo: boolean
+  /**
+   * 单人开局后还在等对局详情页：界面在本局页提示「进入对局后点顶部回合数左边的放大镜打开对局详情」。
+   * 这一局第一次截到对局详情页、宿主自动开始持续识别时变为 false（之后再打开详情页不再自动开始）；
+   * 用户手动识别成功也变为 false
+   */
+  awaitingDetail: boolean
+  /**
+   * 这一局用持续识别看过禁用列表（v0.5.0）：用户点「持续识别」或单人对局详情自动开始的那次，至少成功识别一次就为 true。
+   * false 时禁用干员主要是按盟约规则推算的（开局页自动识别只看得到列表开头），界面提示去对局详情往下翻核对。
+   * 新局、清空本局时回到 false
+   */
+  bansScanned: boolean
+  /** 本局的游戏模式（v0.5.0）：开局页左上角读到的「规程等级16」「险境模拟」等，对上 BossHp.mode；没读到为 null */
+  mode: { id: string; name: string } | null
 }
 
 /** 禁用列表里一个盟约组 */
@@ -145,6 +204,17 @@ export interface LineupMember {
   key?: boolean
   /** 旧版规划器给这名干员加的转职盟约；新建的阵容不再产生 */
   transform?: CovenantId
+  /**
+   * 候选装备（v0.5.0），按添加顺序，同一件不重复。priority = 「优先」（商店里按关键标记，金色括号），
+   * 其余是「候选」（普通追踪标记）。优先的件数可以超过装备栏，界面只提醒。没有候选装备时可以不写
+   */
+  equipment?: MemberEquip[]
+}
+
+/** 干员的一件候选装备 */
+export interface MemberEquip {
+  name: string
+  priority: boolean
 }
 
 /** 目标盟约和要达到的档位，人数取 Covenant.thresholds[level - 1] */
@@ -162,12 +232,17 @@ export interface Lineup {
   name: string
   goals: CovenantGoal[]
   members: LineupMember[]
-  /** 想要的装备（装备名，不限数量）：目标阵容里的装备在商店里标记。旧数据没有这一项时宿主补空数组 */
+  /**
+   * 通用装备（装备名，不限数量）：不指定给哪名干员的。v0.5.0 前叫「想要的装备」，旧阵容的装备都在这里。
+   * 设为目标时，这里和每名干员的候选装备一起加进追踪。旧数据没有这一项时宿主补空数组
+   */
   equipment: string[]
   /** 配合的策略（Strategy.id），可不选；主要给分享阵容用。旧数据没有这一项时宿主补 null */
   strategyId: string | null
   source: 'user' | 'planned' // planned 是旧版规划器生成的，新建的都是 user
   note?: string
+  /** 简介（v0.6），纯文本最多 500 字、可换行；发布到广场时默认带上。不进分享码 */
+  description?: string
   updatedAt: string // ISO 时间
 }
 
@@ -196,6 +271,13 @@ export interface Settings {
    * 两种都随时可以收起，不再限于覆盖模式
    */
   collapseMode: 'strip' | 'up'
+  /**
+   * 游戏来源（v0.5.0，默认 'auto'）。auto：先找 PC 客户端，没有再找 MuMu；pc / mumu：只找这一种。
+   * MuMu 用 ADB 截图（窗口被挡住也能识别），商店标记对准 MuMu 窗口里的游戏画面
+   */
+  gameSource: 'auto' | 'pc' | 'mumu'
+  /** 多开 MuMu 时用哪个实例（MumuInstance.serial）；'' = 自动，只有一个实例时用它 */
+  mumuSerial: string
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
@@ -305,6 +387,8 @@ export interface Api {
   applyUpdate(): Promise<void>
   /** 用资源管理器打开数据文件夹 */
   openDataFolder(): Promise<void>
+  /** 列出正在运行的 MuMu 实例（v0.5.0），设置里多开时让用户选；没有就是空数组 */
+  mumuInstances(): Promise<MumuInstance[]>
   /**
    * 弹出系统保存对话框导出备份（.json：我的阵容、特别关注、偏好设置；不含本局状态、窗口位置）。
    * 默认文件名「卫戍协议助手-备份-YYYY-MM-DD.json」。用户取消返回 null，否则返回保存的完整路径。
@@ -321,6 +405,15 @@ export interface Api {
   openUrl(url: string): Promise<void>
   /** 把文字写进系统剪贴板（分享码等）。由宿主写，不用网页的剪贴板接口，免得受 WebView2 焦点和权限影响 */
   copyText(text: string): Promise<void>
+  /**
+   * 阵容广场登录（v0.6）：宿主弹一个小窗口打开 https://sa.lubeiluchen.com/login?app=1，网站登录成功后把凭据交给宿主，
+   * 宿主加密保存并关窗，返回凭据；用户直接关掉窗口返回 null。界面拿凭据带 Authorization: Bearer 调广场接口
+   */
+  plazaLogin(): Promise<string | null>
+  /** 已保存的广场凭据（启动时取一次）；没登录过为 null */
+  plazaToken(): Promise<string | null>
+  /** 删除本地保存的广场凭据（界面先调后端的退出接口） */
+  plazaLogout(): Promise<void>
   /** 后端推送：更新状态变化 */
   onUpdate(cb: (u: UpdateStatus) => void): () => void
   /** 无边框窗口的按钮 */
@@ -341,6 +434,11 @@ export interface Api {
    * 关闭时宿主先推送 'closing'，等界面播完退场（约 150ms）再隐藏窗口。
    */
   onWindow(cb: (e: 'closing') => void): () => void
+  /**
+   * 从网站点「在助手里打开」（v0.6）：stronghold://import?post=<帖子 id> 或 stronghold://import?code=<分享码>。
+   * 宿主把助手弹到前台并原样推送这个网址，界面自己解析；启动参数里带的也在界面就绪后推一次
+   */
+  onDeepLink(cb: (url: string) => void): () => void
   /** 后端推送：识别到新的开局信息 */
   onMatch(cb: (m: MatchInfo) => void): () => void
   /** 后端推送：游戏窗口找到 / 丢失 / 尺寸或全屏变化 */

@@ -42,7 +42,7 @@ public sealed class LineupGoalsTests : IDisposable
         var saved = await api.SaveLineupAsync(new("", "干员池", members, "user", null, default)
             { Goals = [new("siracusa", 2)] });
         var loaded = Assert.Single(await (await CreateApi()).LineupsAsync());
-        Assert.Equal(saved.Members, loaded.Members);
+        Assert.Equal(JsonSerializer.Serialize(saved.Members), JsonSerializer.Serialize(loaded.Members));
         Assert.Equal(saved.Goals, loaded.Goals);
     }
 

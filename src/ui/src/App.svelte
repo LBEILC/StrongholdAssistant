@@ -13,6 +13,8 @@
   import ContextMenu from './components/ContextMenu.svelte'
   import BanPicker from './components/BanPicker.svelte'
   import ImportSheet from './components/ImportSheet.svelte'
+  import PlazaSheet from './components/PlazaSheet.svelte'
+  import { plaza } from './lib/plaza.svelte'
   import Toast from './components/Toast.svelte'
   import ChangelogSheet from './components/ChangelogSheet.svelte'
   import WhatsNew from './components/WhatsNew.svelte'
@@ -41,6 +43,30 @@
     dir = order.indexOf(t) >= order.indexOf(prev) ? 1 : -1
     prev = t
   })
+
+  // 网站上点「在助手里打开」：stronghold://import?post=<帖子 id> 打开广场详情，?code=<分享码> 打开导入面板
+  $effect(() =>
+    api.onDeepLink((url) => {
+      let u: URL
+      try {
+        u = new URL(url)
+      } catch {
+        return
+      }
+      const post = u.searchParams.get('post')
+      const code = u.searchParams.get('code')
+      app.setTab('lineup')
+      if (post)
+        plaza
+          .post(post)
+          .then((p) => (plaza.viewing = p))
+          .catch((e) => app.showToast(e.message, true))
+      else if (code) {
+        app.importPrefill = code
+        app.importOpen = true
+      }
+    }),
+  )
 </script>
 
 {#if app.collapsed === 'strip'}
@@ -80,6 +106,7 @@
     <LineupEditor />
     <BanPicker />
     <ImportSheet />
+    <PlazaSheet />
     <Toast />
     <SettingsSheet />
     <ChangelogSheet />

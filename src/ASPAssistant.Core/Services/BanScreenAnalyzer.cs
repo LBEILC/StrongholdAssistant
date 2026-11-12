@@ -153,7 +153,7 @@ public sealed class BanScreenAnalyzer
                 var looksLikeInfo = await _informationDetector.IsInformationScreenAsync(shot, imgWidth, imgHeight);
                 AnalysisFailed?.Invoke(looksLikeInfo
                     ? "未找到完整的核心/附加盟约区域，请打开本局信息页并保持面板顶部可见。"
-                    : "当前画面不是本局信息页，请切换到“确认本局信息”后重试。");
+                    : "当前画面不是本局信息页，请打开开局信息页或对局详情后重试。");
                 return;
             }
             // 两类盟约都可能只显示“本局阵容包含的条目”（标题会注明“部分盟约所含干员阵容

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import type { Lineup } from '../lib/api'
-  import { app, goalProgress } from '../lib/state.svelte'
+  import { app, goalProgress, lineupEquipment } from '../lib/state.svelte'
   import { openMenu, lineupMenu } from '../lib/menu.svelte'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
@@ -23,6 +23,9 @@
   let { lineup, target = false, sub, actions, ontitle, menu = true }: Props = $props()
   const title = $derived(lineup.name)
   const members = $derived(lineup.members)
+  // 装备：通用装备 + 干员的候选装备；干员的优先装备描金框
+  const eqs = $derived(lineupEquipment(lineup))
+  const pri = $derived(new Set(members.flatMap((m) => m.equipment?.filter((x) => x.priority).map((x) => x.name) ?? [])))
   const bannedHere = $derived(app.bannedIn({ members }))
   const strat = $derived(lineup.strategyId ? app.catalog.strategies.find((s) => s.id === lineup.strategyId) : null)
   const progress = $derived(goalProgress(lineup.goals, members, members.map((m) => m.name)))
@@ -67,16 +70,23 @@
         onclick={() => (app.detail = { kind: 'operator', name: m.name })}
       />
     {/each}
-    {#if lineup.equipment.length}
+    {#if eqs.length}
       <i class="div"></i>
-      {#each lineup.equipment as n (n)}
-        <EqTile name={n} size={30} showName={false} onclick={() => (app.detail = { kind: 'equipment', name: n })} />
+      {#each eqs as n (n)}
+        <span class="ew" class:pri={pri.has(n)}><EqTile name={n} size={30} showName={false} onclick={() => (app.detail = { kind: 'equipment', name: n })} /></span>
       {/each}
     {/if}
   </div>
 </article>
 
 <style>
+  .ew {
+    display: inline-flex;
+  }
+  .ew.pri {
+    outline: 1px solid var(--gold);
+    outline-offset: 1px;
+  }
   .lc {
     position: relative;
     background: var(--bg-2);

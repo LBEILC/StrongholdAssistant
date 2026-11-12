@@ -2,7 +2,7 @@
   import { slide } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { asset, ROMAN } from '../lib/assets'
+  import { fmtHp, asset, ROMAN } from '../lib/assets'
   import SectionHeader from '../components/SectionHeader.svelte'
   import BondIcon from '../components/BondIcon.svelte'
   import OpTile from '../components/OpTile.svelte'
@@ -15,6 +15,8 @@
   const core = $derived(m.covenants.filter((c) => app.cov(c.id).kind === 'core'))
   const extra = $derived(m.covenants.filter((c) => app.cov(c.id).kind === 'extra'))
   const boss = $derived(app.catalog.bosses.find((b) => b.id === m.bossId))
+  // 本局模式读到了才显示血量（开局页左上角的「规程等级16」「险境模拟」）
+  const bossHp = $derived(boss && m.mode ? boss.hp.find((h) => h.mode === m.mode!.id) : undefined)
   const strategy = $derived(app.catalog.strategies.find((s) => s.id === m.strategyId))
   // 我的阵容先按目标盟约里阵容不完整的个数、再按名单被禁人数排序，取前 3
   const usable = $derived(
@@ -85,13 +87,16 @@
   })
   type Cell = { kind: 'op'; name: string; inferred: boolean; i: number } | { kind: 'unknown'; i: number; tier: number; n: number }
   const nth = (xs: number[]) => `第 ${xs.join('、')} 格`
+  // 只做过入场那一次自动识别：禁用名单主要靠规则推算
+  const ruleOnly = $derived(m.source !== 'none' && !m.bansScanned && !app.continuous)
 </script>
 
 <div class="page">
   <div class="status">
     <span class="st" class:ok={m.source !== 'none'}>
       <span class="term">Info</span>
-      {m.source === 'recognized' ? '已识别' : m.source === 'manual' ? '已修正' : '未识别'}
+      {m.source === 'recognized' ? '已识别' : m.source === 'manual' ? '已修正' : m.awaitingDetail ? '等对局详情' : '未识别'}
+      {#if m.solo}<b class="solo">单人</b>{/if}
       <em>{ago}</em>
     </span>
     <span class="tools">
@@ -124,6 +129,18 @@
       {/if}
     </span>
   </div>
+  {#if m.awaitingDetail && !app.continuous}
+    <div class="solo-guide">
+      <div class="sg-h">单人模式 · 开局页不识别</div>
+      <p>单人开局要在两组核心盟约里选一组，选完才算数，所以到对局里再读。</p>
+      <ol>
+        <li>选好盟约，点「准备就绪」进入对局</li>
+        <li>点顶部回合数左边的 <span class="key"><Icon name="search" size={11} /></span> 打开对局详情</li>
+        <li>会自动开始识别，慢慢往下滚动禁用列表</li>
+      </ol>
+      <p class="sg-f">每局只自动识别这一次，之后再打开详情不会自动开始，要补读点「持续识别」。</p>
+    </div>
+  {/if}
   {#if app.continuous}
     <div class="note">
       <span>持续识别中，已识别 <b>{m.bannedOperators.length}</b> 名禁用干员。在游戏里慢慢往下滚动禁用列表，看全后点「停止」。</span>
@@ -211,7 +228,7 @@
   <section>
     <SectionHeader
       title="本局禁用干员"
-      tag="{m.bannedOperators.length} 名"
+      tag="{m.bannedOperators.length} 名{ruleOnly ? ' · 推算' : ''}"
       tagTone="warn"
       ontoggle={edit ? undefined : fold('banned')}
       folded={!open('banned', edit)}
@@ -222,6 +239,9 @@
     </SectionHeader>
     {#if open('banned', edit)}
       <div class="banned" class:editing={edit} transition:slide={sl}>
+        {#if ruleOnly}
+          <p class="rule">按盟约规则推算的名单。入场自动识别只看得到禁用列表的开头，要核对真实名单：打开对局详情往下翻，点「持续识别」。</p>
+        {/if}
         {#each bannedGroups as g (g.id ?? '')}
           <div class="bg">
             <div class="bgh">
@@ -285,6 +305,7 @@
           <span class="binfo">
             <span class="leader">敌方领袖</span>
             <b>{boss.name}</b>
+            {#if bossHp}<span class="bhp">{m.mode!.name} · 血量 <b>{fmtHp(bossHp.hp)}</b>{#if bossHp.coreHp} · 隐秘核心 <b>{fmtHp(bossHp.coreHp)}</b>{/if}</span>{/if}
           </span>
           <span class="more term">Detail<Icon name="arrowRight" size={12} /></span>
         </button>
@@ -357,6 +378,52 @@
   }
   .st.ok .term {
     background: var(--mint);
+  }
+  .st .solo {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    color: var(--gold);
+    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.5);
+  }
+  .solo-guide {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--fg-2);
+    padding: 8px 10px 8px 12px;
+    background: rgb(243 179 34 / 0.07);
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  .sg-h {
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 2px;
+  }
+  .solo-guide p {
+    margin: 0;
+  }
+  .solo-guide ol {
+    margin: 6px 0;
+    padding-left: 18px;
+    color: var(--fg-1);
+  }
+  .solo-guide li::marker {
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .key {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 16px;
+    vertical-align: -3px;
+    color: var(--mint);
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .sg-f {
+    font-size: 11px;
+    color: var(--fg-3);
   }
   .st em {
     font-style: normal;
@@ -562,6 +629,15 @@
     gap: 10px;
     padding: 10px 4px 4px;
   }
+  .rule {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--gold);
+    padding: 5px 8px;
+    background: rgb(243 179 34 / 0.07);
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
   .bg {
     display: flex;
     flex-direction: column;
@@ -741,6 +817,15 @@
   }
   .binfo b {
     font-size: 15px;
+  }
+  .binfo .bhp {
+    font-size: 11px;
+    color: var(--fg-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .binfo .bhp b {
+    font-size: 12px;
+    color: var(--gold);
   }
   .more {
     display: flex;

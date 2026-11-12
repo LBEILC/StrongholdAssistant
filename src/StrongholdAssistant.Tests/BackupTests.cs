@@ -36,7 +36,7 @@ public sealed class BackupTests : IDisposable
         Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups" }, root.Select(p => p.Key));
         Assert.Equal("stronghold-assistant-backup", root["format"]!.GetValue<string>());
         Assert.Equal(1, root["version"]!.GetValue<int>());
-        Assert.Equal(9, root["settings"]!.AsObject().Count);
+        Assert.Equal(11, root["settings"]!.AsObject().Count);
         var selection = await api.ReadBackupAsync(BackupPath);
         Assert.Equal(1, selection.Summary.Lineups);
         Assert.Equal(1, selection.Summary.FocusCovenants);

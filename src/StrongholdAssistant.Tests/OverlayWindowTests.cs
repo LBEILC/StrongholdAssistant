@@ -10,6 +10,20 @@ namespace StrongholdAssistant.Tests;
 public class OverlayWindowTests
 {
     [Fact]
+    public void ScreenshotPointScalesToOffsetScreenViewport() => OnSta(() =>
+    {
+        var layer = new ShopMarkerLayer();
+        var item = Item();
+        item.CardRegion = (960d / 1920, 270d / 1080, .1, .2);
+        // 屏幕上的画面区域为 (100, 200, 1280, 720)，DPI 为 150%。
+        const double dpi = 1.5;
+        layer.Update([item], 1280 / dpi, 720 / dpi, animate: false);
+        var marker = Assert.Single(layer.Children.Cast<FrameworkElement>());
+        Assert.Equal(740, 100 + System.Windows.Controls.Canvas.GetLeft(marker) * dpi);
+        Assert.Equal(380, 200 + System.Windows.Controls.Canvas.GetTop(marker) * dpi);
+    });
+
+    [Fact]
     public void DisappearingMarkerFadesFor150MsBeforeRemoval() => OnSta(() =>
     {
         var layer = new ShopMarkerLayer();

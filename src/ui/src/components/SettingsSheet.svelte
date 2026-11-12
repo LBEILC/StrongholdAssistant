@@ -2,9 +2,10 @@
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
-  import { api, type BackupSummary, type GameTheme, type ImportMode } from '../lib/api'
+  import { api, type BackupSummary, type GameTheme, type ImportMode, type MumuInstance, type Settings } from '../lib/api'
   import Icon from './Icon.svelte'
   import NotesList from './NotesList.svelte'
+  import { plaza, PLAZA } from '../lib/plaza.svelte'
 
   // 设置：游戏主题（商店识别要用）、商店标记、版本与更新、关于
   const themes: { id: GameTheme; name: string; note: string }[] = [
@@ -28,6 +29,25 @@
     app.saveSettings()
   }
   const u = $derived(app.update)
+
+  // 游戏来源：多开 MuMu 时才列出实例让用户选
+  const sources: { v: Settings['gameSource']; label: string; note: string }[] = [
+    { v: 'auto', label: '自动', note: '先找 PC 客户端，没开再找 MuMu 模拟器。' },
+    { v: 'pc', label: 'PC 客户端', note: '只连明日方舟 PC 版。' },
+    { v: 'mumu', label: 'MuMu 模拟器', note: 'MuMu 画面要横屏 16:9（如 1920×1080）。窗口被挡住也能识别。' },
+  ]
+  let instances = $state<MumuInstance[]>([])
+  const loadInstances = async () => (instances = app.settings.gameSource === 'pc' ? [] : await api.mumuInstances())
+  $effect(() => {
+    if (app.settingsOpen) {
+      loadInstances()
+      plaza.check()
+    }
+  })
+  const setSource = (v: Settings['gameSource']) => {
+    set('gameSource', v)
+    loadInstances()
+  }
 
   // 数据：导出备份、选文件预览后按合并 / 替换导入
   const modes: { id: ImportMode; name: string; note: string }[] = [
@@ -81,6 +101,28 @@
     </header>
 
     <section>
+      <h4>游戏来源 <small>PC 客户端或 MuMu 模拟器</small></h4>
+      <div class="scales three">
+        {#each sources as s (s.v)}
+          <button class:on={app.settings.gameSource === s.v} onclick={() => setSource(s.v)}>{s.label}</button>
+        {/each}
+      </div>
+      <p class="note">{sources.find((s) => s.v === app.settings.gameSource)!.note}</p>
+      {#if app.settings.gameSource !== 'pc' && instances.length > 1}
+        <div class="themes inst">
+          <button class:on={!app.settings.mumuSerial} onclick={() => set('mumuSerial', '')}>
+            <span class="radio"></span><b>自动</b><em>只开一个实例时用它</em>
+          </button>
+          {#each instances as i (i.serial)}
+            <button class:on={app.settings.mumuSerial === i.serial} onclick={() => set('mumuSerial', i.serial)}>
+              <span class="radio"></span><b>{i.name}</b><em>{i.serial}</em>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </section>
+
+    <section>
       <h4>游戏主题 <small>选游戏里正在用的主题，商店识别要靠它</small></h4>
       <div class="themes">
         {#each themes as t (t.id)}
@@ -129,6 +171,21 @@
         <button class:on={app.settings.collapseMode === 'up'} onclick={() => set('collapseMode', 'up')}>向上收起</button>
       </div>
       <p class="note">{app.settings.collapseMode === 'strip' ? '收成左边一根竖条，追踪的头像竖着排。' : '宽度不变，只留标题栏和追踪列表，打商店时还能点掉追踪。'}</p>
+    </section>
+
+    <section>
+      <h4>阵容广场账号 <small>发布阵容、点赞要登录；浏览不用</small></h4>
+      {#if plaza.me}
+        <p class="acct"><span>已登录：<b>{plaza.me.nickname ?? '（还没起昵称）'}</b><em>{plaza.me.emailMasked}</em></span>
+          <button class="link" onclick={() => api.openUrl(PLAZA + '/me')}>网站上的「我的」</button>
+          <button class="link" onclick={() => plaza.logout()}>退出登录</button>
+        </p>
+      {:else}
+        <p class="acct"><span>{plaza.checked ? '没有登录。' : '…'}</span>
+          <button class="link" disabled={plaza.loggingIn} onclick={() => plaza.login().catch((e) => app.showToast(e.message, true))}>{plaza.loggingIn ? '等待登录…' : '登录'}</button>
+          <button class="link" onclick={() => api.openUrl(PLAZA)}>打开阵容广场网站</button>
+        </p>
+      {/if}
     </section>
 
     <section>
@@ -217,6 +274,26 @@
 {/if}
 
 <style>
+  .acct {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--fg-3);
+  }
+  .acct span {
+    flex: 1 1 100%;
+  }
+  .acct b {
+    color: var(--fg-1);
+  }
+  .acct em {
+    margin-left: 8px;
+    font-style: normal;
+    color: var(--fg-4);
+  }
   .scrim {
     position: absolute;
     inset: 0;
@@ -335,6 +412,12 @@
   }
   .scales.two {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .scales.three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .inst {
+    margin-top: 8px;
   }
   .note {
     margin: 6px 0 0;

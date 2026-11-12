@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from '../lib/state.svelte'
-  import { asset, ROMAN } from '../lib/assets'
+  import { asset, ROMAN, fmtHp } from '../lib/assets'
   import OpCard from '../components/OpCard.svelte'
   import TierBadge from '../components/TierBadge.svelte'
   import Icon from '../components/Icon.svelte'
@@ -13,13 +13,19 @@
 
   // 图鉴：干员 / 装备网格，筛选常驻展开；点卡片在底部面板看详情（不靠悬停）。
   // 策略只有名字、发起者和一句效果，做成列表直接看全，本局策略排最前
-  type Kind = 'operator' | 'equipment' | 'strategy'
+  type Kind = 'operator' | 'equipment' | 'strategy' | 'boss'
   let kind = $state<Kind>('operator')
   const kinds: { id: Kind; label: string; count: number }[] = [
     { id: 'operator', label: '干员', count: app.catalog.operators.length },
     { id: 'equipment', label: '装备', count: app.catalog.equipment.length },
     { id: 'strategy', label: '策略', count: app.catalog.strategies.length },
+    { id: 'boss', label: '首领', count: app.catalog.bosses.length },
   ]
+  // 首领：本局首领排最前；血量显示本局模式的，没读到模式时显示规程等级 1
+  const bosses = $derived(
+    app.catalog.bosses.filter((b) => !q || b.name.includes(q)).sort((a, b) => Number(b.id === app.match.bossId) - Number(a.id === app.match.bossId)),
+  )
+  const hpAt = (b: (typeof app.catalog.bosses)[number]) => b.hp.find((h) => h.mode === (app.match.mode?.id ?? 'mode_single_1'))
   // 切换时内容从切换方向滑入
   let dir = $state(1)
   let topH = $state(0)
@@ -78,7 +84,7 @@
     <Seg items={kinds} value={kind} onchange={pick} height={26} />
     <div class="search">
       <span class="si"><Icon name="search" size={15} /></span>
-      <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : kind === 'equipment' ? '搜索装备' : '搜索策略、发起者或效果'} />
+      <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : kind === 'equipment' ? '搜索装备' : kind === 'boss' ? '搜索首领' : '搜索策略、发起者或效果'} />
       {#if filtered}
         <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; onlyTracked = false; onlyFocus = false; hideBanned = false; cat = null }}>清除筛选</button>
       {/if}
@@ -89,6 +95,26 @@
   {#if kind === 'strategy'}
     <!-- 仿游戏「策略报告」：上面详情（默认本局策略），下面按泛用型 / 盟约型分组排头像 -->
     <div class="strats" style:--sticky-top="{topH}px"><StrategyGrid {q} current={app.match.strategyId} /></div>
+  {:else if kind === 'boss'}
+    <p class="bnote">血量为{app.match.mode?.name ?? '规程等级1'}{app.match.mode ? '（本局）' : ''}；点开看各模式血量。地图和敌人路线之后在网站上看。</p>
+    <div class="blist">
+      {#each bosses as b (b.id)}
+        {@const h = hpAt(b)}
+        <button class="brow" class:cur={b.id === app.match.bossId} class:selected={cur?.kind === 'boss' && cur.id === b.id} onclick={() => (app.detail = { kind: 'boss', id: b.id })}>
+          <span class="bpic"><img src={asset.boss(b.id)} alt="" loading="lazy" /></span>
+          <span class="bn">
+            <b>{b.name}</b>
+            <span class="btags">
+              {#if b.id === app.match.bossId}<em class="now">本局</em>{/if}
+              {#if b.hidingCore}<em>隐秘核心</em>{/if}
+            </span>
+          </span>
+          {#if h}<span class="bhp"><b>{fmtHp(h.hp)}</b>{#if h.coreHp}<small>核心 {fmtHp(h.coreHp)}</small>{/if}</span>{/if}
+        </button>
+      {:else}
+        <p class="none">没有符合条件的首领。</p>
+      {/each}
+    </div>
   {:else}
   <div class="filters">
     <div class="chips">
@@ -167,6 +193,87 @@
 </div>
 
 <style>
+  .bnote {
+    margin: 10px 2px 6px;
+    font-size: 11px;
+    color: var(--fg-4);
+  }
+  .blist {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .brow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px 6px 6px;
+    text-align: left;
+    background: var(--bg-1);
+  }
+  .brow:hover,
+  .brow.selected {
+    background: var(--bg-2);
+  }
+  .brow.cur {
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  .bpic {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    background: rgb(0 0 0 / 0.35);
+  }
+  .bpic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .bn {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .bn b {
+    font-size: 13px;
+    color: var(--fg-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .btags {
+    display: flex;
+    gap: 4px;
+  }
+  .btags em {
+    font-style: normal;
+    font-size: 10px;
+    padding: 0 5px;
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .btags em.now {
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: none;
+  }
+  .bhp {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-variant-numeric: tabular-nums;
+  }
+  .bhp b {
+    font-size: 13px;
+    color: var(--fg-1);
+  }
+  .bhp small {
+    font-size: 10px;
+    color: var(--gold);
+  }
   .strats {
     margin-top: 10px;
   }

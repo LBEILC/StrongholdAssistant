@@ -16,6 +16,13 @@ interface and adds a host process and message bridge. Modification notices
 are kept in the source headers of each changed file.
 This derivative is not an official release from either upstream project.
 
+MuMu emulator support (ADB screenshots, locating the MuMu game display and
+fitting it to 16:9) is adapted from pull request #5 to ASP Assistant · Arknights
+by hesperine, which was not merged upstream:
+https://github.com/bingyunhe/asp-assistant-arknights/pull/5
+That pull request is distributed under the Apache License, Version 2.0;
+the adapted files carry modification notices in their source headers.
+
 Game art, data, character names and fonts retain the rights and attribution
 of their respective owners; see ASSETS.md. The software license does not
 relicense these assets. This project is not affiliated with or endorsed by

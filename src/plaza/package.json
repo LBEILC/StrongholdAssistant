@@ -1,0 +1,20 @@
+{
+  "name": "stronghold-plaza",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix site run build && wrangler pages functions build --outdir=dist/functions",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/api.test.mjs",
+    "dev": "wrangler pages dev site/dist",
+    "migrate:local": "wrangler d1 migrations apply stronghold-plaza --local"
+  },
+  "dependencies": { "jose": "6.1.0" },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20251011.0",
+    "esbuild": "0.25.4",
+    "miniflare": "4.20251011.0",
+    "typescript": "5.9.3",
+    "wrangler": "4.45.0"
+  }
+}

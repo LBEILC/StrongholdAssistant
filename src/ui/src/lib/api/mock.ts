@@ -3,7 +3,35 @@
 import type { Api, BanGroup, Catalog, CovenantGoal, Lineup, MatchInfo, ScanStatus, Session, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 
-const catalog = raw as Catalog
+const catalog = raw as unknown as Catalog
+
+// v0.5.0 图鉴增强的假数据：合成从效果文字里解析；变形同构体、来源只填几件示例；首领血量按游戏 boss_1 的比例套
+for (const e of catalog.equipment) {
+  const m = e.normal.match(/若与“(.+?)”同时持有则组合为“(.+?)”/)
+  if (m) e.fuse = { with: m[1], result: m[2] }
+  if (e.name.includes('维式重锤') && !e.name.startsWith('终极')) e.transformBond = 'victoria'
+  if (e.name.includes('汲取者')) e.transformBond = 'egir'
+}
+catalog.equipment.find((e) => e.name === '维式重锤')!.sources = ['凯瑟琳']
+catalog.equipment.find((e) => e.name === '虹彩活血饮料')!.sources = ['斥罪', '史尔特尔']
+for (const o of catalog.operators) {
+  o.equipSlots = o.name === '暴躁铁皮' ? { normal: 4, elite: 6 } : { normal: 2, elite: 2 }
+  if (o.name === '凯瑟琳') o.givesEquipment = ['维式重锤']
+  if (o.name === '斥罪' || o.name === '史尔特尔') o.givesEquipment = ['虹彩活血饮料']
+}
+const MODE_HP: [string, string, 'single' | 'multi', number][] = [
+  ['mode_single_funny', '极速模拟', 'single', 226944],
+  ...Array.from({ length: 20 }, (_, i): [string, string, 'single', number] => [`mode_single_${i + 1}`, `规程等级${i + 1}`, 'single', [283680, 378240, 472800, 567360, 661920, 756480, 851040, 945600, 1182000, 1418400, 1654800, 1891200, 2127600, 2364000, 2626667, 2889333, 3152000, 3414667, 3677333, 3940000][i]]),
+  ['mode_multi_funny', '标准模拟', 'multi', 283680],
+  ['mode_multi_normal', '险境模拟', 'multi', 945600],
+  ['mode_multi_hard', '绝境模拟', 'multi', 2364000],
+  ['mode_multi_abyss', '终极模拟', 'multi', 3940000],
+]
+catalog.bosses.forEach((b, i) => {
+  b.hidingCore = b.abilities.includes('隐秘核心')
+  const k = 0.55 + ((i * 37) % 10) / 10
+  b.hp = MODE_HP.map(([mode, name, group, hp]) => ({ mode, name, group, hp: Math.round(hp * k), ...(b.hidingCore && /single_(1[0-9]|20|[5-9])$|multi_(normal|hard|abyss)/.test(mode) && { coreHp: Math.round(hp * k * 1.7) }) }))
+})
 const cov = new Map(catalog.covenants.map((c) => [c.id, c]))
 const hasCov = (o: Catalog['operators'][number], cid: string) => o.core.includes(cid) || o.extra.includes(cid)
 
@@ -68,9 +96,17 @@ function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchI
     bossId: 'enemy_1521_dslily',
     enemyTypes: ['REBORN', 'INVISIBLE', 'DOT'],
     banGroups: g.groups,
+    solo: false,
+    awaitingDetail: false,
+    bansScanned: !location.search.includes('rule'), // ?rule：只做过入场自动识别
+    mode: { id: 'mode_single_16', name: '规程等级16' },
   }
 }
-let match: MatchInfo = computeMatch('recognized', new Date(Date.now() - 4 * 60_000).toISOString())
+const emptyMatch = (): MatchInfo => ({ source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [], banGroups: [], solo: false, awaitingDetail: false, bansScanned: false, mode: null })
+// ?solo：单人开局后、还没读到对局详情的状态
+let match: MatchInfo = location.search.includes('solo')
+  ? { ...emptyMatch(), solo: true, awaitingDetail: true }
+  : computeMatch('recognized', new Date(Date.now() - 4 * 60_000).toISOString())
 
 // 样例阵容：目标盟约 + 这些盟约里等阶高的干员（不限人数），前两名标为关键
 function build(id: string, name: string, goals: CovenantGoal[], note?: string): Lineup {
@@ -91,6 +127,13 @@ const lineups: Lineup[] = [
 // 样例：目标阵容带两件装备，另外单独追踪一件
 lineups[0].equipment = catalog.equipment.filter((e) => e.tier >= 4).slice(0, 2).map((e) => e.name)
 lineups[0].strategyId = catalog.strategies[0].id
+// 样例：第一名关键干员配了三件候选、两件优先；第二名一件候选
+lineups[0].members[0].equipment = [
+  { name: '维式重锤', priority: true },
+  { name: '虹彩活血饮料', priority: true },
+  { name: '汲取者之喙', priority: false },
+]
+lineups[0].members[1].equipment = [{ name: '汲取者之心', priority: false }]
 
 let session: Session = {
   targetLineupId: 'l-siracusa',
@@ -109,6 +152,8 @@ let settings: Settings = {
   alwaysOnTop: false,
   followGame: true,
   collapseMode: 'strip',
+  gameSource: 'auto',
+  mumuSerial: '',
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
 }
@@ -171,7 +216,7 @@ export const mockApi: Api = {
     manualUnban.clear()
     filled.clear()
     notThis.clear()
-    match = { source: 'none', strategyId: null, covenants: [], bannedOperators: [], bossId: null, enemyTypes: [], banGroups: [] }
+    match = emptyMatch()
     return wait(match, 60)
   },
   setOperatorBanned: (name, v) => {
@@ -207,6 +252,12 @@ export const mockApi: Api = {
   },
   windowCommand: async () => {},
   collapseUp: async () => {},
+  // ?deeplink=…：原型里模拟从网站点「在助手里打开」
+  onDeepLink: (cb) => {
+    const u = new URLSearchParams(location.search).get('deeplink')
+    if (u) setTimeout(() => cb(u), 800)
+    return () => {}
+  },
   onWindow: (cb) => {
     windowListeners.add(cb)
     return () => windowListeners.delete(cb)
@@ -217,6 +268,9 @@ export const mockApi: Api = {
   },
   appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant` }, 0),
   openDataFolder: async () => {},
+  // ?mumu2：模拟多开两个实例
+  mumuInstances: () =>
+    wait(location.search.includes('mumu2') ? [{ serial: '127.0.0.1:16384', name: 'MuMu安卓设备' }, { serial: '127.0.0.1:16416', name: 'MuMu安卓设备-1' }] : []),
   exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
   pickBackup: () =>
     wait({ token: 'mock', summary: { appVersion: '0.2.0', exportedAt: new Date(Date.now() - 3 * 86400_000).toISOString(), lineups: 6, focusCovenants: 2, focusOperators: 4 } }, 300),
@@ -251,6 +305,14 @@ export const mockApi: Api = {
   },
   openUrl: async (url) => void window.open(url, '_blank'),
   copyText: (text) => navigator.clipboard.writeText(text),
+  // 原型里没有宿主窗口：登录用 prompt 填一个真实凭据（从网站 Cookie 里拿）方便联调，取消就是没登录
+  plazaLogin: async () => {
+    const t = prompt('原型：粘贴广场登录凭据（sa_session Cookie 的值）')
+    if (t) localStorage.setItem('mockPlazaToken', t)
+    return t || null
+  },
+  plazaToken: async () => localStorage.getItem('mockPlazaToken'),
+  plazaLogout: async () => localStorage.removeItem('mockPlazaToken'),
   onUpdate: (cb) => {
     updateListeners.add(cb)
     return () => updateListeners.delete(cb)

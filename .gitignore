@@ -9,3 +9,5 @@ logs/
 docs/research/refs/
 dist/
 out/
+.dev.vars
+.wrangler/

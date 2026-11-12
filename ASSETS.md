@@ -26,6 +26,8 @@
 
 ## 数据与图标
 
+`data/codex_extra.json` 的装备关系、进阶效果与首领血量取自 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 国服 `gamedata/excel/activity_table.json`（2026-11-11 数据，`act3autochess/V3_1`），由 `scripts/GenerateCodexExtra` 生成；游戏数据归上海鹰角网络所有。
+
 | 位置 | 内容 | 来源 |
 |---|---|---|
 | `src/ui/public/assets/data/operators/` | 干员头像（缩放并转为 webp） | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/icons/`（取自 PRTS） |
@@ -37,4 +39,5 @@
 | `src/StrongholdAssistant.Tests/TestData/*.png` | 测试用的游戏截图（开局信息页、商店、局内画面），只用于测试，不进发布包 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `src/ASPAssistant.Tests/TestData/`；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/user-ban-4-1920x1080.png` | 用户提供的禁用信息页截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/*-ui100-2000x1125.png` | 用户提供的 UI 100 信息页、禁用头像页和商店截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/solo-opening-*.png`、`mumu-solo-*.png` | 用户提供的 PC 单人开局页、MuMu 单人开局及对局详情截图，由 WebP 转为 PNG，只用于测试 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |

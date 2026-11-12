@@ -1,0 +1,2925 @@
+{
+  "equipment": {
+    "炎国短刀": {
+      "transformBond": "yan"
+    },
+    "维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "灼燃维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "坚固维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "加速维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "战栗维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "阿戈尔重刃": {
+      "transformBond": "egir"
+    },
+    "坚守盾牌": {
+      "transformBond": "stead"
+    },
+    "奥术法阵": {
+      "transformBond": "arcane"
+    },
+    "歌利亚头盔": {},
+    "萨尔贡浓茶": {
+      "transformBond": "sargon",
+      "sources": [
+        "异客"
+      ]
+    },
+    "迅捷作战粮": {
+      "transformBond": "swift",
+      "sources": [
+        "卡涅利安"
+      ]
+    },
+    "蜂鸣器": {},
+    "伪装服": {},
+    "不屈弹射器": {
+      "transformBond": "indom"
+    },
+    "护盾无人机": {},
+    "谢拉格不融冰": {
+      "transformBond": "kjerag",
+      "sources": [
+        "耶拉"
+      ]
+    },
+    "精准狙击镜": {
+      "transformBond": "preci",
+      "sources": [
+        "承曦格雷伊"
+      ]
+    },
+    "突袭手雷": {
+      "transformBond": "raid"
+    },
+    "盟约之币": {
+      "sources": [
+        "乌有",
+        "异客"
+      ]
+    },
+    "双模机械臂": {},
+    "M3茧甲": {},
+    "拟态物质": {
+      "sources": [
+        "异客"
+      ]
+    },
+    "人事部文档": {},
+    "博士投影": {},
+    "变形同构体": {
+      "sources": [
+        "缪尔赛思"
+      ]
+    },
+    "寻呼模块": {},
+    "信标": {},
+    "精打细算玩偶": {},
+    "见钱眼开玩偶": {},
+    "简易通讯机": {},
+    "紧急调度券": {},
+    "天马之枪": {
+      "fuse": {
+        "with": "天马之盔",
+        "result": "天马之耀"
+      }
+    },
+    "天马之盔": {
+      "fuse": {
+        "with": "天马之枪",
+        "result": "天马之耀"
+      }
+    },
+    "卡西米尔竞技旗": {
+      "transformBond": "kazimierz"
+    },
+    "叙拉古正装": {
+      "transformBond": "siracusa"
+    },
+    "驮兽储蓄罐": {},
+    "随身身份牌": {},
+    "源石溶剂": {},
+    "虹彩活血饮料": {},
+    "雪祀之衣": {},
+    "卫戍推荐信": {},
+    "聚合急救箱": {
+      "transformBond": "doc"
+    },
+    "灵巧涡轮手套": {
+      "transformBond": "skillful"
+    },
+    "乌萨斯呼吸器": {
+      "transformBond": "ursus",
+      "sources": [
+        "奥尔佳"
+      ]
+    },
+    "多功能补剂": {},
+    "伊比利亚骨刺刀": {
+      "transformBond": "iberia"
+    },
+    "定期存折": {},
+    "莱塔尼亚小鼓": {
+      "transformBond": "lethania",
+      "sources": [
+        "车尔尼"
+      ]
+    },
+    "可靠怀表": {},
+    "一次性促销券": {},
+    "投机骰子": {},
+    "电流维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "佣兵名牌": {},
+    "人事部记录": {},
+    "瓶装烈性反应": {},
+    "驱逐者警棍": {
+      "fuse": {
+        "with": "驱逐者瓦斯",
+        "result": "驱逐者防暴装备"
+      }
+    },
+    "驱逐者瓦斯": {
+      "fuse": {
+        "with": "驱逐者警棍",
+        "result": "驱逐者防暴装备"
+      }
+    },
+    "驱逐者防暴装备": {
+      "elite": "携带者攻击范围内的敌人受到的晕眩、冻结、恐惧等异常状态影响时间提高100%，且对受这类异常状态影响的敌人造成伤害提升30%；携带者处于技能期间时，每次施加这类异常状态时有50%概率将其传递给附近另一名敌人"
+    },
+    "不退者之盾": {
+      "fuse": {
+        "with": "不退者力场",
+        "result": "不退者卫护系统"
+      }
+    },
+    "不退者力场": {
+      "fuse": {
+        "with": "不退者之盾",
+        "result": "不退者卫护系统"
+      }
+    },
+    "不退者卫护系统": {
+      "elite": "免疫晕眩、冻结等特殊状态，阻挡数+2，每阻挡一个单位自身生命上限和防御力提升20%；携带者开启技能时对自身周围范围内敌人产生一次诱导，持续3秒"
+    },
+    "动能加速器": {
+      "fuse": {
+        "with": "动能单手弩",
+        "result": "动能轰击弩"
+      }
+    },
+    "动能单手弩": {
+      "fuse": {
+        "with": "动能加速器",
+        "result": "动能轰击弩"
+      }
+    },
+    "动能轰击弩": {
+      "elite": "造成伤害时有30%概率使攻击力提升至130%；每次攻击后攻击速度+2（最高60层），攻击速度叠加达到上限后每次攻击时有30%概率对攻击范围内随机敌人造成自身攻击力100%的范围物理伤害"
+    },
+    "汲取者之喙": {
+      "fuse": {
+        "with": "汲取者之心",
+        "result": "汲取者之镰"
+      }
+    },
+    "汲取者之心": {
+      "fuse": {
+        "with": "汲取者之喙",
+        "result": "汲取者之镰"
+      }
+    },
+    "汲取者之镰": {
+      "elite": "攻击力+30%，攻击速度+30，每秒流失1%最大生命值（不会降至0），每次造成伤害时回复相当于造成伤害5%的生命值；携带者处于技能期间时上述效果翻倍且自身无法被治疗"
+    },
+    "终极维式重锤": {
+      "transformBond": "victoria",
+      "sources": [
+        "凯瑟琳"
+      ]
+    },
+    "天马之耀": {
+      "elite": "生命上限+60%，每秒恢复8%最大生命值；攻击力+50%，造成伤害时额外造成攻击力30%真实伤害"
+    }
+  },
+  "operators": {
+    "折光": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "车尔尼": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "莱塔尼亚小鼓"
+      ]
+    },
+    "黑键": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "卡涅利安": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "迅捷作战粮"
+      ]
+    },
+    "艾雅法拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "纯烬艾雅法拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "折桠": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "乌啾": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "赫拉格": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "维伊": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "怒潮凛冬": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "蓝毒": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "海沫": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "旅骨": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "艾丽妮": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "温蒂": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "流明": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "棘刺": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "引星棘刺": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "风絮": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "余": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "黍": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "烛煌": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "艾丝黛尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "泡泡": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "莎草": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "森蚺": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "佩佩": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "极光": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "雪猎": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "耶拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "谢拉格不融冰"
+      ]
+    },
+    "初雪": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "灵知": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "圣聆初雪": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "凛御银灰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "幽灵鲨": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "深巡": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "斯卡蒂": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "歌蕾蒂娅": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "归溟幽灵鲨": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "乌尔比安": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "浊心斯卡蒂": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "克莱门莎": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "水月": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "砾": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "野鬃": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "瑕光": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "远牙": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "玛恩纳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "耀骑士临光": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "薇薇安娜": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "复奏": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "奥斯塔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "忍冬": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "伺夜": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "铃兰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "贝洛内": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "荒芜拉普兰德": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "慕斯": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "水灯心": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "Miss.Christine": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "涤火杰西卡": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "白铁": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "酒神": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "维娜·维多利亚": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "角峰": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "哈洛德": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "斥罪": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "逻各斯": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "空弦": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "迷迭香": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "真言": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "灰喉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "吉星": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "妮芙": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "W": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "霍尔海雅": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "云迹": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "隐德来希": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "伊桑": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "深靛": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "卡达": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "蛇屠箱": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "罗比菈塔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "摆渡人": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "塞雷娅": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "遥": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "魔王": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "波登可": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "史尔特尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "承曦格雷伊": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "精准狙击镜"
+      ]
+    },
+    "锡人": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "溯光星源": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "宴": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "山": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "锏": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "老鲤": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "淬羽赫默": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "夏栎": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "杰克": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "赫德雷": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "夜莺": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "霜叶": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "乌有": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "盟约之币"
+      ]
+    },
+    "历阵锐枪芬": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "渡桥": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "Mon3tr": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "凯瑟琳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "维式重锤"
+      ]
+    },
+    "可露希尔": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "矩": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "拜松": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "褐果": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "风丸": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "鸿雪": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "仇白": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "星极": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "焰尾": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "瑰盐": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "烈夏": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "至简": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "陨星": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "机械师": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "异客": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "盟约之币",
+        "萨尔贡浓茶",
+        "拟态物质"
+      ]
+    },
+    "塔露拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "真理": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "奥尔佳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "乌萨斯呼吸器"
+      ]
+    },
+    "安洁莉娜": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "夕": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "冻河": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "青枳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "铸铁": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "华法琳": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "拉普兰德": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "蕾缪安": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "星源": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "寒檀": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "地灵": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "缪尔赛思": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "givesEquipment": [
+        "变形同构体"
+      ]
+    },
+    "阿米娅": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "安哲拉": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "帕拉斯": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      }
+    },
+    "暴躁铁皮": {
+      "equipSlots": {
+        "normal": 4,
+        "elite": 6
+      }
+    }
+  },
+  "bosses": {
+    "enemy_9013_acstmk": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 226944,
+          "coreHp": 393984
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 283680,
+          "coreHp": 492480
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 378240,
+          "coreHp": 656640
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 472800,
+          "coreHp": 820800
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 567360,
+          "coreHp": 984960
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 661920,
+          "coreHp": 1149120
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 756480,
+          "coreHp": 1313280
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 851040,
+          "coreHp": 1477440
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 945600,
+          "coreHp": 1641600
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1182000,
+          "coreHp": 2052000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1418400,
+          "coreHp": 2462400
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1654800,
+          "coreHp": 2872800
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1891200,
+          "coreHp": 3283200
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2127600,
+          "coreHp": 3693600
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2364000,
+          "coreHp": 4104000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2626667,
+          "coreHp": 4560000
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2889333,
+          "coreHp": 5016000
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3152000,
+          "coreHp": 5472000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3414667,
+          "coreHp": 5928000
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3677333,
+          "coreHp": 6384000
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3940000,
+          "coreHp": 6840000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 283680,
+          "coreHp": 492480
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 945600,
+          "coreHp": 1641600
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2364000,
+          "coreHp": 4104000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3940000,
+          "coreHp": 6840000
+        }
+      ]
+    },
+    "enemy_9017_achunt": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 129600,
+          "coreHp": 344448
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 162000,
+          "coreHp": 430560
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 216000,
+          "coreHp": 574080
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 270000,
+          "coreHp": 717600
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 324000,
+          "coreHp": 861120
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 378000,
+          "coreHp": 1004640
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 432000,
+          "coreHp": 1148160
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 486000,
+          "coreHp": 1291680
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 540000,
+          "coreHp": 1435200
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 675000,
+          "coreHp": 1794000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 810000,
+          "coreHp": 2152800
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 945000,
+          "coreHp": 2511600
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1080000,
+          "coreHp": 2870400
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1215000,
+          "coreHp": 3229200
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1350000,
+          "coreHp": 3588000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1500000,
+          "coreHp": 3986667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1650000,
+          "coreHp": 4385333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1800000,
+          "coreHp": 4784000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1950000,
+          "coreHp": 5182667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 2100000,
+          "coreHp": 5581333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 2250000,
+          "coreHp": 5980000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 162000,
+          "coreHp": 430560
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 540000,
+          "coreHp": 1435200
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1350000,
+          "coreHp": 3588000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 2250000,
+          "coreHp": 5980000
+        }
+      ]
+    },
+    "enemy_9021_acduml": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 241920,
+          "coreHp": 415872
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 302400,
+          "coreHp": 519840
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 403200,
+          "coreHp": 693120
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 504000,
+          "coreHp": 866400
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 604800,
+          "coreHp": 1039680
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 705600,
+          "coreHp": 1212960
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 806400,
+          "coreHp": 1386240
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 907200,
+          "coreHp": 1559520
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 1008000,
+          "coreHp": 1732800
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1260000,
+          "coreHp": 2166000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1512000,
+          "coreHp": 2599200
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1764000,
+          "coreHp": 3032400
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 2016000,
+          "coreHp": 3465600
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2268000,
+          "coreHp": 3898800
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2520000,
+          "coreHp": 4332000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2800000,
+          "coreHp": 4813333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3080000,
+          "coreHp": 5294667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3360000,
+          "coreHp": 5776000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3640000,
+          "coreHp": 6257333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3920000,
+          "coreHp": 6738667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4200000,
+          "coreHp": 7220000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 302400,
+          "coreHp": 519840
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 1008000,
+          "coreHp": 1732800
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2520000,
+          "coreHp": 4332000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4200000,
+          "coreHp": 7220000
+        }
+      ]
+    },
+    "enemy_1521_dslily": {
+      "hidingCore": false,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 251712
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 314640
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 419520
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 524400
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 629280
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 734160
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 839040
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 943920
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 1048800
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1311000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1573200
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1835400
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 2097600
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2359800
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2622000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2913333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3204667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3496000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3787333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 4078667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4370000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 314640
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 1048800
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2622000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4370000
+        }
+      ]
+    },
+    "enemy_9032_aclionk": {
+      "hidingCore": false,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 213120
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 266400
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 355200
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 444000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 532800
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 621600
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 710400
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 799200
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 888000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1110000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1332000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1554000
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1776000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1998000
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2220000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2466667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2713333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 2960000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3206667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3453333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3700000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 266400
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 888000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2220000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3700000
+        }
+      ]
+    },
+    "enemy_9033_acdeer": {
+      "hidingCore": false,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 232704
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 290880
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 387840
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 484800
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 581760
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 678720
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 775680
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 872640
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 969600
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1212000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1454400
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1696800
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1939200
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2181600
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2424000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2693333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2962667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3232000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3501333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3770667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4040000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 290880
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 969600
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2424000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4040000
+        }
+      ]
+    },
+    "enemy_9029_acfnc": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 191520,
+          "coreHp": 300960
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 239400,
+          "coreHp": 376200
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 319200,
+          "coreHp": 501600
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 399000,
+          "coreHp": 627000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 478800,
+          "coreHp": 752400
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 558600,
+          "coreHp": 877800
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 638400,
+          "coreHp": 1003200
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 718200,
+          "coreHp": 1128600
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 798000,
+          "coreHp": 1254000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 997500,
+          "coreHp": 1567500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1197000,
+          "coreHp": 1881000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1396500,
+          "coreHp": 2194500
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1596000,
+          "coreHp": 2508000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1795500,
+          "coreHp": 2821500
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1995000,
+          "coreHp": 3135000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2216667,
+          "coreHp": 3483333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2438333,
+          "coreHp": 3831667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 2660000,
+          "coreHp": 4180000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 2881667,
+          "coreHp": 4528333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3103333,
+          "coreHp": 4876667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3325000,
+          "coreHp": 5225000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 239400,
+          "coreHp": 376200
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 798000,
+          "coreHp": 1254000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1995000,
+          "coreHp": 3135000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3325000,
+          "coreHp": 5225000
+        }
+      ]
+    },
+    "enemy_9035_acspider": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 239040,
+          "coreHp": 454176
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 298800,
+          "coreHp": 567720
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 398400,
+          "coreHp": 756960
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 498000,
+          "coreHp": 946200
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 597600,
+          "coreHp": 1135440
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 697200,
+          "coreHp": 1324680
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 796800,
+          "coreHp": 1513920
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 896400,
+          "coreHp": 1703160
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 996000,
+          "coreHp": 1892400
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1245000,
+          "coreHp": 2365500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1494000,
+          "coreHp": 2838600
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1743000,
+          "coreHp": 3311700
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1992000,
+          "coreHp": 3784800
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2241000,
+          "coreHp": 4257900
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2490000,
+          "coreHp": 4731000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2766667,
+          "coreHp": 5256667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3043333,
+          "coreHp": 5782333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3320000,
+          "coreHp": 6308000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3596667,
+          "coreHp": 6833667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3873333,
+          "coreHp": 7359333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4150000,
+          "coreHp": 7885000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 298800,
+          "coreHp": 567720
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 996000,
+          "coreHp": 1892400
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2490000,
+          "coreHp": 4731000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4150000,
+          "coreHp": 7885000
+        }
+      ]
+    },
+    "enemy_9037_aceel": {
+      "hidingCore": true,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 120960,
+          "coreHp": 355680
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 151200,
+          "coreHp": 444600
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 201600,
+          "coreHp": 592800
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 252000,
+          "coreHp": 741000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 302400,
+          "coreHp": 889200
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 352800,
+          "coreHp": 1037400
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 403200,
+          "coreHp": 1185600
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 453600,
+          "coreHp": 1333800
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 504000,
+          "coreHp": 1482000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 630000,
+          "coreHp": 1852500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 756000,
+          "coreHp": 2223000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 882000,
+          "coreHp": 2593500
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1008000,
+          "coreHp": 2964000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1134000,
+          "coreHp": 3334500
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1260000,
+          "coreHp": 3705000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1400000,
+          "coreHp": 4116667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1540000,
+          "coreHp": 4528333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1680000,
+          "coreHp": 4940000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1820000,
+          "coreHp": 5351667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 1960000,
+          "coreHp": 5763333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 2100000,
+          "coreHp": 6175000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 151200,
+          "coreHp": 444600
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 504000,
+          "coreHp": 1482000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1260000,
+          "coreHp": 3705000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 2100000,
+          "coreHp": 6175000
+        }
+      ]
+    },
+    "enemy_2124_dyjsfg": {
+      "hidingCore": false,
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 112320
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 140400
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 187200
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 234000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 280800
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 327600
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 374400
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 421200
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 468000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 585000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 702000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 819000
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 936000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1053000
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1170000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1300000
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1430000
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1560000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1690000
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 1820000
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 1950000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 140400
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 468000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1170000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 1950000
+        }
+      ]
+    }
+  },
+  "modes": [
+    {
+      "id": "mode_training_2",
+      "name": "入门协议"
+    },
+    {
+      "id": "mode_single_funny",
+      "name": "极速模拟"
+    },
+    {
+      "id": "mode_single_1",
+      "name": "规程等级1"
+    },
+    {
+      "id": "mode_single_2",
+      "name": "规程等级2"
+    },
+    {
+      "id": "mode_single_3",
+      "name": "规程等级3"
+    },
+    {
+      "id": "mode_single_4",
+      "name": "规程等级4"
+    },
+    {
+      "id": "mode_single_5",
+      "name": "规程等级5"
+    },
+    {
+      "id": "mode_single_6",
+      "name": "规程等级6"
+    },
+    {
+      "id": "mode_single_7",
+      "name": "规程等级7"
+    },
+    {
+      "id": "mode_single_8",
+      "name": "规程等级8"
+    },
+    {
+      "id": "mode_single_9",
+      "name": "规程等级9"
+    },
+    {
+      "id": "mode_single_10",
+      "name": "规程等级10"
+    },
+    {
+      "id": "mode_single_11",
+      "name": "规程等级11"
+    },
+    {
+      "id": "mode_single_12",
+      "name": "规程等级12"
+    },
+    {
+      "id": "mode_single_13",
+      "name": "规程等级13"
+    },
+    {
+      "id": "mode_single_14",
+      "name": "规程等级14"
+    },
+    {
+      "id": "mode_single_15",
+      "name": "规程等级15"
+    },
+    {
+      "id": "mode_single_16",
+      "name": "规程等级16"
+    },
+    {
+      "id": "mode_single_17",
+      "name": "规程等级17"
+    },
+    {
+      "id": "mode_single_18",
+      "name": "规程等级18"
+    },
+    {
+      "id": "mode_single_19",
+      "name": "规程等级19"
+    },
+    {
+      "id": "mode_single_20",
+      "name": "规程等级20"
+    },
+    {
+      "id": "mode_multi_funny",
+      "name": "标准模拟"
+    },
+    {
+      "id": "mode_multi_normal",
+      "name": "险境模拟"
+    },
+    {
+      "id": "mode_multi_hard",
+      "name": "绝境模拟"
+    },
+    {
+      "id": "mode_multi_abyss",
+      "name": "终极模拟"
+    }
+  ]
+}

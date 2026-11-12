@@ -23,6 +23,8 @@ public sealed class HostSettingsStore(string path)
         {
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
+            GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
+            MumuSerial = json["mumuSerial"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
             CollapseMode = json["collapseMode"]?.GetValue<string>() ?? "strip",
             FocusCovenants = json["focusCovenants"]?.Deserialize<string[]>() ?? [],

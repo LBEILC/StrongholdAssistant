@@ -13,7 +13,7 @@ namespace StrongholdAssistant.Host;
 
 public partial class MainWindow
 {
-    private readonly WindowTrackerService _tracker = new();
+    private readonly WindowTrackerService _tracker;
     private readonly ScreenCaptureService _capture = new();
     private MaaOcrEngine _ocr = null!;
     private MaaBanIconMatcher _iconMatcher = null!;
@@ -79,6 +79,8 @@ public partial class MainWindow
     // OCR 加载和预热较慢，放在界面开始加载之后
     private async Task InitializeGameAsync()
     {
+        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial);
+        _capture.Connection.Changed += _ => Dispatcher.BeginInvoke(PublishConnection);
         var data = Path.Combine(AppContext.BaseDirectory, "data");
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
@@ -98,7 +100,9 @@ public partial class MainWindow
             await _scanner.WaitForIdleAsync();
             return await CaptureInformationScreenAsync();
         });
-        _scanner.BanScreenDetected += () => _automaticScan = Dispatcher.InvokeAsync(RecordAutomaticallyAsync).Task.Unwrap();
+        _scanner.AwaitingDetail = () => _api.Match.AwaitingDetail;
+        _scanner.BanScreenDetected += solo => _automaticScan = Dispatcher.InvokeAsync(() => RecordAutomaticallyAsync(solo)).Task.Unwrap();
+        _scanner.DetailScreenDetected += () => _automaticScan = Dispatcher.InvokeAsync(_api.HandleDetailAsync).Task.Unwrap();
         _tracker.GameWindowMoved += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowPolled += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowLost += () => Dispatcher.BeginInvoke(() =>
@@ -111,7 +115,7 @@ public partial class MainWindow
             _shopItems = [];
             _overlay.UpdateShopItems([]);
             _overlay.Hide();
-            _api.UpdateConnection(new("searching"));
+            PublishConnection();
         });
         _tracker.GameWindowMinimizedChanged += minimized => Dispatcher.BeginInvoke(() =>
         {
@@ -121,19 +125,21 @@ public partial class MainWindow
         });
     }
 
-    private async Task RecordAutomaticallyAsync()
+    private async Task RecordAutomaticallyAsync(bool solo)
     {
         if (_api.IsContinuous) return;
-        try { await _api.RecordInformationAsync(); }
+        try { await _api.HandleOpeningAsync(solo); }
         catch (RecognitionException) { /* 失败已由 scan 事件送达界面，忙碌时跳过自动请求。 */ }
     }
 
     private async Task<byte[]?> CaptureInformationScreenAsync()
     {
         if (!_connectGame) return null;
+        if (_capture.Connection.IsAdb)
+            return _closing ? null : await Task.Run(() => _capture.CaptureScreen());
         var before = await Dispatcher.InvokeAsync(() =>
         {
-            var game = User32.FindArknightsWindow();
+            var game = _tracker.CurrentGameWindowHandle;
             var foreground = User32.GetForegroundWindow();
             if (_closing || game == IntPtr.Zero || User32.IsIconic(game)
                 || foreground != game && foreground != new WindowInteropHelper(this).Handle)
@@ -178,14 +184,14 @@ public partial class MainWindow
         if (_closing) return;
         _lastGameRect = game;
         RefreshShopOverlay();
-        var client = User32.GetClientRectScreen(User32.FindArknightsWindow());
+        var client = _tracker.CurrentViewport;
         if (client is null) return;
         _lastClientRect = client;
         if (!_api.Settings.FollowGame)
         {
             _overlayMode = false;
             ApplyScale(client.Value.Height);
-            _api.UpdateConnection(new("connected", $"{client.Value.Width}×{client.Value.Height}", _tracker.IsFullscreen, false));
+            PublishConnection();
             return;
         }
         if (_moving || WindowState != WindowState.Normal) return;
@@ -216,7 +222,7 @@ public partial class MainWindow
         _uiScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
         _overlayMode = WindowGeometry.NeedsOverlay(game, monitor.WorkArea, scale, _dock.Width * _uiScale, _tracker.IsFullscreen);
         ApplyScale(client.Value.Height);
-        _api.UpdateConnection(new("connected", $"{client.Value.Width}×{client.Value.Height}", _tracker.IsFullscreen, _overlayMode));
+        PublishConnection();
         var target = _overlayMode
             ? WindowGeometry.OverlayBounds(client.Value, scale, Width, _dock.OverlayOffsetDip)
             : offset is null
@@ -301,8 +307,16 @@ public partial class MainWindow
             _collapsed ? _expandedWidth : Width, _collapsed ? _expandedHeight : Height) };
     }
 
-    private void RefreshSettings(bool followedBefore)
+    private async Task RefreshSettingsAsync(bool followedBefore)
     {
+        if (_connectGame)
+        {
+            await Task.Run(() =>
+            {
+                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial))
+                    _capture.Connection.FindGameWindow();
+            });
+        }
         if (followedBefore && !_api.Settings.FollowGame)
         {
             RememberFreeBounds();
@@ -311,6 +325,20 @@ public partial class MainWindow
             _api.UpdateConnection(_api.Connection with { Overlay = false });
         }
         RefreshScale();
+    }
+
+    private void PublishConnection()
+    {
+        if (_closing || !_connectGame) return;
+        var state = _capture.Connection.State;
+        var viewport = _capture.Connection.GetViewport(state.Window);
+        bool connected = state.Source == "pc" ? viewport is not null
+            : state.Source == "mumu" && state.Width > 0 && state.Problem is null;
+        string? resolution = !connected ? null : state.Source == "mumu"
+            ? $"{state.Width}×{state.Height}" : $"{viewport!.Value.Width}×{viewport.Value.Height}";
+        _api.UpdateConnection(new(connected ? "connected" : "searching", resolution,
+            connected ? _tracker.IsFullscreen : null, connected && _overlayMode,
+            connected ? state.Source : null, state.Problem));
     }
 
     protected override async void OnClosing(CancelEventArgs e)
@@ -352,8 +380,11 @@ public partial class MainWindow
             _overlay.Hide();
             return;
         }
-        var game = User32.FindArknightsWindow();
-        if (game == IntPtr.Zero || User32.IsIconic(game) || User32.GetClientRectScreen(game) is not { } client)
+        var game = _tracker.CurrentGameWindowHandle;
+        var foreground = User32.GetForegroundWindow();
+        if (game == IntPtr.Zero || User32.IsIconic(game) || _tracker.CurrentViewport is not { } client
+            || foreground != game && foreground != new WindowInteropHelper(this).Handle
+            || _capture.Connection.State.Problem is not null)
         {
             _overlay.Hide();
             return;

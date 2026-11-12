@@ -3,6 +3,7 @@
 import type { IconName } from '../components/Icon.svelte'
 import type { Lineup } from './api'
 import { app } from './state.svelte'
+import { plaza } from './plaza.svelte'
 
 export interface MenuItem {
   label: string
@@ -82,6 +83,7 @@ export function lineupMenu(l: Lineup): Omit<MenuState, 'x' | 'y'> {
     items: [
       { label: '编辑', icon: 'pencil', run: () => app.edit(l) },
       { label: '复制分享码', icon: 'share', run: () => app.copyShare(l) },
+      { label: '发布到广场', icon: 'upload', run: () => (plaza.publishing = $state.snapshot(l) as Lineup) },
       isT ? { label: '取消目标', icon: 'close', run: () => app.setTarget(null) } : { label: '设为目标', icon: 'focus', run: () => app.setTarget(l.id) },
       'sep',
       { label: '删除', icon: 'trash', tone: 'danger', confirm: '再点一次删除', run: () => app.deleteLineup(l.id) },

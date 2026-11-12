@@ -44,6 +44,11 @@ Type: filesandordirs; Name: "{app}\plugins"
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "installed.json"; DestDir: "{app}"; Flags: ignoreversion
 
+[Registry]
+Root: HKCU; Subkey: "Software\Classes\stronghold"; ValueType: string; ValueData: "URL:StrongholdAssistant"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\stronghold"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\stronghold\shell\open\command"; ValueType: string; ValueData: """{app}\StrongholdAssistant.exe"" ""%1"""
+
 [Icons]
 Name: "{group}\卫戍协议助手"; Filename: "{app}\StrongholdAssistant.exe"
 Name: "{autodesktop}\卫戍协议助手"; Filename: "{app}\StrongholdAssistant.exe"; Tasks: desktopicon

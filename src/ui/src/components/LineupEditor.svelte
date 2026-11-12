@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-  import { app, goalProgress, rankForGoals } from '../lib/state.svelte'
+  import { app, goalProgress, rankForGoals, lineupEquipment } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
@@ -23,19 +23,39 @@
   const pickSt = (id: string) => e && (e.strategyId = e.strategyId === id ? null : id)
   let cat = $state<string | null>(null)
   const cats = [...new Set(app.catalog.equipment.flatMap((x) => x.categories))]
-  const hasEq = (n: string) => !!e?.equipment.includes(n)
+  // 点已选的干员展开他的装备面板；展开时下面「装备」里点的装备进他的候选，否则进通用装备
+  let sel = $state<string | null>(null)
+  const selM = $derived(sel ? e?.members.find((m) => m.name === sel) : undefined)
+  const selOp = $derived(sel ? app.op(sel) : undefined)
+  const pickMember = (n: string) => {
+    sel = sel === n ? null : n
+    if (sel) poolKind = 'eq'
+  }
+  const memberHas = (n: string) => !!selM?.equipment?.some((x) => x.name === n)
+  const setMemberEq = (f: (l: { name: string; priority: boolean }[]) => { name: string; priority: boolean }[]) => {
+    if (!e || !sel) return
+    e.members = e.members.map((m) => (m.name === sel ? { ...m, equipment: f(m.equipment ?? []) } : m))
+  }
+  const togglePriority = (n: string) => setMemberEq((l) => l.map((x) => (x.name === n ? { ...x, priority: !x.priority } : x)))
+  const removeMemberEq = (n: string) => setMemberEq((l) => l.filter((x) => x.name !== n))
+  const priCount = (m: { equipment?: { priority: boolean }[] }) => m.equipment?.filter((x) => x.priority).length ?? 0
+  const slotText = (o: { equipSlots: { normal: number; elite: number } }) =>
+    o.equipSlots.elite === o.equipSlots.normal ? `装备栏 ${o.equipSlots.normal}` : `装备栏 ${o.equipSlots.normal} · 精锐 ${o.equipSlots.elite}`
+  const hasEq = (n: string) => (sel ? memberHas(n) : !!e?.equipment.includes(n))
   const addEq = (n: string) => {
     if (!e) return
-    e.equipment = hasEq(n) ? e.equipment.filter((x) => x !== n) : [...e.equipment, n]
+    if (sel) return setMemberEq((l) => (l.some((x) => x.name === n) ? l.filter((x) => x.name !== n) : [...l, { name: n, priority: false }]))
+    e.equipment = e.equipment.includes(n) ? e.equipment.filter((x) => x !== n) : [...e.equipment, n]
   }
   const eqPool = $derived(
     app.catalog.equipment.filter((x) => (!q || x.name.includes(q)) && (!cat || x.categories.includes(cat))).sort((a, b) => b.tier - a.tier),
   )
-  const empty = $derived(!e || (!e.members.length && !e.goals.length && !e.equipment.length))
+  const empty = $derived(!e || (!e.members.length && !e.goals.length && !lineupEquipment(e).length))
 
   const inLineup = (n: string) => !!e?.members.some((m) => m.name === n)
   const add = (n: string) => {
     if (!e) return
+    if (inLineup(n) && sel === n) sel = null
     e.members = inLineup(n) ? e.members.filter((m) => m.name !== n) : [...e.members, { name: n }]
   }
   const toggleKey = (n: string) => {
@@ -107,14 +127,46 @@
     </div>
 
     <div class="sec">
-      <div class="lbl">想抓的干员 <b class="term">{e.members.length}</b><em>不限人数；点已选的头像切换「关键」</em></div>
+      <div class="lbl">想抓的干员 <b class="term">{e.members.length}</b><em>不限人数；点已选的头像设「关键」和候选装备</em></div>
       <div class="chosen">
         {#each e.members as m (m.name)}
-          <OpTile name={m.name} transform={m.transform} isKey={m.key} size={34} showName={false} menu={false} onclick={() => toggleKey(m.name)} />
+          <span class="mt" class:sel={sel === m.name}>
+            <OpTile name={m.name} transform={m.transform} isKey={m.key} size={34} showName={false} menu={false} onclick={() => pickMember(m.name)} />
+            {#if priCount(m)}<b class="pc" title="{priCount(m)} 件优先装备">{priCount(m)}</b>{:else if m.equipment?.length}<b class="pc soft" title="{m.equipment.length} 件候选装备">{m.equipment.length}</b>{/if}
+          </span>
         {:else}
           <span class="muted">在下面点头像加入</span>
         {/each}
       </div>
+      {#if selM && selOp}
+        {@const pri = priCount(selM)}
+        <div class="mp" transition:fly={{ y: -6, duration: 160 }}>
+          <div class="mph">
+            <b>{selM.name}</b>
+            <span class="slots">{slotText(selOp)}</span>
+            <span class="spacer"></span>
+            <button class="kt" class:on={selM.key} onclick={() => toggleKey(selM.name)}>{selM.key ? '★ 关键' : '☆ 设为关键'}</button>
+            <button class="x2" aria-label="收起" onclick={() => (sel = null)}><Icon name="close" size={13} /></button>
+          </div>
+          <div class="ces">
+            {#each selM.equipment ?? [] as x (x.name)}
+              <span class="ce" class:pri={x.priority}>
+                <button class="cb" onclick={() => togglePriority(x.name)} title={x.priority ? '点一下改成候选' : '点一下改成优先'}>
+                  <img src={asset.equipment(x.name)} alt="" />{x.name}<em>{x.priority ? '优先' : '候选'}</em>
+                </button>
+                <button class="cx" aria-label="移除{x.name}" onclick={() => removeMemberEq(x.name)}><Icon name="close" size={11} /></button>
+              </span>
+            {:else}
+              <span class="muted">还没有候选装备，在下面「装备」里点选</span>
+            {/each}
+          </div>
+          {#if pri > selOp.equipSlots.elite}<p class="over">优先 {pri} 件，超过装备栏 {selOp.equipSlots.elite} 格</p>{/if}
+          {#if selOp.givesEquipment?.length}
+            <div class="gives">提供装备：{#each selOp.givesEquipment as n (n)}<button class:on={memberHas(n)} onclick={() => addEq(n)}>{n}{memberHas(n) ? ' ✓' : ' +'}</button>{/each}</div>
+          {/if}
+          <p class="mhint">点装备切换「优先 / 候选」：优先的在商店里按关键标记（金色括号）。</p>
+        </div>
+      {/if}
       {#if strat}
         <div class="lbl">策略<em>点一下取消</em></div>
         <button class="stchip" onclick={() => pickSt(strat.id)}>
@@ -123,8 +175,10 @@
           <Icon name="close" size={13} />
         </button>
       {/if}
+      <div class="lbl">简介 <b class="term">{[...(e.description ?? '')].length}/500</b><em>可以不写；发布到广场时默认带上</em></div>
+      <textarea class="desc" rows="2" maxlength="500" placeholder="这套阵容的思路、运营要点、适合打哪个首领……" value={e.description ?? ''} oninput={(ev) => (e.description = ev.currentTarget.value || undefined)}></textarea>
       {#if e.equipment.length}
-        <div class="lbl">想要的装备 <b class="term">{e.equipment.length}</b><em>点一下移出</em></div>
+        <div class="lbl">通用装备 <b class="term">{e.equipment.length}</b><em>不指定干员；点一下移出</em></div>
         <div class="chosen">
           {#each e.equipment as n (n)}
             <EqTile name={n} size={34} showName={false} menu={false} onclick={() => addEq(n)} />
@@ -138,7 +192,7 @@
       <Seg
         items={[
           { id: 'op', label: '干员', count: e.members.length },
-          { id: 'eq', label: '装备', count: e.equipment.length },
+          { id: 'eq', label: '装备', count: lineupEquipment(e).length },
           { id: 'st', label: '策略', count: e.strategyId ? 1 : 0 },
         ]}
         value={poolKind}
@@ -161,6 +215,9 @@
           {/each}
         </div>
       {:else if poolKind === 'eq'}
+        <div class="for" class:member={!!sel}>
+          {#if sel}给 <b>{sel}</b> 选候选装备<button onclick={() => (sel = null)}>改加通用装备</button>{:else}点装备加入通用装备；要给某名干员配，先点上面他的头像{/if}
+        </div>
         <div class="cats">
           {#each cats as c (c)}
             <button class="chip" class:on={cat === c} onclick={() => (cat = cat === c ? null : c)}>{c}</button>
@@ -204,6 +261,194 @@
 {/if}
 
 <style>
+  .desc {
+    width: 100%;
+    resize: vertical;
+    min-height: 44px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--fg-1);
+    background: var(--bg-1);
+    border: 0;
+    outline: 0;
+    box-shadow: inset 0 0 0 1px var(--line);
+    user-select: text;
+  }
+  .desc:focus {
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .desc::placeholder {
+    color: var(--fg-4);
+  }
+  .mt {
+    position: relative;
+    display: inline-flex;
+  }
+  .mt.sel {
+    outline: 2px solid var(--mint);
+    outline-offset: 1px;
+  }
+  .pc {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    font-size: 10px;
+    line-height: 15px;
+    text-align: center;
+    color: var(--gold-ink);
+    background: var(--gold);
+    pointer-events: none;
+  }
+  .pc.soft {
+    color: var(--fg-1);
+    background: var(--bg-3);
+  }
+  .mp {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgb(0 0 0 / 0.3);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
+  .mph {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .mph b {
+    font-size: 13px;
+    color: var(--fg-1);
+  }
+  .slots {
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .mph .spacer {
+    flex: 1;
+  }
+  .kt {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+    color: var(--fg-2);
+    background: var(--bg-2);
+  }
+  .kt.on {
+    color: var(--gold-ink);
+    background: var(--gold);
+    font-weight: 700;
+  }
+  .x2 {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    color: var(--fg-3);
+  }
+  .ces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .ce {
+    display: inline-flex;
+    align-items: stretch;
+    background: var(--bg-2);
+    box-shadow: inset 0 -2px 0 var(--fg-4);
+  }
+  .ce.pri {
+    background: rgb(243 179 34 / 0.12);
+    box-shadow: inset 0 -2px 0 var(--gold);
+  }
+  .cb {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 6px 0 3px;
+    font-size: 12px;
+    color: var(--fg-1);
+  }
+  .cb img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+  .cb em {
+    font-style: normal;
+    font-size: 10px;
+    padding: 0 4px;
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .ce.pri .cb em {
+    color: var(--gold-ink);
+    background: var(--gold);
+    box-shadow: none;
+    font-weight: 700;
+  }
+  .cx {
+    width: 20px;
+    display: grid;
+    place-items: center;
+    color: var(--fg-4);
+  }
+  .cx:hover {
+    color: var(--fg-1);
+  }
+  .over {
+    margin: 6px 0 0;
+    font-size: 11px;
+    color: var(--gold);
+  }
+  .gives {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--fg-3);
+  }
+  .gives button {
+    height: 20px;
+    padding: 0 6px;
+    font-size: 11px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint);
+  }
+  .gives button.on {
+    color: var(--fg-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .mhint {
+    margin: 6px 0 0;
+    font-size: 10.5px;
+    color: var(--fg-4);
+  }
+  .for {
+    font-size: 11px;
+    color: var(--fg-4);
+    margin: 4px 0;
+  }
+  .for.member {
+    color: var(--mint);
+  }
+  .for b {
+    color: var(--fg-1);
+  }
+  .for button {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--fg-3);
+    text-decoration: underline;
+  }
   .scrim {
     position: absolute;
     inset: 0;

@@ -1,0 +1,13 @@
+name = "stronghold-plaza"
+pages_build_output_dir = "site/dist"
+compatibility_date = "2025-10-11"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stronghold-plaza"
+database_id = "50914c7a-17c5-49cf-9f8b-3b7bee1272b3"
+migrations_dir = "migrations"
+
+# MAIL_FROM、ADMIN_EMAILS、ACCESS_TEAM_DOMAIN、ACCESS_AUD 含域名和邮箱，用 Pages 机密变量设置，不写在这里（见 README）。
+[vars]
+ALLOWED_ORIGINS = "https://app.local,http://localhost:5178"

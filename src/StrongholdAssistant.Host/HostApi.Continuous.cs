@@ -54,11 +54,11 @@ public sealed partial class HostApi
         string message;
         if (_continuousReason is { } reason) message = reason + summary;
         else if (stop.IsCancellationRequested) message = "持续识别满 90 秒，已自动结束。" + summary;
-        else if (succeeded) message = "连续 3 次没找到开局信息页，持续识别已结束。" + summary;
+        else if (succeeded) message = "连续 3 次没找到本局信息页，持续识别已结束。" + summary;
         else
         {
             ok = false;
-            message = "没找到开局信息页，持续识别已结束。请先打开本局信息页再点「持续识别」。";
+            message = "没找到本局信息页，持续识别已结束。请先打开开局信息页或对局详情再点「持续识别」。";
         }
         _continuousStop = null;
         stop.Dispose();
