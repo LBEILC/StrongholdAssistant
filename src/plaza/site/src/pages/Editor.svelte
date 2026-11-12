@@ -631,7 +631,11 @@
     font-weight: 700;
   }
   textarea {
-    resize: vertical;
+    /* 随内容长高，不要原生的拖拽手柄 */
+    resize: none;
+    field-sizing: content;
+    min-height: 112px;
+    max-height: 360px;
     line-height: 1.6;
   }
   .full {

@@ -97,13 +97,21 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
 }
 
 img {
   display: block;
+  /* 拖动头像、图标时不拖出半透明的图片 */
+  -webkit-user-drag: none;
+}
+
+::selection {
+  color: var(--fg-1);
+  background: rgb(34 227 178 / 0.32);
 }
 
 :focus-visible {
@@ -117,6 +125,12 @@ img {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--bg-4);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-4);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

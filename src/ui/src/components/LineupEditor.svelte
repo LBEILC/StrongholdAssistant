@@ -263,8 +263,11 @@
 <style>
   .desc {
     width: 100%;
-    resize: vertical;
+    /* 随内容长高，不要原生的拖拽手柄 */
+    resize: none;
+    field-sizing: content;
     min-height: 44px;
+    max-height: 168px;
     padding: 6px 8px;
     font: inherit;
     font-size: 12px;

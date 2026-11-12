@@ -33,8 +33,11 @@
   import heartFill from 'remixicon/icons/Health & Medical/heart-3-fill.svg?raw'
   import share from 'remixicon/icons/System/share-forward-line.svg?raw'
   import paste from 'remixicon/icons/Document/clipboard-line.svg?raw'
+  import cut from 'remixicon/icons/Design/scissors-cut-line.svg?raw'
+  import copy from 'remixicon/icons/Document/file-copy-line.svg?raw'
+  import selectAll from 'remixicon/icons/Editor/text.svg?raw'
 
-  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste }
+  const icons = { settings, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll }
   export type IconName = keyof typeof icons
 </script>
 

@@ -4,8 +4,13 @@ body {
   height: auto;
   min-height: 100%;
 }
-html {
-  scrollbar-color: var(--bg-4) transparent;
+/* 滚动条沿用 app.css 的细条（::-webkit-scrollbar）。不能在这里写标准的 scrollbar-color：
+   Chromium 见到它就改回带上下箭头的原生滚动条。只给不认 ::-webkit-scrollbar 的 Firefox 写 */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: var(--bg-4) transparent;
+    scrollbar-width: thin;
+  }
 }
 body {
   font-size: 14px;

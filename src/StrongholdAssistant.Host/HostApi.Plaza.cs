@@ -68,10 +68,23 @@ public sealed partial class HostApi
         {
             try
             {
-                var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(DataDirectory, "WebView2"));
+                // 自动填充设置随配置共享，登录窗口独立存储以保留默认自动填充。
+                var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(DataDirectory, "PlazaWebView2"));
                 if (closed) return;
                 await browser.EnsureCoreWebView2Async(environment);
                 if (closed) return;
+                browser.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+                browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                browser.CoreWebView2.ContextMenuRequested += (_, args) =>
+                {
+                    for (var i = args.MenuItems.Count - 1; i >= 0; i--)
+                    {
+                        if (args.MenuItems[i].Name is not ("cut" or "copy" or "paste" or "selectAll"))
+                            args.MenuItems.RemoveAt(i);
+                    }
+                    if (args.MenuItems.Count == 0) args.Handled = true;
+                };
                 browser.CoreWebView2.NewWindowRequested += (_, args) =>
                 {
                     args.Handled = true;

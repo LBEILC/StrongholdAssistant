@@ -315,7 +315,11 @@
   }
   textarea {
     width: 100%;
-    resize: vertical;
+    /* 随内容长高，不要原生的拖拽手柄 */
+    resize: none;
+    field-sizing: content;
+    min-height: 160px;
+    max-height: 420px;
     line-height: 1.7;
   }
   .edrow {

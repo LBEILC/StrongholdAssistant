@@ -53,6 +53,22 @@ public partial class MainWindow : Window
         Trace.WriteLine($"WebView2 runtime={environment.BrowserVersionString}; IsNonClientRegionSupportEnabled={web.Settings.IsNonClientRegionSupportEnabled}");
         var dev = Environment.GetEnvironmentVariable("STRONGHOLD_UI_DEV") == "1";
         var origin = dev ? "http://localhost:5178" : "https://app.local";
+        if (!dev)
+        {
+            web.Settings.AreDefaultContextMenusEnabled = false;
+            web.Settings.AreBrowserAcceleratorKeysEnabled = false;
+            web.Settings.AreDevToolsEnabled = false;
+            web.Settings.IsStatusBarEnabled = false;
+        }
+        // 自动填充会保存在配置中，切回开发模式时恢复原来的默认值。
+        web.Settings.IsGeneralAutofillEnabled = dev;
+        web.PermissionRequested += (_, args) =>
+        {
+            if (args.PermissionKind == CoreWebView2PermissionKind.ClipboardRead
+                && Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri)
+                && uri.GetLeftPart(UriPartial.Authority) == origin)
+                args.State = CoreWebView2PermissionState.Allow;
+        };
         web.NavigationStarting += (_, args) =>
         {
             if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) || uri.GetLeftPart(UriPartial.Authority) != origin)

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { menu, type MenuItem } from '../lib/menu.svelte'
+  import { menu, textField, textMenu, type MenuItem } from '../lib/menu.svelte'
   import Icon from './Icon.svelte'
 
   // 右键菜单：仿游戏终端面板，顶部一条薄荷绿短线；在鼠标处弹出，贴边时往回收。
@@ -38,23 +38,27 @@
   onpointerdown={(e) => m && !box?.contains(e.target as Node) && close()}
   onwheel={close}
   oncontextmenu={(e) => {
-    // 有菜单的元素自己处理（openMenu 会拦下事件）；输入框保留系统菜单（剪切 / 复制 / 粘贴），其余地方什么都不弹
-    if (!(e.target as HTMLElement).closest('input, textarea')) e.preventDefault()
+    // 有菜单的元素自己处理（openMenu 会拦下事件）；输入框弹自己的编辑菜单，其余地方什么都不弹
+    const field = textField(e.target)
+    if (field) return textMenu(e, field)
+    e.preventDefault()
     close()
   }}
 />
 
 {#if m}
   <div class="menu" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" role="menu">
-    <div class="hd">
-      <b>{m.title}</b>
-      {#if m.sub}<span>{m.sub}</span>{/if}
-    </div>
+    {#if m.title}
+      <div class="hd">
+        <b>{m.title}</b>
+        {#if m.sub}<span>{m.sub}</span>{/if}
+      </div>
+    {/if}
     {#each m.items as it, i (i)}
       {#if it === 'sep'}
         <i class="sep"></i>
       {:else}
-        <button class="it" class:danger={it.tone === 'danger'} class:on={it.on} class:armed={armed === i} role="menuitem" onclick={() => pick(it, i)}>
+        <button class="it" class:danger={it.tone === 'danger'} class:on={it.on} class:armed={armed === i} role="menuitem" disabled={it.disabled} onclick={() => pick(it, i)}>
           {#if it.icon}<Icon name={it.icon} size={14} />{:else}<span class="ph"></span>{/if}
           <span class="lb">{armed === i ? it.confirm : it.label}</span>
           {#if it.on !== undefined}
@@ -128,6 +132,10 @@
     font-size: 12.5px;
     text-align: left;
     color: var(--fg-2);
+  }
+  .it:disabled {
+    color: var(--fg-4);
+    pointer-events: none;
   }
   .it:hover {
     color: var(--fg-1);

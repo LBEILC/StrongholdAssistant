@@ -1,4 +1,4 @@
-// 右键菜单：界面里所有右键都走这里，不弹 WebView2 自带的浏览器菜单（输入框除外，保留剪切、复制、粘贴）。
+// 右键菜单：界面里所有右键都走这里，不弹 WebView2 自带的浏览器菜单；输入框也用自己的「剪切 / 复制 / 粘贴 / 全选」。
 // 干员、装备、盟约、阵容各有一份菜单，在任何页面右键都一样，不用先进「修正」。
 import type { IconName } from '../components/Icon.svelte'
 import type { Lineup } from './api'
@@ -11,6 +11,8 @@ export interface MenuItem {
   /** 开关项：右侧显示勾选状态 */
   on?: boolean
   tone?: 'danger'
+  /** 灰掉、点不了 */
+  disabled?: boolean
   /** 危险操作先变成「再点一次确认」，第二次才执行 */
   confirm?: string
   run: () => void
@@ -20,7 +22,8 @@ export type MenuEntry = MenuItem | 'sep'
 export interface MenuState {
   x: number
   y: number
-  title: string
+  /** 不写就不画标题行（输入框菜单） */
+  title?: string
   sub?: string
   items: MenuEntry[]
 }
@@ -31,6 +34,44 @@ export function openMenu(e: MouseEvent, m: Omit<MenuState, 'x' | 'y'>) {
   e.preventDefault()
   e.stopPropagation()
   menu.open = { ...m, x: e.clientX, y: e.clientY }
+}
+
+export type TextField = HTMLInputElement | HTMLTextAreaElement
+const TEXT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'password'])
+/** 右键点在可以打字的框里时返回它（勾选框、开关之类不算） */
+export const textField = (t: EventTarget | null): TextField | null => {
+  const el = (t as HTMLElement | null)?.closest?.('input, textarea')
+  return el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && TEXT_TYPES.has(el.type)) ? el : null
+}
+
+/** 输入框的右键菜单。点菜单时输入框已经失焦，先把焦点和选区放回去再走浏览器的编辑命令：撤销、input 事件、字数上限都照常 */
+export function textMenu(e: MouseEvent, el: TextField) {
+  const start = el.selectionStart ?? 0
+  const end = el.selectionEnd ?? 0
+  const selected = end > start && el.type !== 'password'
+  const editable = !el.readOnly && !el.disabled
+  const back = () => {
+    el.focus()
+    el.setSelectionRange(start, end)
+  }
+  openMenu(e, {
+    items: [
+      { label: '剪切', icon: 'cut', disabled: !selected || !editable, run: () => (back(), document.execCommand('cut')) },
+      { label: '复制', icon: 'copy', disabled: !selected, run: () => (back(), document.execCommand('copy')) },
+      {
+        label: '粘贴',
+        icon: 'paste',
+        disabled: !editable,
+        run: async () => {
+          const text = await navigator.clipboard.readText()
+          back()
+          document.execCommand('insertText', false, text)
+        },
+      },
+      'sep',
+      { label: '全选', icon: 'selectAll', disabled: !el.value, run: () => (el.focus(), el.select()) },
+    ],
+  })
 }
 
 const tierName = (t: number) => `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][t]} 阶`
