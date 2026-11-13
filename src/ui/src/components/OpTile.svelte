@@ -84,7 +84,7 @@
   .owned .pic {
     box-shadow:
       inset 0 0 0 1.5px var(--mint),
-      0 0 8px rgb(34 227 178 / 0.3);
+      0 0 8px rgb(var(--mint-rgb) / 0.3);
   }
   .check {
     position: absolute;
@@ -126,7 +126,7 @@
     border-radius: 50%;
     color: var(--gold-ink);
     background: var(--gold);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+    box-shadow: 0 0 0 1px rgb(var(--shade-rgb) / 0.6);
   }
   .key {
     position: absolute;
@@ -148,7 +148,7 @@
     height: max(11px, calc(var(--s) * 0.26));
     aspect-ratio: 40 / 27;
     object-view-box: inset(0px 16px 0px 4px);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+    box-shadow: 0 0 0 1px rgb(var(--shade-rgb) / 0.6);
   }
   .sk {
     position: absolute;
@@ -157,7 +157,7 @@
     z-index: 2;
     width: 14px;
     height: 14px;
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.7);
+    box-shadow: 0 0 0 1px rgb(var(--shade-rgb) / 0.7);
     background: var(--bg-0);
   }
   .tf {
@@ -172,14 +172,14 @@
     border-radius: 50%;
     color: var(--gold-ink);
     background: var(--gold);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+    box-shadow: 0 0 0 1px rgb(var(--shade-rgb) / 0.6);
   }
   .tf .glyph {
     width: 11px;
     height: 11px;
   }
   .nm {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
     max-width: calc(var(--s) + 8px);
     white-space: nowrap;

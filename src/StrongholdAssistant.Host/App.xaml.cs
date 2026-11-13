@@ -17,6 +17,7 @@ public partial class App : Application
     private Task? _deepLinkListener;
     private string _logDirectory = null!;
     private int _failureDialogShown;
+    private string? _webView2Version;
     internal volatile bool UiReady;
     internal static readonly UpdateStartupNotification StartupResult = new(
         Environment.GetEnvironmentVariable(UpdateStartupNotification.ResultVariable));
@@ -52,13 +53,20 @@ public partial class App : Application
         DispatcherUnhandledException += (_, args) => ReportUnhandledException(args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) => ReportUnhandledException((Exception)args.ExceptionObject);
         TaskScheduler.UnobservedTaskException += (_, args) => ReportUnhandledException(args.Exception);
-        if (!StartupDiagnostics.IsWebView2Available())
+        var runtime = StartupDiagnostics.IsWebView2Available();
+        _webView2Version = runtime.Version;
+        if (runtime.Status == WebView2Availability.Missing)
         {
             const string message = "这台电脑缺少「Microsoft Edge WebView2 运行时」，助手的界面要靠它显示。";
             AppLogger.Error("Crash", message);
             StartupResult.ReportFailure(message);
             ShowFailureAndExit(message + "\n\n点「是」打开微软官方下载（免费，几 MB），装好后重新打开助手。",
                 "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+            return;
+        }
+        if (runtime.Status == WebView2Availability.TooOld)
+        {
+            ReportOutdatedWebView2();
             return;
         }
         MainWindow = new MainWindow(!noGame, userDirectory);
@@ -76,10 +84,25 @@ public partial class App : Application
     private void ReportUnhandledException(Exception exception)
     {
         StartupDiagnostics.LogCrash(exception);
+        if (!UiReady && StartupDiagnostics.IsWebView2InterfaceUnavailable(exception))
+        {
+            ReportOutdatedWebView2();
+            return;
+        }
         StartupResult.ReportFailure(exception.Message);
         if (!UiReady)
             ShowFailureAndExit($"助手启动失败：{exception.Message.Split(['\r', '\n'])[0]}\n\n" +
                 "点「是」打开日志文件夹，把 host.log 发到 QQ 群 1132134217 或 GitHub Issues，方便我们排查。", _logDirectory);
+    }
+
+    private void ReportOutdatedWebView2()
+    {
+        var version = _webView2Version is null ? "" : $"（{_webView2Version}）";
+        var message = $"这台电脑的「Microsoft Edge WebView2 运行时」版本太旧{version}，助手需要 {StartupDiagnostics.MinimumWebView2Version} 或更新的版本。";
+        AppLogger.Error("Crash", message);
+        StartupResult.ReportFailure(message);
+        ShowFailureAndExit(message + "\n\n点「是」打开微软官方下载，装好后重新打开助手。",
+            "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
     }
 
     private void ShowFailureAndExit(string message, string target)

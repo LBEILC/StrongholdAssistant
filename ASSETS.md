@@ -15,6 +15,9 @@
 | `src/ui/public/assets/game/hud/s_icon_gold.png` | 资金图标（三颗菱形，白色原图，界面里染成金色） | 同上，`…/[uc]autochesscommon/arts/garrisontypeicon/` |
 | `src/ui/public/assets/game/band/` | 禁用标记、禁用提示底板 | 同上，`…/[uc]autochessouter/bandchoose/` |
 | `src/ui/public/assets/game/stageinfo/` | 「确认本局信息」页的标题图标、盟约与干员禁用角标、底板等 | 同上，`…/[uc]autochessouter/stageinfo/stageinfogroup/` |
+| `src/ui/public/assets/game/skin/terminal/` | 界面皮肤「卫戍协议终端」：盟约圆盘、等阶角标、商店卡框、调度中心等级牌（文件改了名，对应关系见 `src/ui/src/lib/skin.svelte.ts` 里的说明） | 同上，`…/autochessvariantskin/[uc]ac_n_initial/`：`prefabs/bondicon/bond_icon_view_item/`、`arts/chesslevelicon/`、`arts/chessframe/`、`arts/playerdetailshoplevel/` |
+| `src/ui/public/assets/game/skin/ursus/` | 界面皮肤「乌萨斯齐心团」，同上几类；另有界面外框：标语条（`flag`）、回合数网格底（`round`）、资金栏长条（`panel`）、标题栏红色斜扫（`sweep`） | 同上，`…/autochessvariantskin/[uc]ac_n_iron/` 的同名目录，以及 `prefabs/banner/round_result/text_bg.png`、`prefabs/group_hud/bg_round.png`、`prefabs/banner/game_start/goal_bg.png`、`prefabs/shop/panel_shop_main/back_left.png` |
+| `src/ui/public/assets/game/skin/closure/` | 界面皮肤「『全能的』可露希尔」，同上几类；另有 6 阶「VI」字形遮罩、渐变和角标星星，以及闪光星（`sparkle`）、文件夹（`folder`） | 同上，`…/autochessvariantskin/[uc]ac_s_closur/` 的同名目录，以及 `arts/shop/notag/mask_text_vi.png`、`prefabs/shop/chess_level_6_obj/`、`prefabs/group_hud/round_num_back.png`、`prefabs/shop/panel_shop_main/img_fx_star_outline.png` |
 
 | `.github/readme/` | README 与发版页的图片（含上面的界面素材、盟约图标与界面截图） | 由本项目用上面的素材和界面截图渲染 |
 | `branding/` | 应用图标、QQ 群头像（`icon.png`、`icon.ico`、`qq-avatar.png`），图案用了上面的「独行」盟约图标 | 由本项目渲染，生成页见 `docs/readme/panels.html` |
@@ -24,6 +27,7 @@
 | 位置 | 内容 | 来源与许可 |
 |---|---|---|
 | `src/ui/src/assets/fonts/MiSans-VF.woff2` | MiSans 可变字体的子集（GB2312 汉字、ASCII、常用标点及界面与数据中出现的字符），转为 woff2 | 小米 [MiSans](https://hyperos.mi.com/font)，© Beijing Xiaomi Mobile Software Co., Ltd.，按《MiSans 字体知识产权许可协议》使用 |
+| `src/ui/src/assets/fonts/fusion-pixel/fusion-pixel-12px-latin.woff2` | Fusion Pixel 12px 等宽简中版的基本拉丁区块，可露希尔皮肤的英文装饰字 | [TakWolf/fusion-pixel-font](https://github.com/TakWolf/fusion-pixel-font)，SIL Open Font License 1.1；许可证随包放在 `src/ui/public/licenses/fusion-pixel/`（含其上游 ark-pixel、cubic-11、galmuri 的许可） |
 | 界面里的通用图标（设置、关闭、刷新、搜索、星标等，打包进界面代码） | [Remix Icon](https://github.com/Remix-Design/RemixIcon) 4.9.1 | Apache-2.0 |
 
 ## 数据与图标

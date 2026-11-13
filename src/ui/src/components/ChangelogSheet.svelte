@@ -19,12 +19,13 @@
 
 {#if app.changelogOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:sheet={{ y: 360, duration: 240 }}>
+  <aside class="sheet win" transition:sheet={{ y: 360, duration: 240 }}>
     <header>
       <h3>更新日志</h3>
       <span class="term">Changelog</span>
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
+    <div class="scroll">
     {#each CHANGELOG as n (n.version)}
       <section>
         <button class="vh" onclick={() => (open[n.version] = !open[n.version])} aria-expanded={!!open[n.version]}>
@@ -39,6 +40,7 @@
         {/if}
       </section>
     {/each}
+    </div>
   </aside>
 {/if}
 
@@ -46,7 +48,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
+    background: var(--scrim);
     z-index: 12;
   }
   .sheet {
@@ -55,15 +57,16 @@
     right: 0;
     bottom: 0;
     max-height: 90%;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     z-index: 13;
-    padding: 12px 12px 16px;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #16181a 120px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 120px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .sheet::before {
     content: '';
@@ -83,10 +86,10 @@
   }
   h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-2xl);
   }
   header .term {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--fg-4);
   }
   .x {
@@ -115,23 +118,23 @@
     text-align: left;
   }
   .vh b {
-    font-size: 14px;
+    font-size: var(--fs-lg);
     color: var(--fg-1);
   }
   .cur {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 1px 5px;
     color: var(--mint-ink);
     background: var(--mint);
   }
   .date {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .cnt {
     margin-left: auto;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .chev {

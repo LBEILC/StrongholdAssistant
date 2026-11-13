@@ -23,7 +23,15 @@
   const C = 2 * Math.PI * R
 </script>
 
-<button class="bond" class:on class:focus class:clickable={!!onclick} style:--s="{size}px" {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={name ? undefined : cov.name}>
+<button
+  class="bond"
+  class:on
+  class:focus
+  class:clickable={!!onclick}
+  style:--s="{size}px"
+  style:--disc-on="url({asset.skin('bond_on')})"
+  style:--disc-off="url({asset.skin('bond_off')})"
+  {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={name ? undefined : cov.name}>
   <span class="disc">
     {#if progress !== undefined}
       <svg class="ring" viewBox="0 0 100 100">
@@ -59,30 +67,45 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    color: #8a8f93;
-    background: radial-gradient(circle at 50% 40%, #3b3f43, #26292c 70%);
-    box-shadow:
-      inset 0 0 0 1.5px #44494d,
-      inset 0 -3px 6px rgb(0 0 0 / 0.5),
-      0 0 0 2px rgb(0 0 0 / 0.55);
+    isolation: isolate;
+    color: var(--bond-off);
     transition:
-      background var(--t-mid),
-      box-shadow var(--t-mid),
+      color var(--t-mid),
       transform var(--t-fast) var(--ease-out);
+  }
+  /* 圆盘用皮肤位图：未激活、激活两层交叉淡入淡出。
+     素材带一圈发光，圆盘本体在 75px 图里直径 39、65px 图里直径 31，放大到本体正好等于 --s */
+  .disc::before,
+  .disc::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    transition: opacity var(--t-mid);
+  }
+  .disc::before {
+    inset: calc(var(--s) * -17 / 31);
+    background: var(--disc-off) center / 100% 100% no-repeat;
+  }
+  .disc::after {
+    inset: calc(var(--s) * -18 / 39);
+    background: var(--disc-on) center / 100% 100% no-repeat;
+    opacity: 0;
+  }
+  .on .disc::before {
+    opacity: 0;
+  }
+  .on .disc::after {
+    opacity: 1;
   }
   .clickable:hover .disc {
     transform: scale(1.06);
   }
   .on .disc {
-    color: var(--mint-ink);
-    background: radial-gradient(circle at 50% 38%, var(--mint-hi), var(--mint) 55%, var(--mint-lo));
-    box-shadow:
-      inset 0 0 0 1.5px rgb(255 255 255 / 0.25),
-      inset 0 -3px 6px rgb(0 60 45 / 0.45),
-      0 0 0 2px rgb(0 0 0 / 0.55),
-      var(--mint-glow);
+    color: var(--bond-on-fg);
   }
   .disc > .glyph {
+    position: relative;
     width: 64%;
     height: 64%;
   }
@@ -98,7 +121,7 @@
     stroke-width: 4;
   }
   .ring .track {
-    stroke: rgb(255 255 255 / 0.07);
+    stroke: rgb(var(--hl-rgb) / 0.07);
   }
   .ring .fill {
     stroke: var(--mint);
@@ -128,10 +151,10 @@
     border-radius: 50%;
     color: var(--gold-ink);
     background: var(--gold);
-    box-shadow: 0 0 0 1.5px rgb(0 0 0 / 0.6);
+    box-shadow: 0 0 0 1.5px rgb(var(--shade-rgb) / 0.6);
   }
   .name {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     white-space: nowrap;
     max-width: calc(var(--s) + 22px);

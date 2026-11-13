@@ -28,14 +28,14 @@
     align-items: center;
     gap: 6px;
     padding: 7px 12px 7px 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     white-space: nowrap;
-    background: #202326;
+    background: var(--bg-2a);
     box-shadow:
       inset 2px 0 0 var(--mint),
-      inset 0 0 0 1px #3a3e43,
-      0 6px 20px rgb(0 0 0 / 0.55);
+      inset 0 0 0 1px var(--line-strong),
+      0 6px 20px rgb(var(--shade-rgb) / 0.55);
     pointer-events: none;
   }
   .toast :global(.ri) {
@@ -46,8 +46,8 @@
     white-space: normal;
     box-shadow:
       inset 2px 0 0 var(--red),
-      inset 0 0 0 1px #3a3e43,
-      0 6px 20px rgb(0 0 0 / 0.55);
+      inset 0 0 0 1px var(--line-strong),
+      0 6px 20px rgb(var(--shade-rgb) / 0.55);
   }
   .toast.bad :global(.ri) {
     color: var(--red);

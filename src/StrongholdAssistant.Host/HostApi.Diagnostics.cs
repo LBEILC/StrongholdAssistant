@@ -29,16 +29,24 @@ public sealed partial class HostApi
             FileName = $"卫戍协议助手-诊断-{DateTime.Now:yyyyMMdd-HHmmss}.zip"
         };
         if (dialog.ShowDialog(DialogOwner) != true) return null;
+        var system = ReadDiagnosticSystem();
+        await Task.Run(() => _diagnostics.Export(dialog.FileName, Settings, Connection, system));
+        return dialog.FileName;
+    }
+
+    internal object ReadDiagnosticSystem()
+    {
         var hwnd = DialogOwner is null ? nint.Zero : new WindowInteropHelper(DialogOwner).Handle;
-        var system = new
+        return new
         {
             version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion,
             windows = RuntimeInformation.OSDescription,
             dpi = hwnd == 0 ? 96 : User32.GetWindowDpiScale(hwnd) * 96,
-            monitors = DiagnosticMonitors.Read()
+            monitors = DiagnosticMonitors.Read(),
+            dpiAwareness = User32.DescribeDpiAwareness(User32.GetDpiAwarenessContextForProcess(
+                System.Diagnostics.Process.GetCurrentProcess().Handle)),
+            windowSnapshot = (DialogOwner as MainWindow)?.ReadDiagnosticWindows()
         };
-        await Task.Run(() => _diagnostics.Export(dialog.FileName, Settings, Connection, system));
-        return dialog.FileName;
     }
 }
 
@@ -52,8 +60,12 @@ internal static class DiagnosticMonitors
         var monitors = new List<object>();
         EnumDisplayMonitors(0, 0, (nint monitor, nint dc, ref RECT rect, nint data) =>
         {
-            GetDpiForMonitor(monitor, 0, out var x, out var y);
-            monitors.Add(new { width = rect.Width, height = rect.Height, dpiX = x, dpiY = y });
+            var info = new User32.MONITORINFO { cbSize = Marshal.SizeOf<User32.MONITORINFO>() };
+            if (!User32.GetMonitorInfo(monitor, ref info))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            Marshal.ThrowExceptionForHR(GetDpiForMonitor(monitor, 0, out var x, out var y));
+            monitors.Add(new { left = rect.Left, top = rect.Top, width = rect.Width, height = rect.Height,
+                dpiX = x, dpiY = y, primary = (info.dwFlags & 1) != 0 });
             return true;
         }, 0);
         return monitors.ToArray();

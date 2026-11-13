@@ -78,6 +78,95 @@ public sealed partial class HostApi
     private Window? _sklandHistoryWindow;
     private Task<SklandRecord[]?>? _sklandHistory;
     private Task<SklandRecord[]?>? _silentSklandHistory;
+    private int _sklandLogoutGeneration;
+    private readonly List<SklandSession> _sklandSessions = [];
+
+    private sealed class SklandSession(Action cancel)
+    {
+        public TaskCompletionSource<CoreWebView2?> Ready { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Closed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Action Cancel { get; } = cancel;
+    }
+
+    private string SklandAccountPath => Path.Combine(DataDirectory, "skland-account.json");
+
+    private SklandAccount? ReadSklandAccount() => File.Exists(SklandAccountPath)
+        ? JsonSerializer.Deserialize<SklandAccount>(File.ReadAllText(SklandAccountPath), JsonOptions) : null;
+
+    private void RememberSklandAccount(string json)
+    {
+        var account = SklandParser.ParseAccount(json);
+        if (account is null) File.Delete(SklandAccountPath);
+        else
+        {
+            Directory.CreateDirectory(DataDirectory);
+            File.WriteAllText(SklandAccountPath, JsonSerializer.Serialize(account, JsonOptions));
+        }
+    }
+
+    private void FinishSklandSession(SklandSession session)
+    {
+        session.Ready.TrySetResult(null);
+        _sklandSessions.Remove(session);
+        session.Closed.TrySetResult();
+    }
+
+    private async Task SklandLogoutAsync()
+    {
+        _sklandLogoutGeneration++;
+        var sessions = _sklandSessions.ToArray();
+        try
+        {
+            var cleared = false;
+            foreach (var session in sessions)
+            {
+                var core = await session.Ready.Task;
+                if (cleared || session.Closed.Task.IsCompleted || core is null) continue;
+                await core.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.AllProfile);
+                cleared = true;
+            }
+            if (!cleared)
+            {
+                Directory.CreateDirectory(DataDirectory);
+                File.WriteAllText(Path.Combine(DataDirectory, "skland-cleanup-pending"), "");
+                CleanupSklandProfile();
+                if (File.Exists(Path.Combine(DataDirectory, "skland-cleanup-pending")))
+                {
+                    // 旧浏览器进程尚占用目录时先清站点数据，保证立即换账号不会复用凭据。
+                    using var source = new HwndSource(new HwndSourceParameters("SklandLogout")
+                    { Width = 800, Height = 600, WindowStyle = unchecked((int)0x80000000) });
+                    var environment = await SklandEnvironmentAsync();
+                    var controller = await environment.CreateCoreWebView2ControllerAsync(source.Handle);
+                    try { await controller.CoreWebView2.Profile.ClearBrowsingDataAsync(CoreWebView2BrowsingDataKinds.AllProfile); }
+                    finally { controller.Close(); }
+                }
+            }
+            File.Delete(Path.Combine(DataDirectory, "skland-cleanup-pending"));
+        }
+        finally
+        {
+            foreach (var session in sessions) session.Cancel();
+            await Task.WhenAll(sessions.Select(s => s.Closed.Task));
+            File.Delete(SklandAccountPath);
+        }
+        // 等外层读取任务完成，下一次调用不会拿到旧任务，也不会从后台读取跳转到弹窗。
+        if (_sklandHistory is { } history) await history;
+        if (_silentSklandHistory is { } silent) await silent;
+    }
+
+    private void CleanupSklandProfile()
+    {
+        var marker = Path.Combine(DataDirectory, "skland-cleanup-pending");
+        if (!File.Exists(marker)) return;
+        try
+        {
+            var directory = Path.Combine(DataDirectory, "SklandWebView2");
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+            File.Delete(marker);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
 
     private Task<CoreWebView2Environment> SklandEnvironmentAsync() =>
         CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(DataDirectory, "SklandWebView2"));
@@ -115,6 +204,9 @@ public sealed partial class HostApi
         var completion = new TaskCompletionSource<SklandGuide>(TaskCreationOptions.RunContinuationsAsynchronously);
         Action cancel = () => completion.TrySetException(new SklandException("已取消上一次攻略读取。"));
         _cancelSklandGuide = cancel;
+        var session = new SklandSession(cancel);
+        _sklandSessions.Add(session);
+        var logoutGeneration = _sklandLogoutGeneration;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         using var registration = timeout.Token.Register(() => completion.TrySetException(new SklandException(
             "20 秒内没读到攻略内容，可能是森空岛页面改版了，或者这篇攻略已被删除。\nTimeoutException: 20 秒内未收到攻略内容。")));
@@ -135,6 +227,7 @@ public sealed partial class HostApi
                 controller.Bounds = new System.Drawing.Rectangle(0, 0, 800, 600);
                 controller.IsVisible = true;
                 var core = controller.CoreWebView2;
+                session.Ready.TrySetResult(core);
                 ConfigureSkland(core, false);
                 core.NavigationCompleted += (_, args) =>
                 {
@@ -143,13 +236,17 @@ public sealed partial class HostApi
                 };
                 core.WebResourceResponseReceived += async (_, args) =>
                 {
-                    if (closed || !IsSklandResponse(args.Request.Uri, "info")) return;
+                    var isBinding = new Uri(args.Request.Uri) is { Host: "zonai.skland.com", AbsolutePath: SklandBindingPath };
+                    if (closed || logoutGeneration != _sklandLogoutGeneration || (!isBinding && !IsSklandResponse(args.Request.Uri, "info"))) return;
+                    if (isBinding && args.Response.StatusCode == 401) { File.Delete(SklandAccountPath); return; }
                     if (args.Request.Method != "GET" || args.Response.StatusCode != 200) return;
                     try
                     {
                         using var stream = await args.Response.GetContentAsync();
                         using var reader = new StreamReader(stream);
                         var json = await reader.ReadToEndAsync();
+                        if (closed || logoutGeneration != _sklandLogoutGeneration) return;
+                        if (isBinding) { RememberSklandAccount(json); return; }
                         if (!closed) completion.TrySetResult(SklandParser.ParseGuide(json, url));
                     }
                     catch (ArgumentException ex) { completion.TrySetException(ex); }
@@ -171,6 +268,7 @@ public sealed partial class HostApi
         {
             closed = true;
             controller?.Close();
+            FinishSklandSession(session);
             if (_cancelSklandGuide == cancel) _cancelSklandGuide = null;
         }
     }
@@ -194,10 +292,11 @@ public sealed partial class HostApi
 
     private async Task<SklandRecord[]?> ReadSklandHistoryAsync()
     {
+        var logoutGeneration = _sklandLogoutGeneration;
         try
         {
             var records = await ReadSklandHistorySessionAsync(false);
-            return records ?? await ReadSklandHistorySessionAsync(true);
+            return records ?? (logoutGeneration == _sklandLogoutGeneration ? await ReadSklandHistorySessionAsync(true) : null);
         }
         finally { _sklandHistory = null; }
     }
@@ -206,6 +305,9 @@ public sealed partial class HostApi
     {
         const string editUrl = "https://game.skland.com/arknights/stronghold-guide/edit?header=0";
         var completion = new TaskCompletionSource<SklandRecord[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var session = new SklandSession(() => completion.TrySetResult(null));
+        _sklandSessions.Add(session);
+        var logoutGeneration = _sklandLogoutGeneration;
         var browser = new WebView2();
         var panel = new DockPanel();
         var hint = new TextBlock
@@ -275,6 +377,7 @@ public sealed partial class HostApi
                     core = controller.CoreWebView2;
                 }
                 ConfigureSkland(core, true);
+                session.Ready.TrySetResult(core);
                 core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.XmlHttpRequest);
                 core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.Fetch);
                 core.WebResourceRequested += (_, args) =>
@@ -312,20 +415,28 @@ public sealed partial class HostApi
                     var token = navigation.Token;
                     try
                     {
-                        var deadline = DateTime.UtcNow.AddSeconds(15);
+                        var waitingSince = DateTime.UtcNow;
                         var buttonLogged = false;
-                        while (DateTime.UtcNow < deadline)
+                        while (true)
                         {
                             token.ThrowIfCancellationRequested();
                             var result = await core.ExecuteScriptAsync("""
                                 (() => {
                                   const button = [...document.querySelectorAll('button')]
                                     .find(b => b.textContent.trim() === '导入历史战绩' && !b.disabled && b.getClientRects().length);
-                                  return !!button;
+                                  const login = [...document.querySelectorAll('input')].some(i =>
+                                    i.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) &&
+                                    (i.type === 'password' || i.type === 'tel' || /手机号/.test(i.placeholder + i.parentElement.textContent)));
+                                  return { button: !!button, login };
                                 })()
                                 """);
                             token.ThrowIfCancellationRequested();
-                            if (result == "true")
+                            using var state = JsonDocument.Parse(result);
+                            var loginForm = state.RootElement.GetProperty("login").GetBoolean();
+                            if (loginForm && logoutGeneration == _sklandLogoutGeneration) File.Delete(SklandAccountPath);
+                            if (!visible && loginForm) { completion.TrySetResult(null); return; }
+                            if (SklandParser.HistoryWaitExpired(visible, loginForm, DateTime.UtcNow, ref waitingSince)) break;
+                            if (state.RootElement.GetProperty("button").GetBoolean() && !loginForm)
                             {
                                 if (!buttonLogged)
                                 {
@@ -414,10 +525,12 @@ public sealed partial class HostApi
                         var json = reader is null ? null : await reader.ReadToEndAsync();
                         var detail = SklandResponseSummary(args.Request.Method, args.Request.Uri, args.Response.StatusCode, json);
                         AppLogger.Info("Skland", "API " + detail);
-                        if (closed || responseGeneration != generation) return;
+                        if (closed || responseGeneration != generation || logoutGeneration != _sklandLogoutGeneration) return;
                         if (isBinding)
                         {
                             roleDetails = detail;
+                            if (args.Response.StatusCode == 401) File.Delete(SklandAccountPath);
+                            else if (json is not null) RememberSklandAccount(json);
                             hasRole = args.Response.StatusCode == 200 && json is not null ? SklandHasRole(json) : null;
                             if (hasRole == false) completion.TrySetException(new SklandException(
                                 "森空岛账号还没有绑定明日方舟角色，先在森空岛 App 里绑定"));
@@ -468,6 +581,7 @@ public sealed partial class HostApi
             navigation = null;
             controller?.Close();
             window.Close();
+            FinishSklandSession(session);
         }
     }
 }

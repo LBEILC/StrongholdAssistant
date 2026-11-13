@@ -12,6 +12,21 @@ public sealed class BackupTests : IDisposable
     private string BackupPath => Path.Combine(_directory, "export.json");
     private static string Json<T>(T value) => JsonSerializer.Serialize(value, HostApi.JsonOptions);
 
+    [Fact]
+    public async Task OldBackupWithoutUiSkinImportsAsFollow()
+    {
+        var api = await CreateApi();
+        api.SaveSettings(api.Settings with { UiSkin = "ursus" });
+        await api.ExportBackupAsync(BackupPath);
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(BackupPath))!;
+        root["settings"]!.AsObject().Remove("uiSkin");
+        await File.WriteAllTextAsync(BackupPath, root.ToJsonString());
+        var selection = await api.ReadBackupAsync(BackupPath);
+        await api.ImportDataAsync(selection.Token, "replace");
+        Assert.Equal("follow", api.Settings.UiSkin);
+        Assert.Equal("follow", api.SettingsStore.LoadSettings().UiSkin);
+    }
+
     [Theory]
     [InlineData("replace")]
     [InlineData("merge")]

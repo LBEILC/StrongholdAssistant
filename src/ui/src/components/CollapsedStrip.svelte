@@ -48,7 +48,7 @@
     gap: 6px;
     background:
       var(--noise),
-      linear-gradient(180deg, #16181b, var(--bg-0));
+      linear-gradient(180deg, var(--bg-1a), var(--bg-0));
     box-shadow: inset -1px 0 0 var(--line-soft);
     overflow: hidden;
   }
@@ -105,12 +105,12 @@
   }
   .cnt b {
     font-family: var(--font-term);
-    font-size: 15px;
+    font-size: var(--fs-xl);
     color: var(--mint);
   }
   .cnt em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-3);
   }
   .list {
@@ -156,8 +156,8 @@
     inset: 0;
     display: grid;
     place-items: center;
-    color: #fff;
-    background: rgb(10 11 12 / 0.62);
+    color: var(--fg-0);
+    background: rgb(var(--bg-0-rgb) / 0.62);
     box-shadow: inset 0 0 0 1.5px var(--red);
     opacity: 0;
     transition: opacity var(--t-fast);

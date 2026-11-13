@@ -14,6 +14,8 @@
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
+  const IMPORT_TIP = '粘贴分享码、森空岛攻略链接，或者从森空岛历史战绩里挑一局'
+
   // 阵容：目标（目标盟约进度、想抓的干员、还能抓的干员）/ 我的阵容；切换时内容从切换方向滑入
   const views = $derived<{ id: LineupView; label: string; count?: number }[]>([
     { id: 'target', label: '目标' },
@@ -147,7 +149,9 @@
         <div class="row">
           <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
           <button class="secondary" onclick={() => (app.lineupView = 'mine')}>从我的阵容选</button>
+          <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
         </div>
+        <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
       </div>
     {/if}
   {:else if app.lineupView === 'mine'}
@@ -158,12 +162,22 @@
         {/snippet}
         {#snippet right()}
           <span class="hacts">
-            <button class="ghost" onclick={() => (app.importOpen = true)} title="粘贴别人分享的阵容码"><Icon name="paste" size={14} />导入</button>
+            <button class="ghost" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
             <button class="ghost" onclick={() => app.edit(null)}><Icon name="add" size={14} />新建</button>
           </span>
         {/snippet}
       </SectionHeader>
-      <p class="hint">右键阵容卡也能编辑、复制分享码、设为目标、删除；别人的分享码点「导入」粘贴。目标盟约本局阵容不完整、名单里被禁的多的排在后面。</p>
+      <p class="hint">点「导入」可以粘贴分享码、森空岛攻略链接，或者从森空岛历史战绩里挑一局。右键阵容卡也能编辑、复制分享码、设为目标、删除；目标盟约本局阵容不完整、名单里被禁的多的排在后面。</p>
+      {#if !app.lineups.length}
+        <div class="empty">
+          <p>还没有阵容。</p>
+          <div class="row">
+            <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
+            <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
+          </div>
+          <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
+        </div>
+      {/if}
       <div class="list">
         {#each [...app.lineups].sort((a, b) => app.lineupPenalty(a) - app.lineupPenalty(b)) as l (l.id)}
           {@const isT = app.session.targetLineupId === l.id}
@@ -234,7 +248,7 @@
     display: flex;
     align-items: center;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 3px 6px;
     white-space: nowrap;
@@ -244,7 +258,7 @@
   }
   .hint {
     margin: 8px 2px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .ops {
@@ -283,7 +297,7 @@
     gap: 8px;
   }
   .bt b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     min-width: 4em;
   }
   /* 格子等距；到某一档激活人数的那一格高一点（以前用加宽间隔标档位，各盟约档位不同，看起来间隔乱） */
@@ -308,7 +322,7 @@
     color: var(--mint);
   }
   .lvl {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 1px 4px 0;
     color: var(--gold-ink);
     background: var(--gold);
@@ -319,25 +333,25 @@
     align-items: baseline;
     gap: 2px 6px;
     margin: 14px 2px 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-2);
   }
   .sub em {
     font-style: normal;
     font-weight: 400;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .more {
     align-self: center;
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .none {
     margin: 0 2px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-4);
   }
   .none.wide {
@@ -351,19 +365,19 @@
   }
   .cnt {
     font-family: var(--font-term);
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .cnt em {
     font-style: normal;
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .active .cnt em {
     color: var(--mint);
   }
   .eff {
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     line-height: 1.4;
   }
@@ -374,6 +388,11 @@
     padding: 28px 8px;
     text-align: center;
     color: var(--fg-3);
+  }
+  .empty .sk {
+    margin: 10px 0 0;
+    font-size: var(--fs-sm);
+    color: var(--fg-4);
   }
   .empty .row {
     display: flex;
@@ -388,7 +407,7 @@
     gap: 5px;
     height: 32px;
     padding: 0 14px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
   }
   .primary {
@@ -435,7 +454,7 @@
   .stagesw button {
     height: 26px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     background: var(--bg-2);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -451,7 +470,7 @@
   }
   .stagenote {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   /* 后面阶段的关键干员：右下角小标 */
@@ -461,7 +480,7 @@
     right: 0;
     bottom: 16px;
     padding: 0 3px;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--gold-ink);
     background: var(--gold);
   }

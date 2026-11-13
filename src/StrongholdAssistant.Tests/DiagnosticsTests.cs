@@ -38,7 +38,9 @@ public sealed class DiagnosticsTests : IDisposable
         };
         var path = Path.Combine(_directory, "diagnostics.zip");
         store.Export(path, settings, new("connected", "2400×1200", Source: "pc"),
-            new { version = "0.7.2", windows = "Windows", dpi = 144, monitors = new[] { new { width = 2560, height = 1440 } },
+            new { version = "0.7.2", windows = Path.Combine(@"C:\", "Users", "示例 用户", "data"), dpi = 144,
+                monitors = new[] { new { left = -1080, top = 0, width = 1080, height = 1920, dpiX = 120, dpiY = 120, primary = false } },
+                dpiAwareness = "PerMonitorV2", windowSnapshot = new { sidebar = new { dpi = 120, visible = true } },
                 path = Path.Combine(@"C:\", "Users", "ExampleName", "data"), chinesePath = Path.Combine(@"C:\", "Users", "示例 用户", "data") });
         using var zip = ZipFile.OpenRead(path);
         Assert.Equal(24, zip.Entries.Count);
@@ -60,8 +62,12 @@ public sealed class DiagnosticsTests : IDisposable
         Assert.Equal("remember", json.RootElement.GetProperty("startupMode").GetString());
         using var systemReader = new StreamReader(zip.GetEntry("system.json")!.Open());
         using var system = JsonDocument.Parse(systemReader.ReadToEnd());
-        Assert.Contains("[用户]", system.RootElement.GetProperty("path").GetString());
-        Assert.Equal(Path.Combine(@"C:\", "Users", "[用户]", "data"), system.RootElement.GetProperty("chinesePath").GetString());
+        Assert.False(system.RootElement.TryGetProperty("path", out _));
+        Assert.False(system.RootElement.TryGetProperty("chinesePath", out _));
+        Assert.Equal(Path.Combine(@"C:\", "Users", "[用户]", "data"), system.RootElement.GetProperty("windows").GetString());
+        Assert.Equal("PerMonitorV2", system.RootElement.GetProperty("dpiAwareness").GetString());
+        Assert.Equal(-1080, system.RootElement.GetProperty("monitors")[0].GetProperty("left").GetInt32());
+        Assert.Equal(120, system.RootElement.GetProperty("windowSnapshot").GetProperty("sidebar").GetProperty("dpi").GetInt32());
     }
 
     public void Dispose()

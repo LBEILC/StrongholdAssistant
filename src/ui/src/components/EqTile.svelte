@@ -53,7 +53,7 @@
     height: var(--s);
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 50% 45%, #2c3034, var(--bg-2) 70%);
+    background: radial-gradient(circle at 50% 45%, var(--bg-4), var(--bg-2) 70%);
     box-shadow:
       inset 0 0 0 1px var(--line),
       inset 0 -2px 0 var(--c);
@@ -75,7 +75,7 @@
   .picked .pic {
     box-shadow:
       inset 0 0 0 1.5px var(--mint),
-      0 0 8px rgb(34 227 178 / 0.3);
+      0 0 8px rgb(var(--mint-rgb) / 0.3);
   }
   .check {
     position: absolute;
@@ -102,7 +102,7 @@
     background: var(--mint);
   }
   .nm {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
     max-width: calc(var(--s) + 8px);
     white-space: nowrap;

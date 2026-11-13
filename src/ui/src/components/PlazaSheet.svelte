@@ -108,13 +108,14 @@
 
 {#if open}
   <div class="scrim dock" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:sheet={{ y: 320, duration: 240 }}>
+  <aside class="sheet win" transition:sheet={{ y: 320, duration: 240 }}>
     {#if post && rep}
       <header>
         <span class="hi"><Icon name="flag" size={16} /></span>
         <h3>举报{rep.target.kind === 'post' ? '阵容' : '评论'}</h3>
         <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
       </header>
+      <div class="scroll">
       <p class="what">{rep.what}</p>
       <div class="rs" role="radiogroup" aria-label="举报理由">
         {#each reasons as r (r)}
@@ -124,6 +125,7 @@
       <textarea class="detail" bind:value={detail} maxlength="200" placeholder="补充说明（选填）"></textarea>
       <p class="hint">举报不会公开，只有管理员能看到。{plaza.me ? '' : '提交前要先登录阵容广场。'}</p>
       {#if err}<p class="err">{err}</p>{/if}
+      </div>
       <footer>
         <button class="ghost" onclick={() => (plaza.reporting = null)}>返回</button>
         <span class="sp"></span>
@@ -136,6 +138,7 @@
         <span class="term en">Plaza</span>
         <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
       </header>
+      <div class="scroll">
       {#if !post.current}<p class="warn">这是旧赛季的阵容，数据对不上，只能看，不能导入。</p>{/if}
       <div class="preview">
         <LineupCard lineup={postToLineup(post)} menu={false} headOnly>
@@ -160,6 +163,7 @@
       </div>
       {#if err}<p class="err">{err}</p>{/if}
       <PlazaComments {post} />
+      </div>
       <footer>
         <button class="ghost" onclick={close}>关闭</button>
         <span class="sp"></span>
@@ -172,6 +176,7 @@
         <h3>发布到阵容广场</h3>
         <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
       </header>
+      <div class="scroll">
       <div class="preview"><LineupCard lineup={pub} menu={false} /></div>
       {#if fromSkland}<p class="warn">这套阵容来自森空岛，发布前请先征得原作者同意（森空岛规则不允许转载、搬运他人攻略）。</p>{/if}
 
@@ -198,6 +203,7 @@
         <p class="hint">以「{plaza.me.nickname}」署名公开发布，发布后在网站「我的」里可以改简介、删除。同一套阵容再发一次只会更新简介。</p>
       {/if}
       {#if err}<p class="err">{err}</p>{/if}
+      </div>
       <footer>
         <button class="ghost" onclick={close}>取消</button>
         <span class="sp"></span>
@@ -211,7 +217,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
+    background: var(--scrim);
     z-index: 20;
   }
   .sheet {
@@ -220,18 +226,16 @@
     right: 0;
     bottom: 0;
     max-height: 88%;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 21;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px 12px 0;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #16181a 120px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 120px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .sheet::before {
     content: '';
@@ -254,10 +258,10 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-xl);
   }
   .en {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-4);
   }
   .x {
@@ -273,7 +277,7 @@
     background: var(--bg-4);
   }
   .by {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .feat {
@@ -282,19 +286,19 @@
   .desc {
     margin: 0;
     padding: 8px 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     line-height: 1.7;
     white-space: pre-line;
     user-select: text;
     color: var(--fg-1);
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
     box-shadow: inset 2px 0 0 var(--mint-lo);
   }
   .stats {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .stats span,
@@ -311,25 +315,25 @@
     box-shadow: inset 0 0 0 1px var(--line);
   }
   .like.on {
-    color: #ff8a9a;
-    box-shadow: inset 0 0 0 1px rgb(255 138 154 / 0.5);
+    color: var(--like);
+    box-shadow: inset 0 0 0 1px rgb(var(--like-rgb) / 0.5);
   }
   .lnk {
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .lnk.rep {
     color: var(--fg-4);
   }
   .lnk.rep:hover {
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .what {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -345,7 +349,7 @@
     gap: 8px;
     height: 32px;
     padding: 0 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     text-align: left;
     color: var(--fg-2);
     background: var(--bg-2);
@@ -368,7 +372,7 @@
   .on .dot {
     background: var(--mint);
     box-shadow:
-      inset 0 0 0 3px #1d2023,
+      inset 0 0 0 3px var(--bg-2),
       0 0 0 1px var(--mint);
   }
   .detail {
@@ -378,10 +382,10 @@
   }
   .warn {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 6px 8px;
     color: var(--gold);
-    background: rgb(243 179 34 / 0.08);
+    background: rgb(var(--gold-rgb) / 0.08);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .acct {
@@ -390,12 +394,12 @@
     align-items: flex-start;
     gap: 8px;
     padding: 10px;
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .acct p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.6;
     color: var(--fg-2);
   }
@@ -419,20 +423,20 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
   }
   .dl em {
     margin-left: 8px;
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   textarea {
     resize: none;
     padding: 8px;
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     line-height: 1.6;
     color: var(--fg-1);
     background: var(--bg-1);
@@ -447,27 +451,31 @@
   }
   .hint {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     line-height: 1.6;
     color: var(--fg-4);
   }
   .err {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
-    color: #f2b8ba;
+    color: var(--red-fg);
     padding: 6px 8px;
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
   }
   /* margin-top: auto：工作台里面板是右侧全高，内容少时底栏也贴底边 */
+  /* 内容区自己滚；底部按钮栏固定在下面 */
+  .scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   footer {
-    position: sticky;
-    bottom: 0;
+    flex: none;
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: auto -12px 0;
     padding: 10px 12px;
     border-top: 1px solid var(--line);
     background: var(--bg-1);
@@ -476,7 +484,7 @@
     flex: 1;
   }
   .ghost {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 5px 8px;
   }
@@ -487,7 +495,7 @@
   .secondary {
     height: 30px;
     padding: 0 12px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     white-space: nowrap;
   }

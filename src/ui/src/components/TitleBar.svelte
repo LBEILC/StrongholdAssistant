@@ -98,7 +98,7 @@
     height: 16px;
     border: 1.5px solid var(--mint);
     transform: rotate(45deg);
-    box-shadow: 0 0 6px rgb(34 227 178 / 0.4);
+    box-shadow: 0 0 6px rgb(var(--mint-rgb) / 0.4);
   }
   .logo i {
     position: absolute;
@@ -112,7 +112,7 @@
     flex-shrink: 50;
     white-space: nowrap;
     font-weight: 700;
-    font-size: 13px;
+    font-size: var(--fs-md);
     letter-spacing: 0.06em;
   }
   /* 装饰英文最先让出宽度 */
@@ -121,7 +121,7 @@
     overflow: hidden;
     flex-shrink: 100;
     white-space: nowrap;
-    font-size: 7px;
+    font-size: var(--fs-3xs);
     line-height: 1.1;
     color: var(--fg-4);
   }
@@ -148,7 +148,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     margin-right: 2px;
   }
@@ -161,7 +161,7 @@
     flex: none;
     font-style: normal;
     font-family: var(--font-ui);
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 4px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -218,17 +218,120 @@
     background: none;
   }
   .wbtn.close:hover {
-    background: #c42b1c;
+    background: var(--close-bg);
   }
   .sync.bad {
     color: var(--red);
   }
   .sync.busy :global(svg) {
-    animation: sync-spin 0.9s linear infinite;
+    animation: sync-spin var(--t-spin) linear infinite;
   }
   @keyframes sync-spin {
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* 可露希尔：整条是窗口标题栏（游戏 rest_window_back），按钮是右上角的小方块，关闭是青色、亮起的是粉色 */
+  :global([data-skin='closure']) .bar {
+    gap: 6px;
+    padding-right: 4px;
+    background: var(--win-title);
+    border-bottom: 2px solid var(--win-edge);
+  }
+  :global([data-skin='closure']) .bar::before {
+    content: 'CLOSURE';
+    order: 0;
+    margin-right: 2px;
+    padding: 0 4px;
+    font-family: var(--font-term);
+    font-size: 12px;
+    line-height: 16px;
+    color: #c9ccff;
+    background: rgb(var(--shade-rgb) / 0.25);
+  }
+  :global([data-skin='closure']) .logo {
+    order: -1;
+  }
+  :global([data-skin='closure']) .title,
+  :global([data-skin='closure']) .conn {
+    color: var(--fg-0);
+  }
+  :global([data-skin='closure']) .wbtn {
+    width: 22px;
+    height: 22px;
+    border-radius: 0;
+    color: #c9ccff;
+    background: var(--win-btn);
+    box-shadow:
+      inset 1px 1px 0 rgb(var(--hl-rgb) / 0.35),
+      inset -1px -1px 0 rgb(var(--shade-rgb) / 0.5);
+  }
+  :global([data-skin='closure']) .wbtn:hover {
+    color: var(--fg-0);
+    background: #2a30d8;
+  }
+  :global([data-skin='closure']) .wbtn.pinned,
+  :global([data-skin='closure']) .wbtn.on {
+    color: #3a0022;
+    background: var(--win-pink);
+  }
+  :global([data-skin='closure']) .wbtn.close {
+    color: #001a20;
+    background: var(--win-cyan);
+  }
+  :global([data-skin='closure']) .wbtn.close:hover {
+    background: #8ff4ff;
+  }
+
+  /* 乌萨斯：深色金属条，左边压一道红色斜扫（游戏 back_left），下沿铁锈红粗线；斜体标语「УРСУС」；按钮是平行四边形，关闭铁锈红 */
+  :global([data-skin='ursus']) .bar {
+    gap: 4px;
+    background:
+      var(--skin-sweep) left center / auto 140% no-repeat,
+      linear-gradient(180deg, #2a221d, #17120f);
+    border-bottom: 3px solid var(--rust);
+  }
+  :global([data-skin='ursus']) .bar::before {
+    content: 'УРСУС';
+    order: 0;
+    margin: 0 2px 0 -2px;
+    font-family: var(--font-term);
+    font-size: var(--fs-lg);
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--rust-hi);
+    text-shadow: 1px 1px 0 rgb(var(--shade-rgb) / 0.6);
+  }
+  :global([data-skin='ursus']) .logo {
+    order: -1;
+  }
+  :global([data-skin='ursus']) .title {
+    font-style: italic;
+    color: var(--cream);
+  }
+  :global([data-skin='ursus']) .wbtn {
+    width: 28px;
+    height: 22px;
+    color: var(--fg-2);
+    background: linear-gradient(180deg, #3b3129, #231c18);
+    clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+  }
+  :global([data-skin='ursus']) .wbtn:hover {
+    color: var(--cream);
+    background: linear-gradient(180deg, #4a3e34, #2a221d);
+  }
+  :global([data-skin='ursus']) .wbtn.pinned,
+  :global([data-skin='ursus']) .wbtn.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  :global([data-skin='ursus']) .wbtn.close {
+    color: var(--cream);
+    background: var(--rust);
+  }
+  :global([data-skin='ursus']) .wbtn.close:hover {
+    background: var(--rust-hi);
   }
 </style>

@@ -50,7 +50,7 @@
     position: fixed;
     inset: 0;
     z-index: 70;
-    background: rgb(0 0 0 / 0.65);
+    background: var(--scrim-strong);
   }
   .wrap {
     position: fixed;
@@ -70,10 +70,10 @@
     flex-direction: column;
     background:
       var(--noise),
-      linear-gradient(180deg, #23272a, #16181a 160px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 160px);
     box-shadow:
-      inset 0 0 0 1px #3a3e43,
-      0 16px 40px rgb(0 0 0 / 0.6);
+      inset 0 0 0 1px var(--line-strong),
+      0 16px 40px rgb(var(--shade-rgb) / 0.6);
   }
   .card::before {
     content: '';
@@ -89,21 +89,21 @@
     padding: 14px 14px 8px;
   }
   .tag {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 2px 5px 1px;
     color: var(--mint-ink);
     background: var(--mint);
   }
   h3 {
     margin: 8px 0 2px;
-    font-size: 18px;
+    font-size: var(--fs-2xl);
   }
   h3 b {
     color: var(--mint);
   }
   header p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .body {
@@ -114,7 +114,7 @@
   }
   .more {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   footer {
@@ -126,7 +126,7 @@
     background: var(--bg-1);
   }
   .ghost {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 5px 8px;
   }
@@ -136,7 +136,7 @@
   .primary {
     height: 30px;
     padding: 0 18px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     color: var(--mint-ink);
     background: var(--mint);

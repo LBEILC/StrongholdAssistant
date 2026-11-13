@@ -1,10 +1,13 @@
 // 素材路径。产品里由宿主按同样的相对路径提供。
 // 用绝对地址：这些路径会放进 CSS 变量里的 url()，相对路径会按样式表所在目录解析而错位
+import { skin } from './skin.svelte'
+
 const base = new URL('./assets', document.baseURI).href
 
 export const asset = {
+  /** 跟着界面皮肤换的素材：bond_on / bond_off、tier_1~6、frame / frame_5 / frame_6、level_1~6 */
+  skin: (f: string) => `${base}/game/skin/${skin.id}/${f}.png`,
   bond: (id: string) => `${base}/game/bond/${id}.png`,
-  tier: (t: number) => `${base}/game/card/img_chess_level_${t}.png`,
   card: (f: string) => `${base}/game/card/${f}.png`,
   hud: (f: string) => `${base}/game/hud/${f}.png`,
   band: (f: string) => `${base}/game/band/${f}.png`,

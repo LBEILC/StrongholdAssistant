@@ -28,12 +28,13 @@
 
 {#if d}
   <div class="scrim dock" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:sheet={{ y: 320, duration: 240 }}>
-    <span class="grip"></span>
-    <button class="x" onclick={close} aria-label="关闭">
-      <Icon name="close" size={16} />
-    </button>
-
+  <aside class="sheet win" transition:sheet={{ y: 320, duration: 240 }}>
+    <!-- 详情的标题块：拖动条、关闭和头像、名字一起固定在上面，下面的说明自己滚；可露希尔下顶上是窗口标题栏 -->
+    <header class="bar">
+      <span class="grip"></span>
+      <button class="x" onclick={close} aria-label="关闭">
+        <Icon name="close" size={16} />
+      </button>
     {#if d.kind === 'operator'}
       {@const o = app.op(d.name)}
       {@const banned = app.banned.has(o.name)}
@@ -57,6 +58,51 @@
           {/if}
         </div>
       </div>
+    {:else if d.kind === 'equipment'}
+      {@const e = app.eq(d.name)}
+      {@const inTarget = !!app.active?.equipment.includes(e.name)}
+      {@const trk = app.trackedEq.has(e.name)}
+      <div class="hero">
+        <span class="pic eqp" style:--c="var(--tier-{e.tier})"><img src={asset.equipment(e.name)} alt="" /></span>
+        <div class="meta">
+          <div class="nm"><TierBadge tier={e.tier} size={20} /><h3>{e.name}</h3></div>
+          <div class="sub">{e.categories.join(' · ')}</div>
+        </div>
+      </div>
+    {:else if d.kind === 'covenant'}
+      {@const c = app.cov(d.id)}
+      {@const mc = app.matchCovenant(c.id)}
+      {@const members = app.catalog.operators.filter((o) => o.core.includes(c.id) || o.extra.includes(c.id)).sort((a, b) => a.tier - b.tier)}
+      <div class="hero">
+        <BondIcon id={c.id} size={56} on={!mc?.incomplete} incomplete={mc?.incomplete} />
+        <div class="meta">
+          <div class="nm"><h3>{c.name}</h3><span class="kind">{c.kind === 'core' ? '核心盟约' : '附加盟约'}</span></div>
+          <div class="sub">激活：{c.thresholds.map((t) => `${t} 人`).join(' / ')}</div>
+          {#if mc?.incomplete}<span class="warn">本局有所含干员被禁用</span>{/if}
+          <button class="favbtn" class:fav={app.focusCovs.has(c.id)} onclick={() => app.toggleFocusCov(c.id)}>
+            <Icon name={app.focusCovs.has(c.id) ? 'heartFill' : 'heart'} size={13} />{app.focusCovs.has(c.id) ? '已特别关注' : '特别关注'}
+          </button>
+        </div>
+      </div>
+    {:else if d.kind === 'boss'}
+      {@const b = app.catalog.bosses.find((x) => x.id === d.id)!}
+      <div class="hero">
+        <span class="pic" style:--c="var(--gold)"><img src={asset.boss(b.id)} alt="" /></span>
+        <div class="meta">
+          <span class="leader">敌方领袖</span>
+          <h3>{b.name}</h3>
+          {#if b.hidingCore}<span class="obtain">有隐秘核心</span>{/if}
+        </div>
+      </div>
+    {/if}
+    </header>
+    <div class="scroll">
+    {#if d.kind === 'operator'}
+      {@const o = app.op(d.name)}
+      {@const banned = app.banned.has(o.name)}
+      {@const tm = app.active?.members.find((m) => m.name === o.name)}
+      {@const inTarget = !!tm}
+      {@const ef = tm ? effective(tm, o, app.settings.operatorDefaults) : null}
       <!-- 普通和精锐并排一屏看，精锐里变化的数字高亮 -->
       <div class="body">
         {#each o.normal as t, i (i)}
@@ -132,13 +178,6 @@
       {@const e = app.eq(d.name)}
       {@const inTarget = !!app.active?.equipment.includes(e.name)}
       {@const trk = app.trackedEq.has(e.name)}
-      <div class="hero">
-        <span class="pic eqp" style:--c="var(--tier-{e.tier})"><img src={asset.equipment(e.name)} alt="" /></span>
-        <div class="meta">
-          <div class="nm"><TierBadge tier={e.tier} size={20} /><h3>{e.name}</h3></div>
-          <div class="sub">{e.categories.join(' · ')}</div>
-        </div>
-      </div>
       <div class="body">
         <div class="trait"><span class="tt">普通</span><GameText text={e.normal} /></div>
         {#if e.elite}
@@ -183,17 +222,6 @@
       {@const c = app.cov(d.id)}
       {@const mc = app.matchCovenant(c.id)}
       {@const members = app.catalog.operators.filter((o) => o.core.includes(c.id) || o.extra.includes(c.id)).sort((a, b) => a.tier - b.tier)}
-      <div class="hero">
-        <BondIcon id={c.id} size={56} on={!mc?.incomplete} incomplete={mc?.incomplete} />
-        <div class="meta">
-          <div class="nm"><h3>{c.name}</h3><span class="kind">{c.kind === 'core' ? '核心盟约' : '附加盟约'}</span></div>
-          <div class="sub">激活：{c.thresholds.map((t) => `${t} 人`).join(' / ')}</div>
-          {#if mc?.incomplete}<span class="warn">本局有所含干员被禁用</span>{/if}
-          <button class="favbtn" class:fav={app.focusCovs.has(c.id)} onclick={() => app.toggleFocusCov(c.id)}>
-            <Icon name={app.focusCovs.has(c.id) ? 'heartFill' : 'heart'} size={13} />{app.focusCovs.has(c.id) ? '已特别关注' : '特别关注'}
-          </button>
-        </div>
-      </div>
       <div class="body">
         {#each c.effects as e, i (i)}
           <div class="trait"><span class="tt">{e.condition ? '条件' : '基础'}</span><span>{#if e.condition}<b class="cond">&lt;{e.condition}&gt;</b> {/if}<GameText text={e.text} /></span></div>
@@ -206,14 +234,6 @@
       </div>
     {:else if d.kind === 'boss'}
       {@const b = app.catalog.bosses.find((x) => x.id === d.id)!}
-      <div class="hero">
-        <span class="pic" style:--c="var(--gold)"><img src={asset.boss(b.id)} alt="" /></span>
-        <div class="meta">
-          <span class="leader">敌方领袖</span>
-          <h3>{b.name}</h3>
-          {#if b.hidingCore}<span class="obtain">有隐秘核心</span>{/if}
-        </div>
-      </div>
       <div class="body">
         {#each b.abilities as a, i (i)}
           <div class="trait"><span class="tt term">{String(i + 1).padStart(2, '0')}</span><GameText text={a} /></div>
@@ -236,6 +256,7 @@
         {/if}
       {/each}
     {/if}
+    </div>
   </aside>
 {/if}
 
@@ -243,7 +264,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
+    background: var(--scrim);
     /* 详情盖在编辑器、导入、挑选面板上面：编辑阵容时也能看干员详情（编辑器 20/21） */
     z-index: 30;
   }
@@ -253,15 +274,16 @@
     right: 0;
     bottom: 0;
     max-height: 72%;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     z-index: 31;
-    padding: 14px 12px 16px;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #16181a 120px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 120px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .sheet::before {
     content: '';
@@ -273,12 +295,24 @@
     background: var(--mint);
     box-shadow: var(--mint-glow);
   }
+  /* 可露希尔：这一行是窗口标题栏，占位置、接点击；拖动条不要 */
+  :global([data-skin='closure']) .grip {
+    display: none;
+  }
   .grip {
     display: block;
     width: 32px;
     height: 3px;
-    margin: -6px auto 8px;
+    margin: 8px auto 0;
     background: var(--bg-4);
+  }
+  /* 标题块：拖动条、头像和名字，关闭按钮在右上角；下面的说明自己滚 */
+  .bar {
+    position: relative;
+    padding: 0 12px;
+  }
+  .bar .hero {
+    margin-top: 8px;
   }
   .x {
     position: absolute;
@@ -333,11 +367,11 @@
   }
   h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-2xl);
   }
   .kind,
   .sub {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .bonds {
@@ -349,29 +383,29 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 1px 7px 1px 2px;
     background: var(--bg-3);
     color: var(--fg-2);
-    border-radius: 12px;
+    border-radius: var(--r-pill);
   }
   .bchip.core {
     color: var(--fg-1);
   }
   .warn {
-    font-size: 11px;
-    color: #fff;
+    font-size: var(--fs-sm);
+    color: var(--fg-0);
     background: var(--red);
     padding: 1px 6px;
   }
   .obtain {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--gold);
     padding: 1px 6px;
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.45);
+    box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.45);
   }
   .leader {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 700;
     padding: 1px 8px;
     color: var(--gold-ink);
@@ -395,7 +429,7 @@
     flex: none;
     align-self: flex-start;
     margin-top: 2px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     line-height: 1;
     padding: 3px 5px;
     color: var(--fg-3);
@@ -403,21 +437,21 @@
   }
   .lt.el {
     color: var(--tier-6);
-    box-shadow: inset 0 0 0 1px rgb(242 122 18 / 0.5);
+    box-shadow: inset 0 0 0 1px rgb(var(--tier-6-rgb) / 0.5);
   }
   .trait {
     display: flex;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     line-height: 1.55;
     color: var(--fg-2);
     padding: 6px 8px;
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
   }
   .tt {
     flex: none;
     min-width: 4.2em;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 700;
     color: var(--fg-1);
     padding-top: 1px;
@@ -433,7 +467,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 6px 8px;
     border: 1px dashed var(--line);
   }
@@ -469,7 +503,7 @@
     object-fit: contain;
   }
   .tag {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     padding: 2px 6px;
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--mint);
@@ -479,11 +513,11 @@
     align-items: baseline;
     gap: 8px;
     margin: 14px 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .hph em {
     font-style: normal;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .hp {
@@ -499,23 +533,23 @@
     flex-direction: column;
     align-items: center;
     padding: 4px 2px;
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
     font-variant-numeric: tabular-nums;
   }
   .hc.cur {
-    background: rgb(243 179 34 / 0.14);
+    background: rgb(var(--gold-rgb) / 0.14);
     box-shadow: inset 0 0 0 1px var(--gold);
   }
   .hm {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-4);
   }
   .hc b {
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .hc small {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--gold);
   }
   .members {
@@ -535,14 +569,14 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     padding: 6px 11px;
     color: var(--fg-1);
     background: var(--bg-4);
   }
   .btn:hover {
-    background: #3a3e42;
+    background: var(--bg-5);
   }
   .btn.on {
     color: var(--mint-ink);
@@ -559,7 +593,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .minor button:hover {
@@ -573,7 +607,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .favbtn:hover {
@@ -584,11 +618,11 @@
   }
   .note {
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .cfgl {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
   }
   .mydef {
@@ -602,18 +636,18 @@
   }
   .chg {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 4px;
     color: var(--mint-ink);
     background: var(--mint);
   }
   .mdh .link {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
   }
   .hint {
     margin-left: auto;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .mdo {
@@ -625,7 +659,7 @@
   }
   .cl {
     margin: 0 2px 0 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .cl:first-child {
@@ -647,7 +681,7 @@
   .opt.txt {
     width: auto;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
   }
   .opt.on {
@@ -660,14 +694,14 @@
     top: -6px;
     padding: 0 2px;
     font-style: normal;
-    font-size: 8px;
+    font-size: var(--fs-3xs);
     line-height: 11px;
     color: var(--fg-1);
     background: var(--bg-4);
   }
   .mdn {
     margin: 4px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
 </style>

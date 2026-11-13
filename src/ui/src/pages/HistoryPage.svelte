@@ -336,7 +336,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
     padding: 3px 4px;
   }
@@ -351,7 +351,7 @@
     display: grid;
   }
   .busy .spin {
-    animation: spin 0.8s linear infinite;
+    animation: spin var(--t-spin) linear infinite;
   }
   @keyframes spin {
     to {
@@ -364,13 +364,13 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .empty,
   .note {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.6;
     color: var(--fg-3);
   }
@@ -411,12 +411,12 @@
   }
   .time {
     grid-area: time;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .mode {
     grid-area: mode;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .strat {
@@ -425,12 +425,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
   }
   .res {
     grid-area: res;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     white-space: nowrap;
   }
@@ -470,7 +470,7 @@
     right: -3px;
     bottom: -3px;
     font-style: normal;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 0 2px;
     color: var(--fg-1);
     background: var(--bg-0);
@@ -509,7 +509,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px 16px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .facts div {
     display: flex;
@@ -525,7 +525,7 @@
     margin: 0;
   }
   .money .lbl {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .money svg {
@@ -543,7 +543,7 @@
   .ticks {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-2);
   }
   .acts {
@@ -558,7 +558,7 @@
   }
   .danger:hover,
   .danger.armed {
-    color: var(--red, #e5484d);
+    color: var(--red);
   }
 
   /* 统计 */
@@ -582,10 +582,10 @@
     box-shadow: inset 0 0 0 1px var(--line-soft);
   }
   .kpis b {
-    font-size: 18px;
+    font-size: var(--fs-2xl);
   }
   .kpis span {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-3);
     white-space: nowrap;
   }
@@ -599,7 +599,7 @@
     align-items: center;
     gap: 6px;
     margin: 6px 0 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-1);
     text-align: left;
@@ -607,7 +607,7 @@
   .h5 :global(svg) {
     margin-left: auto;
     color: var(--fg-4);
-    transition: transform 160ms;
+    transition: transform var(--t-exit);
   }
   .h5.folded :global(svg) {
     transform: rotate(-90deg);
@@ -647,7 +647,7 @@
     grid-template-columns: 24px minmax(0, 1fr) 60px auto;
     gap: 8px;
     align-items: center;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .srow img {
     width: 24px;
@@ -670,7 +670,7 @@
     background: var(--mint);
   }
   .num {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     white-space: nowrap;
   }
@@ -684,7 +684,7 @@
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-3);
   }
   .opc img {
@@ -701,7 +701,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-1);
   }
 </style>

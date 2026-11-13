@@ -17,6 +17,7 @@ public sealed record SklandStage(string Type, int StartRound, int EndRound,
 public sealed record SklandGuide(string Url, string Title, string Author, string[] Strategies,
     string VersionId, SklandStage[] Stages);
 public sealed record SklandCovenant(string Id, int Layer);
+public sealed record SklandAccount(string Nickname);
 public sealed record SklandBoss(string Id, bool Killed);
 public sealed record SklandRecord(string Id, string? StrategyId, SklandOperator[] Operators,
     string[] Equipment, bool Success, string Time, string StartTime, int CoinSpent, int Kills,
@@ -24,6 +25,26 @@ public sealed record SklandRecord(string Id, string? StrategyId, SklandOperator[
 
 public static class SklandParser
 {
+    public static SklandAccount? ParseAccount(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (root.GetProperty("code").GetInt32() != 0) return null;
+        var game = Elements(root.GetProperty("data"), "list")
+            .FirstOrDefault(g => Option(g, "appCode") == "arknights");
+        var bindings = Elements(game, "bindingList").ToArray();
+        var role = bindings.FirstOrDefault(b => Optional(b, "isDefault").ValueKind == JsonValueKind.True);
+        if (role.ValueKind == JsonValueKind.Undefined) role = bindings.FirstOrDefault();
+        return Option(role, "nickname") is { } nickname ? new(nickname) : null;
+    }
+
+    // 登录表单出现时重置等待起点，登录完成后给页面完整的 15 秒加载时间。
+    internal static bool HistoryWaitExpired(bool visible, bool loginForm, DateTime now, ref DateTime waitingSince)
+    {
+        if (visible && loginForm) waitingSince = now;
+        return now - waitingSince >= TimeSpan.FromSeconds(15);
+    }
+
     public static string NormalizeGuideUrl(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)

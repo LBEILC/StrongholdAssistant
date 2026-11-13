@@ -126,7 +126,7 @@
   .sorts button {
     height: 26px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     background: var(--bg-2);
   }
@@ -147,12 +147,12 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .acct {
     margin: 0 0 10px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .acct b {
@@ -164,7 +164,7 @@
     gap: 8px;
   }
   .by {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .num {
@@ -172,11 +172,11 @@
     align-items: center;
     gap: 2px;
     font-family: var(--font-term);
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .feat {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 4px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -186,7 +186,7 @@
     align-self: flex-start;
     height: 24px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--mint-lo);
   }
@@ -200,7 +200,7 @@
     gap: 8px;
     padding: 32px 12px;
     text-align: center;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .state p {
@@ -211,7 +211,7 @@
   .more {
     height: 28px;
     padding: 0 12px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     box-shadow: inset 0 0 0 1px var(--line);
   }
@@ -221,7 +221,7 @@
   }
   .note {
     margin: 10px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   /* 宽（工作台）：帖子卡网格 */

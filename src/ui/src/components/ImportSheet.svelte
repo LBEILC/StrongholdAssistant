@@ -47,11 +47,14 @@
   let picked = $state<SklandRecord | null>(null)
   let histBusy = $state(false)
   let histErr = $state('')
+  // 森空岛上次读到的角色，换账号用（v0.8.0）
+  let account = $state<{ nickname: string } | null>(null)
   async function history() {
     histBusy = true
     histErr = ''
     try {
       const r = await api.sklandHistory()
+      account = await api.sklandAccount()
       if (!r) return
       records = r
       picked = null
@@ -61,6 +64,15 @@
     } finally {
       histBusy = false
     }
+  }
+
+  // 换账号：退出森空岛登录，马上弹窗让用户登录另一个
+  async function switchAccount() {
+    await api.sklandLogout()
+    account = null
+    records = null
+    picked = null
+    history()
   }
 
   const sk = $derived(
@@ -81,6 +93,7 @@
     records = null
     picked = null
     histErr = ''
+    api.sklandAccount().then((a) => (account = a))
     queueMicrotask(() => box?.focus())
   })
   // 解出新的阵容时，名字框填上码里（或攻略）的名字
@@ -93,17 +106,22 @@
 
 {#if app.importOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:sheet={{ y: 320, duration: 240 }}>
+  <aside class="sheet win" transition:sheet={{ y: 320, duration: 240 }}>
     <header>
       <span class="hi"><Icon name="paste" size={16} /></span>
       <h3>导入阵容</h3>
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
+    <div class="scroll">
     <p class="hint">粘贴别人发来的分享码，整句消息也可以；也可以粘贴森空岛的阵容攻略链接。</p>
     <textarea bind:this={box} bind:value={text} rows="3" placeholder="【卫戍协议助手阵容】叙拉古 · 家族 SA2-…" spellcheck="false" oninput={() => (picked = null)}></textarea>
     <div class="hist">
       <button class="lnk" disabled={histBusy} onclick={history}><Icon name="download" size={12} />{histBusy ? '等待森空岛窗口…' : '从森空岛历史战绩导入'}</button>
-      <span>会弹出森空岛窗口，没登录的话在里面登录</span>
+      {#if account}
+        <span class="acct">森空岛：{account.nickname}<button class="sw" disabled={histBusy} onclick={switchAccount}>换账号</button></span>
+      {:else}
+        <span>会弹出森空岛窗口，没登录的话在里面登录</span>
+      {/if}
     </div>
     {#if histErr}
       <ErrorNote title="读取森空岛历史战绩失败" error={histErr}>
@@ -174,6 +192,7 @@
       {#if sk && lineup.description}<p class="desc">{lineup.description}</p>{/if}
     {/if}
 
+    </div>
     <footer>
       <button class="ghost" onclick={close}>取消</button>
       <span class="sp"></span>
@@ -187,7 +206,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
+    background: var(--scrim);
     z-index: 20;
   }
   .sheet {
@@ -196,18 +215,16 @@
     right: 0;
     bottom: 0;
     max-height: 86%;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 21;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px 12px 0;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #16181a 120px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 120px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .sheet::before {
     content: '';
@@ -230,7 +247,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-xl);
   }
   .x {
     margin-left: auto;
@@ -246,14 +263,14 @@
   }
   .hint {
     margin: -4px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   textarea {
     resize: none;
     padding: 8px;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     color: var(--fg-1);
     background: var(--bg-1);
@@ -271,9 +288,9 @@
   }
   .err {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
-    color: #f2b8ba;
+    color: var(--red-fg);
     padding: 6px 8px;
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
@@ -283,18 +300,33 @@
     align-items: center;
     gap: 8px;
     margin-top: -2px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .hist .lnk {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .hist .lnk:disabled {
     color: var(--fg-4);
+  }
+  .hist .acct {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hist .sw {
+    margin-left: 6px;
+    color: var(--fg-2);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .hist .sw:hover:not(:disabled) {
+    color: var(--mint);
   }
   .recs {
     display: grid;
@@ -312,7 +344,7 @@
     justify-content: space-between;
     gap: 8px;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     text-align: left;
     color: var(--fg-2);
     background: var(--bg-2);
@@ -326,7 +358,7 @@
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .recs span {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .reading {
@@ -335,9 +367,9 @@
     gap: 8px;
     margin: 0;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .spin {
@@ -346,7 +378,7 @@
     border: 2px solid var(--mint-lo);
     border-top-color: var(--mint);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin var(--t-spin) linear infinite;
   }
   @keyframes spin {
     to {
@@ -358,11 +390,11 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .tag {
     padding: 0 5px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--mint-ink);
     background: var(--mint);
   }
@@ -377,7 +409,7 @@
   .seg button {
     height: 24px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     background: var(--bg-2);
   }
@@ -388,10 +420,10 @@
   }
   .warn {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 6px 8px;
     color: var(--gold);
-    background: rgb(243 179 34 / 0.08);
+    background: rgb(var(--gold-rgb) / 0.08);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .desc {
@@ -399,19 +431,19 @@
     max-height: 120px;
     overflow-y: auto;
     padding: 8px 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.7;
     white-space: pre-line;
     user-select: text;
     color: var(--fg-2);
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
     box-shadow: inset 2px 0 0 var(--mint-lo);
   }
   .nm {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .nm input {
@@ -419,7 +451,7 @@
     min-width: 0;
     height: 28px;
     padding: 0 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     background: var(--bg-1);
     border: 0;
@@ -430,13 +462,17 @@
     box-shadow: inset 0 0 0 1px var(--mint-lo);
   }
   /* margin-top: auto：工作台里面板是右侧全高，内容少时底栏也贴底边 */
+  /* 内容区自己滚；底部按钮栏固定在下面 */
+  .scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   footer {
-    position: sticky;
-    bottom: 0;
+    flex: none;
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: auto -12px 0;
     padding: 10px 12px;
     border-top: 1px solid var(--line);
     background: var(--bg-1);
@@ -445,7 +481,7 @@
     flex: 1;
   }
   .ghost {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 5px 8px;
   }
@@ -456,7 +492,7 @@
   .secondary {
     height: 30px;
     padding: 0 12px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     white-space: nowrap;
   }

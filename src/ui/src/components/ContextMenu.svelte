@@ -79,13 +79,13 @@
     padding: 4px 0;
     background:
       var(--noise),
-      linear-gradient(180deg, #23262a, #191b1e);
+      linear-gradient(180deg, var(--pop-top), var(--pop-bottom));
     box-shadow:
-      inset 0 0 0 1px #3a3e43,
-      0 8px 24px rgb(0 0 0 / 0.6),
-      0 0 0 1px rgb(0 0 0 / 0.5);
+      inset 0 0 0 1px var(--line-strong),
+      0 8px 24px rgb(var(--shade-rgb) / 0.6),
+      0 0 0 1px rgb(var(--shade-rgb) / 0.5);
     transform-origin: top left;
-    animation: pop 120ms var(--ease-out);
+    animation: pop var(--t-fast) var(--ease-out);
   }
   .menu::before {
     content: '';
@@ -113,12 +113,12 @@
     white-space: nowrap;
   }
   .hd b {
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .hd span {
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .it {
@@ -129,7 +129,7 @@
     align-items: center;
     gap: 8px;
     padding: 0 10px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     text-align: left;
     color: var(--fg-2);
   }
@@ -158,7 +158,7 @@
   }
   .it.danger.on,
   .it.armed {
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .it.armed {
     background: var(--red-tint);
@@ -183,7 +183,7 @@
     box-shadow: none;
   }
   .danger.on .box {
-    color: #fff;
+    color: var(--fg-0);
     background: var(--red);
   }
   .sep {

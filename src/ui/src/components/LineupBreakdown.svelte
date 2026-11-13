@@ -69,7 +69,7 @@
     flex: none;
     height: 24px;
     padding: 0 9px;
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     background: var(--bg-2);
   }
@@ -89,14 +89,14 @@
     align-items: center;
     gap: 3px;
     padding: 1px 7px 1px 2px;
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     background: var(--bg-3);
-    border-radius: 11px;
+    border-radius: var(--r-pill);
   }
   .g em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--gold);
   }
   .ms {
@@ -120,7 +120,7 @@
   .cf img {
     width: 18px;
     height: 18px;
-    background: rgb(0 0 0 / 0.4);
+    background: rgb(var(--shade-rgb) / 0.4);
   }
   .cf .mo {
     object-fit: contain;
@@ -129,13 +129,13 @@
   .cf i {
     width: 18px;
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     text-align: center;
     color: var(--fg-4);
   }
   .nm {
     max-width: 100%;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     overflow: hidden;
     text-overflow: ellipsis;

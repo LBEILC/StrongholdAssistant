@@ -63,7 +63,7 @@
     background: var(--red-tint);
     box-shadow:
       inset 3px 0 0 var(--red),
-      inset 0 0 0 1px rgb(232 72 79 / 0.35);
+      inset 0 0 0 1px rgb(var(--red-rgb) / 0.35);
   }
   .top {
     display: flex;
@@ -78,7 +78,7 @@
     width: 22px;
     height: 22px;
     margin-top: 1px;
-    color: #fff;
+    color: var(--fg-0);
     background: var(--red);
   }
   .txt {
@@ -89,13 +89,13 @@
     gap: 2px;
   }
   .txt b {
-    font-size: 13px;
-    color: #ffd9da;
+    font-size: var(--fs-md);
+    color: var(--red-fg-hi);
   }
   .txt span {
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .tg {
     flex: none;
@@ -104,18 +104,18 @@
     gap: 2px;
     height: 22px;
     padding: 0 6px;
-    font-size: 11px;
-    color: #f2b8ba;
-    box-shadow: inset 0 0 0 1px rgb(242 184 186 / 0.35);
+    font-size: var(--fs-sm);
+    color: var(--red-fg);
+    box-shadow: inset 0 0 0 1px rgb(var(--red-fg-rgb) / 0.35);
   }
   .tg :global(svg) {
-    transition: transform 160ms;
+    transition: transform var(--t-exit);
   }
   .tg.on :global(svg) {
     transform: rotate(180deg);
   }
   .tg:hover {
-    color: #fff;
+    color: var(--fg-0);
   }
   .x {
     flex: none;
@@ -123,10 +123,10 @@
     place-items: center;
     width: 22px;
     height: 22px;
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .x:hover {
-    color: #fff;
+    color: var(--fg-0);
   }
   .acts {
     display: flex;
@@ -140,17 +140,17 @@
     gap: 3px;
     height: 24px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
-    background: rgb(0 0 0 / 0.3);
+    background: rgb(var(--shade-rgb) / 0.3);
   }
   .acts :global(button:hover) {
-    background: rgb(0 0 0 / 0.5);
+    background: rgb(var(--shade-rgb) / 0.5);
   }
   .more {
     margin: 0 8px 8px 40px;
     padding: 8px;
-    background: rgb(0 0 0 / 0.35);
+    background: rgb(var(--shade-rgb) / 0.35);
   }
   pre {
     margin: 0;
@@ -158,7 +158,7 @@
     overflow: auto;
     /* 英文数字等宽，中文用界面字体（只写 Consolas 时中文会退回宋体） */
     font-family: 'Consolas', 'MiSans', 'Microsoft YaHei UI', monospace;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-all;
@@ -171,14 +171,61 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .cp {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
+  }
+  /* 可露希尔：系统报错对话框——粉色窗口边，标题行是粉紫渐变标题栏，关闭是青色小方块 */
+  :global([data-skin='closure']) .en {
+    background: rgb(var(--bg-0-rgb) / 0.6);
+    box-shadow: inset 0 0 0 2px var(--win-pink);
+    border-radius: var(--r-2);
+    overflow: hidden;
+  }
+  :global([data-skin='closure']) .top {
+    align-items: center;
+    background: linear-gradient(90deg, var(--win-pink), #b03ad8 70%, #6a2bd0);
+  }
+  :global([data-skin='closure']) .txt b,
+  :global([data-skin='closure']) .ic {
+    color: var(--fg-0);
+  }
+  :global([data-skin='closure']) .txt span {
+    color: #ffe0f2;
+  }
+  :global([data-skin='closure']) .x {
+    width: 18px;
+    height: 18px;
+    color: #001a20;
+    background: var(--win-cyan);
+    border-radius: 0;
+    box-shadow:
+      inset 1px 1px 0 rgb(var(--hl-rgb) / 0.5),
+      inset -1px -1px 0 rgb(var(--shade-rgb) / 0.35);
+  }
+
+  /* 乌萨斯：警示牌——牌身深色、底边铁锈红，标题米白粗斜体，左边一道铁锈红斜纹 */
+  :global([data-skin='ursus']) .en {
+    background:
+      repeating-linear-gradient(-45deg, var(--rust) 0 4px, transparent 4px 8px) left / 6px 100% no-repeat,
+      var(--noise),
+      rgb(var(--bg-0-rgb) / 0.6);
+    box-shadow: inset 0 -3px 0 var(--rust);
+  }
+  :global([data-skin='ursus']) .top {
+    padding-left: 14px;
+  }
+  :global([data-skin='ursus']) .txt b {
+    font-style: italic;
+    color: var(--cream);
+  }
+  :global([data-skin='ursus']) .ic {
+    color: var(--rust-hi);
   }
 </style>

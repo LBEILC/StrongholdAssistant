@@ -92,14 +92,14 @@
     gap: 10px;
     align-items: flex-start;
     padding: 8px;
-    background: var(--hatch), #15171a;
+    background: var(--hatch), var(--bg-1a);
     box-shadow:
       inset 0 0 0 1px var(--line-soft),
-      0 6px 10px rgb(0 0 0 / 0.45);
+      0 6px 10px rgb(var(--shade-rgb) / 0.45);
   }
   .detail.on {
-    background: linear-gradient(90deg, var(--mint-tint), transparent 70%), #15171a;
-    box-shadow: inset 2px 0 0 var(--mint), inset 0 0 0 1px rgb(34 227 178 / 0.3);
+    background: linear-gradient(90deg, var(--mint-tint), transparent 70%), var(--bg-1a);
+    box-shadow: inset 2px 0 0 var(--mint), inset 0 0 0 1px rgb(var(--mint-rgb) / 0.3);
   }
   .detail img {
     flex: none;
@@ -121,15 +121,15 @@
     gap: 2px 6px;
   }
   .dn b {
-    font-size: 14px;
+    font-size: var(--fs-lg);
   }
   .dn span {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .dn em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 1px 5px;
   }
   .dn .now {
@@ -145,13 +145,13 @@
   }
   .dt p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.55;
     color: var(--fg-2);
   }
   .empty {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   /* 分组标题：仿游戏的「[ 泛用型策略 ]」 */
@@ -160,7 +160,7 @@
     align-items: center;
     gap: 8px;
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-2);
   }
@@ -213,7 +213,7 @@
   .cell.sel::after {
     box-shadow:
       inset 0 0 0 2px var(--mint),
-      inset 0 0 10px rgb(34 227 178 / 0.45);
+      inset 0 0 10px rgb(var(--mint-rgb) / 0.45);
   }
   .cv {
     position: absolute;
@@ -226,7 +226,7 @@
     border-radius: 50%;
     color: var(--mint-ink);
     background: var(--mint);
-    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+    box-shadow: 0 0 0 1px rgb(var(--shade-rgb) / 0.6);
   }
   .cv .glyph {
     width: 11px;
@@ -236,7 +236,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 1px 3px 0;
     color: var(--mint-ink);
     background: var(--mint);

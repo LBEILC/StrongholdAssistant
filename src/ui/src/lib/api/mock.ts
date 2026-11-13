@@ -188,6 +188,7 @@ let session: Session = {
 // 关注的样例：一个可用、一个阵容不完整的盟约，再加两名会被禁的干员，方便看提示
 let settings: Settings = {
   gameTheme: 'terminal',
+  uiSkin: 'follow',
   shopMarkers: true,
   autoCheckUpdate: true,
   updateSource: 'github',
@@ -497,6 +498,7 @@ export const mockApi: Api = {
   // 假数据：森空岛历史战绩，1.5 秒后返回三局
   sklandHistory: async () => {
     await new Promise((r) => setTimeout(r, 1500))
+    localStorage.setItem('mockSklandAccount', '博士#1234')
     const ids = ['char_1027_greyy2', 'char_171_bldsk', 'char_206_gnosis', 'char_4027_heyak', 'char_391_rosmon', 'char_4244_tocka', 'char_1045_svash2', 'char_1046_sbell2']
     return [8, 0, 1].map((round, i) => ({
       id: `rec-${i}`,
@@ -516,6 +518,12 @@ export const mockApi: Api = {
       versionId: 'V3_1',
     }))
   },
+  // 假数据：读过一次历史战绩就算登录了
+  sklandAccount: async () => {
+    const nickname = localStorage.getItem('mockSklandAccount')
+    return nickname ? { nickname } : null
+  },
+  sklandLogout: async () => localStorage.removeItem('mockSklandAccount'),
   onUpdate: (cb) => {
     updateListeners.add(cb)
     return () => updateListeners.delete(cb)

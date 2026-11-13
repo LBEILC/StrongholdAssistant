@@ -19,10 +19,13 @@ public sealed class HostSettingsStore(string path)
     public SettingsDto LoadSettings()
     {
         var json = Read();
+        var uiSkin = json["uiSkin"] is JsonValue value && value.TryGetValue<string>(out var skin)
+            && skin is ("follow" or "terminal" or "ursus" or "closure") ? skin : "follow";
         var settings = new SettingsDto(json["gameTheme"]?.GetValue<string>() ?? "terminal",
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
+            UiSkin = uiSkin,
             UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",
             UpdateProxy = json["updateProxy"]?.GetValue<string>() ?? "",
             MirrorChyanCdk = json["mirrorChyanCdk"]?.GetValue<string>() ?? "",
@@ -65,6 +68,8 @@ public sealed class HostSettingsStore(string path)
     public void SaveSettings(SettingsDto settings)
     {
         ValidateSides(settings);
+        if (settings.UiSkin is not ("follow" or "terminal" or "ursus" or "closure"))
+            throw new ArgumentException("界面主题无效。");
         var proxy = settings.UpdateProxy;
         if (proxy != "" && (proxy is null
             || !System.Text.RegularExpressions.Regex.IsMatch(proxy, @"\A(?:http|socks5)://(?:\[[^\]]+\]|[^\s/:@?#\\]+):[0-9]+\z", System.Text.RegularExpressions.RegexOptions.IgnoreCase)

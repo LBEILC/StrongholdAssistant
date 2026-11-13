@@ -1,3 +1,10 @@
+/* 可露希尔皮肤的英文装饰字：Fusion Pixel 12px（OFL，许可证随包放在 public/licenses/fusion-pixel/），只取基本拉丁，按 12px 的整数倍用才清楚 */
+@font-face {
+  font-family: 'Fusion Pixel';
+  src: url('./assets/fonts/fusion-pixel/fusion-pixel-12px-latin.woff2') format('woff2');
+  font-display: block;
+}
+
 /* MiSans 可变字体子集（GB2312 + 数据与界面里出现的字符），随界面打包 */
 @font-face {
   font-family: 'MiSans';
@@ -6,37 +13,66 @@
   font-display: block;
 }
 
-/* 设计令牌：取色参照游戏内卫戍协议界面（开局信息页、商店卡） */
+/*
+ * 设计令牌：取色参照游戏内卫戍协议界面（开局信息页、商店卡），这是默认皮肤。
+ *
+ * 规范：
+ * - 组件里不写死颜色、字号、圆角、动效时长，一律用这里的令牌；皮肤只覆盖这里的值。
+ * - 要半透明的颜色另有 `-rgb` 三元组，写成 rgb(var(--mint-rgb) / 0.3)；皮肤改三元组，实色和半透明一起变。
+ * - 间距属于版式，不随皮肤变，不做令牌；会反复出现的控件尺寸（如盟约按钮）统一成令牌，各处一样大。
+ */
 :root {
-  /* 底色：炭黑，层次靠明度差 */
-  --bg-0: #0b0c0d;
+  /* 底色：炭黑，层次靠明度差（1a、2a 是两级之间的过渡层） */
+  --bg-0-rgb: 11 12 13;
+  --bg-0: rgb(var(--bg-0-rgb));
   --bg-1: #131416;
+  --bg-1a: #16181a;
   --bg-2: #1b1d20;
+  --bg-2a: #202326;
   --bg-3: #24272a;
   --bg-4: #2e3135;
+  --bg-5: #3a3e43;
   --line: #303438;
   --line-soft: #222528;
+  --line-strong: #3a3e43;
+  --line-hi: #5a6066;
 
   /* 文字 */
+  --fg-0: #fff;
   --fg-1: #ecedee;
   --fg-2: #b4b8bc;
   --fg-3: #7d8287;
   --fg-4: #50555a;
 
+  /* 阴影、遮罩用的暗色和高光用的亮色 */
+  --shade-rgb: 0 0 0;
+  --hl-rgb: 255 255 255;
+
   /* 薄荷绿：激活、可用、目标 */
-  --mint: #22e3b2;
+  --mint-rgb: 34 227 178;
+  --mint: rgb(var(--mint-rgb));
   --mint-hi: #5ef5cf;
   --mint-lo: #10a982;
   --mint-ink: #06231b;
-  --mint-glow: 0 0 10px rgb(34 227 178 / 0.45), 0 0 2px rgb(34 227 178 / 0.8);
-  --mint-tint: rgb(34 227 178 / 0.1);
+  --mint-glow: 0 0 10px rgb(var(--mint-rgb) / 0.45), 0 0 2px rgb(var(--mint-rgb) / 0.8);
+  --mint-tint: rgb(var(--mint-rgb) / 0.1);
 
   /* 金色：领袖、费用、警示 */
-  --gold: #f3b322;
+  --gold-rgb: 243 179 34;
+  --gold: rgb(var(--gold-rgb));
   --gold-ink: #2a1d02;
-  /* 红：禁用 */
-  --red: #e5484d;
-  --red-tint: rgb(229 72 77 / 0.14);
+  /* 红：禁用、出错；red-fg 是深底上的红色文字 */
+  --red-rgb: 229 72 77;
+  --red: rgb(var(--red-rgb));
+  --red-tint: rgb(var(--red-rgb) / 0.14);
+  --red-fg-rgb: 242 184 186;
+  --red-fg: rgb(var(--red-fg-rgb));
+  --red-fg-hi: #ffd9da;
+  /* 广场点赞 */
+  --like-rgb: 255 138 154;
+  --like: rgb(var(--like-rgb));
+  /* 标题栏关闭按钮悬停（Windows 惯例） */
+  --close-bg: #c42b1c;
 
   /* 等阶色，取自 img_chess_level_1~6 */
   --tier-1: #8c9094;
@@ -44,25 +80,583 @@
   --tier-3: #27d6a0;
   --tier-4: #22b0e3;
   --tier-5: #f2c315;
-  --tier-6: #f27a12;
+  --tier-6-rgb: 242 122 18;
+  --tier-6: rgb(var(--tier-6-rgb));
+
+  /* 底部面板（详情、编辑器、设置等）和弹层（右键菜单、提示框、轻提示） */
+  --sheet-top: var(--bg-2a);
+  --sheet-bottom: var(--bg-1a);
+  --pop-top: var(--bg-3);
+  --pop-bottom: var(--bg-2);
+  --scrim: rgb(var(--shade-rgb) / 0.55);
+  --scrim-strong: rgb(var(--shade-rgb) / 0.6);
+  /* 压暗的内凹区块 */
+  --well: rgb(var(--shade-rgb) / 0.25);
+
+  /* 分组标题条 */
+  --head-top: #2a2d31;
+  --head-bottom: var(--bg-2a);
+  --head-hi-top: #303338;
+  --head-hi-bottom: #25282b;
+
+  /* 盟约图标：圆盘本身是皮肤位图，这里是字形的颜色（未激活 / 激活） */
+  --bond-off: #8a8f93;
+  --bond-on-fg: var(--mint-ink);
+
+  /* 等阶角标高度相对 size 的比例（各皮肤角标宽高比不同：终端方的，乌萨斯扁长） */
+  --tier-h: 1;
+
+  /* 图鉴卡底部：名字条、盟约小图标（终端卡面是深色，名字直接压在卡框的青绿条上） */
+  --card-name-bg: transparent;
+  --card-name-fg: var(--fg-1);
+  --card-bond-fg: var(--fg-3);
+  --card-bond-core-fg: var(--fg-1);
+
+  /* 回合方块：游戏顶栏「回合」后面的数字底块（终端是浅灰底深字，各皮肤不同） */
+  --round-bg: #aaaaaa;
+  --round-fg: #161616;
+
+  /* 首领条：偏暖的灰 */
+  --boss-bg: #2a2a26;
+  --boss-line: #3b3a33;
+  --boss-ring: #4a4a44;
 
   --font-ui: 'MiSans', 'Microsoft YaHei UI', sans-serif;
   /* 终端风格英文小字：Windows 自带 Bahnschrift；夹带的中文落到 MiSans，不能落到 monospace（会变宋体） */
   --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', 'MiSans', 'Microsoft YaHei UI', sans-serif;
 
+  /* 字号：只用这 10 档，不用半号 */
+  --fs-3xs: 8px; /* 装饰英文、角标 */
+  --fs-2xs: 9px;
+  --fs-xs: 10px;
+  --fs-sm: 11px; /* 说明、次要信息 */
+  --fs-base: 12px;
+  --fs-md: 13px; /* 正文 */
+  --fs-lg: 14px;
+  --fs-xl: 15px; /* 面板、分组标题 */
+  --fs-2xl: 18px; /* 详情标题、大数字 */
+  --fs-3xl: 20px;
+
+  /* 控件尺寸 */
+  --bond-pick: 28px; /* 盟约选择按钮：编辑器、筛选，侧栏和工作台一样大 */
+
   --r-1: 2px;
   --r-2: 4px;
+  --r-pill: 999px;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --t-fast: 120ms;
   --t-mid: 220ms;
+  --t-enter: 260ms; /* 启动时内容淡入上移 */
+  --t-exit: 150ms; /* 关闭时淡出 */
+  --t-stagger: 50ms; /* 依次出现的间隔 */
+  --t-spin: 0.8s; /* 加载转圈一周 */
+  --t-breathe: 1.2s; /* 呼吸点一次 */
 
   /* 做旧噪点 */
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   /* 细斜纹 */
-  --hatch: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 5px);
+  --hatch: repeating-linear-gradient(-45deg, rgb(var(--hl-rgb) / 0.035) 0 1px, transparent 1px 5px);
 
   color-scheme: dark;
+}
+
+/*
+ * 皮肤：只覆盖上面的令牌，跟着设置里的「游戏主题」换（App.svelte 写 data-skin）。
+ * 侧栏一直是深色（盖在游戏画面上，太亮会抢画面），换的是底色的色相、强调色和皮肤位图。
+ * 取色来源见 docs/design.md「界面皮肤」：游戏素材和用户录屏。
+ */
+
+/* 乌萨斯齐心团：暖棕黑底、米白字、淡灰绿强调（游戏回合底块、frame1_normal 描边），铁锈红标题条 */
+:root[data-skin='ursus'] {
+  --bg-0-rgb: 17 13 11;
+  --bg-1: #191411;
+  --bg-1a: #1d1714;
+  --bg-2: #231c18;
+  --bg-2a: #2a221d;
+  --bg-3: #312822;
+  --bg-4: #3b3129;
+  --bg-5: #4a3e34;
+  --line: #3e342c;
+  --line-soft: #271f1a;
+  --line-strong: #4a3e34;
+  --line-hi: #6e5f52;
+
+  --fg-0: #fffaf0;
+  --fg-1: #efe7d6;
+  --fg-2: #c4b8a4;
+  --fg-3: #8d8273;
+  --fg-4: #5c544a;
+
+  --mint-rgb: 168 214 196;
+  --mint-hi: #d4f0e4;
+  --mint-lo: #6f9c8c;
+  --mint-ink: #12201b;
+  --gold-rgb: 240 163 42;
+  --gold-ink: #2a1600;
+  --red-rgb: 217 72 58;
+
+  --head-top: #3a2a22;
+  --head-bottom: #2a1f1a;
+  --head-hi-top: #4a3328;
+  --head-hi-bottom: #33241d;
+
+  --bond-off: #8a8278;
+  --bond-on-fg: #ece6d6;
+  --round-bg: #a8c8c0;
+  --round-fg: #141414;
+  --tier-h: 0.72;
+
+  /* 构成主义宣传画：斜切、铁锈红标语条、米白纸、粗斜体。英文装饰字是粗斜体压缩字 */
+  --font-term: 'Bahnschrift', 'Arial Narrow', 'MiSans', sans-serif;
+  --rust-rgb: 214 72 40;
+  --rust: rgb(var(--rust-rgb));
+  --rust-hi: #ed5528;
+  --cream: #f0e4c8;
+  --cream-ink: #2a211b;
+  /* 平行四边形的斜切宽度（按钮、标签、标语条都按这个斜） */
+  --slant: 7px;
+
+  /* 卡面是做旧纸，名字压在深青灰的斜条上（游戏商店卡） */
+  --card-name-bg: linear-gradient(100deg, #3e4b4e 85%, transparent 85.5%);
+  --card-name-fg: #f2ece0;
+  --card-bond-fg: #6b645a;
+  --card-bond-core-fg: #2e2a26;
+}
+
+/* 「全能的」可露希尔：深海军蓝底、亮青强调（游戏回合底块、确认购买整卡），亮色卡面 */
+:root[data-skin='closure'] {
+  --bg-0-rgb: 10 11 26;
+  --bg-1: #10122a;
+  --bg-1a: #141632;
+  --bg-2: #191b3a;
+  --bg-2a: #1f2246;
+  --bg-3: #252950;
+  --bg-4: #2e3360;
+  --bg-5: #3a4074;
+  --line: #2c3160;
+  --line-soft: #1a1d3c;
+  --line-strong: #3a4074;
+  --line-hi: #5a62a0;
+
+  --fg-0: #ffffff;
+  --fg-1: #eef0ff;
+  --fg-2: #b8bce0;
+  --fg-3: #7c82b4;
+  --fg-4: #4e5384;
+
+  --mint-rgb: 0 232 248;
+  --mint-hi: #7ff6ff;
+  --mint-lo: #00a6c8;
+  --mint-ink: #031c24;
+  --red-rgb: 240 71 106;
+
+  --head-top: #262a5a;
+  --head-bottom: #1c1f46;
+  --head-hi-top: #2f3470;
+  --head-hi-bottom: #232756;
+
+  --bond-off: #7c82b4;
+  --bond-on-fg: #ffffff;
+  --round-bg: #00e8f8;
+  --round-fg: #0a0b1a;
+  --tier-h: 0.9;
+
+  /* 首领条：紫色调（终端是偏暖的灰） */
+  --boss-bg: #2b2160;
+  --boss-line: #4a3a9a;
+  --boss-ring: #6a5ad0;
+
+  /* 千禧年电脑桌面：一切都是窗口。英文装饰字用像素字，圆角更圆 */
+  --font-term: 'Fusion Pixel', 'Consolas', 'MiSans', monospace;
+  --r-1: 3px;
+  --r-2: 6px;
+  /* 窗口标题栏（游戏 rest_window_back 的蓝）和窗口右上角的小方块按钮 */
+  --win-title: linear-gradient(90deg, #2c32e6, #1b1fa0 70%, #2a1d7a);
+  --win-title-hi: linear-gradient(90deg, #3a41ff, #2429c0 70%, #3a2596);
+  --win-edge: #3a40e8;
+  --win-btn: #1a1d8f;
+  --win-pink: #ff3da8;
+  --win-cyan: #2ee6ff;
+  /* 底部面板的窗口（照游戏 rest_window_back 用 CSS 画）：标题栏高、标题栏蓝、外框、标题栏上的浅色字、底部粉色辉光 */
+  --win-bar: 22px;
+  --win-bar-bg: #252dd5;
+  --win-bar-shade: #1f25a1;
+  --win-frame: #252dd5;
+  --win-frame-in: #121226;
+  --win-frame-drop: #7c1a64;
+  --win-ink: #c9ccff;
+  --win-glow-rgb: 99 49 90;
+  --win-x-ink: #1a23e7;
+  /* 资金栏的金色窗口（照游戏 battle_window_back）：暗边、金边、投影、窗体、标题栏字、方块、底部辉光 */
+  --wing-dark: #1a1a1a;
+  --wing-gold: #df992b;
+  --wing-drop: #984828;
+  --wing-body: #101010;
+  --wing-ink: #8a8a8a;
+  --wing-btn: #d8d4e6;
+  --wing-btn-dark: #563b15;
+  --wing-glow-rgb: 115 90 24;
+  /* 粉→青的流光，和 6 阶「VI」同一条渐变 */
+  --y2k-grad: linear-gradient(90deg, #ff4fb2, #b26bff 45%, #2ee6ff);
+
+  /* 卡面是浅灰白，名字压在白条上（游戏商店卡） */
+  --card-name-bg: rgb(255 255 255 / 0.88);
+  --card-name-fg: #1a1c3a;
+  --card-bond-fg: #6a6f98;
+  --card-bond-core-fg: #1f2246;
+}
+
+/* 底部面板：标题行（标题 + 关闭）固定在上面，下面的内容区自己滚（滚动条从标题行下面开始），
+   有底部按钮栏的固定在最下面。编辑器（.ed）本来就是这样 */
+aside.sheet > header {
+  flex: none;
+  padding: 12px 12px 6px;
+}
+aside.sheet > .scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 12px 16px;
+}
+
+/*
+ * 可露希尔：底部面板（带 win 类的详情、编辑器、设置等）都是电脑窗口，照游戏 rest_window_back 用 CSS 画（矢量，放大不糊）：
+ * 蓝色外框（里面一道暗线，右下一道品红投影）、底部粉色辉光；标题栏画在固定的标题行顶上，
+ * 左边像素字「CLOSURE」，右边三个小方块，最右的青色方块就是关闭按钮（标题行里原来的 ×，挪进标题栏）
+ */
+:root[data-skin='closure'] aside.win {
+  border: 2px solid var(--win-frame);
+  box-shadow:
+    inset 0 0 0 1px var(--win-frame-in),
+    inset 0 -18px 18px -6px rgb(var(--win-glow-rgb) / 0.9),
+    2px 2px 0 var(--win-frame-drop),
+    0 -12px 30px rgb(var(--shade-rgb) / 0.6);
+}
+:root[data-skin='closure'] .win::before {
+  display: none;
+}
+:root[data-skin='closure'] .win > header {
+  position: relative;
+  padding-top: calc(var(--win-bar) + 8px);
+}
+/* 标题栏：铺满标题行顶上，下沿一道暗蓝 */
+:root[data-skin='closure'] .win > header::before {
+  content: 'CLOSURE';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--win-bar);
+  padding-left: 8px;
+  font: var(--fs-sm) / var(--win-bar) var(--font-term);
+  letter-spacing: 0.06em;
+  color: var(--win-ink);
+  background: linear-gradient(0deg, var(--win-bar-shade) 2px, var(--win-bar-bg) 2px);
+}
+/* 左边两个装饰方块：深蓝「最小化」、品红「最大化」 */
+:root[data-skin='closure'] .win > header::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 23px;
+  width: 31px;
+  height: 14px;
+  background:
+    linear-gradient(var(--win-ink), var(--win-ink)) 4px 6px / 6px 2px no-repeat,
+    linear-gradient(var(--win-frame-in), var(--win-frame-in)) 21px 4px / 6px 6px no-repeat,
+    linear-gradient(var(--win-btn), var(--win-btn)) 0 0 / 14px 14px no-repeat,
+    linear-gradient(var(--win-pink), var(--win-pink)) 17px 0 / 14px 14px no-repeat;
+}
+/* 关闭：青色方块。点击区比方块大一圈，方块本身用内阴影画 */
+:root[data-skin='closure'] .win > header > .x {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 22px;
+  height: var(--win-bar);
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--win-x-ink);
+  background: none;
+  border-radius: 0;
+}
+:root[data-skin='closure'] .win > header > .x::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: var(--win-cyan);
+}
+:root[data-skin='closure'] .win > header > .x:hover::before {
+  background: var(--fg-0);
+  box-shadow: 0 0 6px var(--win-cyan);
+}
+:root[data-skin='closure'] .win > header > .x svg {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+/* 可露希尔：按钮都是圆润的胶囊（游戏「冻结」「刷新」）；主按钮带上亮下暗的光泽 */
+:root[data-skin='closure'] :is(.btn, .tool, .chip, .tog, .add, .opt, .act, .primary, .secondary) {
+  border-radius: var(--r-pill);
+}
+:root[data-skin='closure'] :is(.btn, .tool, .tog, .add, .secondary):not(.main) {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+:root[data-skin='closure'] :is(.primary, .btn.main):not(:disabled) {
+  color: var(--mint-ink);
+  background:
+    linear-gradient(180deg, rgb(var(--hl-rgb) / 0.55), rgb(var(--hl-rgb) / 0.05) 48%, transparent 52%),
+    linear-gradient(180deg, var(--mint-hi), var(--mint) 55%, var(--mint-lo));
+  box-shadow:
+    0 0 10px rgb(var(--mint-rgb) / 0.45),
+    inset 0 -2px 0 rgb(var(--shade-rgb) / 0.2);
+}
+/* 带分组标题的区块是一个小窗口：标题栏在分组标题里，这里补上左右下的窗口边和窗口底 */
+:root[data-skin='closure'] section:has(> header.sh) {
+  /* 原来分组是贴边铺满的，内容本身不带左右内边距；套上窗口边后要补，标题栏用负边距照样铺满 */
+  padding: 0 6px 8px;
+  border: 2px solid var(--win-edge);
+  border-top: 0;
+  border-radius: var(--r-1) var(--r-1) var(--r-2) var(--r-2);
+  background: rgb(var(--bg-0-rgb) / 0.55);
+}
+/* 页面底纹：千禧年桌面那种淡网格 */
+:root[data-skin='closure'] .shell {
+  background:
+    linear-gradient(rgb(var(--mint-rgb) / 0.035) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(90deg, rgb(var(--mint-rgb) / 0.035) 1px, transparent 1px) 0 0 / 22px 22px,
+    radial-gradient(120% 60% at 50% 0%, var(--bg-1a), var(--bg-0));
+}
+/* 回合数：游戏顶栏的青色文件夹（round_num_back） */
+:root[data-skin='closure'] .rd b.tag {
+  padding-top: 3px;
+  background: var(--skin-folder) center / 100% 100% no-repeat;
+  border-radius: 0;
+}
+/* 资金栏：游戏战斗时顶部的金色窗口（battle_window_back），和底部面板一样用 CSS 画：
+   外框左上暗、右下金，右下一道锈红投影；标题栏从暗过渡到金，右边三个装饰方块；底部金色辉光 */
+:root[data-skin='closure'] .econ:not(.compact) {
+  padding: calc(var(--win-bar) + 4px) 9px 10px;
+  border: 2px solid;
+  border-color: var(--wing-dark) var(--wing-gold) var(--wing-gold) var(--wing-dark);
+  background:
+    linear-gradient(0deg, rgb(var(--wing-glow-rgb) / 0.9), transparent 18px),
+    var(--wing-body);
+  box-shadow: 2px 2px 0 var(--wing-drop);
+}
+:root[data-skin='closure'] .econ:not(.compact)::before {
+  content: 'CLOSURE';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--win-bar);
+  padding-left: 8px;
+  font: var(--fs-sm) / var(--win-bar) var(--font-term);
+  letter-spacing: 0.06em;
+  color: var(--wing-ink);
+  background: linear-gradient(90deg, var(--wing-dark) 45%, var(--wing-gold));
+  pointer-events: none;
+}
+:root[data-skin='closure'] .econ:not(.compact)::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 48px;
+  height: 14px;
+  background:
+    linear-gradient(var(--win-edge), var(--win-edge)) 4px 6px / 6px 2px no-repeat,
+    linear-gradient(var(--wing-dark), var(--wing-dark)) 21px 4px / 6px 6px no-repeat,
+    linear-gradient(var(--wing-gold), var(--wing-gold)) 38px 4px / 6px 6px no-repeat,
+    linear-gradient(var(--wing-btn), var(--wing-btn)) 0 0 / 14px 14px no-repeat,
+    linear-gradient(var(--wing-btn), var(--wing-btn)) 17px 0 / 14px 14px no-repeat,
+    linear-gradient(var(--wing-btn-dark), var(--wing-btn-dark)) 34px 0 / 14px 14px no-repeat;
+  pointer-events: none;
+}
+/* 提示框、右键菜单、轻提示：圆角小窗口，顶上一道粉到青的渐变 */
+:root[data-skin='closure'] :is(.tip, .menu, .toast) {
+  border-radius: var(--r-2);
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 1px var(--win-edge),
+    0 6px 18px rgb(var(--shade-rgb) / 0.55);
+}
+:root[data-skin='closure'] :is(.tip, .menu, .toast)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: var(--y2k-grad);
+  pointer-events: none;
+}
+/* 细节：按钮默认都带一点圆角（:where 把优先级降到最低，组件自己设了形状的照旧，比如盟约圆盘） */
+:where(:root[data-skin='closure']) button {
+  border-radius: var(--r-2);
+}
+/* 小切换组（阶段、设置里的选项）是胶囊，选中的带光泽 */
+:root[data-skin='closure'] :is(.stagesw, .scales, .sorts) {
+  gap: 4px;
+}
+:root[data-skin='closure'] :is(.stagesw button, .scales button, .sorts button) {
+  border-radius: var(--r-pill);
+}
+:root[data-skin='closure'] :is(.stagesw .auto.on, .scales button.on, .sorts button.on) {
+  color: var(--mint-ink);
+  background:
+    linear-gradient(180deg, rgb(var(--hl-rgb) / 0.55), rgb(var(--hl-rgb) / 0.05) 48%, transparent 52%),
+    linear-gradient(180deg, var(--mint-hi), var(--mint) 55%, var(--mint-lo));
+  box-shadow: 0 0 8px rgb(var(--mint-rgb) / 0.4);
+}
+:root[data-skin='closure'] .stagesw button.on:not(.auto) {
+  box-shadow:
+    inset 0 0 0 1.5px var(--mint),
+    0 0 6px rgb(var(--mint-rgb) / 0.35);
+}
+/* 阵容卡「TARGET」、各种小标签是胶囊 */
+:root[data-skin='closure'] :is(.lc .badge, .trk) {
+  border-radius: var(--r-pill);
+}
+/* 带左侧色条的提示框、首领条、识别出错提示也带圆角 */
+:root[data-skin='closure'] :is(.focus, .note, .boss, .crash, .stpick) {
+  border-radius: var(--r-2);
+}
+/* 追踪列表下沿一道窗口边，和下面的文件夹页签隔开 */
+:root[data-skin='closure'] .tracker {
+  border-bottom: 2px solid var(--win-edge);
+}
+:root[data-skin='closure'] section:has(> header.sh) > header.sh {
+  margin: 0 -6px 6px;
+}
+/* 输入框、搜索框也圆 */
+:root[data-skin='closure'] :is(input[type='text'], input:not([type]), textarea, .search) {
+  border-radius: var(--r-2);
+}
+
+/*
+ * 乌萨斯：苏式构成主义宣传画。斜切的平行四边形、铁锈红标语条、米白纸、做旧颗粒、放射线。
+ * 组件各自的部分写在组件里（:global([data-skin='ursus'])），这里是跨组件的。
+ */
+/* 页面底纹：从左上角放射出的淡光芒 + 做旧颗粒 */
+:root[data-skin='ursus'] .shell {
+  background:
+    var(--noise),
+    repeating-conic-gradient(from 100deg at -10% -10%, rgb(var(--rust-rgb) / 0.05) 0 4deg, transparent 4deg 9deg),
+    radial-gradient(120% 60% at 0% 0%, #2a1a12, var(--bg-0));
+}
+/* 带分组标题的区块是宣传画上的一块版：深色底，底边铁锈红粗线，右下角斜切掉一角 */
+:root[data-skin='ursus'] section:has(> header.sh) {
+  padding: 0 6px 10px;
+  background: rgb(var(--bg-0-rgb) / 0.5);
+  box-shadow: inset 0 -3px 0 var(--rust);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+:root[data-skin='ursus'] section:has(> header.sh) > header.sh {
+  margin: 0 -6px 6px;
+}
+/* 底部面板：金属板，顶上一道红色警示斜纹（照游戏 battle_repeatline 的斜纹），两角铆钉 */
+:root[data-skin='ursus'] .win {
+  background:
+    repeating-linear-gradient(-45deg, var(--rust) 0 5px, transparent 5px 10px) top / 100% 7px no-repeat,
+    radial-gradient(circle at 8px 16px, #6e5f52 0 2px, #1a1410 2.5px, transparent 3.5px),
+    radial-gradient(circle at calc(100% - 8px) 16px, #6e5f52 0 2px, #1a1410 2.5px, transparent 3.5px),
+    var(--noise),
+    linear-gradient(180deg, #2c241f, #1b1512 160px);
+  box-shadow:
+    inset 0 2px 0 var(--rust),
+    0 -12px 30px rgb(var(--shade-rgb) / 0.6);
+}
+:root[data-skin='ursus'] .win::before {
+  display: none;
+}
+/* 面板两个上角有铆钉：标题行和内容区左右多留一点，标题、关闭按钮不挤着铆钉 */
+:root[data-skin='ursus'] aside.sheet > :is(header, .scroll) {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+:root[data-skin='ursus'] aside.sheet > header > .x {
+  margin-right: -4px;
+}
+:root[data-skin='ursus'] aside.sheet > header.bar > .x {
+  top: 12px;
+  right: 18px;
+}
+/* 窗口的关闭按钮：和分组标题的折叠按钮一样是斜切块，深色底米白叉，悬停变铁锈红 */
+:root[data-skin='ursus'] .win > header > .x {
+  width: 28px;
+  height: 22px;
+  border-radius: 0;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  color: var(--cream);
+  background: rgb(var(--rust-rgb) / 0.3);
+}
+:root[data-skin='ursus'] .win > header > .x:hover {
+  color: var(--cream);
+  background: var(--rust);
+}
+/* 按钮、小切换组：平行四边形；主按钮和选中项铁锈红配米白字 */
+:root[data-skin='ursus'] :is(.btn, .tool, .chip, .tog, .add, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button, .lc .badge, .trk) {
+  border-radius: 0;
+  clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+}
+/* 斜角会切到字，普通按钮左右加宽；小标签（＋收入、追踪、TARGET）本来就窄，不加宽 */
+:root[data-skin='ursus'] :is(.btn, .tool, .tog, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button) {
+  padding-left: calc(var(--slant) + 6px);
+  padding-right: calc(var(--slant) + 6px);
+}
+/* 筛选标签一排要放得下，只多让出斜角那一点 */
+:root[data-skin='ursus'] .chip {
+  padding-left: calc(var(--slant) + 1px);
+  padding-right: calc(var(--slant) + 1px);
+}
+:root[data-skin='ursus'] :is(.primary, .btn.main, .stagesw .auto.on, .scales button.on, .sorts button.on):not(:disabled) {
+  color: var(--cream);
+  background: var(--noise), linear-gradient(180deg, var(--rust-hi), var(--rust));
+  font-style: italic;
+}
+:root[data-skin='ursus'] .stagesw button.on:not(.auto) {
+  color: var(--cream);
+  box-shadow: inset 0 -2px 0 var(--rust-hi);
+}
+/* 回合数：游戏顶栏的淡灰绿网格块（bg_round） */
+:root[data-skin='ursus'] .rd b.tag {
+  background: var(--skin-round) center / 100% 100% no-repeat;
+  border-radius: 0;
+}
+/* 资金栏：游戏开局目标横幅那条深色长条（goal_bg，右边带红线和「Урсус」） */
+:root[data-skin='ursus'] .econ:not(.compact) {
+  padding: 8px 10px 10px 11px;
+  background: var(--skin-panel) right center / cover no-repeat;
+  box-shadow: inset 3px 0 0 var(--rust);
+}
+/* 提示框、轻提示是米白纸片（游戏 avater_pop），深色字；右键菜单深色、铁锈红顶边 */
+:root[data-skin='ursus'] :is(.tip, .toast) {
+  color: var(--cream-ink);
+  background: var(--noise), var(--cream);
+  box-shadow:
+    inset 3px 0 0 var(--rust),
+    0 6px 18px rgb(var(--shade-rgb) / 0.55);
+}
+:root[data-skin='ursus'] .menu {
+  box-shadow:
+    inset 0 3px 0 var(--rust),
+    inset 0 0 0 1px var(--line-strong),
+    0 8px 24px rgb(var(--shade-rgb) / 0.6);
+}
+/* 首领条、带左侧色条的提示框：右下角斜切 */
+:root[data-skin='ursus'] :is(.boss, .focus, .note) {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+/* 英文装饰字都是粗斜体 */
+:root[data-skin='ursus'] .term {
+  font-style: italic;
+  font-weight: 700;
 }
 
 *,
@@ -78,7 +672,7 @@ body {
   background: var(--bg-0);
   color: var(--fg-1);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   user-select: none;
@@ -111,7 +705,7 @@ img {
 
 ::selection {
   color: var(--fg-1);
-  background: rgb(34 227 178 / 0.32);
+  background: rgb(var(--mint-rgb) / 0.32);
 }
 
 :focus-visible {
@@ -157,7 +751,7 @@ img {
   border-radius: 50%;
   background: var(--mint);
   box-shadow: 0 0 6px var(--mint);
-  animation: live-dot 1.2s ease-in-out infinite;
+  animation: live-dot var(--t-breathe) ease-in-out infinite;
 }
 @keyframes live-dot {
   50% {

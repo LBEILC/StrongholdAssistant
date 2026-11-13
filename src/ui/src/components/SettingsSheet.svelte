@@ -2,7 +2,7 @@
   import { sheet } from '../lib/sheet'
   import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
-  import { api, type BackupSummary, type GameTheme, type ImportMode, type MumuInstance, type Settings } from '../lib/api'
+  import { api, type BackupSummary, type GameTheme, type ImportMode, type MumuInstance, type Settings, type UiSkin } from '../lib/api'
   import Icon from './Icon.svelte'
   import NotesList from './NotesList.svelte'
   import { plaza, PLAZA } from '../lib/plaza.svelte'
@@ -13,6 +13,11 @@
     { id: 'terminal', name: '卫戍协议终端', note: '默认主题' },
     { id: 'ursus', name: '乌萨斯齐心团', note: '' },
     { id: 'closure', name: '「全能的」可露希尔', note: '' },
+  ]
+  // 界面主题（v0.8.0）：和游戏主题分开设置，默认跟着游戏主题走
+  const skins: { id: UiSkin; name: string; note: string }[] = [
+    { id: 'follow', name: '跟随游戏主题', note: '默认' },
+    ...themes.map((t) => ({ ...t, note: '' })),
   ]
   const scales: { v: 'auto' | number; label: string }[] = [
     { v: 'auto', label: '自动' },
@@ -104,10 +109,18 @@
   ]
   let instances = $state<MumuInstance[]>([])
   const loadInstances = async () => (instances = app.settings.gameSource === 'pc' ? [] : await api.mumuInstances())
+  // 森空岛账号（v0.8.0）：宿主记下的上次读到的角色；换账号就退出登录，下次导入时重新登录
+  let skland = $state<{ nickname: string } | null>(null)
+  const sklandLogout = async () => {
+    await api.sklandLogout()
+    skland = null
+    app.showToast('已退出森空岛登录，下次导入时在弹出的窗口里登录')
+  }
   $effect(() => {
     if (app.settingsOpen) {
       loadInstances()
       plaza.check()
+      api.sklandAccount().then((a) => (skland = a))
     }
   })
   const setSource = (v: Settings['gameSource']) => {
@@ -206,12 +219,13 @@
 
 {#if app.settingsOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="sheet" transition:sheet={{ y: 360, duration: 240 }}>
+  <aside class="sheet win" transition:sheet={{ y: 360, duration: 240 }}>
     <header>
       <h3>设置</h3>
       <span class="term">Settings</span>
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
+    <div class="scroll">
 
     <section>
       <h4>游戏来源 <small>PC 客户端或 MuMu 模拟器</small></h4>
@@ -240,6 +254,19 @@
       <div class="themes">
         {#each themes as t (t.id)}
           <button class:on={app.settings.gameTheme === t.id} onclick={() => set('gameTheme', t.id)}>
+            <span class="radio"></span>
+            <b>{t.name}</b>
+            {#if t.note}<em>{t.note}</em>{/if}
+          </button>
+        {/each}
+      </div>
+    </section>
+
+    <section>
+      <h4>界面主题 <small>助手界面的样子，和游戏里用哪套无关</small></h4>
+      <div class="themes">
+        {#each skins as t (t.id)}
+          <button class:on={app.settings.uiSkin === t.id} onclick={() => set('uiSkin', t.id)}>
             <span class="radio"></span>
             <b>{t.name}</b>
             {#if t.note}<em>{t.note}</em>{/if}
@@ -391,6 +418,13 @@
     </section>
 
     <section>
+      <h4>森空岛账号 <small>导入森空岛攻略和历史战绩时用</small></h4>
+      <p class="acct"><span>{#if skland}已登录：<b>{skland.nickname}</b>{:else}还没读到登录的账号。{/if}</span>
+        <button class="link" onclick={sklandLogout}>退出登录</button>
+      </p>
+    </section>
+
+    <section>
       <h4>数据 <small>阵容、特别关注和偏好设置；换电脑、重装时用备份迁移</small></h4>
       <p class="path">
         <span>保存在 <code>{app.appInfo.dataDir}</code>，同一台电脑换新包不用导入。</span>
@@ -539,6 +573,7 @@
       <button class="link" onclick={() => api.openUrl(QQ)}>QQ 交流群 1132134217</button>
       <p>非官方玩家自制工具，与鹰角网络无关。游戏美术与数据归上海鹰角网络所有。</p>
     </section>
+    </div>
   </aside>
 {/if}
 
@@ -549,7 +584,7 @@
     align-items: center;
     gap: 4px 12px;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .acct span {
@@ -566,7 +601,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
+    background: var(--scrim);
     z-index: 10;
   }
   .sheet {
@@ -575,15 +610,16 @@
     right: 0;
     bottom: 0;
     max-height: 86%;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     z-index: 11;
-    padding: 12px 12px 16px;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #16181a 120px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 120px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .sheet::before {
     content: '';
@@ -603,10 +639,10 @@
   }
   h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-2xl);
   }
   header .term {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--fg-4);
   }
   .x {
@@ -628,7 +664,7 @@
   }
   h4 {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -639,7 +675,7 @@
     white-space: normal;
   }
   h4 small {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 400;
     color: var(--fg-4);
   }
@@ -667,11 +703,11 @@
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .themes b {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .themes em {
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .scales {
@@ -696,12 +732,12 @@
   }
   .note {
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .scales button {
     height: 30px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     background: var(--bg-1);
   }
@@ -751,7 +787,7 @@
   }
   .nh {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-2);
   }
@@ -781,11 +817,11 @@
     flex-direction: column;
   }
   .logbtn b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .logbtn small {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .lbl {
@@ -794,10 +830,10 @@
     flex-direction: column;
   }
   .lbl b {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .lbl small {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   /* 开关 */
@@ -807,7 +843,7 @@
     width: 34px;
     height: 18px;
     margin: 0;
-    border-radius: 9px;
+    border-radius: var(--r-pill);
     background: var(--bg-4);
     position: relative;
     cursor: pointer;
@@ -839,14 +875,14 @@
   }
   .msg {
     flex: 1;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .msg.new {
     color: var(--mint);
   }
   .msg.bad {
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .usrc {
     display: flex;
@@ -868,7 +904,7 @@
     height: 28px;
     padding: 0 8px;
     font-family: var(--font-term);
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     background: var(--bg-1);
     border: 0;
@@ -909,13 +945,13 @@
     gap: 4px;
     height: 28px;
     padding: 0 12px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-1);
     background: var(--bg-4);
   }
   .btn:hover {
-    background: #3a3e42;
+    background: var(--bg-5);
   }
   .btn.main {
     color: var(--mint-ink);
@@ -926,7 +962,7 @@
     cursor: default;
   }
   .link {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
     text-decoration: underline;
     text-underline-offset: 2px;
@@ -936,7 +972,7 @@
     align-items: flex-start;
     gap: 8px;
     margin: 0 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     line-height: 1.5;
     color: var(--fg-3);
   }
@@ -965,7 +1001,7 @@
   }
   .imp p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
   }
   .imp p b {
@@ -999,10 +1035,10 @@
     gap: 1px;
   }
   .mt b {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .mt small {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .impact {
@@ -1014,17 +1050,17 @@
   .impact small {
     flex: 1;
     min-width: 10em;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .dmsg {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
     word-break: break-all;
   }
   .dmsg.bad {
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .about {
     display: flex;
@@ -1034,7 +1070,7 @@
   .about p {
     width: 100%;
     margin: 4px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .hk {
@@ -1044,14 +1080,14 @@
     margin-top: 10px;
   }
   .hkl {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .hkb {
     min-width: 92px;
     height: 28px;
     padding: 0 10px;
     font-family: var(--font-term);
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     background: var(--bg-3);
     box-shadow: inset 0 0 0 1px var(--line);

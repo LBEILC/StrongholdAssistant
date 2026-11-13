@@ -22,8 +22,9 @@
     target = el
     timer = window.setTimeout(async () => {
       const r = el.getBoundingClientRect()
-      tip = { text: el.dataset.tip!, x: r.left, y: r.top, below: false }
-      // 先画出来量大小（同一帧里就改位置，看不到跳动），再决定放上方还是下方、左右收进窗口
+      // 先放在窗口最左边画出来量大小：放在元素位置量的话，靠右的元素右边只剩几十像素，提示框会被挤成一条窄条。
+      // 同一帧里就改位置，看不到跳动；再决定放上方还是下方、左右收进窗口
+      tip = { text: el.dataset.tip!, x: 0, y: r.top, below: false }
       await tick()
       if (!box || !tip || target !== el) return
       const b = box.getBoundingClientRect()
@@ -53,21 +54,22 @@
   .tip {
     position: fixed;
     z-index: 90;
-    max-width: 240px;
+    width: max-content;
+    max-width: min(240px, calc(100vw - 8px));
     padding: 5px 9px 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     color: var(--fg-1);
     white-space: pre-line;
     pointer-events: none;
     background:
       var(--noise),
-      linear-gradient(180deg, #25282c, #1c1e21);
+      linear-gradient(180deg, var(--pop-top), var(--pop-bottom));
     box-shadow:
-      inset 0 0 0 1px #3a3e43,
+      inset 0 0 0 1px var(--line-strong),
       inset 2px 0 0 var(--mint),
-      0 6px 18px rgb(0 0 0 / 0.55);
-    animation: in 140ms var(--ease-out);
+      0 6px 18px rgb(var(--shade-rgb) / 0.55);
+    animation: in var(--t-fast) var(--ease-out);
   }
   @keyframes in {
     from {

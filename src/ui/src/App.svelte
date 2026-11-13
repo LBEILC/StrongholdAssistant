@@ -22,12 +22,30 @@
   import WhatsNew from './components/WhatsNew.svelte'
   import Tooltip from './components/Tooltip.svelte'
   import { api } from './lib/api'
+  import { skin } from './lib/skin.svelte'
+  import { asset } from './lib/assets'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
   let upH = $state(0)
   $effect(() => {
     if (app.collapsed === 'up' && upH) api.collapseUp(upH)
+  })
+
+  // 界面皮肤：设置里的「界面主题」，默认跟着「游戏主题」走。皮肤位图从 skin.id 取，颜色令牌按 data-skin 覆盖。
+  // 样式表里要用的皮肤位图（窗口框、闪光星等）写成根元素上的变量，用绝对地址，免得相对路径按样式表目录解析。
+  // 每套皮肤只有自己用到的那几张，其他皮肤下变量指向不存在的文件也没关系（不会用到）
+  const SKIN_IMAGES = [
+    // 可露希尔
+    'sparkle', 'folder',
+    // 乌萨斯
+    'flag', 'round', 'panel', 'sweep',
+  ]
+  $effect(() => {
+    skin.id = app.settings.uiSkin === 'follow' ? app.settings.gameTheme : app.settings.uiSkin
+    const root = document.documentElement
+    root.dataset.skin = skin.id
+    for (const f of SKIN_IMAGES) root.style.setProperty(`--skin-${f.replace('_', '-')}`, `url(${asset.skin(f)})`)
   })
 
   let scroller: HTMLElement | undefined = $state()
@@ -155,13 +173,13 @@
     opacity: 0;
   }
   .shell.in > :global(:not(:first-child)) {
-    animation: rise 260ms var(--ease-out) both;
+    animation: rise var(--t-enter) var(--ease-out) both;
   }
   .shell.in > :global(:nth-child(3)) {
-    animation-delay: 50ms;
+    animation-delay: var(--t-stagger);
   }
   .shell.in > :global(:nth-child(n + 4)) {
-    animation-delay: 100ms;
+    animation-delay: calc(var(--t-stagger) * 2);
   }
   @keyframes rise {
     from {
@@ -174,8 +192,8 @@
     opacity: 0;
     transform: translateY(6px);
     transition:
-      opacity 150ms ease-in,
-      transform 150ms ease-in;
+      opacity var(--t-exit) ease-in,
+      transform var(--t-exit) ease-in;
   }
   .shell {
     height: 100%;
@@ -183,7 +201,7 @@
     flex-direction: column;
     background:
       var(--noise),
-      radial-gradient(120% 60% at 50% 0%, #15171a, var(--bg-0));
+      radial-gradient(120% 60% at 50% 0%, var(--bg-1a), var(--bg-0));
     overflow: hidden;
   }
   /* 向上收起：高度由内容决定，底边一道薄荷绿细线表示下面还收着东西 */
@@ -198,14 +216,14 @@
     gap: 8px;
     height: 28px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     text-align: left;
     color: var(--gold);
-    background: rgb(243 179 34 / 0.1);
-    border-bottom: 1px solid rgb(243 179 34 / 0.3);
+    background: rgb(var(--gold-rgb) / 0.1);
+    border-bottom: 1px solid rgb(var(--gold-rgb) / 0.3);
   }
   .updbar b {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 2px 4px 1px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -225,14 +243,14 @@
     gap: 8px;
     margin: 16px;
     padding: 14px 16px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     background: var(--bg-1);
-    box-shadow: inset 2px 0 0 #e0676c;
+    box-shadow: inset 2px 0 0 var(--red);
   }
   .crash b {
-    font-size: 14px;
-    color: #f2b8ba;
+    font-size: var(--fs-lg);
+    color: var(--red-fg);
   }
   .crash p {
     margin: 0;
@@ -240,14 +258,14 @@
   .crash code {
     max-width: 100%;
     font-family: var(--font-term);
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
     overflow-wrap: anywhere;
   }
   .crash button {
     height: 28px;
     padding: 0 14px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     background: var(--bg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -261,7 +279,7 @@
     overflow-y: auto;
     /* 页面按自己的可用宽度换多栏（容器查询），侧栏和工作台用同一套页面 */
     container-type: inline-size;
-    transition: margin-right 240ms var(--ease-out);
+    transition: margin-right var(--t-mid) var(--ease-out);
   }
 
   /* 工作台 */
@@ -294,7 +312,7 @@
     max-height: none;
     box-shadow:
       -1px 0 0 var(--line),
-      -16px 0 32px rgb(0 0 0 / 0.45);
+      -16px 0 32px rgb(var(--shade-rgb) / 0.45);
   }
   .content.wb > :global(aside.ed) {
     width: min(720px, 66%);
@@ -303,7 +321,7 @@
     display: none;
   }
   .content.wb > :global(.scrim) {
-    background: rgb(0 0 0 / 0.3);
+    background: rgb(var(--shade-rgb) / 0.3);
   }
   /* 详情和广场帖子不遮左边：左边照常能点，点别的卡片直接换内容 */
   .content.wb > :global(.scrim.dock) {

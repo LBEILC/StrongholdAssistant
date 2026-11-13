@@ -9,6 +9,22 @@ namespace StrongholdAssistant.Tests;
 
 public class OverlayWindowTests
 {
+    [Theory]
+    [InlineData(1.0, 1.25)]
+    [InlineData(1.25, 1.0)]
+    public void MarkerUsesOverlayDpiIndependentlyOfSidebar(double overlayDpi, double sidebarDpi) => OnSta(() =>
+    {
+        var layer = new ShopMarkerLayer();
+        var item = Item();
+        var width = 1920 * overlayDpi;
+        var height = 1080 * overlayDpi;
+        layer.Update([item], width / overlayDpi, height / overlayDpi, animate: false);
+        var marker = Assert.Single(layer.Children.Cast<FrameworkElement>());
+        Assert.Equal(item.CardRegion.Width * width, marker.Width * overlayDpi, 6);
+        Assert.Equal(item.CardRegion.Y * height, System.Windows.Controls.Canvas.GetTop(marker) * overlayDpi, 6);
+        Assert.NotEqual(width / sidebarDpi, width / overlayDpi);
+    });
+
     [Fact]
     public void ScreenshotPointScalesToOffsetScreenViewport() => OnSta(() =>
     {

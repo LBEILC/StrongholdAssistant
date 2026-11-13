@@ -104,7 +104,7 @@
   }
   .lc.target {
     background: linear-gradient(90deg, var(--mint-tint), transparent 60%), var(--bg-2);
-    box-shadow: inset 0 0 0 1px rgb(34 227 178 / 0.35);
+    box-shadow: inset 0 0 0 1px rgb(var(--mint-rgb) / 0.35);
   }
   .lc.target::before {
     content: '';
@@ -127,7 +127,7 @@
   }
   .h3 {
     display: block;
-    font-size: 14px;
+    font-size: var(--fs-lg);
     font-weight: 700;
     text-align: left;
     max-width: 100%;
@@ -140,7 +140,7 @@
   }
   p {
     margin: 1px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     white-space: nowrap;
     overflow: hidden;
@@ -164,7 +164,7 @@
   .stg {
     margin-right: 8px;
     padding: 0 4px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--mint-lo);
     vertical-align: middle;
@@ -176,7 +176,7 @@
   }
   .badge {
     flex: none;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 3px 7px 2px;
     color: var(--mint-ink);
     background: var(--mint);
@@ -190,7 +190,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
   }
   .bc b {
@@ -200,7 +200,7 @@
   }
   .bc em {
     font-style: normal;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     margin-left: 3px;
     color: var(--fg-3);
   }
@@ -212,7 +212,7 @@
     color: var(--fg-3);
   }
   .none {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .ops {
@@ -230,7 +230,7 @@
   /* 卡片右上角按钮，供调用方的 actions 使用 */
   .lc :global(.act) {
     flex: none;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 4px 9px;
     color: var(--fg-2);
     box-shadow: inset 0 0 0 1px var(--line);

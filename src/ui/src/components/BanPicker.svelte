@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BondPick from './BondPick.svelte'
   import { sheet } from '../lib/sheet'
   import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
@@ -45,7 +46,7 @@
 
 {#if app.banPicker}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
-  <aside class="ed" transition:sheet={{ y: 400, duration: 260 }}>
+  <aside class="ed win" transition:sheet={{ y: 400, duration: 260 }}>
     <header>
       <img src={asset.stage('img_chess_banned')} alt="" class="hi" />
       <h3>添加禁用干员{#if bond}<em>· {app.cov(bond).name}</em>{/if}</h3>
@@ -76,14 +77,10 @@
           <button class="tog" class:on={onlyIncomplete} onclick={() => (onlyIncomplete = !onlyIncomplete)}>只看不完整盟约</button>
         {/if}
       </div>
-      <div class="bondpick">
-        {#each app.catalog.covenants as c (c.id)}
-          {@const inc = incomplete.includes(c.id)}
-          <button class="bp" class:on={bond === c.id} class:inc class:off={useIncomplete && !inc} title={c.name} onclick={() => (bond = bond === c.id ? null : c.id)}>
-            <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
-          </button>
-        {/each}
-      </div>
+      <BondPick
+        state={(id) => ({ on: bond === id, inc: incomplete.includes(id), dim: useIncomplete && !incomplete.includes(id) })}
+        onpick={(id) => (bond = bond === id ? null : id)}
+      />
       <div class="pool">
         {#each pool as o (o.name)}
           <OpTile name={o.name} size={44} menu={false} onclick={() => (open ? pickForSlot(o.name) : app.toggleBanned(o.name))} />
@@ -103,7 +100,7 @@
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.6);
+    background: var(--scrim-strong);
     z-index: 20;
   }
   .ed {
@@ -117,10 +114,10 @@
     flex-direction: column;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #141618 160px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 160px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .ed::before {
     content: '';
@@ -130,7 +127,7 @@
     width: 64px;
     height: 2px;
     background: var(--red);
-    box-shadow: 0 0 8px rgb(229 72 77 / 0.6);
+    box-shadow: 0 0 8px rgb(var(--red-rgb) / 0.6);
   }
   header {
     display: flex;
@@ -144,7 +141,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-xl);
   }
   h3 em {
     font-style: normal;
@@ -153,11 +150,11 @@
     color: var(--fg-3);
   }
   .cnt {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .cnt b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--red);
   }
   .x {
@@ -174,7 +171,7 @@
   }
   .hint {
     margin: 0 12px 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .hint b {
@@ -184,11 +181,11 @@
   .cands {
     margin: 4px 12px 2px;
     padding: 8px 8px 6px;
-    background: rgb(243 179 34 / 0.06);
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.35);
+    background: rgb(var(--gold-rgb) / 0.06);
+    box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.35);
   }
   .cands .lbl {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--gold);
   }
   .crow {
@@ -224,12 +221,12 @@
     background: none;
     border: 0;
     outline: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
   }
   .tog {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     padding: 2px 6px;
     color: var(--fg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -239,38 +236,7 @@
     background: var(--mint);
     box-shadow: none;
   }
-  .bondpick {
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 3px;
-  }
-  .bp {
-    position: relative;
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--fg-3);
-    background: var(--bg-2);
-  }
-  .bp .glyph {
-    width: 62%;
-    height: 62%;
-  }
   /* 阵容不完整的盟约：红色细圈，和游戏里灰掉的盟约对应 */
-  .bp.inc {
-    color: var(--fg-2);
-    box-shadow: inset 0 0 0 1px rgb(229 72 77 / 0.6);
-  }
-  .bp.off {
-    opacity: 0.3;
-  }
-  .bp.on {
-    color: var(--mint-ink);
-    background: var(--mint);
-    box-shadow: none;
-    opacity: 1;
-  }
   .pool {
     flex: 1;
     overflow-y: auto;
@@ -283,7 +249,7 @@
   }
   .none {
     grid-column: 1 / -1;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-4);
   }
   footer {
@@ -296,7 +262,7 @@
   .primary {
     height: 30px;
     padding: 0 18px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     color: var(--mint-ink);
     background: var(--mint);

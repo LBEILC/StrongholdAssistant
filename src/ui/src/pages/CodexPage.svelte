@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BondPick from '../components/BondPick.svelte'
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN, fmtHp } from '../lib/assets'
   import OpCard from '../components/OpCard.svelte'
@@ -129,13 +130,7 @@
       {/if}
     </div>
     {#if kind === 'operator'}
-      <div class="bondpick">
-        {#each app.catalog.covenants as c (c.id)}
-          <button class="bp" class:on={bonds.includes(c.id)} class:core={c.kind === 'core'} title={c.name} onclick={() => (bonds = toggle(bonds, c.id))}>
-            <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
-          </button>
-        {/each}
-      </div>
+      <BondPick state={(id) => ({ on: bonds.includes(id) })} onpick={(id) => (bonds = toggle(bonds, id))} />
       {#if bonds.length}
         <div class="picked">盟约：{bonds.map((b) => app.cov(b).name).join(' + ')}</div>
       {/if}
@@ -195,7 +190,7 @@
 <style>
   .bnote {
     margin: 10px 2px 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .blist {
@@ -222,7 +217,7 @@
     flex: none;
     width: 40px;
     height: 40px;
-    background: rgb(0 0 0 / 0.35);
+    background: rgb(var(--shade-rgb) / 0.35);
   }
   .bpic img {
     width: 100%;
@@ -237,7 +232,7 @@
     gap: 2px;
   }
   .bn b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
     white-space: nowrap;
     overflow: hidden;
@@ -249,7 +244,7 @@
   }
   .btags em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 5px;
     color: var(--fg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -267,18 +262,18 @@
     font-variant-numeric: tabular-nums;
   }
   .bhp b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .bhp small {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--gold);
   }
   .strats {
     margin-top: 10px;
   }
   .special {
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--gold);
   }
@@ -325,13 +320,13 @@
     background: none;
     border: 0;
     outline: 0;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .search input::placeholder {
     color: var(--fg-4);
   }
   .clear {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
     white-space: nowrap;
   }
@@ -342,7 +337,7 @@
     align-items: center;
   }
   .chip {
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 2px 8px;
     color: var(--fg-2);
     background: var(--bg-2);
@@ -363,7 +358,7 @@
     color: var(--c);
   }
   .chip.tier.on {
-    color: #111;
+    color: var(--bg-0);
     background: var(--c);
   }
   .sep {
@@ -372,36 +367,8 @@
     background: var(--line);
     margin: 0 3px;
   }
-  .bondpick {
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 3px;
-  }
-  .bp {
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--fg-3);
-    background: var(--bg-2);
-  }
-  .bp.core {
-    color: var(--fg-2);
-  }
-  .bp .glyph {
-    width: 62%;
-    height: 62%;
-  }
-  .bp:hover {
-    color: var(--fg-1);
-  }
-  .bp.on {
-    color: var(--mint-ink);
-    background: var(--mint);
-    box-shadow: var(--mint-glow);
-  }
   .picked {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
   }
   .ghead {
@@ -411,7 +378,7 @@
     margin: 12px 0 6px;
   }
   .ghead span {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--c);
   }
   .ghead i {
@@ -423,7 +390,7 @@
   .ghead em {
     font-style: normal;
     font-family: var(--font-term);
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .grid {
@@ -439,12 +406,12 @@
     padding: 8px 4px 6px;
     background: var(--bg) center / cover, var(--bg-2);
     box-shadow:
-      inset 0 0 0 1px #2f3337,
+      inset 0 0 0 1px var(--line),
       inset 0 2px 0 var(--c);
   }
   .eq:hover {
     box-shadow:
-      inset 0 0 0 1px #5a6066,
+      inset 0 0 0 1px var(--line-hi),
       inset 0 2px 0 var(--c);
   }
   .eq.selected {
@@ -455,14 +422,14 @@
   /* 追踪中：和干员卡一样的右上角薄荷绿标签 */
   .eq.tracked {
     box-shadow:
-      inset 0 0 0 1px rgb(34 227 178 / 0.55),
+      inset 0 0 0 1px rgb(var(--mint-rgb) / 0.55),
       inset 0 2px 0 var(--c);
   }
   .trk {
     position: absolute;
     right: 0;
     top: 2px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     line-height: 1;
     padding: 3px 5px;
@@ -481,13 +448,13 @@
     margin: 6px 0 4px;
   }
   .en {
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 600;
     text-align: center;
     line-height: 1.25;
   }
   .ec {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     color: var(--fg-4);
   }
   .none {
@@ -497,9 +464,5 @@
   }
   /* 宽（工作台）：盟约筛选不再按 13 列撑满（圆按钮会变得很大），固定 38 像素一个，尽量排成一行 */
   @container (min-width: 720px) {
-    .bondpick {
-      grid-template-columns: repeat(auto-fill, 38px);
-      gap: 4px;
-    }
   }
 </style>

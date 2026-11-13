@@ -170,14 +170,14 @@
     align-items: center;
     gap: 5px;
     padding: 5px 8px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     font-weight: 700;
     background: linear-gradient(90deg, var(--bg-3), transparent);
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .hd b {
     font-weight: 400;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .gate {
@@ -185,9 +185,9 @@
     align-items: center;
     gap: 6px;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
-    background: rgb(0 0 0 / 0.25);
+    background: var(--well);
   }
   .gate span {
     flex: 1;
@@ -206,7 +206,7 @@
   .sm {
     height: 26px;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--mint-ink);
     background: var(--mint);
@@ -227,7 +227,7 @@
     align-self: flex-start;
     margin-bottom: 4px;
     padding: 2px 2px 2px 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
     background: var(--bg-3);
     box-shadow: inset 2px 0 0 var(--mint);
@@ -249,7 +249,7 @@
     min-height: 52px;
     max-height: 140px;
     padding: 6px 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.6;
     color: var(--fg-1);
     background: var(--bg-1);
@@ -266,13 +266,13 @@
     align-items: center;
     justify-content: space-between;
     margin-top: 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .err {
     margin: 0;
-    font-size: 12px;
-    color: #f2b8ba;
+    font-size: var(--fs-base);
+    color: var(--red-fg);
     padding: 6px 8px;
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
@@ -290,7 +290,7 @@
     display: flex;
     align-items: baseline;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .top b {
     color: var(--fg-1);
@@ -302,17 +302,17 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .t {
     margin-left: auto;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .body {
     margin: 3px 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.6;
     white-space: pre-line;
     overflow-wrap: anywhere;
@@ -327,23 +327,23 @@
     display: inline-flex;
     align-items: center;
     gap: 2px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .ops button:hover {
     color: var(--fg-1);
   }
   .ops button.armed {
-    color: #f2b8ba;
+    color: var(--red-fg);
   }
   .more {
     align-self: flex-start;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .empty {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-4);
   }
 </style>

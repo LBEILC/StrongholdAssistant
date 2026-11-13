@@ -96,7 +96,7 @@
     padding: 7px 10px 8px;
     background:
       var(--noise),
-      linear-gradient(180deg, #16181a, #111214);
+      linear-gradient(180deg, var(--bg-1a), var(--bg-1));
     border-bottom: 1px solid var(--line);
   }
   .tracker::before {
@@ -118,11 +118,11 @@
     min-height: 20px;
   }
   .lbl {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--mint);
   }
   .name {
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -144,7 +144,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     padding: 2px 6px;
     color: var(--fg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -161,14 +161,14 @@
   }
   .count {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     white-space: nowrap;
   }
   .count b {
     color: var(--mint);
     font-family: var(--font-term);
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   /* 最多两行，再多就在顶栏里滚动，不把页面往下挤 */
   .row {
@@ -188,7 +188,7 @@
     background: var(--bg-3);
     box-shadow:
       inset 0 0 0 1px var(--mint-lo),
-      0 0 5px rgb(34 227 178 / 0.18);
+      0 0 5px rgb(var(--mint-rgb) / 0.18);
     overflow: hidden;
   }
   .av img {
@@ -197,7 +197,7 @@
     object-fit: cover;
   }
   .av.eq {
-    background: radial-gradient(circle at 50% 45%, #2c3034, var(--bg-2) 70%);
+    background: radial-gradient(circle at 50% 45%, var(--bg-4), var(--bg-2) 70%);
   }
   .av.eq img {
     object-fit: contain;
@@ -219,8 +219,8 @@
     z-index: 2;
     display: grid;
     place-items: center;
-    color: #fff;
-    background: rgb(10 11 12 / 0.62);
+    color: var(--fg-0);
+    background: rgb(var(--bg-0-rgb) / 0.62);
     box-shadow: inset 0 0 0 1.5px var(--red);
     opacity: 0;
     transition: opacity var(--t-fast);
@@ -246,13 +246,13 @@
     background: var(--line);
   }
   .none {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
     line-height: 32px;
   }
   .empty {
     position: relative;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 4px 24px 2px 0;
   }
@@ -278,7 +278,7 @@
   .stg {
     margin-left: 6px;
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 400;
     color: var(--mint);
   }

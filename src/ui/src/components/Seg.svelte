@@ -43,7 +43,7 @@
   button {
     position: relative;
     height: var(--h);
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 600;
     color: var(--fg-3);
     transition: color var(--t-mid);
@@ -57,12 +57,55 @@
   em {
     font-style: normal;
     font-family: var(--font-term);
-    font-size: 11px;
+    font-size: var(--fs-sm);
     margin-left: 3px;
     color: var(--fg-4);
     transition: color var(--t-mid);
   }
   button.on em {
     color: var(--mint);
+  }
+
+  /* 可露希尔：胶囊轨道，选中项是带光泽的亮青胶囊（和主按钮同一种） */
+  :global([data-skin='closure']) .seg {
+    padding: 3px;
+    border-radius: var(--r-pill);
+    background: var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+  :global([data-skin='closure']) .pill {
+    left: 3px;
+    top: 3px;
+    bottom: 3px;
+    width: calc((100% - 6px) / var(--n));
+    border-radius: var(--r-pill);
+    background:
+      linear-gradient(180deg, rgb(var(--hl-rgb) / 0.55), rgb(var(--hl-rgb) / 0.05) 48%, transparent 52%),
+      linear-gradient(180deg, var(--mint-hi), var(--mint) 55%, var(--mint-lo));
+    box-shadow: 0 0 8px rgb(var(--mint-rgb) / 0.4);
+  }
+  :global([data-skin='closure']) button.on {
+    color: var(--mint-ink);
+  }
+  :global([data-skin='closure']) button.on em {
+    color: rgb(var(--bg-0-rgb) / 0.6);
+  }
+
+  /* 乌萨斯：选中项是滑动的铁锈红平行四边形，字米白斜体 */
+  :global([data-skin='ursus']) .seg {
+    background: var(--bg-1);
+    box-shadow: inset 0 -2px 0 rgb(var(--rust-rgb) / 0.4);
+  }
+  :global([data-skin='ursus']) .pill {
+    background: var(--noise), linear-gradient(180deg, var(--rust-hi), var(--rust));
+    box-shadow: none;
+    clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+  }
+  :global([data-skin='ursus']) button.on {
+    color: var(--cream);
+    font-style: italic;
+  }
+  :global([data-skin='ursus']) button.on em {
+    color: rgb(240 228 200 / 0.7);
   }
 </style>

@@ -9,6 +9,25 @@ namespace ASPAssistant.Tests.Services;
 public class WindowGeometryTests
 {
     [Theory]
+    [InlineData(1.0, 1.25, 0, 1920, 1000, 475)]
+    [InlineData(1.25, 1.25, 1920, 3920, 1250, 475)]
+    public void MixedDpiFollowAndOverlayUsePhysicalGameAndPanelDpi(
+        double gameDpi, double panelDpi, int gameLeft, int panelLeft, int height, int width)
+    {
+        var game = new RECT { Left = gameLeft, Top = 0, Right = gameLeft + (int)(1600 * gameDpi), Bottom = height };
+        var panelWork = new RECT { Left = panelLeft, Top = 0, Right = panelLeft + 1080, Bottom = 1920 };
+        var offset = new ASPAssistant.Core.Models.SidePanelOffset((panelLeft - game.Right) / panelDpi, 0);
+        var scale = WindowGeometry.UiScale(null, height, panelDpi);
+        var panel = WindowGeometry.FollowBounds(game, panelWork, panelDpi, 380 * scale, null, false, offset);
+        Assert.Equal((panelLeft, 0, width, height), (panel.Left, panel.Top, panel.Width, panel.Height));
+        var strip = WindowGeometry.CollapseBounds(panel, (int)(48 * panelDpi), null, false);
+        Assert.Equal((panelLeft, 60, height), (strip.Left, strip.Width, strip.Height));
+        var overlay = WindowGeometry.OverlayBounds(game, gameDpi, 380, null);
+        Assert.Equal((gameLeft, (int)Math.Round(height * .15), (int)(380 * gameDpi), (int)Math.Round(height * .97)),
+            (overlay.Left, overlay.Top, overlay.Width, overlay.Bottom));
+    }
+
+    [Theory]
     [InlineData("auto", 500, 1500, false, "right")]
     [InlineData("auto", 500, 1800, false, "left")]
     [InlineData("auto", 100, 1800, true, "left")]

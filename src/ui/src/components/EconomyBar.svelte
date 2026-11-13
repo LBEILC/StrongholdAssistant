@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fly } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
-  import { asset } from '../lib/assets'
+  import { asset, ROMAN } from '../lib/assets'
   import Icon from './Icon.svelte'
 
   // 回合与资金（v0.7.0，设计见 docs/design.md「回合与资金」）：「第 6 回合 · 资金 4 · 下回合约 12 · 升级 5」。
@@ -45,7 +45,7 @@
 {#if e}
   <div class="econ" class:stale class:compact style:--coin="url({asset.hud('s_icon_gold')})">
     <div class="line">
-      <span class="rd"><b>{e.round}</b>回合</span>
+      <span class="rd">回合<b class="tag">{e.round}</b></span>
       <span class="sep"></span>
       <span class="mn" title="当前资金"><i class="coin"></i><b>{e.money}</b></span>
       <span class="sep"></span>
@@ -58,7 +58,9 @@
       {/if}
       {#if e.upgradeCost !== null}
         <span class="sep"></span>
-        <span class="up" title="升级调度中心要花的钱">升级 <b>{e.upgradeCost}</b></span>
+        <span class="up" title={e.level ? `调度中心 ${ROMAN[e.level]} 级，升级要花的钱` : '升级调度中心要花的钱'}>
+          {#if e.level}<img class="lv" src={asset.skin(`level_${e.level}`)} alt="{ROMAN[e.level]} 级" />{/if}升级 <b>{e.upgradeCost}</b>
+        </span>
       {/if}
       <span class="spacer"></span>
       {#if stale}<span class="old" title="不在休整期，读不到资金；显示最后读到的数">未更新</span>{/if}
@@ -116,7 +118,7 @@
     position: relative;
     margin: 0 0 8px;
     padding: 6px 8px;
-    background: rgb(0 0 0 / 0.28);
+    background: rgb(var(--shade-rgb) / 0.28);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .econ.compact {
@@ -128,18 +130,32 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+  /* 数字照游戏 HUD：粗体无衬线（用界面的 MiSans，和游戏的数字字形接近） */
   .line b {
     margin: 0 1px;
-    font-size: 14px;
+    font-size: var(--fs-lg);
+    font-weight: 700;
     color: var(--fg-1);
   }
-  .rd b {
-    margin-right: 3px;
+  /* 回合数：游戏顶栏「回合」后面的数字底块（颜色随皮肤） */
+  .rd b.tag {
+    margin: 0 0 0 4px;
+    min-width: 26px;
+    padding: 0 6px;
+    line-height: 18px;
+    text-align: center;
+    color: var(--round-fg);
+    background: var(--round-bg);
+    border-radius: var(--r-1);
+  }
+  .stale .rd b.tag {
+    color: var(--round-fg);
+    opacity: 0.6;
   }
   .mn {
     display: inline-flex;
@@ -148,6 +164,19 @@
   }
   .mn b {
     color: var(--gold);
+  }
+  .up {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  /* 调度中心等级牌（皮肤位图 63×58） */
+  .lv {
+    height: 20px;
+    margin: -4px 2px -4px 0;
+  }
+  .stale .lv {
+    filter: grayscale(1) brightness(0.7);
   }
   /* 游戏里的资金图标（三颗菱形，官方素材是白色，游戏里染成金色） */
   .coin {
@@ -170,8 +199,16 @@
   .spacer {
     flex: 1;
   }
-  .old {
-    font-size: 10.5px;
+  /* 侧栏窄时这一行放不下：只让「未更新」缩成省略号（变灰已经说明了），其他项不缩 */
+  .line > * {
+    flex-shrink: 0;
+  }
+  .line > .old {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .stale .line b,
@@ -188,23 +225,23 @@
     gap: 2px;
     height: 22px;
     padding: 0 7px 0 4px;
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     box-shadow: inset 0 0 0 1px var(--line);
   }
   .add:hover,
   .add.on {
     color: var(--gold);
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.6);
+    box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.6);
   }
   .sub {
     margin: 4px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .link {
     margin-left: 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
   }
   .chips {
@@ -219,13 +256,13 @@
     gap: 4px;
     height: 22px;
     padding: 0 2px 0 7px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
     background: var(--bg-3);
   }
   .chip em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 3px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -250,10 +287,10 @@
     left: 0;
     right: 0;
     padding: 8px;
-    background: #1b1d20;
+    background: var(--bg-2);
     box-shadow:
       0 0 0 1px var(--line),
-      0 10px 24px rgb(0 0 0 / 0.55);
+      0 10px 24px rgb(var(--shade-rgb) / 0.55);
   }
   /* 向上收起时窗口高度跟着内容走，浮层会被裁掉：直接占位，把窗口撑高 */
   .compact .pick {
@@ -263,7 +300,7 @@
   }
   .ph {
     margin: 0 0 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .src {
@@ -288,7 +325,7 @@
   .sn {
     flex: 1;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -301,12 +338,12 @@
     flex: none;
     width: 92px;
     padding: 2px 0;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     background: var(--bg-3);
   }
   .opt b {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: var(--gold);
   }

@@ -406,8 +406,13 @@ export interface Lineup {
 /** 游戏内正在使用的卫戍协议主题：三套主题商店名称栏的位置不同，商店识别要按主题来 */
 export type GameTheme = 'terminal' | 'ursus' | 'closure' // 卫戍协议终端 / 乌萨斯齐心团 / 「全能的」可露希尔
 
+/** 助手界面的皮肤（v0.8.0）：'follow' 跟着游戏主题，或固定成某一套（和游戏主题分开设置） */
+export type UiSkin = 'follow' | GameTheme
+
 export interface Settings {
   gameTheme: GameTheme
+  /** 界面皮肤（v0.8.0，默认 'follow'）。只影响助手界面的样子，和商店识别无关 */
+  uiSkin: UiSkin
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
   autoCheckUpdate: boolean // 启动时检查新版本
   /**
@@ -746,6 +751,16 @@ export interface Api {
    * 041 起先在看不见的页面里读，读不到（没登录）才弹窗。silent（v0.7.0，历史页打开时自动更新用）：读不到就返回 null，不弹窗
    */
   sklandHistory(opts?: { silent?: boolean }): Promise<SklandRecord[] | null>
+  /**
+   * 森空岛账号（v0.8.0）：读攻略、历史战绩时森空岛告诉我们的游戏角色（角色绑定接口返回里的昵称，如「博士#1234」），
+   * 宿主每次读到就记在本机，退出登录时清掉。没登录过、没读到过为 null。只看本机记录，不为此打开森空岛
+   */
+  sklandAccount(): Promise<{ nickname: string } | null>
+  /**
+   * 退出森空岛登录（v0.8.0）：清掉森空岛页面的登录状态（SklandWebView2 的 Cookie 等）和记下的角色。
+   * 森空岛窗口开着就先关掉（正在等的 sklandHistory 返回 null）。下次读历史战绩时会弹窗重新登录
+   */
+  sklandLogout(): Promise<void>
   /**
    * 改收起 / 展开快捷键（v0.7.0）：先注册新组合，成功才保存进 Settings.toggleHotkey 并注销旧的；'' 为关闭。
    * 被占用或写法不对时 reject，message 给用户看（如「这个组合被别的软件占用了，换一个试试。」），旧的照旧生效

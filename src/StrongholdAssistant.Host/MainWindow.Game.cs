@@ -312,7 +312,12 @@ public partial class MainWindow
             _api.SettingsStore.SaveDock(_dock);
         }
         if (message == 0x02E0) // WM_DPICHANGED：等 WPF 应用新的 DPI 后重新计算。
-            Dispatcher.BeginInvoke(RefreshScale);
+            Dispatcher.BeginInvoke(() =>
+            {
+                // 拖动时不重定位，但跨屏仍要更新缩放；普通轮询不干预用户调整宽度。
+                if (_moving) ApplyScale(_lastClientRect?.Height);
+                else RefreshScale();
+            });
         return IntPtr.Zero;
     }
 

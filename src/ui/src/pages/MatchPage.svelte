@@ -51,6 +51,17 @@
   const focusCovsHit = $derived(app.settings.focusCovenants.filter((id) => app.matchCovenant(id)?.incomplete))
   const focusOpsHit = $derived(app.settings.focusOperators.filter((n) => app.banned.has(n)))
   const focusTotal = $derived(app.settings.focusCovenants.length + app.settings.focusOperators.length)
+  // 提醒可以关掉：记下本局指纹（哪些盟约阵容不完整、首领、模式，同一局里基本不变）和关掉时被影响的项。
+  // 换了一局，或者又有新的关注项被影响，就重新提醒
+  const DISMISS_KEY = 'sa_focus_dismissed'
+  const matchPrint = $derived([m.covenants.filter((c) => c.incomplete).map((c) => c.id).sort().join(','), m.bossId, m.mode?.id].join('|'))
+  const focusHits = $derived([...focusCovsHit, ...focusOpsHit])
+  let dismissed = $state<{ match: string; hits: string[] }>(JSON.parse(localStorage.getItem(DISMISS_KEY) ?? 'null') ?? { match: '', hits: [] })
+  const focusDismissed = $derived(dismissed.match === matchPrint && focusHits.every((h) => dismissed.hits.includes(h)))
+  const dismissFocus = () => {
+    dismissed = { match: matchPrint, hits: focusHits }
+    localStorage.setItem(DISMISS_KEY, JSON.stringify(dismissed))
+  }
   const edit = $derived(app.matchEdit)
   // 清空本局要点两次：第一次变成「确认清空」，3 秒内不点就恢复
   let armReset = $state(false)
@@ -189,9 +200,13 @@
   {/if}
 
   {#if focusTotal && m.source !== 'none'}
-    {#if focusCovsHit.length || focusOpsHit.length}
+    {#if focusHits.length && !focusDismissed}
       <div class="focus bad">
-        <span class="fh"><Icon name="heartFill" size={13} />关注的被影响了</span>
+        <span class="fh"
+          ><Icon name="heartFill" size={13} />关注的被影响了<button class="nx" title="这一局不再提醒，新的一局或又有关注的被影响时再提醒" aria-label="关闭提醒" onclick={dismissFocus}
+            ><Icon name="close" size={13} /></button
+          ></span
+        >
         <div class="fl">
           {#each focusCovsHit as id (id)}
             <button class="fc" onclick={() => (app.detail = { kind: 'covenant', id })}>
@@ -203,7 +218,7 @@
           {/each}
         </div>
       </div>
-    {:else}
+    {:else if !focusHits.length}
       <div class="focus ok"><Icon name="heartFill" size={13} />关注的 {app.settings.focusCovenants.length} 个盟约、{app.settings.focusOperators.length} 名干员本局都可用</div>
     {/if}
   {/if}
@@ -218,13 +233,14 @@
       <StrategyGrid selected={m.strategyId} q={stq} onpick={pickSt} />
     </div>
   {:else if strategy}
-    <div class="strategy">
+    <!-- 整块可点：点一下换策略（用户 2026-11-13：只有一个「换」字太没设计，直接做成可点的） -->
+    <button class="strategy" title="点一下换策略" onclick={() => (pickingSt = true)}>
       <img src={asset.strategy(strategy.id)} alt="" />
       <div>
-        <div class="sn"><b>{strategy.name}</b><span>{strategy.initiator}</span><button class="chg" onclick={() => (pickingSt = true)}>换</button></div>
+        <div class="sn"><b>{strategy.name}</b><span>{strategy.initiator}</span></div>
         <p>{strategy.description}</p>
       </div>
-    </div>
+    </button>
   {:else if m.source !== 'none'}
     <button class="stnone" onclick={() => (pickingSt = true)}>
       <Icon name="add" size={14} />选本局策略<em>识别读不到策略；选上后资金预测会按策略算</em>
@@ -411,7 +427,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 6px 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .st {
     min-width: 0;
@@ -422,7 +438,7 @@
     color: var(--fg-2);
   }
   .st .term {
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     padding: 2px 4px 1px;
     color: var(--bg-0);
     background: var(--fg-4);
@@ -431,18 +447,18 @@
     background: var(--mint);
   }
   .st .solo {
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     padding: 1px 5px;
     color: var(--gold);
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.5);
+    box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.5);
   }
   .solo-guide {
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.55;
     color: var(--fg-2);
     padding: 8px 10px 8px 12px;
-    background: rgb(243 179 34 / 0.07);
+    background: rgb(var(--gold-rgb) / 0.07);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .sg-h {
@@ -469,11 +485,11 @@
     height: 16px;
     vertical-align: -3px;
     color: var(--mint);
-    border-radius: 8px;
+    border-radius: var(--r-pill);
     box-shadow: inset 0 0 0 1px var(--mint);
   }
   .sg-f {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .st em {
@@ -490,7 +506,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     padding: 3px 7px;
     box-shadow: inset 0 0 0 1px var(--line);
@@ -508,7 +524,7 @@
     opacity: 1;
   }
   .tool.arm {
-    color: #fff;
+    color: var(--fg-0);
     background: var(--red);
     box-shadow: none;
   }
@@ -521,7 +537,7 @@
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     color: var(--mint);
     padding: 6px 8px;
@@ -543,23 +559,23 @@
   }
   .nx:hover {
     opacity: 1;
-    background: rgb(255 255 255 / 0.08);
+    background: rgb(var(--hl-rgb) / 0.08);
   }
   .focus {
     display: flex;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 7px 8px;
   }
   .focus.ok {
     align-items: center;
     color: var(--gold);
-    background: rgb(243 179 34 / 0.08);
+    background: rgb(var(--gold-rgb) / 0.08);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .focus.bad {
     flex-direction: column;
-    color: #f2b8ba;
+    color: var(--red-fg);
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
   }
@@ -568,6 +584,9 @@
     align-items: center;
     gap: 5px;
     font-weight: 700;
+  }
+  .fh .nx {
+    margin: -2px -4px -2px auto;
   }
   .fl {
     display: flex;
@@ -581,13 +600,17 @@
     gap: 5px;
     color: var(--fg-1);
   }
+  /* 「阵容不完整」角标往右伸出约 9px，给它留出位置，不压住盟约名 */
+  .fc > :global(.bond) {
+    margin-right: 8px;
+  }
   .fc em {
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--red);
   }
   .edithint {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     line-height: 1.5;
     color: var(--mint);
     padding: 6px 8px;
@@ -595,14 +618,14 @@
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .editing {
-    outline: 1px dashed rgb(34 227 178 / 0.45);
+    outline: 1px dashed rgb(var(--mint-rgb) / 0.45);
     outline-offset: -1px;
   }
   .hbtn {
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
     padding: 3px 4px;
   }
@@ -613,7 +636,7 @@
     display: grid;
   }
   .tool.busy .spin {
-    animation: spin 0.8s linear infinite;
+    animation: spin var(--t-spin) linear infinite;
   }
   @keyframes spin {
     to {
@@ -634,14 +657,14 @@
   }
   .sph b {
     flex: none;
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .sph input {
     flex: 1;
     min-width: 0;
     height: 26px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     background: var(--bg-0);
     border: 1px solid var(--line);
@@ -652,7 +675,7 @@
     gap: 5px;
     width: 100%;
     padding: 8px 9px;
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     color: var(--fg-2);
     border: 1px dashed var(--line);
   }
@@ -662,21 +685,23 @@
   }
   .stnone em {
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
-  }
-  .chg {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--mint);
   }
   .strategy {
     display: flex;
     gap: 9px;
     align-items: center;
+    width: 100%;
     padding: 7px 9px;
+    text-align: left;
     background: var(--hatch), var(--bg-1);
     box-shadow: inset 0 0 0 1px var(--line-soft);
+    transition: box-shadow var(--t-fast), background var(--t-fast);
+  }
+  .strategy:hover {
+    background: var(--hatch), var(--bg-2);
+    box-shadow: inset 0 0 0 1px var(--mint);
   }
   .strategy img {
     width: 38px;
@@ -691,15 +716,15 @@
     align-items: baseline;
   }
   .sn b {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
   .sn span {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .strategy p {
     margin: 1px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     line-height: 1.35;
   }
@@ -727,11 +752,11 @@
   }
   .rule {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     line-height: 1.5;
     color: var(--gold);
     padding: 5px 8px;
-    background: rgb(243 179 34 / 0.07);
+    background: rgb(var(--gold-rgb) / 0.07);
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .bg {
@@ -743,11 +768,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
   }
   .bgh span {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .tiles {
@@ -757,7 +782,7 @@
   }
   .bgh em {
     font-style: normal;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     padding: 0 5px;
   }
   .bgh .miss {
@@ -766,7 +791,7 @@
   }
   .bgh .guess {
     color: var(--gold);
-    box-shadow: inset 0 0 0 1px rgb(243 179 34 / 0.5);
+    box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.5);
   }
   .bgh .more {
     color: var(--fg-4);
@@ -785,14 +810,14 @@
     height: 42px;
     display: grid;
     place-items: center;
-    background: rgb(243 179 34 / 0.08);
+    background: rgb(var(--gold-rgb) / 0.08);
     outline: 1px dashed var(--gold);
     outline-offset: -1px;
     box-shadow: inset 0 -2px 0 var(--c);
     transition: background var(--t-fast);
   }
   .q b {
-    font-size: 20px;
+    font-size: var(--fs-3xl);
     line-height: 1;
     color: var(--gold);
   }
@@ -801,15 +826,15 @@
     left: 2px;
     bottom: 3px;
     font-style: normal;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--c);
   }
   .slot .nm {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--gold);
   }
   .slot:hover .q {
-    background: rgb(243 179 34 / 0.2);
+    background: rgb(var(--gold-rgb) / 0.2);
   }
   /* 推测的格：头像照常，金色虚线框 + 名字下面的「推测」小签，点开确认或否认 */
   .inf {
@@ -827,7 +852,7 @@
     transform: translateX(-50%);
     z-index: 2;
     font-style: normal;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     line-height: 12px;
     padding: 0 3px;
     white-space: nowrap;
@@ -857,7 +882,7 @@
       background var(--t-fast);
   }
   .addtile .nm {
-    font-size: 11px;
+    font-size: var(--fs-sm);
   }
   .addtile:hover {
     color: var(--red);
@@ -878,8 +903,8 @@
     gap: 10px;
     padding: 6px;
     text-align: left;
-    background: linear-gradient(90deg, #2a2a26, var(--bg-2));
-    box-shadow: inset 0 0 0 1px #3b3a33;
+    background: linear-gradient(90deg, var(--boss-bg), var(--bg-2));
+    box-shadow: inset 0 0 0 1px var(--boss-line);
   }
   .boss:hover {
     box-shadow: inset 0 0 0 1px var(--gold);
@@ -888,8 +913,8 @@
     width: 54px;
     height: 54px;
     flex: none;
-    background: #fff1;
-    box-shadow: 0 0 0 1px #4a4a44;
+    background: rgb(var(--hl-rgb) / 0.067);
+    box-shadow: 0 0 0 1px var(--boss-ring);
     overflow: hidden;
   }
   .bpic img {
@@ -905,28 +930,28 @@
     gap: 3px;
   }
   .leader {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     font-weight: 700;
     padding: 1px 8px;
     color: var(--gold-ink);
     background: var(--gold);
   }
   .binfo b {
-    font-size: 15px;
+    font-size: var(--fs-xl);
   }
   .binfo .bhp {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     font-variant-numeric: tabular-nums;
   }
   .binfo .bhp b {
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--gold);
   }
   .more {
     display: flex;
     align-items: center;
-    font-size: 9px;
+    font-size: var(--fs-2xs);
     color: var(--fg-4);
     align-self: flex-end;
   }
@@ -935,7 +960,7 @@
     align-items: center;
     gap: 0;
     background: var(--bg-2);
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 600;
     color: var(--fg-1);
   }
@@ -949,7 +974,7 @@
     height: 32px;
     display: grid;
     place-items: center;
-    background: #101113;
+    background: var(--bg-1);
   }
   .ei img {
     width: 22px;
@@ -965,7 +990,7 @@
     display: flex;
     align-items: center;
     align-self: flex-end;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 2px 0;
   }
@@ -986,5 +1011,95 @@
     .status {
       column-span: all;
     }
+  }
+  /* 可露希尔：「关注的被影响了」是千禧年系统的报错对话框——粉紫渐变标题栏、关闭是小方块、粉色窗口边；
+     「都可用」、识别提示是青色描边的小提示条；策略栏是带窗口边的小窗口 */
+  :global([data-skin='closure']) .focus.bad {
+    gap: 8px;
+    padding: 0 0 8px;
+    background: rgb(var(--bg-0-rgb) / 0.6);
+    box-shadow: inset 0 0 0 2px var(--win-pink);
+    border-radius: var(--r-2);
+    overflow: hidden;
+  }
+  :global([data-skin='closure']) .focus.bad .fh {
+    padding: 3px 4px 3px 8px;
+    color: var(--fg-0);
+    background: linear-gradient(90deg, var(--win-pink), #b03ad8 70%, #6a2bd0);
+  }
+  :global([data-skin='closure']) .focus.bad .fh .nx {
+    width: 18px;
+    height: 18px;
+    margin: 0 0 0 auto;
+    opacity: 1;
+    color: #001a20;
+    background: var(--win-cyan);
+    border-radius: 0;
+    box-shadow:
+      inset 1px 1px 0 rgb(var(--hl-rgb) / 0.5),
+      inset -1px -1px 0 rgb(var(--shade-rgb) / 0.35);
+  }
+  :global([data-skin='closure']) .focus.bad .fl {
+    padding: 0 8px;
+  }
+  :global([data-skin='closure']) :is(.focus.ok, .note) {
+    color: var(--win-cyan);
+    background: rgb(var(--mint-rgb) / 0.08);
+    box-shadow: inset 0 0 0 1.5px rgb(var(--mint-rgb) / 0.6);
+  }
+  :global([data-skin='closure']) .strategy {
+    background: rgb(var(--bg-0-rgb) / 0.55);
+    box-shadow: inset 0 0 0 2px var(--win-edge);
+    border-radius: var(--r-2);
+  }
+  :global([data-skin='closure']) .strategy:hover {
+    background: rgb(var(--mint-rgb) / 0.08);
+    box-shadow: inset 0 0 0 2px var(--win-cyan);
+  }
+
+  /* 乌萨斯：「关注的被影响了」是警示牌——标题压在铁锈红斜切标语条上（米白粗斜体），牌身深色、右下角斜切；
+     「都可用」、识别提示是淡灰绿左条；策略栏左边一道铁锈红 */
+  :global([data-skin='ursus']) .focus.bad {
+    gap: 8px;
+    padding: 0 0 8px;
+    background: rgb(var(--bg-0-rgb) / 0.6);
+    box-shadow: inset 0 -3px 0 var(--rust);
+  }
+  /* 红条用伪元素画（斜切会裁掉子元素，× 在标题行里，不能直接斜切标题行），× 留在红条外面 */
+  :global([data-skin='ursus']) .focus.bad .fh {
+    position: relative;
+    isolation: isolate;
+    align-self: flex-start;
+    padding: 4px 4px 4px 10px;
+    font-style: italic;
+    color: var(--cream);
+  }
+  :global([data-skin='ursus']) .focus.bad .fh::before {
+    content: '';
+    position: absolute;
+    inset: 0 22px 0 0;
+    z-index: -1;
+    background: var(--noise), linear-gradient(180deg, var(--rust-hi), var(--rust));
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+  :global([data-skin='ursus']) .focus.bad .fh .nx {
+    margin-left: 12px;
+    color: var(--fg-2);
+  }
+  :global([data-skin='ursus']) .focus.bad .fl {
+    padding: 0 8px;
+  }
+  :global([data-skin='ursus']) :is(.focus.ok, .note) {
+    color: var(--mint);
+    background: rgb(var(--mint-rgb) / 0.08);
+    box-shadow: inset 3px 0 0 var(--mint);
+  }
+  :global([data-skin='ursus']) .strategy {
+    background: var(--noise), rgb(var(--bg-0-rgb) / 0.55);
+    box-shadow: inset 3px 0 0 var(--rust);
+  }
+  :global([data-skin='ursus']) .strategy:hover {
+    background: var(--noise), rgb(var(--rust-rgb) / 0.12);
+    box-shadow: inset 5px 0 0 var(--rust-hi);
   }
 </style>

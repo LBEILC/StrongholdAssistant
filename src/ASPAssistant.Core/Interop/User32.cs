@@ -66,6 +66,23 @@ public static class User32
     [DllImport("user32.dll")]
     public static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetWindowDpiAwarenessContext(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDpiAwarenessContextForProcess(IntPtr process);
+
+    [DllImport("user32.dll")]
+    public static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
+
+    public static string DescribeDpiAwareness(IntPtr context)
+    {
+        foreach (var (value, name) in new[] { (-4, "PerMonitorV2"), (-3, "PerMonitor"),
+                     (-2, "System"), (-1, "Unaware"), (-5, "UnawareGdiScaled") })
+            if (AreDpiAwarenessContextsEqual(context, new IntPtr(value))) return name;
+        return "Unknown";
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int width, int height, uint flags);
@@ -182,7 +199,7 @@ public static class User32
     private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct MONITORINFO
+    public struct MONITORINFO
     {
         public int    cbSize;
         public RECT   rcMonitor;
@@ -192,7 +209,7 @@ public static class User32
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     private const uint MonitorDefaultToNearest = 2;
     [DllImport("user32.dll")]

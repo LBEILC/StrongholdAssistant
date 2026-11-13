@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>StrongholdAssistant</AssemblyName>
     <ApplicationIcon>../../branding/icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>

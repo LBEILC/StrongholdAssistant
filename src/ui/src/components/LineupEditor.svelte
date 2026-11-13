@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BondPick from './BondPick.svelte'
   import { sheet } from '../lib/sheet'
   import { fly, fade } from 'svelte/transition'
   import { untrack } from 'svelte'
@@ -21,6 +22,13 @@
   const e = $derived(app.editing)
   let q = $state('')
   let bond = $state<string | null>(null)
+  // 目标盟约：本局阵容不完整的核心盟约不能选（已选的还能取消）；只有一档的盟约（调和、独行等）选上就只亮起，不标档位
+  const goalState = (id: string) => {
+    const c = app.cov(id)
+    const lv = levelOf(id)
+    const blocked = c.kind === 'core' && !!app.matchCovenant(id)?.incomplete
+    return { on: !!lv, badge: lv && c.thresholds.length >= 2 ? (lv === 2 ? 'II' : 'I') : undefined, dim: blocked, disabled: blocked && !lv }
+  }
   let goalOnly = $state(true)
   // 下半挑选区：干员 / 装备
   let poolKind = $state<'op' | 'eq' | 'st'>('op')
@@ -222,7 +230,7 @@
 
 {#if e}
   <div class="scrim" transition:fade={{ duration: 160 }}></div>
-  <aside class="ed" transition:sheet={{ y: 400, duration: 260 }}>
+  <aside class="ed win" transition:sheet={{ y: 400, duration: 260 }}>
     <header>
       <input class="nm" bind:value={e.name} placeholder="名称（不填就叫「{autoName}」）" />
       <button class="x" onclick={() => (app.editing = null)} aria-label="关闭"><Icon name="close" size={16} /></button>
@@ -275,17 +283,7 @@
     <div class="body">
     <div class="sec">
       <div class="lbl">目标盟约<em>点一下选上，有 II 档的再点升 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
-      <div class="goalpick">
-        {#each app.catalog.covenants as c (c.id)}
-          {@const lv = levelOf(c.id)}
-          {@const blocked = c.kind === 'core' && !!app.matchCovenant(c.id)?.incomplete}
-          <button class="gp" class:on={!!lv} class:core={c.kind === 'core'} class:blocked disabled={blocked && !lv} title={c.name} onclick={() => app.cycleGoal(c.id)}>
-            <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
-            <!-- 只有一档的盟约（调和、独行等）选上就只亮起，不标档位 -->
-            {#if lv && c.thresholds.length >= 2}<span class="lv term">{lv === 2 ? 'II' : 'I'}</span>{/if}
-          </button>
-        {/each}
-      </div>
+      <BondPick state={goalState} onpick={(id) => app.cycleGoal(id)} />
       <div class="bonds">
         {#each progress as g (g.covenant.id)}
           <span class="bc" class:short={!g.done}><BondIcon id={g.covenant.id} size={18} on />{g.covenant.name}<b>{g.have}/{g.need}</b></span>
@@ -403,13 +401,7 @@
         {/if}
       </div>
       {#if poolKind === 'op'}
-        <div class="bondpick">
-          {#each app.catalog.covenants as c (c.id)}
-            <button class="bp" class:on={bond === c.id} title={c.name} onclick={() => (bond = bond === c.id ? null : c.id)}>
-              <span class="glyph" style:--src="url({asset.bond(c.id)})"></span>
-            </button>
-          {/each}
-        </div>
+        <BondPick state={(id) => ({ on: bond === id })} onpick={(id) => (bond = bond === id ? null : id)} />
       {:else if poolKind === 'eq'}
         <div class="for" class:member={!!sel}>
           {#if sel}给 <b>{sel}</b> 选候选装备<button onclick={() => (sel = null)}>改加通用装备</button>{:else}点装备加入通用装备；要给某名干员配，先点上面他的头像{/if}
@@ -466,7 +458,7 @@
     max-height: 168px;
     padding: 6px 8px;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.6;
     color: var(--fg-1);
     background: var(--bg-1);
@@ -496,7 +488,7 @@
     min-width: 15px;
     height: 15px;
     padding: 0 3px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     line-height: 15px;
     text-align: center;
     color: var(--gold-ink);
@@ -510,21 +502,21 @@
   .mp {
     margin-top: 8px;
     padding: 8px;
-    background: rgb(0 0 0 / 0.3);
+    background: rgb(var(--shade-rgb) / 0.3);
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .mph {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
   }
   .mph b {
-    font-size: 13px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .slots {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .mph .spacer {
@@ -533,7 +525,7 @@
   .kt {
     height: 22px;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
     background: var(--bg-2);
   }
@@ -562,7 +554,7 @@
     box-shadow: inset 0 -2px 0 var(--fg-4);
   }
   .ce.pri {
-    background: rgb(243 179 34 / 0.12);
+    background: rgb(var(--gold-rgb) / 0.12);
     box-shadow: inset 0 -2px 0 var(--gold);
   }
   .cb {
@@ -571,7 +563,7 @@
     gap: 4px;
     height: 26px;
     padding: 0 6px 0 3px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
   }
   .cb img {
@@ -581,7 +573,7 @@
   }
   .cb em {
     font-style: normal;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     padding: 0 4px;
     color: var(--fg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -603,7 +595,7 @@
   }
   .over {
     margin: 6px 0 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--gold);
   }
   .gives {
@@ -612,13 +604,13 @@
     align-items: center;
     gap: 4px;
     margin-top: 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .gives button {
     height: 20px;
     padding: 0 6px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--mint);
   }
@@ -628,11 +620,11 @@
   }
   .mhint {
     margin: 6px 0 0;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .for {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
     margin: 4px 0;
   }
@@ -644,14 +636,14 @@
   }
   .for button {
     margin-left: 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
     text-decoration: underline;
   }
   .scrim {
     position: absolute;
     inset: 0;
-    background: rgb(0 0 0 / 0.6);
+    background: var(--scrim-strong);
     z-index: 20;
   }
   .ed {
@@ -665,10 +657,10 @@
     flex-direction: column;
     background:
       var(--noise),
-      linear-gradient(180deg, #202326, #141618 160px);
+      linear-gradient(180deg, var(--sheet-top), var(--sheet-bottom) 160px);
     box-shadow:
       0 -1px 0 var(--line),
-      0 -12px 30px rgb(0 0 0 / 0.6);
+      0 -12px 30px rgb(var(--shade-rgb) / 0.6);
   }
   .ed::before {
     content: '';
@@ -691,7 +683,7 @@
     min-width: 0;
     height: 32px;
     padding: 0 8px;
-    font-size: 15px;
+    font-size: var(--fs-xl);
     font-weight: 700;
     background: var(--bg-1);
     border: 0;
@@ -731,7 +723,7 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 2px 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--fg-2);
   }
@@ -741,47 +733,8 @@
   .lbl em {
     font-style: normal;
     font-weight: 400;
-    font-size: 10.5px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
-  }
-  .goalpick {
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 3px;
-  }
-  .gp {
-    position: relative;
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--fg-3);
-    background: var(--bg-2);
-  }
-  .gp.core {
-    box-shadow: inset 0 0 0 1px var(--line);
-  }
-  .gp .glyph {
-    width: 62%;
-    height: 62%;
-  }
-  .gp.on {
-    color: var(--mint-ink);
-    background: var(--mint);
-    box-shadow: var(--mint-glow);
-  }
-  .gp.blocked {
-    opacity: 0.3;
-  }
-  .gp .lv {
-    position: absolute;
-    right: -3px;
-    bottom: -3px;
-    font-size: 8px;
-    line-height: 1;
-    padding: 2px 3px 1px;
-    color: var(--gold-ink);
-    background: var(--gold);
   }
   .bonds {
     display: flex;
@@ -800,7 +753,7 @@
   }
   .tog {
     flex: none;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     padding: 2px 6px;
     color: var(--fg-3);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -814,7 +767,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
   }
   .bc b {
@@ -823,7 +776,7 @@
     color: var(--mint);
   }
   .muted {
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-4);
   }
   .body {
@@ -849,7 +802,7 @@
     gap: 6px;
     margin: 0 -12px;
     padding: 10px 12px 6px;
-    background: #16181a;
+    background: var(--bg-1a);
     box-shadow: 0 1px 0 var(--line-soft);
   }
   .stwrap {
@@ -871,7 +824,7 @@
     background: none;
     border: 0;
     outline: 0;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
   }
   .stchip {
@@ -880,7 +833,7 @@
     align-items: center;
     gap: 6px;
     padding: 3px 8px 3px 3px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     background: var(--bg-2);
     box-shadow: inset 0 0 0 1px var(--line);
@@ -903,7 +856,7 @@
     gap: 4px;
   }
   .chip {
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     padding: 2px 7px;
     color: var(--fg-2);
     background: var(--bg-2);
@@ -913,27 +866,6 @@
     color: var(--mint-ink);
     background: var(--mint);
     box-shadow: none;
-  }
-  .bondpick {
-    display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 3px;
-  }
-  .bp {
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--fg-3);
-    background: var(--bg-2);
-  }
-  .bp .glyph {
-    width: 62%;
-    height: 62%;
-  }
-  .bp.on {
-    color: var(--mint-ink);
-    background: var(--mint);
   }
   .pool {
     display: grid;
@@ -946,9 +878,9 @@
   .err {
     margin: 0;
     padding: 7px 12px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     line-height: 1.5;
-    color: #f2b8ba;
+    color: var(--red-fg);
     background: var(--red-tint);
     box-shadow: inset 2px 0 0 var(--red);
   }
@@ -967,7 +899,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
     padding: 5px 8px;
   }
@@ -975,15 +907,15 @@
     color: var(--fg-1);
   }
   .danger {
-    font-size: 12px;
+    font-size: var(--fs-base);
     padding: 5px 10px;
-    color: #fff;
+    color: var(--fg-0);
     background: var(--red);
   }
   .primary {
     height: 30px;
     padding: 0 18px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     font-weight: 700;
     color: var(--mint-ink);
     background: var(--mint);
@@ -1005,7 +937,7 @@
     height: 26px;
     background: var(--bg-2);
     box-shadow: inset 0 0 0 1px var(--line);
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
   }
   .stab > button:first-child {
@@ -1033,7 +965,7 @@
     gap: 3px;
     height: 26px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .sadd.on,
@@ -1048,7 +980,7 @@
   }
   .rpick p {
     margin: 0 0 6px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-3);
   }
   .rounds {
@@ -1059,7 +991,7 @@
   .rounds button {
     height: 28px;
     font-family: var(--font-term);
-    font-size: 13px;
+    font-size: var(--fs-md);
     background: var(--bg-3);
   }
   .rounds button:hover {
@@ -1082,7 +1014,7 @@
     flex: none;
     height: 26px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     background: var(--bg-1);
     border: 1px solid var(--line);
@@ -1093,7 +1025,7 @@
   }
   .rpick .link {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--mint);
   }
   .sname {
@@ -1101,7 +1033,7 @@
     min-width: 0;
     height: 26px;
     padding: 0 8px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-1);
     background: var(--bg-1);
     border: 1px solid var(--line);
@@ -1112,13 +1044,13 @@
     align-items: center;
     gap: 4px;
     padding: 6px 12px 0;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .copyrow button {
     height: 22px;
     padding: 0 7px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
     box-shadow: inset 0 0 0 1px var(--line);
   }
@@ -1143,7 +1075,7 @@
   .elt {
     height: 26px;
     padding: 0 9px;
-    font-size: 12px;
+    font-size: var(--fs-base);
     color: var(--fg-2);
     box-shadow: inset 0 0 0 1px var(--line);
   }
@@ -1154,7 +1086,7 @@
   }
   .cl {
     margin: 0 2px 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .opt {
@@ -1173,7 +1105,7 @@
   .opt.txt {
     width: auto;
     padding: 0 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-2);
   }
   .opt.on {
@@ -1186,19 +1118,19 @@
     top: -6px;
     padding: 0 2px;
     font-style: normal;
-    font-size: 8px;
+    font-size: var(--fs-3xs);
     line-height: 11px;
     color: var(--fg-1);
     background: var(--bg-4);
   }
   .cfgn {
     margin: 0 0 4px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--fg-3);
   }
   .cfgn .link {
     margin-left: 8px;
-    font-size: 11px;
+    font-size: var(--fs-sm);
     color: var(--mint);
   }
 </style>

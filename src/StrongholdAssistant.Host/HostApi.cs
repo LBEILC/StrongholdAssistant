@@ -31,6 +31,7 @@ public sealed partial class HostApi
     {
         DataDirectory = Path.GetFullPath(userDirectory);
         CleanupPlazaProfile();
+        CleanupSklandProfile();
         _diagnostics = new DiagnosticsStore(DataDirectory);
         _sessionPath = Path.Combine(DataDirectory, "session.json");
         _lineups = new LineupStore(Path.Combine(userDirectory, "lineups"));
@@ -364,6 +365,8 @@ public sealed partial class HostApi
         {
             case "plazaLogin": return await PlazaLoginAsync();
             case "sklandGuide": return await SklandGuideAsync(args[0].GetString()!);
+            case "sklandAccount": return ReadSklandAccount();
+            case "sklandLogout": await SklandLogoutAsync(); return null;
             case "sklandHistory": return await SklandHistoryAsync(args.Length > 0 && args[0].ValueKind == JsonValueKind.Object
                 && args[0].TryGetProperty("silent", out var silent) && silent.GetBoolean());
             case "plazaToken": return new PlazaTokenStore(DataDirectory).Read();

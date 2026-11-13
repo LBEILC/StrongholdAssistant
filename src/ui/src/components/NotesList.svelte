@@ -29,15 +29,15 @@
     gap: 8px;
     align-items: flex-start;
     padding: 6px 8px;
-    background: rgb(0 0 0 / 0.22);
+    background: rgb(var(--shade-rgb) / 0.22);
   }
   li.hl {
-    background: linear-gradient(90deg, var(--mint-tint), transparent 70%), rgb(0 0 0 / 0.22);
+    background: linear-gradient(90deg, var(--mint-tint), transparent 70%), rgb(var(--shade-rgb) / 0.22);
   }
   .k {
     flex: none;
     margin-top: 1px;
-    font-size: 10px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     line-height: 1;
     padding: 3px 5px;
@@ -61,11 +61,11 @@
     min-width: 0;
   }
   .tx b {
-    font-size: 12.5px;
+    font-size: var(--fs-md);
     color: var(--fg-1);
   }
   .tx span {
-    font-size: 11.5px;
+    font-size: var(--fs-base);
     line-height: 1.5;
     color: var(--fg-3);
   }

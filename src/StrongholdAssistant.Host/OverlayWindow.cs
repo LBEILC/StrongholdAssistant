@@ -12,6 +12,7 @@ public sealed class OverlayWindow : Window
 {
     private readonly ShopMarkerLayer _canvas = new();
     private IReadOnlyList<ShopItem> _items = [];
+    private RECT? _client;
     public bool HasMarkers => _canvas.Children.Count > 0;
 
     public OverlayWindow()
@@ -35,8 +36,22 @@ public sealed class OverlayWindow : Window
         SizeChanged += (_, _) => UpdateShopItems(_items);
     }
 
-    public void UpdatePosition(RECT client) =>
+    public void UpdatePosition(RECT client)
+    {
+        _client = client;
         User32.SetWindowBounds(new WindowInteropHelper(this).EnsureHandle(), client);
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        // 等 WPF 应用建议矩形后，以最近的游戏客户区恢复物理尺寸。
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_client is { } client) UpdatePosition(client);
+            UpdateShopItems(_items);
+        });
+    }
 
     public void UpdateShopItems(IReadOnlyList<ShopItem> items)
     {

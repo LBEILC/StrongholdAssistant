@@ -7,6 +7,27 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void UiSkinDefaultsAndSurvivesReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, """{"gameTheme":"closure"}""");
+        var store = new HostSettingsStore(path);
+        Assert.Equal("follow", store.LoadSettings().UiSkin);
+        store.SaveSettings(store.LoadSettings() with { UiSkin = "ursus" });
+        Assert.Equal("ursus", new HostSettingsStore(path).LoadSettings().UiSkin);
+    }
+
+    [Fact]
+    public void InvalidUiSkinIsRejectedOnSave()
+    {
+        var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));
+        var error = Assert.Throws<ArgumentException>(() =>
+            store.SaveSettings(store.LoadSettings() with { UiSkin = "invalid" }));
+        Assert.Equal("界面主题无效。", error.Message);
+    }
+
+    [Fact]
     public void CloudAccountSurvivesAtomicSettingsAndDockWrites()
     {
         Directory.CreateDirectory(_directory);
