@@ -7,6 +7,21 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void CloudAccountSurvivesAtomicSettingsAndDockWrites()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, """{"cloudSync":{"enabled":false,"since":null,"pushedAt":null,"prefsAt":null,"deleted":[]}}""");
+        var store = new HostSettingsStore(path);
+        Assert.Null(store.LoadSettings().CloudSync.Account);
+        store.SaveSettings(store.LoadSettings() with
+        { CloudSync = new(true, null, null, null, []) { Account = "account-1" } });
+        store.SaveDock(new(Width: 420));
+        Assert.Equal("account-1", new HostSettingsStore(path).LoadSettings().CloudSync.Account);
+        Assert.Equal(new[] { path }, Directory.GetFiles(_directory));
+    }
+
+    [Fact]
     public void SideSettingsDefaultAndSurviveBridgeAndDockWrites()
     {
         Directory.CreateDirectory(_directory);

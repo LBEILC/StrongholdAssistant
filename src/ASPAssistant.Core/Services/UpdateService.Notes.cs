@@ -20,7 +20,7 @@ public partial class UpdateService
             var count = 0;
             while (count < bytes.Length)
             {
-                var read = await stream.ReadAsync(bytes.AsMemory(count), ct);
+                var read = await ReadWithTimeoutAsync(stream, bytes.AsMemory(count), ct);
                 if (read == 0) break;
                 count += read;
             }

@@ -10,6 +10,30 @@ public sealed class PlazaTests : IDisposable
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
 
     [Fact]
+    public async Task LogoutWithLockedProfileDeletesTokenAndDefersCleanupUntilStartup()
+    {
+        var api = await CreateApi();
+        var store = new PlazaTokenStore(_directory);
+        store.Save("test-token");
+        var profile = Path.Combine(_directory, "PlazaWebView2");
+        Directory.CreateDirectory(profile);
+        var marker = Path.Combine(_directory, "plaza-cleanup-pending");
+        using (var locked = new FileStream(Path.Combine(profile, "Cookies"), FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+        {
+            Assert.Null(await api.InvokeAsync("plazaLogout", []));
+            Assert.Null(store.Read());
+            Assert.False(File.Exists(Path.Combine(_directory, "plaza-token.bin")));
+            Assert.True(File.Exists(marker));
+            Assert.True(Directory.Exists(profile));
+            await CreateApi();
+            Assert.True(File.Exists(marker));
+        }
+        await CreateApi();
+        Assert.False(Directory.Exists(profile));
+        Assert.False(File.Exists(marker));
+    }
+
+    [Fact]
     public async Task TokenIsEncryptedAndLogoutRemovesIt()
     {
         var api = await CreateApi();
@@ -22,7 +46,11 @@ public sealed class PlazaTests : IDisposable
         var backup = Path.Combine(_directory, "backup.json");
         await api.ExportBackupAsync(backup);
         Assert.DoesNotContain(token, await File.ReadAllTextAsync(backup));
+        var profile = Path.Combine(_directory, "PlazaWebView2", "Default", "Network");
+        Directory.CreateDirectory(profile);
+        await File.WriteAllTextAsync(Path.Combine(profile, "Cookies"), "test-cookie");
         await api.InvokeAsync("plazaLogout", []);
+        Assert.False(Directory.Exists(Path.Combine(_directory, "PlazaWebView2")));
         Assert.Null(await api.InvokeAsync("plazaToken", []));
         await File.WriteAllTextAsync(Path.Combine(_directory, "plaza-token.bin"), "invalid ciphertext");
         Assert.Null(store.Read());

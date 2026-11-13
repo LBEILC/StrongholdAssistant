@@ -30,6 +30,7 @@ public sealed partial class HostApi
         List<CovenantInfo> covenants, JsonElement catalog)
     {
         DataDirectory = Path.GetFullPath(userDirectory);
+        CleanupPlazaProfile();
         _diagnostics = new DiagnosticsStore(DataDirectory);
         _sessionPath = Path.Combine(DataDirectory, "session.json");
         _lineups = new LineupStore(Path.Combine(userDirectory, "lineups"));
@@ -366,7 +367,7 @@ public sealed partial class HostApi
             case "sklandHistory": return await SklandHistoryAsync(args.Length > 0 && args[0].ValueKind == JsonValueKind.Object
                 && args[0].TryGetProperty("silent", out var silent) && silent.GetBoolean());
             case "plazaToken": return new PlazaTokenStore(DataDirectory).Read();
-            case "plazaLogout": new PlazaTokenStore(DataDirectory).Delete(); return null;
+            case "plazaLogout": await PlazaLogoutAsync(); return null;
             case "catalog": return Catalog;
             case "settings": return Settings;
             case "saveSettings": SaveSettings(Read<SettingsDto>(0)); return null;

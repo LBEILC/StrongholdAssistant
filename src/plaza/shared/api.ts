@@ -164,7 +164,7 @@ export interface LikeResponse {
 
 /**
  * POST /api/posts/:id/import：记一次导入（不用登录）。device 是助手或网站本地生成并长期保存的随机 id，
- * 同一 device 对同一帖子只算一次。返回最新的 { imports }
+ * 同一 device 或同一当天来源对同一帖子只算一次。返回最新的 { imports }
  */
 export interface ImportRequest {
   device: string
@@ -266,10 +266,11 @@ export interface CloudPrefs {
 
 /**
  * POST /api/sync（要登录，不要求昵称）：一次请求同时上传和下载。
- * - lineups：本地自上次同步以来改过、删过的；服务端逐条比 updatedAt，不比云端旧的收下（相同也收）。
+ * - lineups：本地自上次同步以来改过、删过的；服务端逐条比 updatedAt；非删除记录若云端在 since 之后改变且 updatedAt 不同则返回冲突，since 为 null 时已有且时间不同也冲突。删除仅对已有 id 按 updatedAt 比较。
  * - prefs：本地改过才带；同样比 updatedAt。
  * - since：上次同步返回的 now；第一次同步（或网站打开「我的阵容」）为 null，返回全部（不含墓碑）。
  * 限制：每个账号最多 300 套阵容（不算墓碑，超了 400 + `too_many`），单套 JSON 最多 64 KB（400 + `too_large`），
+ * 请求体最多 2 MB、lineups 最多 400 条、id 最长 64（超限 too_large），id 仅允许字母、数字、下划线和连字符。
  * 每分钟最多 30 次（rate_limited）。注销账号时云端数据一起删除
  */
 export interface SyncRequest {
@@ -280,7 +281,7 @@ export interface SyncRequest {
 export interface SyncResponse {
   /** since 之后云端变了的（别的设备推的、墓碑），不含这次被收下的 */
   lineups: CloudLineup[]
-  /** 这次推上来但云端更新、没收下的：给的是云端那份 */
+  /** 这次推上来但因云端时间更新或 since 后发生修改而没收下的：给的是云端那份 */
   conflicts: CloudLineup[]
   /** 云端的偏好比这次推上来的新、或 since 之后变过时给出，否则为 null */
   prefs: CloudPrefs | null
@@ -317,7 +318,7 @@ export interface IncomeReport {
 
 /**
  * GET /api/income-table（不用登录，可缓存 1 小时）：当期指纹的资金表。每组（mode + solo + round）
- * 取「至少 3 个不同 device 报过的最小值」，不够 3 个的组不给。一天汇总一次
+ * 取「至少 3 个不同 device 且至少 3 个不同来源报过的最小值」，不够 3 个的组不给。一天汇总一次
  */
 export interface IncomeTable {
   fingerprint: number

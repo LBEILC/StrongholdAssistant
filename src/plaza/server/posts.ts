@@ -1,7 +1,7 @@
 import type { AdminPost, Post, PostLineup } from '../shared/api'
 import { catalog, decodeLineup, fingerprint } from './catalog'
 import { authenticate, type Context } from './auth'
-import { body, dayStart, description, empty, fail, hasBlocked, hash, iso, json, mask, needNickname, stmt, string, type Env } from './common'
+import { body, dayStart, description, empty, fail, hasBlocked, hash, ipSource, iso, json, mask, needNickname, stmt, string, type Env } from './common'
 
 export interface PostRow {
  id: string; user_id: string; code: string; fingerprint: number; lineup: string; description: string
@@ -119,7 +119,7 @@ export async function posts(ctx: Context, path: string) {
   if (p.fingerprint !== fingerprint) fail(400, 'season_mismatch', '这个帖子来自其他赛季，不能导入。')
   const device = string((await body(request)).device)
   if (!device.trim() || device.length > 256) fail(400, 'bad_device', '设备标识不正确。')
-  await stmt(env, 'INSERT OR IGNORE INTO imports VALUES(?,?)', id, await hash(device)).run()
+  await stmt(env, 'INSERT OR IGNORE INTO imports(post_id,device,source) VALUES(?,?,?)', id, await hash(device), await ipSource(env, request, 'import')).run()
   return json({ imports: (await getPost(env, id, u?.id ?? null))!.imports })
  }
  if (!u) fail(401, 'unauthorized', '请先登录。')

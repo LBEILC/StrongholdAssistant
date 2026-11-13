@@ -58,6 +58,37 @@
     app.checkUpdate()
   }
   const toGithub = () => setUpdateSource('github')
+
+  // 更新代理：'' 跟随系统；手动填 http:// 或 socks5:// 地址，填好（失焦或回车）立刻检查一次，顺便试通代理
+  const validProxy = (v: string) => {
+    const m = /^(http|socks5):\/\/[^\s/:@]+:(\d{1,5})$/i.exec(v)
+    return !!m && +m[2] >= 1 && +m[2] <= 65535
+  }
+  let proxyManual = $state(false)
+  let proxyDraft = $state('')
+  $effect(() => {
+    proxyDraft = app.settings.updateProxy
+    proxyManual = app.settings.updateProxy !== ''
+  })
+  const proxyBad = $derived(proxyDraft.trim() !== '' && !validProxy(proxyDraft.trim()))
+  const saveProxy = async (v: string) => {
+    if (v === app.settings.updateProxy) return
+    app.settings.updateProxy = v
+    await app.saveSettings()
+    app.checkUpdate()
+  }
+  const setProxyManual = (on: boolean) => {
+    proxyManual = on
+    if (!on) {
+      proxyDraft = ''
+      saveProxy('')
+    }
+  }
+  const commitProxy = () => {
+    const v = proxyDraft.trim()
+    proxyDraft = v
+    if (v === '' || validProxy(v)) saveProxy(v)
+  }
   const expiry = $derived.by(() => {
     if (!u.cdkExpiresAt) return null
     const d = new Date(u.cdkExpiresAt)
@@ -400,7 +431,7 @@
       <div class="dataops">
         <button class="btn" disabled={diagBusy} onclick={exportDiag}><Icon name="download" size={14} />{diagBusy ? '正在打包…' : '导出诊断包'}</button>
       </div>
-      <p class="note">把日志、最近几次识别失败的截图和原因打成一个 zip，发到 QQ 群或 GitHub Issues。不含账号、登录凭据和 CDK。</p>
+      <p class="note">把日志、最近几次识别失败的截图和原因打成一个 zip，发到 QQ 群或 GitHub Issues。截图是识别失败时的游戏画面，联机时可能带着队友昵称；不含账号、登录凭据和 CDK。</p>
       {#if diagMsg}<p class="dmsg" class:bad={diagMsg.bad}>{diagMsg.text}</p>{/if}
     </section>
 
@@ -468,6 +499,29 @@
             国内下载更快，需要 CDK；不填也能检查更新，下载走 GitHub。
           {/if}
           <button class="link" onclick={() => api.openUrl(MIRROR)}>{expiry ? '续费 CDK' : '获取 CDK'}</button>
+        </p>
+      {/if}
+      <div class="usrc">
+        <span class="hkl">代理</span>
+        <div class="scales two">
+          <button class:on={!proxyManual} onclick={() => setProxyManual(false)}>跟随系统</button>
+          <button class:on={proxyManual} onclick={() => setProxyManual(true)}>手动</button>
+        </div>
+      </div>
+      {#if proxyManual}
+        <div class="cdk">
+          <input
+            class:bad={proxyBad}
+            bind:value={proxyDraft}
+            placeholder="http://127.0.0.1:7890"
+            spellcheck="false"
+            autocomplete="off"
+            onblur={commitProxy}
+            onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </div>
+        <p class="note" class:bad={proxyBad}>
+          {proxyBad ? '格式是 http://地址:端口 或 socks5://地址:端口' : '检查和下载更新走这个代理，支持 http 和 socks5。'}
         </p>
       {/if}
       <button class="logbtn" onclick={() => (app.changelogOpen = true)}>
@@ -823,6 +877,9 @@
   }
   .cdk input:focus {
     box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .cdk input.bad {
+    box-shadow: inset 0 0 0 1px var(--gold);
   }
   .cdk input::placeholder {
     font-family: var(--font-ui);

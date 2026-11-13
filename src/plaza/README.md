@@ -59,13 +59,16 @@ npm run build
    npx wrangler d1 migrations apply stronghold-plaza --remote
    ```
 
-3. 设置三个机密（命令交互输入，不写进命令行或文件提交）：
+3. 设置四个机密（命令交互输入，不写进命令行或文件提交）：
 
    ```powershell
    npx wrangler pages secret put RESEND_API_KEY --project-name stronghold-plaza
    npx wrangler pages secret put TURNSTILE_SECRET --project-name stronghold-plaza
    npx wrangler pages secret put CODE_PEPPER --project-name stronghold-plaza
+   npx wrangler pages secret put IP_SECRET --project-name stronghold-plaza
    ```
+
+   `IP_SECRET` 使用独立的高熵随机密钥，用于按用途和 UTC 日期生成 IP 的 HMAC；部署新代码前设置该密钥并应用 `0005_server_privacy.sql`（增加来源列及导入唯一索引，清空旧资金汇总和限额记录，旧样本没有来源，按每个编号各算一个来源，现有资金表不受影响）。迁移后立刻部署新代码：旧代码写资金样本和导入记录时列数对不上，中间这段时间资金上报和导入计数会失败。
 
    `CODE_PEPPER` 用独立的高熵随机字符串，长期保存；改变它会让现有验证码和登录凭据失效。`MAIL_FROM`、`ADMIN_EMAILS`、`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD` 含域名和邮箱，同样用 `pages secret put` 设置，不写进 `wrangler.toml`（仓库会公开）。账号下有多个 Cloudflare 账户时，命令前设置环境变量 `CLOUDFLARE_ACCOUNT_ID`。团队域名不带协议，AUD 为下一步创建的 Access 应用标识。按需扩充 `ALLOWED_ORIGINS`；同源请求自动允许。
 
@@ -88,7 +91,7 @@ npm run build
 - 作者删除帖子使用 deleted 状态；注销账号物理删除其帖子和点赞，清除邮箱、昵称、验证码记录及全部会话。
 - 精选排序把精选帖子置顶，其余按新到旧；热度相同按时间和 id 排序。游标绑定筛选条件。
 - 重发同一分享码只更新简介，不恢复可见状态，不增加发布次数。
-- 导入设备 id 存 SHA-256 哈希。点赞和导入通过唯一键去重，数据库触发器维护计数。
+- 导入设备 id 存 SHA-256 哈希，同一设备或同一当天来源对同一帖子只计一次。资金及导入的来源存按用途、UTC 日期隔离的 IP HMAC；资金汇总要求至少三个编号及三个来源。验证码和密码登录记录在发码或密码登录时清理超过 30 天的行，资金限额记录在汇总时清理超过两天的行。数据库触发器维护点赞和导入计数。
 - 未指定的请求、权限、网络错误使用简短中文提示。上述待设计确认的产品约定已在代码标注 `TODO(design)`。
 
 ## 依赖

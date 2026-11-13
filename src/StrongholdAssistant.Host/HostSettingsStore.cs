@@ -24,6 +24,7 @@ public sealed class HostSettingsStore(string path)
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
             UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",
+            UpdateProxy = json["updateProxy"]?.GetValue<string>() ?? "",
             MirrorChyanCdk = json["mirrorChyanCdk"]?.GetValue<string>() ?? "",
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
@@ -64,6 +65,12 @@ public sealed class HostSettingsStore(string path)
     public void SaveSettings(SettingsDto settings)
     {
         ValidateSides(settings);
+        var proxy = settings.UpdateProxy;
+        if (proxy != "" && (proxy is null
+            || !System.Text.RegularExpressions.Regex.IsMatch(proxy, @"\A(?:http|socks5)://(?:\[[^\]]+\]|[^\s/:@?#\\]+):[0-9]+\z", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            || !Uri.TryCreate(proxy, UriKind.Absolute, out var uri)
+            || uri.Host.Length == 0 || uri.Port is < 1 or > 65535))
+            throw new ArgumentException("代理地址格式不对。");
         Merge(settings);
     }
     public void SaveDock(DockSettings dock) => Merge(dock);
@@ -74,6 +81,7 @@ public sealed class HostSettingsStore(string path)
         foreach (var property in JsonSerializer.SerializeToNode(value, HostApi.JsonOptions)!.AsObject())
             json[property.Key] = property.Value?.DeepClone();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, json.ToJsonString(HostApi.JsonOptions));
+        File.WriteAllText(path + ".tmp", json.ToJsonString(HostApi.JsonOptions));
+        File.Move(path + ".tmp", path, true);
     }
 }

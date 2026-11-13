@@ -18,13 +18,16 @@ public sealed partial class HostApi
         SettingsDto Settings, LineupDto[] Lineups)
     {
         public MatchRecord[] History { get; init; } = [];
+        public string[] DeletedSklandIds { get; init; } = [];
     }
 
     public async Task ExportBackupAsync(string path)
     {
         var version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion.Split('+')[0];
-        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings with { MirrorChyanCdk = "" }, await LineupsAsync()) { History = History() };
+        var backup = new BackupDocument(BackupFormat, 1, version, DateTime.UtcNow, Settings with
+        { MirrorChyanCdk = "", UpdateProxy = "", CloudSync = new(false, null, null, null, []) }, await LineupsAsync())
+        { History = History(), DeletedSklandIds = DeletedSklandIds() };
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(backup, JsonOptions));
     }
 
@@ -39,7 +42,8 @@ public sealed partial class HostApi
                 || backup.Settings is null || backup.Lineups is null)
                 throw new ArgumentException(InvalidBackup);
             ValidateSettings(backup.Settings);
-            if (backup.History is null || backup.History.Any(r => r is null || string.IsNullOrEmpty(r.Id)
+            if (backup.DeletedSklandIds is null || backup.DeletedSklandIds.Any(string.IsNullOrEmpty)
+                || backup.History is null || backup.History.Any(r => r is null || string.IsNullOrEmpty(r.Id)
                 || !DateTimeOffset.TryParse(r.Time, out _) || (r.Local is null && r.Skland is null)
                 || r.Local is { } local && (local.Rounds is null || local.Covenants is null || local.BannedOperators is null
                     || !DateTimeOffset.TryParse(local.LastSeenAt, out _))))
@@ -73,14 +77,14 @@ public sealed partial class HostApi
         if (mode == "replace")
             foreach (var lineup in await _lineups.LoadAllAsync()) await _lineups.DeleteAsync(lineup.Id);
         foreach (var input in backup.Lineups)
-            await _lineups.SaveAsync(ApplyLineup(input, new Lineup { Id = input.Id }), preserveUpdatedAt: true);
-        MergeHistory(backup.History);
+            await _lineups.SaveAsync(ApplyLineup(input, new Lineup { Id = input.Id }));
+        MergeHistory(backup.History, backup.DeletedSklandIds);
         var session = await SessionAsync();
         if (session.TargetLineupId is not null && !(await LineupsAsync()).Any(l => l.Id == session.TargetLineupId))
             await SaveSessionAsync(session with { TargetLineupId = null });
         else
             await RefreshTrackingAsync();
-        SaveSettings(mode == "replace" ? backup.Settings with { MirrorChyanCdk = Settings.MirrorChyanCdk } : Settings with
+        SaveSettings(mode == "replace" ? backup.Settings with { MirrorChyanCdk = Settings.MirrorChyanCdk, UpdateProxy = Settings.UpdateProxy, CloudSync = Settings.CloudSync } : Settings with
         {
             FocusCovenants = Settings.FocusCovenants.Union(backup.Settings.FocusCovenants).ToArray(),
             FocusOperators = Settings.FocusOperators.Union(backup.Settings.FocusOperators).ToArray()

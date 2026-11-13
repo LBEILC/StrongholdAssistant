@@ -192,6 +192,7 @@ let settings: Settings = {
   autoCheckUpdate: true,
   updateSource: 'github',
   mirrorChyanCdk: '',
+  updateProxy: '',
   uiScale: 'auto',
   alwaysOnTop: false,
   followGame: true,

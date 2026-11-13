@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
         _ = _api.DownloadIncomeTableAsync();
         _api.DialogOwner = this;
+        _api.UpdateReady += () => Dispatcher.BeginInvoke(LaunchPreparedUpdate);
         InitializeWindow();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(userDirectory, "WebView2"));
         // 页面加载前的底色和界面一致，避免白屏
@@ -140,7 +141,6 @@ public partial class MainWindow : Window
             if (request.Method == "catalog" && !_catalogReported)
             {
                 _catalogReported = true;
-                App.StartupResult.ReportReady();
                 var catalog = _api.Catalog;
                 Trace.WriteLine($"消息桥请求 id={id}, method=catalog; 已发送响应: covenants={catalog.GetProperty("covenants").GetArrayLength()}, " +
                     $"ids={catalog.GetProperty("covenants").EnumerateArray().Count(c => !string.IsNullOrEmpty(c.GetProperty("id").GetString()))}, " +
@@ -160,23 +160,38 @@ public partial class MainWindow : Window
         if (windowCommand == "close") Close();
         if (windowCommand == "collapse") SetCollapsed(true);
         if (windowCommand == "expand") SetCollapsed(false);
-        if (windowCommand == "ready") ShowUi();
+        if (windowCommand == "ready" && !_uiReady)
+        {
+            ShowUi();
+            ReportStartupReady(windowCommand, App.StartupResult);
+        }
         if (windowCommand == "workbench") SetWorkbench(true);
         if (windowCommand == "sidebar") SetWorkbench(false);
+    }
+
+    private void LaunchPreparedUpdate()
+    {
         if (_api.UpdatePrepared)
         {
             try
             {
-                if (_api.Updater.LaunchPendingUpdateScript()) Close();
+                if (!_api.Updater.LaunchPendingUpdateScript()) throw new IOException("更新脚本不存在");
+                Close();
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
             {
+                _api.ClearPreparedUpdate();
                 Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
                 {
                     @event = "update", data = new { state = "failed", message = "无法启动更新程序，请重试。" }
                 }, HostApi.JsonOptions));
             }
         }
+    }
+
+    internal static void ReportStartupReady(string? windowCommand, ASPAssistant.Core.Services.UpdateStartupNotification result)
+    {
+        if (windowCommand == "ready" && result.IsPending) result.ReportReady();
     }
 
     // 网页挂载完成：把骨架换成网页（两者都只有同样的标题栏），网页变为可见后自己播入场动画

@@ -2,6 +2,7 @@
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
 using System.IO.Compression;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -32,7 +33,8 @@ public record UpdateInfo(
 public class UpdateIntegrityException(string message) : Exception(message);
 
 public partial class UpdateService(Version? currentVersion = null, string? appDirectory = null,
-    string? feedUrl = null, string? mirrorChyanUrl = null, HttpClient? httpClient = null)
+    string? feedUrl = null, string? mirrorChyanUrl = null, HttpClient? httpClient = null,
+    TimeSpan? readTimeout = null)
 {
     private readonly string _appDirectory = Path.GetFullPath(appDirectory ?? AppContext.BaseDirectory).TrimEnd('\\', '/');
     public bool IsInstalled => File.Exists(Path.Combine(_appDirectory, "installed.json"));
@@ -49,12 +51,30 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     private const string ChecksumsAssetName = "SHA256SUMS.txt";
     private const string AppExecutableName = "StrongholdAssistant.exe";
 
-    private readonly HttpClient _http = httpClient ?? DefaultHttp;
-    private static readonly HttpClient DefaultHttp = new()
+    public Func<string> GetUpdateProxy { get; set; } = () => "";
+    private string? _clientProxy;
+    private HttpClient? _client;
+    private HttpClient _http
     {
-        Timeout = TimeSpan.FromSeconds(30),
-        DefaultRequestHeaders = { { "User-Agent", "StrongholdAssistant-Updater/1.0" } }
-    };
+        get
+        {
+            if (httpClient is not null) return httpClient;
+            var proxy = GetUpdateProxy();
+            if (_client is null || _clientProxy != proxy)
+            {
+                // 已发出的请求继续使用旧客户端；下一次请求读取最新设置。
+                var handler = new HttpClientHandler();
+                if (proxy != "") handler.Proxy = new WebProxy(proxy);
+                _client = new HttpClient(handler)
+                {
+                    Timeout = TimeSpan.FromSeconds(30),
+                    DefaultRequestHeaders = { { "User-Agent", "StrongholdAssistant-Updater/1.0" } }
+                };
+                _clientProxy = proxy;
+            }
+            return _client;
+        }
+    }
 
     public Version CurrentVersion =>
         currentVersion ?? typeof(UpdateService).Assembly.GetName().Version!;
@@ -89,7 +109,9 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         CdkProblem = false;
         try
         {
-            var release = await _http.GetFromJsonAsync<GitHubRelease>(FeedUrl, ct);
+            using var response = await _http.GetAsync(FeedUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+            var release = JsonSerializer.Deserialize<GitHubRelease>(await ReadBodyAsync(response.Content, ct));
             if (release is null || string.IsNullOrEmpty(release.TagName))
             {
                 LastError = "更新源返回的数据不完整";
@@ -126,7 +148,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            LastError = DescribeError(ex);
+            LastError = DescribeError(ex, GetUpdateProxy());
             return null;
         }
         catch (InvalidDataException ex)
@@ -170,7 +192,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             var buffer = new byte[65536];
             long downloaded = 0;
             int bytesRead;
-            while ((bytesRead = await httpStream.ReadAsync(buffer, ct)) > 0)
+            while ((bytesRead = await ReadWithTimeoutAsync(httpStream, buffer, ct)) > 0)
             {
                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                 downloaded += bytesRead;
@@ -194,7 +216,9 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         {
             if (string.IsNullOrWhiteSpace(info.ChecksumsUrl))
                 throw IntegrityFailure($"发布 {info.TagName} 缺少 {ChecksumsAssetName}，已停止更新");
-            var checksumsText = await _http.GetStringAsync(info.ChecksumsUrl, ct);
+            using var response = await _http.GetAsync(info.ChecksumsUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+            var checksumsText = Encoding.UTF8.GetString(await ReadBodyAsync(response.Content, ct));
             expectedHash = ParseChecksum(checksumsText, info.AssetName)
                 ?? throw IntegrityFailure($"校验文件中没有 {info.AssetName} 的记录，已停止更新");
         }
@@ -272,6 +296,42 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         return true;
     }
 
+    public void ClearPendingUpdate() => PendingScriptPath = null;
+
+    private async Task<int> ReadWithTimeoutAsync(Stream stream, Memory<byte> buffer, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(readTimeout ?? TimeSpan.FromSeconds(30));
+        try { return await stream.ReadAsync(buffer, timeout.Token); }
+        catch (OperationCanceledException ex) { throw new TaskCanceledException("连接更新源超时", ex); }
+    }
+
+    private async Task<byte[]> ReadBodyAsync(HttpContent content, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct);
+        using var body = new MemoryStream();
+        var buffer = new byte[65536];
+        int count;
+        while ((count = await ReadWithTimeoutAsync(stream, buffer, ct)) > 0)
+            body.Write(buffer, 0, count);
+        return body.ToArray();
+    }
+
+    public void CleanupStaleStagingDirs()
+    {
+        try
+        {
+            var parent = Path.GetDirectoryName(_appDirectory)!;
+            foreach (var directory in Directory.GetDirectories(parent, "StrongholdAssistant-Staging-*"))
+            {
+                if (string.Equals(directory, _appDirectory, StringComparison.OrdinalIgnoreCase)) continue;
+                try { Directory.Delete(directory, true); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
+
     /// <summary>尽力清理以前遗留的更新临时目录；失败不影响本次更新。</summary>
     private static void CleanupStaleUpdateDirs()
     {
@@ -304,7 +364,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     }
 
     /// <summary>把异常翻译成用户和日志都能看懂的短句。</summary>
-    public static string DescribeError(Exception ex) => ex switch
+    public static string DescribeError(Exception ex, string updateProxy = "") => ex switch
     {
         UpdateIntegrityException => ex.Message,
         TaskCanceledException => "连接更新源超时",
@@ -312,6 +372,8 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             => "更新源拒绝了请求（可能是 GitHub 限流）",
         HttpRequestException http when http.StatusCode is not null
             => $"更新源返回 HTTP {(int)http.StatusCode}",
+        HttpRequestException when updateProxy != ""
+            => $"无法通过代理 {new Uri(updateProxy).Host}:{new Uri(updateProxy).Port} 连接更新源，检查代理软件开着没有、地址对不对",
         HttpRequestException => "无法连接更新源（网络受限或代理拦截）",
         IOException io when io.Message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase)
             => "文件正被其他程序占用（可能上次更新残留），请关闭杀毒/资源管理器预览后重试",
@@ -520,10 +582,12 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    }");
         sb.AppendLine("    if ($renamedOld) {");
         sb.AppendLine("        try {");
-        sb.AppendLine("            if (Test-Path -LiteralPath $appDir) { Remove-Item -LiteralPath $appDir -Recurse -Force }");
+        sb.AppendLine("            if (Test-Path -LiteralPath $appDir) { Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $stagingDir) }");
         sb.AppendLine("            Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir)");
         sb.AppendLine("            $renamedOld = $false");
         sb.AppendLine("            Write-Log 'rolled back to previous version'");
+        sb.AppendLine("            try { if (Test-Path -LiteralPath $stagingDir) { Remove-Item -LiteralPath $stagingDir -Recurse -Force } }");
+        sb.AppendLine("            catch { Write-Log \"failed version kept at $stagingDir ($($_.Exception.Message))\" }");
         sb.AppendLine("        } catch {");
         sb.AppendLine("            Write-Log \"ROLLBACK FAILED: $($_.Exception.Message)\"");
         sb.AppendLine("        }");

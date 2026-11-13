@@ -34,10 +34,14 @@ public sealed record SessionDto(string? TargetLineupId, string[] Owned, string[]
     public string[] TrackedEquipment { get; init; } = [];
 }
 public sealed record CloudDeletedLineup(string Id, string At);
-public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedAt, string? PrefsAt, CloudDeletedLineup[] Deleted);
+public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedAt, string? PrefsAt, CloudDeletedLineup[] Deleted)
+{
+    public string? Account { get; init; }
+}
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
     public string UpdateSource { get; init; } = "github";
+    public string UpdateProxy { get; init; } = "";
     public string MirrorChyanCdk { get; init; } = "";
     public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
     public string GameSource { get; init; } = "auto";

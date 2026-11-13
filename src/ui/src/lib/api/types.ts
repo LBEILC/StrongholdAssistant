@@ -418,6 +418,11 @@ export interface Settings {
   /** Mirror酱 CDK（v0.7.2，默认 ''）。宿主不写日志、不进诊断包；导出备份时置空，导入时保留本机的 */
   mirrorChyanCdk: string
   /**
+   * 更新用的代理（v0.7.6，默认 ''）。'' 跟随系统代理；否则是 'http://主机:端口' 或 'socks5://主机:端口'（不带账号密码）。
+   * 只作用于检查和下载更新（GitHub、Mirror酱），改了立即生效。宿主存之前校验格式；导出备份时置空，导入时保留本机的
+   */
+  updateProxy: string
+  /**
    * 界面大小（侧栏整体缩放）。'auto' 跟随游戏画面：缩放 = 游戏客户区高度（DIP）/ 1080，限制在 1–2；
    * 数字为固定倍数，取 0.5、0.75、1、1.25、1.5、1.75、2（0.5、0.75 是 v0.7.4 加的，给系统缩放开得高的屏幕）。侧栏宽度范围也按同样倍数缩放。
    */
@@ -483,6 +488,8 @@ export interface Settings {
 /** 云同步在本机记的状态（v0.7.0），只有界面读写 */
 export interface CloudSyncState {
   enabled: boolean
+  /** 这份同步状态属于哪个广场账号（Me.id，v0.7.6）；和当前登录的不一样就从头合并。null = 旧版本没记 */
+  account?: string | null
   /** 上次同步服务端返回的 now；下次只下载这之后变了的。null = 还没同步过 */
   since: string | null
   /** 上次上传成功时的本机时间；updatedAt 比它新的阵容下次要上传。null = 全部上传 */

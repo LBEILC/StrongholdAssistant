@@ -15,6 +15,74 @@ public sealed class EconomyHistoryTests : IDisposable
     }
     private static void Read(HostApi api, int round, int? money) => api.ObserveEconomy(new(round, money, 1, 5, true));
 
+    private static SklandRecord Skland(string id) => new(id, null, [], [], true,
+        "2026-11-12T01:00:00Z", "2026-11-12T00:00:00Z", 0, 0, [], [], "SINGLE", "HARD", 15, "1");
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HistoryReadsBothFormatsAndSavesArrayWithSeparateDeletedIds(bool objectFormat)
+    {
+        Directory.CreateDirectory(_directory);
+        var record = new MatchRecord("kept", "2026-11-12T00:00:00Z", null, Skland("kept"));
+        var path = Path.Combine(_directory, "history.json");
+        var deletedPath = Path.Combine(_directory, "history-deleted-skland.json");
+        var records = new[] { record };
+        await File.WriteAllTextAsync(path, objectFormat
+            ? JsonSerializer.Serialize(new { records, deletedSklandIds = new[] { "deleted" } }, HostApi.JsonOptions)
+            : JsonSerializer.Serialize(records, HostApi.JsonOptions));
+        if (!objectFormat) await File.WriteAllTextAsync(deletedPath, "[\"deleted\"]");
+
+        var api = await CreateApi();
+        Assert.Equal("kept", Assert.Single(api.History()).Id);
+        Assert.Equal("kept", Assert.Single(api.SaveSklandRecords([Skland("deleted")])).Id);
+        Assert.Equal("kept", Assert.Single(JsonSerializer.Deserialize<MatchRecord[]>(await File.ReadAllTextAsync(path), HostApi.JsonOptions)!).Id);
+        Assert.Equal(new[] { "deleted" }, JsonSerializer.Deserialize<string[]>(await File.ReadAllTextAsync(deletedPath)));
+        api.DeleteRecord("kept");
+        Assert.Equal(new[] { "deleted", "kept" }, JsonSerializer.Deserialize<string[]>(await File.ReadAllTextAsync(deletedPath))!.Order().ToArray());
+        Assert.Empty((await CreateApi()).SaveSklandRecords([Skland("deleted"), Skland("kept")]));
+        Assert.False(File.Exists(path + ".tmp"));
+        Assert.False(File.Exists(deletedPath + ".tmp"));
+    }
+
+    [Fact]
+    public async Task DeletedSklandRecordStaysDeletedAfterReloadAndBackupImport()
+    {
+        var api = await CreateApi();
+        var record = Skland("deleted");
+        api.DeleteRecord(Assert.Single(api.SaveSklandRecords([record])).Id);
+        api = await CreateApi();
+        Assert.Empty(api.SaveSklandRecords([record]));
+        string backup = Path.Combine(_directory, "backup.json");
+        await api.ExportBackupAsync(backup);
+        var other = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), Path.Combine(_directory, "other"));
+        other.SaveSklandRecords([record]);
+        await other.ImportDataAsync((await other.ReadBackupAsync(backup)).Token, "merge");
+        Assert.Empty(other.SaveSklandRecords([record]));
+    }
+
+    [Fact]
+    public async Task BackupMergeUsesSklandIdentityAndFillsMissingLocalData()
+    {
+        var api = await CreateApi();
+        var local = Assert.Single(api.SaveSklandRecords([Skland("same")]));
+        var details = new LocalMatchRecord(null, true, null, [], [], null, null, [], 15, local.Time);
+        string backup = Path.Combine(_directory, "backup.json");
+        await api.ExportBackupAsync(backup);
+        var root = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(backup))!;
+        root["history"] = JsonSerializer.SerializeToNode(new[] { local with { Id = "another-device", Local = details } }, HostApi.JsonOptions);
+        await File.WriteAllTextAsync(backup, root.ToJsonString());
+        // 原数组格式仍能读取，下一次保存时迁移。
+        await File.WriteAllTextAsync(Path.Combine(_directory, "history.json"), JsonSerializer.Serialize(new[] { local }, HostApi.JsonOptions));
+        api = await CreateApi();
+        await api.ImportDataAsync((await api.ReadBackupAsync(backup)).Token, "merge");
+        var merged = Assert.Single((await CreateApi()).History());
+        Assert.Equal(local.Id, merged.Id);
+        Assert.Equal(local.Time, merged.Time);
+        Assert.Equal("same", merged.Skland!.Id);
+        Assert.Equal(15, merged.Local!.LastRound);
+    }
+
     [Fact]
     public async Task LearnsMinimumSubtractsIncomeExcludesEconomicStrategiesAndPersists()
     {

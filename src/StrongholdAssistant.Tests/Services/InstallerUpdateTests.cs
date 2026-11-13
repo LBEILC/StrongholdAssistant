@@ -25,8 +25,11 @@ public class InstallerUpdateTests
             if (installed)
             {
                 script.Should().Contain("/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER");
-                script.Should().Contain("/DIR=\"").And.Contain("if ($code -ne 0) { exit $code }");
-                script.IndexOf("WaitForExit()", StringComparison.Ordinal).Should().BeLessThan(script.IndexOf("$installer =", StringComparison.Ordinal));
+                script.Should().Contain("/DIR=\"").And.Contain("if ($code -ne 0) { throw");
+                script.IndexOf("WaitForExit(30000)", StringComparison.Ordinal).Should().BeLessThan(script.IndexOf("$installer =", StringComparison.Ordinal));
+                script.Should().Contain("WaitForExit(30000)").And.Contain("MessageBox]::Show")
+                    .And.Contain("卫戍协议助手更新没有完成。重新运行这个安装包就能修好：$setupPath")
+                    .And.Contain(@"$setupPath = 'C:\temp\setup.exe'").And.NotContain("Remove-Item");
                 script.Should().NotContain("Rename-Item");
             }
             else script.Should().Contain("Rename-Item -LiteralPath $appDir");

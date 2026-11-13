@@ -12,12 +12,39 @@ public sealed partial class HostApi
 {
     private readonly object _historyGate = new();
     private List<MatchRecord> _history = [];
+    private HashSet<string> _deletedSklandIds = [];
+    private sealed record HistoryDocument(List<MatchRecord> Records, HashSet<string> DeletedSklandIds);
+
+    private void SaveHistory()
+    {
+        SaveHistoryFile("history-deleted-skland.json", _deletedSklandIds);
+        SaveHistoryFile("history.json", _history);
+    }
+
+    private string[] DeletedSklandIds()
+    {
+        lock (_historyGate) return _deletedSklandIds.ToArray();
+    }
     private string? _activeRecord;
 
     private void LoadHistory()
     {
         var path = Path.Combine(DataDirectory, "history.json");
-        if (File.Exists(path)) _history = JsonSerializer.Deserialize<List<MatchRecord>>(File.ReadAllText(path), JsonOptions)!;
+        if (File.Exists(path))
+        {
+            using var json = JsonDocument.Parse(File.ReadAllText(path));
+            if (json.RootElement.ValueKind == JsonValueKind.Array)
+                _history = json.RootElement.Deserialize<List<MatchRecord>>(JsonOptions)!;
+            else
+            {
+                var history = json.RootElement.Deserialize<HistoryDocument>(JsonOptions)!;
+                _history = history.Records;
+                _deletedSklandIds = history.DeletedSklandIds;
+            }
+        }
+        path = Path.Combine(DataDirectory, "history-deleted-skland.json");
+        if (File.Exists(path))
+            _deletedSklandIds.UnionWith(JsonSerializer.Deserialize<string[]>(File.ReadAllText(path), JsonOptions)!);
         path = Path.Combine(DataDirectory, "base-money.json");
         if (File.Exists(path)) _baseMoney = JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllText(path), JsonOptions)!;
     }
@@ -41,7 +68,7 @@ public sealed partial class HostApi
         var lineup = _trackingTarget is null ? null : JsonSerializer.Deserialize<LineupDto>(JsonSerializer.Serialize(_trackingTarget, JsonOptions), JsonOptions);
         _history.Add(new(_activeRecord, now, new(Match.Mode, Match.Solo, Match.StrategyId,
             Match.Covenants.ToArray(), Match.BannedOperators.ToArray(), Match.BossId, lineup, [], null, now), null));
-        SaveHistoryFile("history.json", _history);
+        SaveHistory();
     }
 
     private void RecordRecognizedMatch(bool newMatch, bool opening)
@@ -56,7 +83,7 @@ public sealed partial class HostApi
             _history[index] = record with { Local = record.Local! with { Mode = Match.Mode, Solo = Match.Solo,
                 StrategyId = Match.StrategyId, Covenants = Match.Covenants.ToArray(), BannedOperators = Match.BannedOperators.ToArray(),
                 BossId = Match.BossId, LastSeenAt = DateTimeOffset.UtcNow.ToString("O") } };
-            SaveHistoryFile("history.json", _history);
+            SaveHistory();
         }
     }
 
@@ -69,7 +96,7 @@ public sealed partial class HostApi
         var rounds = local.Rounds;
         if (start is { } money && !rounds.Any(r => r.Round == round)) rounds = [.. rounds, new(round, money)];
         _history[index] = record with { Local = local with { Rounds = rounds, LastRound = round, LastSeenAt = now } };
-        SaveHistoryFile("history.json", _history);
+        SaveHistory();
     }
 
     public MatchRecord[] History()
@@ -81,8 +108,10 @@ public sealed partial class HostApi
     {
         lock (_historyGate)
         {
+            foreach (var record in _history.Where(r => r.Id == id && r.Skland is not null))
+                _deletedSklandIds.Add(record.Skland!.Id);
             _history.RemoveAll(r => r.Id == id);
-            SaveHistoryFile("history.json", _history);
+            SaveHistory();
         }
     }
 
@@ -96,7 +125,7 @@ public sealed partial class HostApi
         {
             foreach (var skland in records.OrderBy(r => DateTimeOffset.Parse(r.Time)))
             {
-                if (_history.Any(r => r.Skland?.Id == skland.Id)) continue;
+                if (_deletedSklandIds.Contains(skland.Id) || _history.Any(r => r.Skland?.Id == skland.Id)) continue;
                 var end = DateTimeOffset.Parse(skland.Time);
                 // TODO(design): 多条本地记录都满足时间窗时，优先匹配开始时间最近的一条。
                 var match = _history.Where(r => r.Local is { } local && r.Skland is null
@@ -106,18 +135,30 @@ public sealed partial class HostApi
                 if (match is not null) _history[_history.IndexOf(match)] = match with { Skland = skland };
                 else _history.Add(new(Guid.NewGuid().ToString("N"), skland.StartTime, null, skland));
             }
-            SaveHistoryFile("history.json", _history);
+            SaveHistory();
             return History();
         }
     }
 
-    private void MergeHistory(MatchRecord[] records)
+    private void MergeHistory(MatchRecord[] records, string[] deletedSklandIds)
     {
         lock (_historyGate)
         {
+            _deletedSklandIds.UnionWith(deletedSklandIds);
+            _history.RemoveAll(r => r.Skland is { } skland && _deletedSklandIds.Contains(skland.Id));
             foreach (var record in records)
-                if (!_history.Any(r => r.Id == record.Id)) _history.Add(record);
-            SaveHistoryFile("history.json", _history);
+            {
+                if (record.Skland is { } skland && _deletedSklandIds.Contains(skland.Id)) continue;
+                int index = _history.FindIndex(r => r.Id == record.Id
+                    || record.Skland is not null && r.Skland?.Id == record.Skland.Id);
+                if (index < 0) _history.Add(record);
+                else
+                {
+                    var local = _history[index];
+                    _history[index] = local with { Local = local.Local ?? record.Local, Skland = local.Skland ?? record.Skland };
+                }
+            }
+            SaveHistory();
         }
     }
 }

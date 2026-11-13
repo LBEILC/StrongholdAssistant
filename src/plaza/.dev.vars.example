@@ -1,6 +1,7 @@
 RESEND_API_KEY=""
 TURNSTILE_SECRET=""
 CODE_PEPPER=""
+IP_SECRET=""
 MAIL_FROM="卫戍协议助手 <noreply@mail.example.com>"
 ADMIN_EMAILS="admin@example.com"
 # 本地验证后台时填 Access 团队域名（不带 https://）及应用 AUD。

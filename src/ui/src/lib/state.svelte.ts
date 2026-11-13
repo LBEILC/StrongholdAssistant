@@ -458,23 +458,32 @@ export class AppState {
   }
   /** 详情面板里把干员加入 / 移出目标；目标阵容存好了才改追踪 */
   toggleMember(name: string) {
-    const has = this.active!.members.some((m) => m.name === name)
-    const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, members: has ? s.members.filter((m) => m.name !== name) : [...s.members, { name }] }))
-    return this.saveTarget(t, has ? { ops: [name], eqs: [] } : null, has ? null : { ops: [name], eqs: [] })
+    return this.saveTarget(() => {
+      const has = this.active!.members.some((m) => m.name === name)
+      const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, members: has ? s.members.filter((m) => m.name !== name) : [...s.members, { name }] }))
+      return [t, has ? { ops: [name], eqs: [] } : null, has ? null : { ops: [name], eqs: [] }]
+    })
   }
   /** 详情面板、右键菜单里把装备加入 / 移出目标 */
   toggleTargetEq(name: string) {
-    const has = this.active!.equipment.includes(name)
-    const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, equipment: has ? s.equipment.filter((n) => n !== name) : [...s.equipment, name] }))
-    return this.saveTarget(t, has ? { ops: [], eqs: [name] } : null, has ? null : { ops: [], eqs: [name] })
-  }
-  private saveTarget(t: Lineup, drop: { ops: string[]; eqs: string[] } | null, add: { ops: string[]; eqs: string[] } | null) {
-    return this.attempt(async () => {
-      const saved = await api.saveLineup(this.filled(t))
-      this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
-      this.retrack(drop, add)
-      this.save()
+    return this.saveTarget(() => {
+      const has = this.active!.equipment.includes(name)
+      const t = editStage($state.snapshot(this.target!), this.stageIx, (s) => ({ ...s, equipment: has ? s.equipment.filter((n) => n !== name) : [...s.equipment, name] }))
+      return [t, has ? { ops: [], eqs: [name] } : null, has ? null : { ops: [], eqs: [name] }]
     })
+  }
+  // 目标阵容的修改排队：连点时每次都基于上一次存好的阵容，不会用旧快照盖掉前一次
+  private targetQueue: Promise<void> = Promise.resolve()
+  private saveTarget(edit: () => [Lineup, { ops: string[]; eqs: string[] } | null, { ops: string[]; eqs: string[] } | null]) {
+    return (this.targetQueue = this.targetQueue.then(() =>
+      this.attempt(async () => {
+        const [t, drop, add] = edit()
+        const saved = await api.saveLineup(this.filled(t))
+        this.lineups = this.lineups.map((l) => (l.id === saved.id ? saved : l))
+        this.retrack(drop, add)
+        this.save()
+      }),
+    ))
   }
   /** 导入备份后重新读阵容、本局状态和设置 */
   async reloadData() {

@@ -33,9 +33,10 @@ public partial class UpdateService
             + (cdk.Length == 0 ? "" : "&cdk=" + Uri.EscapeDataString(cdk));
         try
         {
-            using var response = await _http.GetAsync(url, ct);
+            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             // 错误响应也有业务码，必须先读取 JSON。
-            var result = await response.Content.ReadFromJsonAsync<MirrorResponse>(ct);
+            var result = JsonSerializer.Deserialize<MirrorResponse>(await ReadBodyAsync(response.Content, ct),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
             if (result is null) throw new JsonException();
             if (result.Code != 0)
             {
@@ -72,7 +73,7 @@ public partial class UpdateService
         {
             LastError = ex is JsonException ? "Mirror酱 返回的不是有效 JSON"
                 : ex is ArgumentOutOfRangeException ? "Mirror酱 返回的数据不完整"
-                : DescribeError(ex).Replace("更新源", "Mirror酱");
+                : DescribeError(ex, GetUpdateProxy()).Replace("更新源", "Mirror酱");
             return null;
         }
     }

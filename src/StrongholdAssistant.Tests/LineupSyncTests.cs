@@ -38,8 +38,10 @@ public sealed class LineupSyncTests : IDisposable
         await api.DeleteLineupAsync(saved.Id);
         api.SaveSettings(api.Settings with { CloudSync = new(false, null, null, null, []) });
         await api.ImportDataAsync((await api.ReadBackupAsync(backup)).Token, "replace");
-        Assert.Equal(Json(saved), Json(Assert.Single(await api.LineupsAsync())));
-        Assert.Equal(Json(cloud), Json(api.Settings.CloudSync));
+        var imported = Assert.Single(await api.LineupsAsync());
+        Assert.True(imported.UpdatedAt > saved.UpdatedAt);
+        Assert.Equal(Json(saved with { UpdatedAt = imported.UpdatedAt }), Json(imported));
+        Assert.Equal(Json(new CloudSyncState(false, null, null, null, [])), Json(api.Settings.CloudSync));
         var badStage = saved.Stages![0] with { Members = [new("卡达") { Equipment = [new("不存在", false)] }] };
         await Assert.ThrowsAsync<ArgumentException>(() => api.SaveLineupAsync(saved with { Stages = [badStage] }));
         await Assert.ThrowsAsync<ArgumentException>(() => api.SaveLineupAsync(saved with
@@ -59,7 +61,7 @@ public sealed class LineupSyncTests : IDisposable
         Assert.Null(old.Members[0].Elite);
         Assert.Null(old.Members[0].Skill);
         Assert.Null(old.Members[0].Module);
-        Assert.Equal("{\"enabled\":false,\"since\":null,\"pushedAt\":null,\"prefsAt\":null,\"deleted\":[]}", Json(api.Settings.CloudSync));
+        Assert.Equal("{\"enabled\":false,\"since\":null,\"pushedAt\":null,\"prefsAt\":null,\"deleted\":[],\"account\":null}", Json(api.Settings.CloudSync));
         await api.SaveSessionAsync(new(old.Id, [], ["初雪"]));
         var time = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
         var incoming = old with { Id = "cloud", UpdatedAt = time };

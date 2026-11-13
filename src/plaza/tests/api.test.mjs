@@ -18,7 +18,7 @@ let serial = 0
 before(async () => {
  mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response() } }', d1Databases: ['DB'], compatibilityDate: '2025-10-11' })
  db = await mf.getD1Database('DB')
- for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql']) {
+ for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql', '0005_server_privacy.sql']) {
   const sql = await readFile('migrations/' + file, 'utf8')
   // D1 exec 按行分语句；保留触发器整体，迁移一次执行。
   await db.exec(sql.replace(/\r?\n/g, ' '))
@@ -27,7 +27,7 @@ before(async () => {
  privateKey = pair.privateKey
  jwk = { ...await exportJWK(pair.publicKey), kid: 'test-key', alg: 'RS256', use: 'sig' }
  env = {
-  DB: db, CODE_PEPPER: 'test-only-pepper', RESEND_API_KEY: 'test-only-key', MAIL_FROM: 'test@example.com',
+  DB: db, IP_SECRET: 'test-only-ip-secret', CODE_PEPPER: 'test-only-pepper', RESEND_API_KEY: 'test-only-key', MAIL_FROM: 'test@example.com',
   TURNSTILE_SECRET: 'test-only-secret', ADMIN_EMAILS: 'admin@example.com',
   ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com', ACCESS_AUD: 'test-audience',
   ALLOWED_ORIGINS: 'https://app.local,http://localhost:5178',
@@ -455,7 +455,7 @@ test('046 同步上传下载、服务端增量、冲突、墓碑、偏好及注�
  let now = Date.parse('2026-11-12T10:00:00.000Z')
  t.mock.method(Date, 'now', () => now)
  const user = await login(null), other = await login(null), a = cloud('a')
- const prefs = { data: { focusOperators: [], focusCovenants: [], gameTheme: 'dark', shopMarkers: true, operatorDefaults: {} }, updatedAt: a.updatedAt }
+ const prefs = { data: { focusOperators: [], focusCovenants: [], gameTheme: 'terminal', shopMarkers: true, operatorDefaults: {} }, updatedAt: a.updatedAt }
  const uploaded = await syncWith(user, [a], null, prefs)
  assert.deepEqual(uploaded.lineups, []); assert.deepEqual(uploaded.conflicts, [])
  const downloaded = await syncWith(user)
@@ -499,8 +499,8 @@ test('046 同步容量、64 KB、id 校验和每分钟限频', async () => {
  assert.equal((await send([])).status, 429)
 })
 
-const income = (device, samples = [{ round: 1, startMoney: 10 }], extra = {}) => request('/api/income', {
- method: 'POST', body: { device, mode: 'mode_single_16', solo: true, strategyId: null, fingerprint, samples, ...extra },
+const income = (device, samples = [{ round: 1, startMoney: 10 }], extra = {}, ip = 'local') => request('/api/income', {
+ method: 'POST', headers: { 'CF-Connecting-IP': ip }, body: { device, mode: 'mode_single_16', solo: true, strategyId: null, fingerprint, samples, ...extra },
 })
 test('046 资金参数校验、经济策略拒收、三设备最小值及每日缓存', async t => {
  let now = Date.parse('2026-11-12T10:00:00.000Z')
@@ -514,7 +514,7 @@ test('046 资金参数校验、经济策略拒收、三设备最小值及每日�
  assert.deepEqual((await ok('/api/income-table')).rows, [])
  await income('c')
  assert.deepEqual((await ok('/api/income-table')).rows, [])
- for (const device of ['a', 'b', 'c']) await income(device, [{ round: 1, startMoney: 8 }, { round: 2, startMoney: 12 }])
+ for (const device of ['a', 'b', 'c']) await income(device, [{ round: 1, startMoney: 8 }, { round: 2, startMoney: 12 }], {}, '192.0.2.' + (['a', 'b', 'c'].indexOf(device) + 1))
  await income('a', [{ round: 1, startMoney: 1 }])
  for (const device of ['a', 'b', 'c']) await income(device, [{ round: 1, startMoney: 0 }], { fingerprint: 0 })
  now += 86400000
@@ -614,4 +614,103 @@ test('北京时间零点重置验证码发送、发布与密码失败 IP 配额'
  await codeFor(user.email)
  await publish(user, '今日阵容')
  assert.equal((await passwordRequest(user.email)).status, 200)
+})
+
+
+test('075 同步请求大小、条数、id 限制及未知删除不留墓碑', async () => {
+ const user = await login(null)
+ const send = body => request('/api/sync', { method: 'POST', token: user.token, body: { since: null, lineups: [], ...body } })
+ for (const body of [
+  { lineups: Array.from({ length: 401 }, (_, i) => cloud('x' + i)) },
+  { lineups: [cloud('x'.repeat(65))] },
+  { padding: '中'.repeat(700000) },
+ ]) {
+  const result = await send(body)
+  assert.equal(result.status, 400); assert.equal(result.data.error, 'too_large')
+ }
+ assert.equal((await send({ lineups: [cloud('bad/id')] })).status, 400)
+ const tombstone = { id: 'missing', data: null, deleted: true, updatedAt: '2026-01-01T00:00:00.000Z' }
+ assert.deepEqual((await syncWith(user, [tombstone])).conflicts, [])
+ assert.deepEqual((await syncWith(user)).lineups, [])
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM cloud_lineups WHERE user_id=?').bind(user.me.id).first()).n, 0)
+ await syncWith(user, Array.from({ length: 300 }, (_, i) => cloud('x' + i)))
+ assert.equal((await syncWith(user)).lineups.length, 300)
+})
+
+test('075 旧游标上传较新时间也冲突，首次合并同样保留云端', async t => {
+ let now = Date.parse('2026-11-13T10:00:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const user = await login(null), initial = await syncWith(user, [cloud('a')])
+ now += 1000
+ const remote = cloud('a', '2026-02-01T00:00:00.000Z')
+ remote.data.name = '设备二修改'
+ await syncWith(user, [remote], initial.now)
+ now += 1000
+ const local = cloud('a', '2026-03-01T00:00:00.000Z')
+ for (const since of [initial.now, null]) {
+  const result = await syncWith(user, [local], since)
+  assert.deepEqual(result.conflicts, [remote])
+  assert.deepEqual(result.lineups, [remote])
+ }
+ assert.deepEqual((await syncWith(user)).lineups, [remote])
+})
+
+test('075 偏好只存白名单，主题及字段类型校验', async () => {
+ const user = await login(null), updatedAt = '2026-01-01T00:00:00.000Z'
+ const data = { focusOperators: [], focusCovenants: [], gameTheme: 'terminal', shopMarkers: true, operatorDefaults: {} }
+ await syncWith(user, [], null, { data: { ...data, shareIncome: true }, updatedAt })
+ const stored = await db.prepare('SELECT data FROM cloud_prefs WHERE user_id=?').bind(user.me.id).first()
+ assert.deepEqual(JSON.parse(stored.data), data)
+ for (const invalid of [{ gameTheme: 'dark' }, { focusOperators: [1] }, { shopMarkers: 'true' }, { operatorDefaults: [] }]) {
+  const result = await request('/api/sync', { method: 'POST', token: user.token,
+   body: { lineups: [], since: null, prefs: { data: { ...data, ...invalid }, updatedAt } } })
+  assert.equal(result.status, 400)
+ }
+})
+
+test('075 三个编号且来源为空的旧资金样本仍参与汇总', async () => {
+ await db.batch(['a', 'b', 'c'].map(device => db.prepare(
+  'INSERT INTO income_samples (device,mode,solo,round,start_money,fingerprint,strategy_id,created_at,source) VALUES(?,?,?,?,?,?,?,?,NULL)'
+ ).bind(device, 'mode_single_16', 1, 1, 10, fingerprint, null, '2026-11-12T00:00:00.000Z')))
+ assert.deepEqual((await ok('/api/income-table')).rows, [{ mode: 'mode_single_16', solo: true, round: 1, base: 10 }])
+})
+
+test('075 资金汇总要求三个来源，来源按 UTC 日期和用途隔离', async t => {
+ let now = Date.parse('2026-11-13T23:59:00.000Z')
+ t.mock.method(Date, 'now', () => now)
+ const ip = '192.0.2.1', sample = [{ round: 1, startMoney: 10 }]
+ for (const device of ['a', 'b', 'c']) assert.equal((await income(device, sample, {}, ip)).status, 204)
+ assert.deepEqual((await ok('/api/income-table')).rows, [])
+ await income('b', sample, {}, '192.0.2.2')
+ await income('c', sample, {}, '192.0.2.3')
+ await db.prepare('DELETE FROM income_summary').run()
+ assert.deepEqual((await ok('/api/income-table')).rows, [{ mode: 'mode_single_16', solo: true, round: 1, base: 10 }])
+ const source = (await db.prepare('SELECT source FROM income_samples ORDER BY rowid LIMIT 1').first()).source
+ const digest = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip))).toString('hex')
+ assert.match(source, /^[a-f0-9]{64}$/); assert.notEqual(source, digest)
+ assert.equal((await db.prepare('SELECT ip FROM income_reports ORDER BY rowid LIMIT 1').first()).ip, source)
+ const user = await login(), post = await publish(user)
+ await ok('/api/posts/' + post.id + '/import', { method: 'POST', body: { device: 'a' }, headers: { 'CF-Connecting-IP': ip } })
+ assert.notEqual((await db.prepare('SELECT source FROM imports').first()).source, source)
+ now += 60000
+ await income('a', sample, {}, ip)
+ assert.notEqual((await db.prepare('SELECT source FROM income_samples ORDER BY rowid DESC LIMIT 1').first()).source, source)
+})
+
+test('075 同一来源更换三个编号导入只计一次', async () => {
+ const user = await login(), post = await publish(user)
+ for (const device of ['a', 'b', 'c']) {
+  const result = await ok('/api/posts/' + post.id + '/import', {
+   method: 'POST', body: { device }, headers: { 'CF-Connecting-IP': '192.0.2.1' },
+  })
+  assert.equal(result.imports, 1)
+ }
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM imports').first()).n, 1)
+})
+
+test('075 注销清除别人回复中的昵称', async () => {
+ const a = await login(), b = await login(), post = await publish(b)
+ const original = await comment(a, post), reply = await comment(b, post, '回复', original.id)
+ assert.equal((await request('/api/me', { method: 'DELETE', token: a.token })).status, 204)
+ assert.equal((await db.prepare('SELECT reply_nickname FROM comments WHERE id=?').bind(reply.id).first()).reply_nickname, '已注销用户')
 })

@@ -80,7 +80,7 @@ public sealed partial class HostApi
             {
                 var record = _history[index];
                 _history[index] = record with { Local = record.Local! with { StrategyId = id } };
-                SaveHistoryFile("history.json", _history);
+                SaveHistory();
             }
             Changed?.Invoke("match", Match);
             return Match;

@@ -43,6 +43,11 @@ public class UpdateScriptExecutionTests
             const string failNewLaunch = """
                 function Start-Version([string]$path) {
                     if ((Get-Content -LiteralPath (Join-Path $appDir 'version.txt') -Raw) -eq 'new') {
+                        # 映射视图继续占用文件，关闭文件句柄后允许父目录改名。
+                        $heldFile = [System.IO.File]::Open((Join-Path $appDir 'new-only.txt'), 'Open', 'ReadWrite', 'ReadWrite, Delete')
+                        $script:heldMapping = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateFromFile($heldFile, [Guid]::NewGuid().ToString('N'), 0, 'ReadWrite', 'None', $true)
+                        $script:heldView = $script:heldMapping.CreateViewAccessor()
+                        $heldFile.Dispose()
                         throw 'simulated new-version launch failure'
                     }
                     $start = New-Object System.Diagnostics.ProcessStartInfo
@@ -56,8 +61,10 @@ public class UpdateScriptExecutionTests
                 """;
             var result = await RunUpdateAsync(root, app, source, prefix: failNewLaunch);
             result.ExitCode.Should().Be(1, result.Output);
-            (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old");
+            (await File.ReadAllTextAsync(Path.Combine(app, "version.txt"))).Should().Be("old",
+                await File.ReadAllTextAsync(Path.Combine(root, "update.log")));
             File.Exists(Path.Combine(app, "old-only.txt")).Should().BeTrue();
+            File.Exists(Path.Combine(app, "StrongholdAssistant.exe")).Should().BeTrue();
             File.Exists(Path.Combine(app, "new-only.txt")).Should().BeFalse();
             await AssertStartedAsync(app, "old");
             (await File.ReadAllTextAsync(Path.Combine(root, "update.log"))).Should().Contain("rolled back to previous version");

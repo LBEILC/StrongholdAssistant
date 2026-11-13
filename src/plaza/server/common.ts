@@ -6,6 +6,7 @@ export interface Env {
  MAIL_FROM: string
  TURNSTILE_SECRET: string
  CODE_PEPPER: string
+ IP_SECRET: string
  ADMIN_EMAILS: string
  ACCESS_TEAM_DOMAIN: string
  ACCESS_AUD: string
@@ -26,9 +27,33 @@ export async function hash(text: string) {
  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('')
 }
-export async function body(request: Request): Promise<Record<string, unknown>> {
+export async function ipSource(env: Env, request: Request, purpose: 'income' | 'import', now = Date.now()) {
+ const encoder = new TextEncoder()
+ const key = await crypto.subtle.importKey('raw', encoder.encode(env.IP_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+ const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ const bytes = await crypto.subtle.sign('HMAC', key, encoder.encode(`${purpose}:${iso(now).slice(0, 10)}:${ip}`))
+ return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('')
+}
+export async function body(request: Request, maxBytes?: number): Promise<Record<string, unknown>> {
+ let text: string | undefined
+ if (maxBytes !== undefined && request.body) {
+  const reader = request.body.getReader(), decoder = new TextDecoder()
+  let size = 0
+  text = ''
+  while (true) {
+   const { done, value } = await reader.read()
+   if (done) break
+   size += value.byteLength
+   if (size > maxBytes) {
+    await reader.cancel()
+    fail(400, 'too_large', '请求内容过大。')
+   }
+   text += decoder.decode(value, { stream: true })
+  }
+  text += decoder.decode()
+ }
  try {
-  const result = await request.json()
+  const result = text === undefined ? await request.json() : JSON.parse(text)
   if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error()
   return result as Record<string, unknown>
  } catch { return fail(400, 'bad_request', '请求内容不正确。') }

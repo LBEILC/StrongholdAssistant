@@ -75,11 +75,19 @@ public class UpdateDownloadTests
                 Path.Combine(Path.GetTempPath(), "StrongholdAssistant-BridgeTest-" + Guid.NewGuid().ToString("N")));
             api.Updater = service;
             var events = new List<JsonElement>();
-            api.Changed += (name, value) => { if (name == "update") events.Add(JsonSerializer.SerializeToElement(value)); };
+            var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            api.Changed += (name, value) =>
+            {
+                if (name != "update") return;
+                var status = JsonSerializer.SerializeToElement(value);
+                events.Add(status);
+                if (status.GetProperty("state").GetString() is "ready" or "failed") finished.TrySetResult();
+            };
             var status = JsonSerializer.SerializeToElement(await api.CheckUpdateAsync());
             status.GetProperty("state").GetString().Should().Be("available");
             status.GetProperty("notesUrl").GetString().Should().Be("https://example.org/releases/v99.0.0");
             await api.ApplyUpdateAsync();
+            await finished.Task.WaitAsync(TimeSpan.FromSeconds(10));
             if (wrongHash)
             {
                 events.Last().GetProperty("state").GetString().Should().Be("failed");

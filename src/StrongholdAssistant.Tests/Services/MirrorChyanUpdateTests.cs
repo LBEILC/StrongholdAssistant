@@ -12,6 +12,26 @@ namespace StrongholdAssistant.Tests.Services;
 [Collection("Update environment")]
 public sealed class MirrorChyanUpdateTests
 {
+    [Fact]
+    public async Task RefreshSameVersionFailsWithoutDownloading()
+    {
+        using var fixture = new MirrorFixture(refreshSameVersion: true);
+        var api = await fixture.CreateApi();
+        var failed = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.Changed += (name, value) =>
+        {
+            var status = JsonSerializer.SerializeToElement(value);
+            if (name == "update" && status.GetProperty("state").GetString() == "failed") failed.TrySetResult(status);
+        };
+        await api.CheckUpdateAsync();
+        await api.ApplyUpdateAsync();
+        var result = await failed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal("Mirror酱 上的版本不比当前新，已取消更新", result.GetProperty("message").GetString());
+        Assert.Equal(2, fixture.ApiRequests.Count);
+        Assert.DoesNotContain(fixture.Requests, r => r.StartsWith("/package-"));
+        Assert.False(api.UpdatePrepared);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, true)]
@@ -20,12 +40,20 @@ public sealed class MirrorChyanUpdateTests
         using var fixture = new MirrorFixture(installed, wrongHash);
         var api = await fixture.CreateApi();
         var events = new List<JsonElement>();
-        api.Changed += (name, value) => { if (name == "update") events.Add(JsonSerializer.SerializeToElement(value)); };
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.Changed += (name, value) =>
+        {
+            if (name != "update") return;
+            var status = JsonSerializer.SerializeToElement(value);
+            events.Add(status);
+            if (status.GetProperty("state").GetString() is "ready" or "failed") finished.TrySetResult();
+        };
         var status = JsonSerializer.SerializeToElement(await api.CheckUpdateAsync());
         Assert.Equal("available", status.GetProperty("state").GetString());
         Assert.Equal("mirrorchyan", status.GetProperty("source").GetString());
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(2000000000), DateTimeOffset.Parse(status.GetProperty("cdkExpiresAt").GetString()!));
         await api.ApplyUpdateAsync();
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.Equal(wrongHash ? "failed" : "ready", events.Last().GetProperty("state").GetString());
         Assert.Equal(!wrongHash, api.UpdatePrepared);
         Assert.Equal(2, fixture.ApiRequests.Count);
@@ -103,7 +131,7 @@ public sealed class MirrorChyanUpdateTests
         public List<string> Requests { get; } = [];
         public List<string> ApiRequests { get; } = [];
 
-        public MirrorFixture(bool installed = false, bool wrongHash = false, int errorCode = 0)
+        public MirrorFixture(bool installed = false, bool wrongHash = false, int errorCode = 0, bool refreshSameVersion = false)
         {
             System.IO.Directory.CreateDirectory(DirectoryPath);
             if (installed) File.WriteAllText(Path.Combine(DirectoryPath, "installed.json"), "{}");
@@ -134,7 +162,7 @@ public sealed class MirrorChyanUpdateTests
                         {
                             code = errorCode, msg = "fixture", data = new
                             {
-                                version_name = "v99.0.0", url = request.Contains("cdk=") ? root + "/package-" + ApiRequests.Count : null,
+                                version_name = refreshSameVersion && ApiRequests.Count > 1 ? "v1.0.0" : "v99.0.0", url = request.Contains("cdk=") ? root + "/package-" + ApiRequests.Count : null,
                                 sha256 = hash, filesize = package.Length, cdk_expired_time = 2000000000
                             }
                         }) : package;

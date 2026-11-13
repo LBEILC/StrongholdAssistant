@@ -12,6 +12,40 @@ public sealed partial class HostApi
     public const string PlazaOrigin = "https://sa.lubeiluchen.com";
     private Window? _plazaWindow;
     private Task<string?>? _plazaLogin;
+    private TaskCompletionSource<CoreWebView2?>? _plazaReady;
+
+    private async Task PlazaLogoutAsync()
+    {
+        new PlazaTokenStore(DataDirectory).Delete();
+        if (_plazaWindow is { } window)
+        {
+            var core = await _plazaReady!.Task;
+            if (_plazaWindow == window && core is not null)
+            {
+                core.CookieManager.DeleteAllCookies();
+                window.Close();
+                return;
+            }
+        }
+        Directory.CreateDirectory(DataDirectory);
+        File.WriteAllText(Path.Combine(DataDirectory, "plaza-cleanup-pending"), "");
+        CleanupPlazaProfile();
+    }
+
+    private void CleanupPlazaProfile()
+    {
+        var marker = Path.Combine(DataDirectory, "plaza-cleanup-pending");
+        if (!File.Exists(marker)) return;
+        try
+        {
+            var directory = Path.Combine(DataDirectory, "PlazaWebView2");
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+            File.Delete(marker);
+        }
+        // 登录窗口关闭后，子进程可能仍占用文件，保留标记供下次启动清理。
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
 
     public static string? ParsePlazaLogin(string source, string json)
     {
@@ -39,6 +73,8 @@ public sealed partial class HostApi
             return _plazaLogin!;
         }
         var completion = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var ready = new TaskCompletionSource<CoreWebView2?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _plazaReady = ready;
         var browser = new WebView2();
         var window = new Window
         {
@@ -61,6 +97,7 @@ public sealed partial class HostApi
             closed = true;
             _plazaWindow = null;
             _plazaLogin = null;
+            ready.TrySetResult(null);
             browser.Dispose();
             completion.TrySetResult(null);
         };
@@ -73,6 +110,7 @@ public sealed partial class HostApi
                 if (closed) return;
                 await browser.EnsureCoreWebView2Async(environment);
                 if (closed) return;
+                ready.TrySetResult(browser.CoreWebView2);
                 browser.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
                 browser.CoreWebView2.Settings.AreDevToolsEnabled = false;
                 browser.CoreWebView2.Settings.IsStatusBarEnabled = false;

@@ -11,6 +11,30 @@ public sealed class BackupTests : IDisposable
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
     private string BackupPath => Path.Combine(_directory, "export.json");
     private static string Json<T>(T value) => JsonSerializer.Serialize(value, HostApi.JsonOptions);
+
+    [Theory]
+    [InlineData("replace")]
+    [InlineData("merge")]
+    public async Task BackupResetsCloudStateAndImportPreservesLocalStateWithFreshLineupTime(string mode)
+    {
+        var api = await CreateApi();
+        var lineup = await AddLineup(api, "备份阵容");
+        var cloud = new CloudSyncState(true, "cursor", "pushed", "prefs", [new("deleted", "time")]) { Account = "local-account" };
+        api.SaveSettings(api.Settings with { CloudSync = cloud });
+        await api.ExportBackupAsync(BackupPath);
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(BackupPath))!;
+        Assert.Equal(Json(new CloudSyncState(false, null, null, null, [])), root["settings"]!["cloudSync"]!.ToJsonString());
+        root["settings"]!["cloudSync"] = JsonSerializer.SerializeToNode(cloud with { Account = "backup-account" }, HostApi.JsonOptions);
+        await File.WriteAllTextAsync(BackupPath, root.ToJsonString());
+        var selection = await api.ReadBackupAsync(BackupPath);
+        var before = DateTime.UtcNow;
+        await api.ImportDataAsync(selection.Token, mode);
+        Assert.Equal(Json(cloud), Json(api.Settings.CloudSync));
+        Assert.Equal(Json(cloud), Json(api.SettingsStore.LoadSettings().CloudSync));
+        var imported = Assert.Single(await api.LineupsAsync());
+        Assert.True(imported.UpdatedAt > before);
+        Assert.Equal(Json(lineup with { UpdatedAt = imported.UpdatedAt }), Json(imported));
+    }
     private static Task<LineupDto> AddLineup(HostApi api, string name) => api.SaveLineupAsync(
         new("", name, [new("折光", "yan", true)], "user", "备注", DateTime.UtcNow)
         { Goals = [new("yan", 1)], Equipment = ["虹彩活血饮料"] });
@@ -33,7 +57,7 @@ public sealed class BackupTests : IDisposable
         var dock = api.SettingsStore.LoadDock();
         await api.ExportBackupAsync(BackupPath);
         var root = JsonNode.Parse(await File.ReadAllTextAsync(BackupPath))!.AsObject();
-        Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups", "history" }, root.Select(p => p.Key));
+        Assert.Equal(new[] { "format", "version", "appVersion", "exportedAt", "settings", "lineups", "history", "deletedSklandIds" }, root.Select(p => p.Key));
         Assert.Equal("stronghold-assistant-backup", root["format"]!.GetValue<string>());
         Assert.Equal(1, root["version"]!.GetValue<int>());
         Assert.Equal("github", root["settings"]!["updateSource"]!.GetValue<string>());
@@ -45,7 +69,9 @@ public sealed class BackupTests : IDisposable
         api.SaveSettings(new("terminal", true, true));
         await api.SaveLineupAsync(lineup with { Name = "修改过" });
         await api.ImportDataAsync(selection.Token, "replace");
-        Assert.Equal(Json(lineup), Json(Assert.Single(await api.LineupsAsync())));
+        var imported = Assert.Single(await api.LineupsAsync());
+        Assert.True(imported.UpdatedAt > lineup.UpdatedAt);
+        Assert.Equal(Json(lineup with { UpdatedAt = imported.UpdatedAt }), Json(imported));
         Assert.Equal(Json(settings), Json(api.Settings));
         Assert.Equal(session, await File.ReadAllTextAsync(Path.Combine(_directory, "session.json")));
         Assert.Equal(dock, api.SettingsStore.LoadDock());
@@ -75,7 +101,9 @@ public sealed class BackupTests : IDisposable
         await api.ImportDataAsync(selection.Token, "merge");
         var lineups = await api.LineupsAsync();
         Assert.Equal(3, lineups.Length);
-        Assert.Equal(Json(same), Json(lineups.Single(l => l.Id == same.Id)));
+        var imported = lineups.Single(l => l.Id == same.Id);
+        Assert.True(imported.UpdatedAt > same.UpdatedAt);
+        Assert.Equal(Json(same with { UpdatedAt = imported.UpdatedAt }), Json(imported));
         Assert.Contains(lineups, l => l.Id == added.Id);
         Assert.Contains(lineups, l => l.Id == retained.Id);
         Assert.Equal(Json(current with { FocusOperators = ["车尔尼", "折光"] }), Json(api.Settings));

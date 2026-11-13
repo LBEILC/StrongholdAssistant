@@ -42,6 +42,7 @@ public partial class App : Application
             return;
         }
         // 无游戏模式供打包验收使用，不启动窗口跟踪或截图。
+        new UpdateService().CleanupStaleStagingDirs();
         var noGame = e.Args.Contains("--no-game");
         var userDirectory = noGame
             ? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"))

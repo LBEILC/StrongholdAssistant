@@ -18,14 +18,31 @@ function dataJson(value: unknown) {
  if (new TextEncoder().encode(data).length > 64 * 1024) fail(400, 'too_large', '单套数据最多 64 KB。')
  return data
 }
+function prefsData(value: unknown) {
+ const input = object(value), data: Record<string, unknown> = {}
+ for (const key of ['focusOperators', 'focusCovenants', 'gameTheme', 'shopMarkers', 'operatorDefaults']) {
+  if (!(key in input)) continue
+  const v = input[key]
+  const valid = key === 'focusOperators' || key === 'focusCovenants'
+   ? Array.isArray(v) && v.every(item => typeof item === 'string')
+   : key === 'gameTheme' ? ['terminal', 'ursus', 'closure'].includes(v as string)
+   : key === 'shopMarkers' ? typeof v === 'boolean'
+   : v !== null && typeof v === 'object' && !Array.isArray(v)
+  if (!valid) fail(400, 'bad_request', '请求内容不正确。')
+  data[key] = v
+ }
+ return data
+}
 export async function sync(ctx: Context) {
- const u = (await authenticate(ctx))!, { env } = ctx, input = await body(ctx.request)
+ const u = (await authenticate(ctx))!, { env } = ctx, input = await body(ctx.request, 2 * 1024 * 1024)
  const since = input.since === null ? null : timestamp(input.since)
  if (!Array.isArray(input.lineups)) fail(400, 'bad_request', '请求内容不正确。')
+ if (input.lineups.length > 400) fail(400, 'too_large', '请求内容过大。')
  const ids = new Set<string>()
  const uploads = input.lineups.map(value => {
   const item = object(value), id = string(item.id), updatedAt = timestamp(item.updatedAt)
-  if (!id || ids.has(id) || typeof item.deleted !== 'boolean') fail(400, 'bad_request', '请求内容不正确。')
+  if (id.length > 64) fail(400, 'too_large', '请求内容过大。')
+  if (!/^[A-Za-z0-9_-]+$/.test(id) || ids.has(id) || typeof item.deleted !== 'boolean') fail(400, 'bad_request', '请求内容不正确。')
   ids.add(id)
   const data = item.deleted ? null : dataJson(item.data)
   if (item.deleted ? item.data !== null : object(item.data).id !== id) fail(400, 'bad_request', '请求内容不正确。')
@@ -34,7 +51,7 @@ export async function sync(ctx: Context) {
  let prefs: { data: string; updatedAt: string } | undefined
  if (input.prefs !== undefined) {
   const p = object(input.prefs)
-  prefs = { data: dataJson(p.data), updatedAt: timestamp(p.updatedAt) }
+  prefs = { data: dataJson(prefsData(p.data)), updatedAt: timestamp(p.updatedAt) }
  }
  const clock = iso()
  await stmt(env, 'DELETE FROM sync_usage WHERE user_id=? AND created_at<=?', u.id, iso(Date.now() - 60000)).run()
@@ -50,9 +67,13 @@ export async function sync(ctx: Context) {
  // 先处理删除，允许满额时在同一请求内替换阵容；批次失败整体回滚。
  uploads.sort((a, b) => Number(b.deleted) - Number(a.deleted))
  const writes = uploads.map(item => stmt(env, `INSERT INTO cloud_lineups(user_id,id,data,updated_at,deleted,changed_at)
-  SELECT ?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM cloud_lineups WHERE user_id=? AND id=? AND updated_at>?)
+  SELECT ?,?,?,?,?,? WHERE
+  (?=0 OR EXISTS(SELECT 1 FROM cloud_lineups WHERE user_id=? AND id=?))
+  AND NOT EXISTS(SELECT 1 FROM cloud_lineups WHERE user_id=? AND id=? AND
+   (updated_at>? OR (?=0 AND (? IS NULL OR changed_at>?) AND updated_at<>?)))
   ON CONFLICT(user_id,id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at,deleted=excluded.deleted,changed_at=excluded.changed_at
-  RETURNING id`, u.id, item.id, item.data, item.updatedAt, Number(item.deleted), now, u.id, item.id, item.updatedAt))
+  RETURNING id`, u.id, item.id, item.data, item.updatedAt, Number(item.deleted), now,
+  Number(item.deleted), u.id, item.id, u.id, item.id, item.updatedAt, Number(item.deleted), since, since, item.updatedAt))
  if (prefs) writes.push(stmt(env, `INSERT INTO cloud_prefs VALUES(?,?,?,?)
   ON CONFLICT(user_id) DO UPDATE SET data=excluded.data,updated_at=excluded.updated_at,changed_at=excluded.changed_at
   WHERE excluded.updated_at>=cloud_prefs.updated_at RETURNING user_id AS id`, u.id, prefs.data, prefs.updatedAt, now))

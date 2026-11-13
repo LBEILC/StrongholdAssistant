@@ -8,6 +8,26 @@ namespace ASPAssistant.Tests.Services;
 public class UpdateStartupNotificationTests
 {
     [Fact]
+    public void WindowReady_ReportsOnlyAfterMountAndOnlyOnce()
+    {
+        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-Update-");
+        try
+        {
+            var path = Path.Combine(root.FullName, $"startup-{Guid.NewGuid():N}.status");
+            var notification = new UpdateStartupNotification(path);
+            StrongholdAssistant.Host.MainWindow.ReportStartupReady(null, notification);
+            StrongholdAssistant.Host.MainWindow.ReportStartupReady("catalog", notification);
+            Assert.False(File.Exists(path));
+            StrongholdAssistant.Host.MainWindow.ReportStartupReady("ready", notification);
+            Assert.Equal("ready", File.ReadAllText(path));
+            File.Delete(path);
+            StrongholdAssistant.Host.MainWindow.ReportStartupReady("ready", notification);
+            Assert.False(File.Exists(path));
+        }
+        finally { root.Delete(true); }
+    }
+
+    [Fact]
     public void NormalStartup_DoesNotRequireAnUpdateTask()
     {
         var notification = new UpdateStartupNotification(null);

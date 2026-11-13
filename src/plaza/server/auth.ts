@@ -40,9 +40,17 @@ async function turnstile(ctx: Context, token: string) {
  if (!challenge.ok || !(await challenge.json() as { success: boolean }).success)
   fail(400, 'bad_turnstile', '人机验证未通过，请重试。')
 }
+async function cleanLoginRecords(env: Env) {
+ const cutoff = iso(Date.now() - 30 * DAY)
+ await env.DB.batch([
+  stmt(env, 'DELETE FROM login_codes WHERE created_at<?', cutoff),
+  stmt(env, 'DELETE FROM password_attempts WHERE created_at<?', cutoff),
+ ])
+}
 async function sendCode(ctx: Context) {
  const { request, env } = ctx, input = await body(request)
  const email = emailValue(input.email), ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ await cleanLoginRecords(env)
  await turnstile(ctx, string(input.turnstileToken))
  const now = iso(), start = dayStart()
  const counts = await stmt(env, `SELECT
@@ -106,6 +114,7 @@ async function createSession(ctx: Context, u: UserRow, method: 'code' | 'passwor
 async function passwordLogin(ctx: Context) {
  const { env, request } = ctx, input = await body(request)
  const email = emailValue(input.email), password = string(input.password)
+ await cleanLoginRecords(env)
  await turnstile(ctx, string(input.turnstileToken))
  const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
  const counts = await stmt(env, `SELECT
@@ -167,6 +176,7 @@ export async function account(ctx: Context, path: string) {
    await env.DB.batch([
     ...['favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage'].map(table => stmt(env, 'DELETE FROM ' + table + ' WHERE user_id=?', u.id)),
     stmt(env, 'DELETE FROM likes WHERE user_id=?', u.id),
+    stmt(env, "UPDATE comments SET reply_nickname='已注销用户' WHERE reply_to IN (SELECT id FROM comments WHERE user_id=?)", u.id),
     stmt(env, 'DELETE FROM comments WHERE user_id=?', u.id),
     stmt(env, 'DELETE FROM reports WHERE user_id=?', u.id),
     stmt(env, 'DELETE FROM report_usage WHERE user_id=?', u.id),
