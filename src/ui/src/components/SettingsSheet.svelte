@@ -18,6 +18,7 @@
   const skins: { id: UiSkin; name: string; note: string }[] = [
     { id: 'follow', name: '跟随游戏主题', note: '默认' },
     ...themes.map((t) => ({ ...t, note: '' })),
+    { id: 'classic', name: '经典', note: '助手原来的样子' },
   ]
   const scales: { v: 'auto' | number; label: string }[] = [
     { v: 'auto', label: '自动' },

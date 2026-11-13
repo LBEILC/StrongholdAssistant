@@ -98,6 +98,31 @@
   .on .disc::after {
     opacity: 1;
   }
+  /* 经典（助手原来的样子）：圆盘用 CSS 画，不用位图 */
+  :global([data-skin='classic']) .disc {
+    background: radial-gradient(circle at 50% 40%, var(--bond-off-top), var(--bond-off-bottom) 70%);
+    box-shadow:
+      inset 0 0 0 1.5px var(--bond-off-ring),
+      inset 0 -3px 6px rgb(var(--shade-rgb) / 0.5),
+      0 0 0 2px rgb(var(--shade-rgb) / 0.55);
+    transition:
+      color var(--t-mid),
+      background var(--t-mid),
+      box-shadow var(--t-mid),
+      transform var(--t-fast) var(--ease-out);
+  }
+  :global([data-skin='classic']) .on .disc {
+    background: radial-gradient(circle at 50% 38%, var(--mint-hi), var(--mint) 55%, var(--mint-lo));
+    box-shadow:
+      inset 0 0 0 1.5px rgb(var(--hl-rgb) / 0.25),
+      inset 0 -3px 6px var(--bond-on-shade),
+      0 0 0 2px rgb(var(--shade-rgb) / 0.55),
+      var(--mint-glow);
+  }
+  :global([data-skin='classic']) .disc::before,
+  :global([data-skin='classic']) .disc::after {
+    display: none;
+  }
   .clickable:hover .disc {
     transform: scale(1.06);
   }

@@ -18,6 +18,7 @@
   class:banned
   class:tracked
   class:selected
+  style:--c="var(--tier-{op.tier})"
   style:--bg="url({asset.card('bg_common')})"
   style:--frame="url({asset.skin(op.tier >= 5 ? `frame_${op.tier}` : 'frame')})"
   {onclick} oncontextmenu={(e) => openMenu(e, operatorMenu(name))}>
@@ -79,6 +80,34 @@
   .card.tracked {
     outline-color: var(--mint);
     box-shadow: 0 0 10px rgb(var(--mint-rgb) / 0.25);
+  }
+  /* 经典（助手原来的样子）：不用卡框位图，细边框加顶上一道等阶色 */
+  :global([data-skin='classic']) .card {
+    background: var(--bg) center / cover, var(--bg-2);
+    outline: none;
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      inset 0 2px 0 var(--c);
+  }
+  :global([data-skin='classic']) .card:hover {
+    filter: none;
+    box-shadow:
+      inset 0 0 0 1px var(--line-hi),
+      inset 0 2px 0 var(--c);
+  }
+  :global([data-skin='classic']) .card.selected {
+    box-shadow:
+      inset 0 0 0 1.5px var(--fg-1),
+      inset 0 2px 0 var(--c);
+  }
+  :global([data-skin='classic']) .card.tracked {
+    box-shadow:
+      inset 0 0 0 1.5px var(--mint),
+      inset 0 2px 0 var(--c),
+      0 0 10px rgb(var(--mint-rgb) / 0.25);
+  }
+  :global([data-skin='classic']) .pic {
+    margin: 0;
   }
   .pic {
     margin: 2px 2px 0;

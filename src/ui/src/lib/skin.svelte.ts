@@ -6,6 +6,6 @@
 //   tier_N            ← arts/chesslevelicon/chess_level_icon_N
 //   frame / frame_5 / frame_6 ← arts/chessframe/chess_frame_normal / level_five / level_six
 //   level_N           ← arts/playerdetailshoplevel/shop_level_N
-import type { GameTheme } from './api/types'
+import type { SkinId } from './api/types'
 
-export const skin = $state<{ id: GameTheme }>({ id: 'terminal' })
+export const skin = $state<{ id: SkinId }>({ id: 'terminal' })

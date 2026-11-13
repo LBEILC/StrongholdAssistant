@@ -168,6 +168,14 @@
  */
 
 /* 乌萨斯齐心团：暖棕黑底、米白字、淡灰绿强调（游戏回合底块、frame1_normal 描边），铁锈红标题条 */
+/* 经典（助手 0.8.0 之前的样子）：配色同终端，盟约圆盘、卡框用 CSS 画（组件里 :global([data-skin='classic'])） */
+:root[data-skin='classic'] {
+  --bond-off-top: #3b3f43;
+  --bond-off-bottom: #26292c;
+  --bond-off-ring: #44494d;
+  --bond-on-shade: rgb(0 60 45 / 0.45);
+}
+
 :root[data-skin='ursus'] {
   --bg-0-rgb: 17 13 11;
   --bg-1: #191411;

@@ -19,6 +19,15 @@ public sealed class HostSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void ClassicUiSkinSurvivesReload()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        var store = new HostSettingsStore(path);
+        store.SaveSettings(store.LoadSettings() with { UiSkin = "classic" });
+        Assert.Equal("classic", new HostSettingsStore(path).LoadSettings().UiSkin);
+    }
+
+    [Fact]
     public void InvalidUiSkinIsRejectedOnSave()
     {
         var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));

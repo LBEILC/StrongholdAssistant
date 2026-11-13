@@ -11,7 +11,8 @@
 
 <span class="tb" style:--s="{size}px" title="{ROMAN[tier]} 阶">
   <span class="plate">
-    <img src={asset.skin(`tier_${tier}`)} alt={ROMAN[tier]} />
+    <!-- 经典：助手原来用的商店卡角标（游戏 img_chess_level_*） -->
+    <img src={skin.id === 'classic' ? asset.card(`img_chess_level_${tier}`) : asset.skin(`tier_${tier}`)} alt={ROMAN[tier]} />
     {#if fx && tier === 6}
       <span class="vi" style:--mask="url({asset.skin('tier6_mask')})" style:--grad="url({asset.skin('tier6_grad')})"></span>
     {/if}

@@ -407,7 +407,9 @@ export interface Lineup {
 export type GameTheme = 'terminal' | 'ursus' | 'closure' // 卫戍协议终端 / 乌萨斯齐心团 / 「全能的」可露希尔
 
 /** 助手界面的皮肤（v0.8.0）：'follow' 跟着游戏主题，或固定成某一套（和游戏主题分开设置） */
-export type UiSkin = 'follow' | GameTheme
+/** 界面皮肤：三套游戏主题，加「经典」（v0.8.1，助手 0.8.0 之前的样子：终端配色，图标用 CSS 画） */
+export type SkinId = GameTheme | 'classic'
+export type UiSkin = 'follow' | SkinId
 
 export interface Settings {
   gameTheme: GameTheme

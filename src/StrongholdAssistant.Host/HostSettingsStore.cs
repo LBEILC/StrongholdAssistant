@@ -20,7 +20,7 @@ public sealed class HostSettingsStore(string path)
     {
         var json = Read();
         var uiSkin = json["uiSkin"] is JsonValue value && value.TryGetValue<string>(out var skin)
-            && skin is ("follow" or "terminal" or "ursus" or "closure") ? skin : "follow";
+            && skin is ("follow" or "terminal" or "ursus" or "closure" or "classic") ? skin : "follow";
         var settings = new SettingsDto(json["gameTheme"]?.GetValue<string>() ?? "terminal",
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
@@ -68,7 +68,7 @@ public sealed class HostSettingsStore(string path)
     public void SaveSettings(SettingsDto settings)
     {
         ValidateSides(settings);
-        if (settings.UiSkin is not ("follow" or "terminal" or "ursus" or "closure"))
+        if (settings.UiSkin is not ("follow" or "terminal" or "ursus" or "closure" or "classic"))
             throw new ArgumentException("界面主题无效。");
         var proxy = settings.UpdateProxy;
         if (proxy != "" && (proxy is null

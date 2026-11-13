@@ -2,6 +2,7 @@
   import { fly } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN } from '../lib/assets'
+  import { skin } from '../lib/skin.svelte'
   import Icon from './Icon.svelte'
 
   // 回合与资金（v0.7.0，设计见 docs/design.md「回合与资金」）：「第 6 回合 · 资金 4 · 下回合约 12 · 升级 5」。
@@ -38,6 +39,7 @@
     picking = false
   }
   const openShare = () => (app.settingsOpen = true)
+  const classic = $derived(skin.id === 'classic')
 </script>
 
 <svelte:window onkeydown={(ev) => ev.key === 'Escape' && (picking = false)} />
@@ -45,7 +47,8 @@
 {#if e}
   <div class="econ" class:stale class:compact style:--coin="url({asset.hud('s_icon_gold')})">
     <div class="line">
-      <span class="rd">回合<b class="tag">{e.round}</b></span>
+      <!-- 经典（助手原来的样子）：「6 回合」，没有底块和等级牌 -->
+      {#if classic}<span class="rd"><b>{e.round}</b>回合</span>{:else}<span class="rd">回合<b class="tag">{e.round}</b></span>{/if}
       <span class="sep"></span>
       <span class="mn" title="当前资金"><i class="coin"></i><b>{e.money}</b></span>
       <span class="sep"></span>
@@ -59,7 +62,7 @@
       {#if e.upgradeCost !== null}
         <span class="sep"></span>
         <span class="up" title={e.level ? `调度中心 ${ROMAN[e.level]} 级，升级要花的钱` : '升级调度中心要花的钱'}>
-          {#if e.level}<img class="lv" src={asset.skin(`level_${e.level}`)} alt="{ROMAN[e.level]} 级" />{/if}升级 <b>{e.upgradeCost}</b>
+          {#if e.level && !classic}<img class="lv" src={asset.skin(`level_${e.level}`)} alt="{ROMAN[e.level]} 级" />{/if}升级 <b>{e.upgradeCost}</b>
         </span>
       {/if}
       <span class="spacer"></span>
@@ -152,6 +155,9 @@
     color: var(--round-fg);
     background: var(--round-bg);
     border-radius: var(--r-1);
+  }
+  .rd b:not(.tag) {
+    margin-right: 3px;
   }
   .stale .rd b.tag {
     color: var(--round-fg);
