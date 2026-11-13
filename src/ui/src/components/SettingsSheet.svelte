@@ -309,10 +309,16 @@
     </section>
 
     <section>
-      <h4>游戏主题 <small>选游戏里正在用的主题，商店识别要靠它</small></h4>
+      <h4>游戏主题 <small>游戏里正在用的主题，商店识别要靠它</small></h4>
+      <!-- 自动识别（v0.9.2，默认）：宿主从游戏画面认；手动选了某个就固定住 -->
       <div class="themes">
+        <button class:on={app.settings.gameThemeAuto} onclick={() => set('gameThemeAuto', true)}>
+          <span class="radio"></span>
+          <b>自动识别</b>
+          <em>{app.connection.theme ? `现在认到：${themes.find((t) => t.id === app.connection.theme)?.name}` : app.connection.state === 'connected' ? '进休整期后自动认' : '连上游戏后自动认'}</em>
+        </button>
         {#each themes as t (t.id)}
-          <button class:on={app.settings.gameTheme === t.id} onclick={() => set('gameTheme', t.id)}>
+          <button class:on={!app.settings.gameThemeAuto && app.settings.gameTheme === t.id} onclick={() => (set('gameThemeAuto', false), set('gameTheme', t.id))}>
             <span class="radio"></span>
             <b>{t.name}</b>
             {#if t.note}<em>{t.note}</em>{/if}

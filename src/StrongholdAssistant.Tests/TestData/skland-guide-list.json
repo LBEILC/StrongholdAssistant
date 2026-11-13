@@ -1,0 +1,5275 @@
+{
+  "raw": {
+    "code": 0,
+    "data": {
+      "list": [
+        {
+          "guide": {
+            "guideId": "100",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_pepe",
+              "band_damaztic"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4133_logos",
+                    "skillId": "skchr_logos_3",
+                    "moduleId": "uniequip_003_logos",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_472_pasngr",
+                    "skillId": "skchr_pasngr_3",
+                    "moduleId": "uniequip_002_pasngr",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4058_pepe",
+                    "skillId": "skchr_pepe_3",
+                    "moduleId": "uniequip_002_pepe",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4139_papyrs",
+                    "skillId": "skchr_papyrs_1",
+                    "moduleId": "uniequip_002_papyrs",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4204_mantra",
+                    "skillId": "skchr_mantra_3",
+                    "moduleId": "uniequip_002_mantra",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4055_bgsnow",
+                    "skillId": "skchr_bgsnow_3",
+                    "moduleId": "uniequip_003_bgsnow",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_485_pallas",
+                    "skillId": "skchr_pallas_1",
+                    "moduleId": "uniequip_002_pallas",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_08_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "sargonShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "skillfulShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "101",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_bonus",
+              "band_fund",
+              "band_random"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4177_brigid",
+                    "skillId": "skchr_brigid_1",
+                    "moduleId": "uniequip_002_brigid",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4202_haruka",
+                    "skillId": "skchr_haruka_2",
+                    "moduleId": "uniequip_002_haruka",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1019_siege2",
+                    "skillId": "skchr_siege2_3",
+                    "moduleId": "uniequip_002_siege2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_202_demkni",
+                    "skillId": "skchr_demkni_1",
+                    "moduleId": "uniequip_002_demkni",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1040_blaze2",
+                    "skillId": "skchr_blaze2_3",
+                    "moduleId": "uniequip_003_blaze2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1034_jesca2",
+                    "skillId": "skchr_jesca2_3",
+                    "moduleId": "uniequip_002_jesca2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_488_buildr",
+                    "skillId": "skcom_charge_cost[3]",
+                    "moduleId": "uniequip_002_buildr",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_3_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_14_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_11_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_08_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_08_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "victoriaShip"
+                  ],
+                  "regularBondIds": [
+                    "docShip",
+                    "miraShip",
+                    "skillfulShip",
+                    "soloShip",
+                    "steadShip",
+                    "suntShip",
+                    "swiftShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 1,
+                "recChars": [
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4013_kjera",
+                    "skillId": "skcom_atk_up[3]",
+                    "moduleId": "uniequip_002_kjera",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4047_pianst",
+                    "skillId": "skchr_pianst_2",
+                    "moduleId": "uniequip_002_pianst",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4245_alga",
+                    "skillId": "skchr_alga_2",
+                    "moduleId": "uniequip_002_alga",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_426_billro",
+                    "skillId": "skchr_billro_2",
+                    "moduleId": "uniequip_002_billro",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4162_cathy",
+                    "skillId": "skchr_cathy_2",
+                    "moduleId": "uniequip_002_cathy",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_472_pasngr",
+                    "skillId": "skchr_pasngr_3",
+                    "moduleId": "uniequip_002_pasngr",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_249_mlyss",
+                    "skillId": "skchr_mlyss_1",
+                    "moduleId": "uniequip_004_mlyss",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "skillfulShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 3,
+                "endRound": 5,
+                "recChars": [
+                  {
+                    "charId": "char_4162_cathy",
+                    "skillId": "skchr_cathy_2",
+                    "moduleId": "uniequip_002_cathy",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4177_brigid",
+                    "skillId": "skchr_brigid_1",
+                    "moduleId": "uniequip_002_brigid",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_426_billro",
+                    "skillId": "skchr_billro_2",
+                    "moduleId": "uniequip_002_billro",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_484_robrta",
+                    "skillId": "skchr_robrta_2",
+                    "moduleId": "uniequip_002_robrta",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_488_buildr",
+                    "skillId": "skcom_charge_cost[3]",
+                    "moduleId": "uniequip_002_buildr",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1034_jesca2",
+                    "skillId": "skchr_jesca2_3",
+                    "moduleId": "uniequip_002_jesca2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_179_cgbird",
+                    "skillId": "skchr_cgbird_3",
+                    "moduleId": "uniequip_002_cgbird",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4072_ironmn",
+                    "skillId": "skchr_ironmn_1",
+                    "moduleId": "uniequip_002_ironmn",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1031_slent2",
+                    "skillId": "skchr_slent2_1",
+                    "moduleId": "uniequip_002_slent2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4042_lumen",
+                    "skillId": "skchr_lumen_3",
+                    "moduleId": "uniequip_002_lumen",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "victoriaShip"
+                  ],
+                  "regularBondIds": [
+                    "deputShip",
+                    "docShip",
+                    "skillfulShip",
+                    "soloShip",
+                    "steadShip",
+                    "swiftShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 8,
+                "endRound": 10,
+                "recChars": [
+                  {
+                    "charId": "char_1019_siege2",
+                    "skillId": "skchr_siege2_3",
+                    "moduleId": "uniequip_002_siege2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1016_agoat2",
+                    "skillId": "skchr_agoat2_3",
+                    "moduleId": "uniequip_002_agoat2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_202_demkni",
+                    "skillId": "skchr_demkni_1",
+                    "moduleId": "uniequip_002_demkni",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_420_flamtl",
+                    "skillId": "skchr_flamtl_2",
+                    "moduleId": "uniequip_003_flamtl",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_358_lisa",
+                    "skillId": "skchr_lisa_1",
+                    "moduleId": "uniequip_002_lisa",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": null,
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 13,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_1040_blaze2",
+                    "skillId": "skchr_blaze2_3",
+                    "moduleId": "uniequip_003_blaze2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1039_thorn2",
+                    "skillId": "skchr_thorn2_1",
+                    "moduleId": "uniequip_002_thorn2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_249_mlyss",
+                    "skillId": "skchr_mlyss_1",
+                    "moduleId": "uniequip_004_mlyss",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4202_haruka",
+                    "skillId": "skchr_haruka_2",
+                    "moduleId": "uniequip_002_haruka",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4231_clemnt",
+                    "skillId": "skchr_clemnt_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4230_mcnist",
+                    "skillId": "skchr_mcnist_1",
+                    "moduleId": "uniequip_002_mcnist",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "emptyShip",
+                    "swiftShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "102",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_siracusa"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_291_aglina",
+                    "skillId": "skchr_aglina_3",
+                    "moduleId": "uniequip_002_aglina",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1015_aglna2",
+                    "skillId": "skchr_aglna2_3",
+                    "moduleId": "",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4065_judge",
+                    "skillId": "skchr_judge_2",
+                    "moduleId": "uniequip_002_judge",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1038_whitw2",
+                    "skillId": "skchr_whitw2_3",
+                    "moduleId": "uniequip_002_whitw2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_427_vigil",
+                    "skillId": "skchr_vigil_3",
+                    "moduleId": "uniequip_002_vigil",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4037_demetr",
+                    "skillId": "skchr_demetr_3",
+                    "moduleId": "uniequip_002_demetr",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_3_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_14_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "siracusaShip"
+                  ],
+                  "regularBondIds": [
+                    "preciShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_140_whitew",
+                    "skillId": "skchr_whitew_1",
+                    "moduleId": "uniequip_002_whitew",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_346_aosta",
+                    "skillId": "skcom_quickattack[3]",
+                    "moduleId": "uniequip_002_aosta",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4031_liesel",
+                    "skillId": "skchr_liesel_1",
+                    "moduleId": "uniequip_002_liesel",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4026_vulpis",
+                    "skillId": "skchr_vulpis_3",
+                    "moduleId": "uniequip_002_vulpis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_427_vigil",
+                    "skillId": "skchr_vigil_3",
+                    "moduleId": "uniequip_002_vigil",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_291_aglina",
+                    "skillId": "skchr_aglina_3",
+                    "moduleId": "uniequip_002_aglina",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_358_lisa",
+                    "skillId": "skchr_lisa_3",
+                    "moduleId": "uniequip_002_lisa",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4037_demetr",
+                    "skillId": "skchr_demetr_3",
+                    "moduleId": "uniequip_002_demetr",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1038_whitw2",
+                    "skillId": "skchr_whitw2_3",
+                    "moduleId": "uniequip_002_whitw2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_367_swllow",
+                    "skillId": "skchr_swllow_2",
+                    "moduleId": "uniequip_002_swllow",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_1",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_249_mlyss",
+                    "skillId": "skchr_mlyss_1",
+                    "moduleId": "uniequip_004_mlyss",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "siracusaShip"
+                  ],
+                  "regularBondIds": [
+                    "miraShip",
+                    "preciShip",
+                    "skillfulShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "103",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_fund"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4082_qiubai",
+                    "skillId": "skchr_qiubai_1",
+                    "moduleId": "uniequip_002_qiubai",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_322_lmlee",
+                    "skillId": "skchr_lmlee_2",
+                    "moduleId": "uniequip_002_lmlee",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_2015_dusk",
+                    "skillId": "skchr_dusk_2",
+                    "moduleId": "uniequip_002_dusk",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1050_chen3",
+                    "skillId": "skchr_chen3_3",
+                    "moduleId": "uniequip_002_chen3",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4222_taraxa",
+                    "skillId": "skchr_taraxa_2",
+                    "moduleId": "",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_2026_yu",
+                    "skillId": "skchr_yu_3",
+                    "moduleId": "uniequip_002_yu",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_202_demkni",
+                    "skillId": "skchr_demkni_1",
+                    "moduleId": "uniequip_002_demkni",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1040_blaze2",
+                    "skillId": "skchr_blaze2_3",
+                    "moduleId": "uniequip_002_blaze2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_193_frostl",
+                    "skillId": "skchr_frostl_1",
+                    "moduleId": "uniequip_002_frostl",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4151_tinman",
+                    "skillId": "skchr_tinman_1",
+                    "moduleId": "uniequip_002_tinman",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_264_f12yin",
+                    "skillId": "skchr_f12yin_1",
+                    "moduleId": "uniequip_003_f12yin",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1045_svash2",
+                    "skillId": "skchr_svash2_2",
+                    "moduleId": "uniequip_002_svash2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4228_closur",
+                    "skillId": "skchr_closur_1",
+                    "moduleId": "uniequip_002_closur",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_07_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "yanShip"
+                  ],
+                  "regularBondIds": [
+                    "docShip",
+                    "investShip",
+                    "skillfulShip",
+                    "steadShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "104",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_ursus",
+              "band_jesica",
+              "band_ioleta",
+              "band_takecare",
+              "band_fund"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4245_alga",
+                    "skillId": "skchr_alga_1",
+                    "moduleId": "uniequip_002_alga",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4244_tocka",
+                    "skillId": "skchr_tocka_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4247_oxi",
+                    "skillId": "skchr_oxi_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_485_pallas",
+                    "skillId": "skchr_pallas_1",
+                    "moduleId": "uniequip_002_pallas",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_391_rosmon",
+                    "skillId": "skchr_rosmon_1",
+                    "moduleId": "uniequip_003_rosmon",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4146_nymph",
+                    "skillId": "skchr_nymph_1",
+                    "moduleId": "uniequip_002_nymph",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_11_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_13_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "ursusShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "deputShip",
+                    "preciShip",
+                    "skillfulShip",
+                    "swiftShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 3,
+                "recChars": [
+                  {
+                    "charId": "char_195_glassb",
+                    "skillId": "skchr_glassb_1",
+                    "moduleId": "uniequip_002_glassb",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_194_leto",
+                    "skillId": "skcom_quickattack[3]",
+                    "moduleId": "uniequip_002_leto",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4207_branch",
+                    "skillId": "skchr_branch_1",
+                    "moduleId": "uniequip_002_branch",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4224_turdus",
+                    "skillId": "skchr_turdus_1",
+                    "moduleId": "uniequip_002_turdus",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4166_varkis",
+                    "skillId": "skchr_varkis_1",
+                    "moduleId": "uniequip_002_varkis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_193_frostl",
+                    "skillId": "skchr_frostl_1",
+                    "moduleId": "uniequip_002_frostl",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_2",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_367_swllow",
+                    "skillId": "skchr_swllow_1",
+                    "moduleId": "uniequip_002_swllow",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_02_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "ursusShip"
+                  ],
+                  "regularBondIds": [
+                    "indomShip",
+                    "preciShip",
+                    "skillfulShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 4,
+                "endRound": 7,
+                "recChars": [
+                  {
+                    "charId": "char_194_leto",
+                    "skillId": "skcom_quickattack[3]",
+                    "moduleId": "uniequip_002_leto",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4207_branch",
+                    "skillId": "skchr_branch_1",
+                    "moduleId": "uniequip_002_branch",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4224_turdus",
+                    "skillId": "skchr_turdus_1",
+                    "moduleId": "uniequip_002_turdus",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4166_varkis",
+                    "skillId": "skchr_varkis_1",
+                    "moduleId": "uniequip_002_varkis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_2",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_195_glassb",
+                    "skillId": "skchr_glassb_1",
+                    "moduleId": "uniequip_002_glassb",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4245_alga",
+                    "skillId": "skchr_alga_1",
+                    "moduleId": "uniequip_002_alga",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4088_hodrer",
+                    "skillId": "skchr_hodrer_1",
+                    "moduleId": "uniequip_002_hodrer",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_188_helage",
+                    "skillId": "skchr_helage_1",
+                    "moduleId": "uniequip_002_helage",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1051_headb2",
+                    "skillId": "skchr_headb2_1",
+                    "moduleId": "uniequip_002_headb2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4244_tocka",
+                    "skillId": "skchr_tocka_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_391_rosmon",
+                    "skillId": "skchr_rosmon_1",
+                    "moduleId": "uniequip_003_rosmon",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_15_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_11_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_13_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "ursusShip"
+                  ],
+                  "regularBondIds": [
+                    "indomShip",
+                    "miraShip",
+                    "preciShip",
+                    "raidShip",
+                    "skillfulShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 8,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_194_leto",
+                    "skillId": "skcom_quickattack[3]",
+                    "moduleId": "uniequip_002_leto",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4207_branch",
+                    "skillId": "skchr_branch_1",
+                    "moduleId": "uniequip_002_branch",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4224_turdus",
+                    "skillId": "skchr_turdus_1",
+                    "moduleId": "uniequip_002_turdus",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_195_glassb",
+                    "skillId": "skchr_glassb_1",
+                    "moduleId": "uniequip_002_glassb",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4245_alga",
+                    "skillId": "skchr_alga_1",
+                    "moduleId": "uniequip_002_alga",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4088_hodrer",
+                    "skillId": "skchr_hodrer_1",
+                    "moduleId": "uniequip_002_hodrer",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_188_helage",
+                    "skillId": "skchr_helage_1",
+                    "moduleId": "uniequip_002_helage",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1051_headb2",
+                    "skillId": "skchr_headb2_1",
+                    "moduleId": "uniequip_002_headb2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4244_tocka",
+                    "skillId": "skchr_tocka_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_391_rosmon",
+                    "skillId": "skchr_rosmon_1",
+                    "moduleId": "uniequip_003_rosmon",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_485_pallas",
+                    "skillId": "skchr_pallas_1",
+                    "moduleId": "uniequip_002_pallas",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4247_oxi",
+                    "skillId": "skchr_oxi_3",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4146_nymph",
+                    "skillId": "skchr_nymph_1",
+                    "moduleId": "uniequip_002_nymph",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4133_logos",
+                    "skillId": "skchr_logos_3",
+                    "moduleId": "uniequip_003_logos",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_249_mlyss",
+                    "skillId": "skchr_mlyss_1",
+                    "moduleId": "uniequip_004_mlyss",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4134_cetsyr",
+                    "skillId": "skchr_cetsyr_3",
+                    "moduleId": "uniequip_002_cetsyr",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_15_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_11_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_13_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "ursusShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "deputShip",
+                    "docShip",
+                    "emptyShip",
+                    "maniShip",
+                    "raidShip",
+                    "skillfulShip",
+                    "swiftShip",
+                    "visiShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "105",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_bonus",
+              "band_support"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_206_gnosis",
+                    "skillId": "skchr_gnosis_2",
+                    "moduleId": "uniequip_002_gnosis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1016_agoat2",
+                    "skillId": "skchr_agoat2_2",
+                    "moduleId": "uniequip_002_agoat2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1045_svash2",
+                    "skillId": "skchr_svash2_2",
+                    "moduleId": "uniequip_002_svash2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1046_sbell2",
+                    "skillId": "skchr_sbell2_3",
+                    "moduleId": "uniequip_002_sbell2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_391_rosmon",
+                    "skillId": "skchr_rosmon_1",
+                    "moduleId": "uniequip_003_rosmon",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4244_tocka",
+                    "skillId": "skchr_tocka_1",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "kjeragShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "preciShip",
+                    "skillfulShip",
+                    "suntShip",
+                    "swiftShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "106",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_transfer",
+              "band_amiya",
+              "band_damaztic",
+              "band_mess",
+              "band_fund"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4055_bgsnow",
+                    "skillId": "skchr_bgsnow_2",
+                    "moduleId": "uniequip_003_bgsnow",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4133_logos",
+                    "skillId": "skchr_logos_3",
+                    "moduleId": "uniequip_003_logos",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4058_pepe",
+                    "skillId": "skchr_pepe_3",
+                    "moduleId": "uniequip_002_pepe",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4139_papyrs",
+                    "skillId": "skchr_papyrs_1",
+                    "moduleId": "uniequip_002_papyrs",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_472_pasngr",
+                    "skillId": "skchr_pasngr_3",
+                    "moduleId": "uniequip_002_pasngr",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4204_mantra",
+                    "skillId": "skchr_mantra_2",
+                    "moduleId": "uniequip_002_mantra",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_02_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "sargonShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "preciShip",
+                    "skillfulShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 3,
+                "recChars": [
+                  {
+                    "charId": "char_143_ghost",
+                    "skillId": "skcom_atk_up[3]",
+                    "moduleId": "uniequip_002_ghost",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_193_frostl",
+                    "skillId": "skchr_frostl_1",
+                    "moduleId": "uniequip_002_frostl",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4166_varkis",
+                    "skillId": "skchr_varkis_1",
+                    "moduleId": "uniequip_002_varkis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_367_swllow",
+                    "skillId": "skchr_swllow_2",
+                    "moduleId": "uniequip_002_swllow",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_1",
+                    "moduleId": "",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4139_papyrs",
+                    "skillId": "skchr_papyrs_1",
+                    "moduleId": "uniequip_002_papyrs",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_328_cammou",
+                    "skillId": "skcom_atk_up[2]",
+                    "moduleId": "uniequip_002_cammou",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4198_christ",
+                    "skillId": "skchr_christ_1",
+                    "moduleId": "uniequip_002_christ",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "preciShip",
+                    "skillfulShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 4,
+                "endRound": 7,
+                "recChars": [
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_427_vigil",
+                    "skillId": "skchr_vigil_3",
+                    "moduleId": "uniequip_002_vigil",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4232_hbound",
+                    "skillId": "skchr_hbound_2",
+                    "moduleId": "uniequip_002_hbound",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "preciShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 8,
+                "endRound": 10,
+                "recChars": [
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_171_bldsk",
+                    "skillId": "skchr_bldsk_1",
+                    "moduleId": "uniequip_002_bldsk",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_179_cgbird",
+                    "skillId": "skchr_cgbird_3",
+                    "moduleId": "uniequip_002_cgbird",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_472_pasngr",
+                    "skillId": "skchr_pasngr_3",
+                    "moduleId": "uniequip_002_pasngr",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "preciShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 11,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_1047_halo2",
+                    "skillId": "skchr_halo2_1",
+                    "moduleId": "uniequip_003_halo2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4055_bgsnow",
+                    "skillId": "skchr_bgsnow_2",
+                    "moduleId": "uniequip_003_bgsnow",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4058_pepe",
+                    "skillId": "skchr_pepe_3",
+                    "moduleId": "uniequip_002_pepe",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4179_monstr",
+                    "skillId": "skchr_monstr_1",
+                    "moduleId": "uniequip_002_monstr",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": null,
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "107",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_mech"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_2",
+                    "moduleId": "",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1034_jesca2",
+                    "skillId": "skchr_jesca2_3",
+                    "moduleId": "uniequip_002_jesca2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4072_ironmn",
+                    "skillId": "skchr_ironmn_3",
+                    "moduleId": "uniequip_002_ironmn",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_485_pallas",
+                    "skillId": "skchr_pallas_3",
+                    "moduleId": "uniequip_002_pallas",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1019_siege2",
+                    "skillId": "skchr_siege2_3",
+                    "moduleId": "uniequip_002_siege2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4162_cathy",
+                    "skillId": "skchr_cathy_2",
+                    "moduleId": "uniequip_002_cathy",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4114_harold",
+                    "skillId": "skchr_harold_2",
+                    "moduleId": "uniequip_002_harold",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_618_acrbot",
+                    "skillId": "skchr_acrbot_1",
+                    "moduleId": "uniequip_002_acrbot",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_16_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_12_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_14_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_09_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "victoriaShip"
+                  ],
+                  "regularBondIds": [
+                    "deputShip",
+                    "miraShip",
+                    "skillfulShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "108",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_bonus"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_129_bluep",
+                    "skillId": "skchr_bluep_1",
+                    "moduleId": "uniequip_002_bluep",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4163_rosesa",
+                    "skillId": "skchr_rosesa_1",
+                    "moduleId": "uniequip_002_rosesa",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_293_thorns",
+                    "skillId": "skchr_thorns_3",
+                    "moduleId": "uniequip_002_thorns",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4042_lumen",
+                    "skillId": "skchr_lumen_3",
+                    "moduleId": "uniequip_003_lumen",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4232_hbound",
+                    "skillId": "skchr_hbound_2",
+                    "moduleId": "uniequip_002_hbound",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4066_highmo",
+                    "skillId": "skchr_highmo_1",
+                    "moduleId": "uniequip_002_highmo",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_1_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_08_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_14_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_08_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_04_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "iberiaShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "preciShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 7,
+                "recChars": [
+                  {
+                    "charId": "char_4041_chnut",
+                    "skillId": "skchr_chnut_1",
+                    "moduleId": "uniequip_002_chnut",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_367_swllow",
+                    "skillId": "skchr_swllow_1",
+                    "moduleId": "uniequip_002_swllow",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_469_indigo",
+                    "skillId": "skchr_indigo_1",
+                    "moduleId": "uniequip_002_indigo",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_129_bluep",
+                    "skillId": "skchr_bluep_1",
+                    "moduleId": "uniequip_002_bluep",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4166_varkis",
+                    "skillId": "skchr_varkis_1",
+                    "moduleId": "uniequip_002_varkis",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4207_branch",
+                    "skillId": "skchr_branch_1",
+                    "moduleId": "uniequip_002_branch",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_195_glassb",
+                    "skillId": "skchr_glassb_1",
+                    "moduleId": "uniequip_002_glassb",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4163_rosesa",
+                    "skillId": "skchr_rosesa_1",
+                    "moduleId": "uniequip_002_rosesa",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4232_hbound",
+                    "skillId": "skchr_hbound_2",
+                    "moduleId": "uniequip_002_hbound",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4066_highmo",
+                    "skillId": "skchr_highmo_1",
+                    "moduleId": "uniequip_002_highmo",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_355_ethan",
+                    "skillId": "skchr_ethan_2",
+                    "moduleId": "uniequip_002_ethan",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4054_malist",
+                    "skillId": "skcom_quickattack[3]",
+                    "moduleId": "uniequip_002_malist",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_1_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_08_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "iberiaShip"
+                  ],
+                  "regularBondIds": [
+                    "docShip",
+                    "indomShip",
+                    "preciShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 8,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_4163_rosesa",
+                    "skillId": "skchr_rosesa_1",
+                    "moduleId": "uniequip_002_rosesa",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4232_hbound",
+                    "skillId": "skchr_hbound_2",
+                    "moduleId": "uniequip_002_hbound",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4066_highmo",
+                    "skillId": "skchr_highmo_1",
+                    "moduleId": "uniequip_002_highmo",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_002_archet",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_355_ethan",
+                    "skillId": "skchr_ethan_2",
+                    "moduleId": "uniequip_002_ethan",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_1",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_400_weedy",
+                    "skillId": "skchr_weedy_3",
+                    "moduleId": "uniequip_002_weedy",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_179_cgbird",
+                    "skillId": "skchr_cgbird_3",
+                    "moduleId": "uniequip_002_cgbird",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_293_thorns",
+                    "skillId": "skchr_thorns_3",
+                    "moduleId": "uniequip_002_thorns",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4009_irene",
+                    "skillId": "skchr_irene_2",
+                    "moduleId": "uniequip_003_irene",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1039_thorn2",
+                    "skillId": "skchr_thorn2_2",
+                    "moduleId": "uniequip_002_thorn2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_249_mlyss",
+                    "skillId": "skchr_mlyss_3",
+                    "moduleId": "uniequip_004_mlyss",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_485_pallas",
+                    "skillId": "skchr_pallas_3",
+                    "moduleId": "uniequip_002_pallas",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_129_bluep",
+                    "skillId": "skchr_bluep_1",
+                    "moduleId": "uniequip_002_bluep",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_1_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_1_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_05_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_09_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_07_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_08_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "iberiaShip"
+                  ],
+                  "regularBondIds": [
+                    "arcaneShip",
+                    "docShip",
+                    "emptyShip",
+                    "preciShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        },
+        {
+          "guide": {
+            "guideId": "109",
+            "title": "测试攻略",
+            "strategyIds": [
+              "band_mech"
+            ],
+            "versionId": "V3_1",
+            "latestEditAtTs": "1700000000",
+            "tabs": [
+              {
+                "tabType": 1,
+                "startRound": 0,
+                "endRound": 0,
+                "recChars": [
+                  {
+                    "charId": "char_618_acrbot",
+                    "skillId": "skchr_acrbot_1",
+                    "moduleId": "uniequip_002_acrbot",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_430_fartth",
+                    "skillId": "skchr_fartth_2",
+                    "moduleId": "uniequip_003_fartth",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_237_gravel",
+                    "skillId": "skchr_gravel_1",
+                    "moduleId": "uniequip_002_gravel",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_423_blemsh",
+                    "skillId": "skchr_blemsh_2",
+                    "moduleId": "uniequip_003_blemsh",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4064_mlynar",
+                    "skillId": "skchr_mlynar_3",
+                    "moduleId": "uniequip_002_mlynar",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_004_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1014_nearl2",
+                    "skillId": "skchr_nearl2_3",
+                    "moduleId": "uniequip_002_nearl2",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_350_surtr",
+                    "skillId": "skchr_surtr_3",
+                    "moduleId": "uniequip_003_surtr",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [
+                  {
+                    "itemId": "chess_item_6_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_06_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_03_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_5_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_4_04_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_02_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_3_10_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_2_01_e_a"
+                  },
+                  {
+                    "itemId": "chess_item_6_12_e_a"
+                  }
+                ],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "kazimierzShip"
+                  ],
+                  "regularBondIds": [
+                    "indomShip",
+                    "preciShip",
+                    "raidShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 1,
+                "endRound": 7,
+                "recChars": [
+                  {
+                    "charId": "char_618_acrbot",
+                    "skillId": "skchr_acrbot_1",
+                    "moduleId": "uniequip_002_acrbot",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_1027_greyy2",
+                    "skillId": "skchr_greyy2_2",
+                    "moduleId": "uniequip_002_greyy2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_2",
+                    "moduleId": "",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4031_liesel",
+                    "skillId": "skchr_liesel_1",
+                    "moduleId": "uniequip_002_liesel",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_004_archet",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_237_gravel",
+                    "skillId": "skchr_gravel_1",
+                    "moduleId": "uniequip_002_gravel",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4166_varkis",
+                    "skillId": "skchr_varkis_2",
+                    "moduleId": "uniequip_002_varkis",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_423_blemsh",
+                    "skillId": "skchr_blemsh_2",
+                    "moduleId": "uniequip_003_blemsh",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_355_ethan",
+                    "skillId": "skchr_ethan_2",
+                    "moduleId": "uniequip_002_ethan",
+                    "mergeLevel": 1
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [],
+                  "regularBondIds": [
+                    "indomShip",
+                    "miraShip",
+                    "preciShip",
+                    "raidShip",
+                    "skillfulShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              },
+              {
+                "tabType": 2,
+                "startRound": 8,
+                "endRound": 13,
+                "recChars": [
+                  {
+                    "charId": "char_618_acrbot",
+                    "skillId": "skchr_acrbot_1",
+                    "moduleId": "uniequip_002_acrbot",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_4165_ctrail",
+                    "skillId": "skchr_ctrail_2",
+                    "moduleId": "",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4031_liesel",
+                    "skillId": "skchr_liesel_1",
+                    "moduleId": "uniequip_002_liesel",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_332_archet",
+                    "skillId": "skchr_archet_3",
+                    "moduleId": "uniequip_004_archet",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_237_gravel",
+                    "skillId": "skchr_gravel_1",
+                    "moduleId": "uniequip_002_gravel",
+                    "mergeLevel": 0
+                  },
+                  {
+                    "charId": "char_423_blemsh",
+                    "skillId": "skchr_blemsh_2",
+                    "moduleId": "uniequip_003_blemsh",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4064_mlynar",
+                    "skillId": "skchr_mlynar_3",
+                    "moduleId": "uniequip_002_mlynar",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_430_fartth",
+                    "skillId": "skchr_fartth_2",
+                    "moduleId": "uniequip_003_fartth",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4027_heyak",
+                    "skillId": "skchr_heyak_2",
+                    "moduleId": "uniequip_002_heyak",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_4010_etlchi",
+                    "skillId": "skchr_etlchi_3",
+                    "moduleId": "uniequip_002_etlchi",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_1014_nearl2",
+                    "skillId": "skchr_nearl2_3",
+                    "moduleId": "uniequip_002_nearl2",
+                    "mergeLevel": 1
+                  },
+                  {
+                    "charId": "char_350_surtr",
+                    "skillId": "skchr_surtr_3",
+                    "moduleId": "uniequip_003_surtr",
+                    "mergeLevel": 0
+                  }
+                ],
+                "recItems": [],
+                "activeBonds": {
+                  "seasonBondIds": [
+                    "kazimierzShip"
+                  ],
+                  "regularBondIds": [
+                    "indomShip",
+                    "miraShip",
+                    "preciShip",
+                    "raidShip",
+                    "skillfulShip",
+                    "suntShip"
+                  ]
+                },
+                "operationIdea": ""
+              }
+            ]
+          },
+          "invalid": 0,
+          "poster": {
+            "nickname": "测试作者"
+          },
+          "rel": {
+            "collected": false
+          },
+          "rts": {
+            "liked": "3",
+            "viewed": "12",
+            "collected": "2"
+          },
+          "seasonTag": {
+            "phaseName": "序列I"
+          }
+        }
+      ],
+      "pageToken": "next-page",
+      "hasMore": true,
+      "pageSize": 10
+    }
+  },
+  "decoded": {
+    "list": [
+      {
+        "guide": {
+          "id": "100",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_pepe",
+            "band_damaztic"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4133_logos",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_logos_3",
+                  "moduleId": "uniequip_003_logos"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_472_pasngr",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_pasngr_3",
+                  "moduleId": "uniequip_002_pasngr"
+                },
+                {
+                  "operatorId": "char_4058_pepe",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_pepe_3",
+                  "moduleId": "uniequip_002_pepe"
+                },
+                {
+                  "operatorId": "char_4139_papyrs",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_papyrs_1",
+                  "moduleId": "uniequip_002_papyrs"
+                },
+                {
+                  "operatorId": "char_4204_mantra",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_mantra_3",
+                  "moduleId": "uniequip_002_mantra"
+                },
+                {
+                  "operatorId": "char_4055_bgsnow",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bgsnow_3",
+                  "moduleId": "uniequip_003_bgsnow"
+                },
+                {
+                  "operatorId": "char_485_pallas",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pallas_1",
+                  "moduleId": "uniequip_002_pallas"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_08_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "sargonShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "skillfulShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "101",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_bonus",
+            "band_fund",
+            "band_random"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4177_brigid",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_brigid_1",
+                  "moduleId": "uniequip_002_brigid"
+                },
+                {
+                  "operatorId": "char_4202_haruka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_haruka_2",
+                  "moduleId": "uniequip_002_haruka"
+                },
+                {
+                  "operatorId": "char_1019_siege2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_siege2_3",
+                  "moduleId": "uniequip_002_siege2"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_202_demkni",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_demkni_1",
+                  "moduleId": "uniequip_002_demkni"
+                },
+                {
+                  "operatorId": "char_1040_blaze2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_blaze2_3",
+                  "moduleId": "uniequip_003_blaze2"
+                },
+                {
+                  "operatorId": "char_1034_jesca2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_jesca2_3",
+                  "moduleId": "uniequip_002_jesca2"
+                },
+                {
+                  "operatorId": "char_488_buildr",
+                  "eliteLevel": 1,
+                  "skillId": "skcom_charge_cost[3]",
+                  "moduleId": "uniequip_002_buildr"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_3_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_14_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_11_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_08_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_08_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "victoriaShip"
+                ],
+                "additionalFactionIds": [
+                  "docShip",
+                  "miraShip",
+                  "skillfulShip",
+                  "soloShip",
+                  "steadShip",
+                  "suntShip",
+                  "swiftShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 1,
+              "operators": [
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4013_kjera",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_atk_up[3]",
+                  "moduleId": "uniequip_002_kjera"
+                },
+                {
+                  "operatorId": "char_4047_pianst",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pianst_2",
+                  "moduleId": "uniequip_002_pianst"
+                },
+                {
+                  "operatorId": "char_4245_alga",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_alga_2",
+                  "moduleId": "uniequip_002_alga"
+                },
+                {
+                  "operatorId": "char_426_billro",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_billro_2",
+                  "moduleId": "uniequip_002_billro"
+                },
+                {
+                  "operatorId": "char_4162_cathy",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cathy_2",
+                  "moduleId": "uniequip_002_cathy"
+                },
+                {
+                  "operatorId": "char_472_pasngr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pasngr_3",
+                  "moduleId": "uniequip_002_pasngr"
+                },
+                {
+                  "operatorId": "char_249_mlyss",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mlyss_1",
+                  "moduleId": "uniequip_004_mlyss"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "skillfulShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 3,
+              "endRound": 5,
+              "operators": [
+                {
+                  "operatorId": "char_4162_cathy",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cathy_2",
+                  "moduleId": "uniequip_002_cathy"
+                },
+                {
+                  "operatorId": "char_4177_brigid",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_brigid_1",
+                  "moduleId": "uniequip_002_brigid"
+                },
+                {
+                  "operatorId": "char_426_billro",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_billro_2",
+                  "moduleId": "uniequip_002_billro"
+                },
+                {
+                  "operatorId": "char_484_robrta",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_robrta_2",
+                  "moduleId": "uniequip_002_robrta"
+                },
+                {
+                  "operatorId": "char_488_buildr",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_charge_cost[3]",
+                  "moduleId": "uniequip_002_buildr"
+                },
+                {
+                  "operatorId": "char_1034_jesca2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_jesca2_3",
+                  "moduleId": "uniequip_002_jesca2"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_179_cgbird",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cgbird_3",
+                  "moduleId": "uniequip_002_cgbird"
+                },
+                {
+                  "operatorId": "char_4072_ironmn",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ironmn_1",
+                  "moduleId": "uniequip_002_ironmn"
+                },
+                {
+                  "operatorId": "char_1031_slent2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_slent2_1",
+                  "moduleId": "uniequip_002_slent2"
+                },
+                {
+                  "operatorId": "char_4042_lumen",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_lumen_3",
+                  "moduleId": "uniequip_002_lumen"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "victoriaShip"
+                ],
+                "additionalFactionIds": [
+                  "deputShip",
+                  "docShip",
+                  "skillfulShip",
+                  "soloShip",
+                  "steadShip",
+                  "swiftShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 8,
+              "endRound": 10,
+              "operators": [
+                {
+                  "operatorId": "char_1019_siege2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_siege2_3",
+                  "moduleId": "uniequip_002_siege2"
+                },
+                {
+                  "operatorId": "char_1016_agoat2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_agoat2_3",
+                  "moduleId": "uniequip_002_agoat2"
+                },
+                {
+                  "operatorId": "char_202_demkni",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_demkni_1",
+                  "moduleId": "uniequip_002_demkni"
+                },
+                {
+                  "operatorId": "char_420_flamtl",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_flamtl_2",
+                  "moduleId": "uniequip_003_flamtl"
+                },
+                {
+                  "operatorId": "char_358_lisa",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_lisa_1",
+                  "moduleId": "uniequip_002_lisa"
+                }
+              ],
+              "equips": [],
+              "activeFactions": null,
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 13,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_1040_blaze2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_blaze2_3",
+                  "moduleId": "uniequip_003_blaze2"
+                },
+                {
+                  "operatorId": "char_1039_thorn2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_thorn2_1",
+                  "moduleId": "uniequip_002_thorn2"
+                },
+                {
+                  "operatorId": "char_249_mlyss",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mlyss_1",
+                  "moduleId": "uniequip_004_mlyss"
+                },
+                {
+                  "operatorId": "char_4202_haruka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_haruka_2",
+                  "moduleId": "uniequip_002_haruka"
+                },
+                {
+                  "operatorId": "char_4231_clemnt",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_clemnt_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4230_mcnist",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mcnist_1",
+                  "moduleId": "uniequip_002_mcnist"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "emptyShip",
+                  "swiftShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "102",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_siracusa"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_291_aglina",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_aglina_3",
+                  "moduleId": "uniequip_002_aglina"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_1015_aglna2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_aglna2_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4065_judge",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_judge_2",
+                  "moduleId": "uniequip_002_judge"
+                },
+                {
+                  "operatorId": "char_1038_whitw2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_whitw2_3",
+                  "moduleId": "uniequip_002_whitw2"
+                },
+                {
+                  "operatorId": "char_427_vigil",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_vigil_3",
+                  "moduleId": "uniequip_002_vigil"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_4037_demetr",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_demetr_3",
+                  "moduleId": "uniequip_002_demetr"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_3_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_14_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "siracusaShip"
+                ],
+                "additionalFactionIds": [
+                  "preciShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_140_whitew",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_whitew_1",
+                  "moduleId": "uniequip_002_whitew"
+                },
+                {
+                  "operatorId": "char_346_aosta",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_quickattack[3]",
+                  "moduleId": "uniequip_002_aosta"
+                },
+                {
+                  "operatorId": "char_4031_liesel",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_liesel_1",
+                  "moduleId": "uniequip_002_liesel"
+                },
+                {
+                  "operatorId": "char_4026_vulpis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_vulpis_3",
+                  "moduleId": "uniequip_002_vulpis"
+                },
+                {
+                  "operatorId": "char_427_vigil",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_vigil_3",
+                  "moduleId": "uniequip_002_vigil"
+                },
+                {
+                  "operatorId": "char_291_aglina",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_aglina_3",
+                  "moduleId": "uniequip_002_aglina"
+                },
+                {
+                  "operatorId": "char_358_lisa",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_lisa_3",
+                  "moduleId": "uniequip_002_lisa"
+                },
+                {
+                  "operatorId": "char_4037_demetr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_demetr_3",
+                  "moduleId": "uniequip_002_demetr"
+                },
+                {
+                  "operatorId": "char_1038_whitw2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_whitw2_3",
+                  "moduleId": "uniequip_002_whitw2"
+                },
+                {
+                  "operatorId": "char_367_swllow",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_swllow_2",
+                  "moduleId": "uniequip_002_swllow"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ctrail_1",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_249_mlyss",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mlyss_1",
+                  "moduleId": "uniequip_004_mlyss"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "siracusaShip"
+                ],
+                "additionalFactionIds": [
+                  "miraShip",
+                  "preciShip",
+                  "skillfulShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "103",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_fund"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4082_qiubai",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_qiubai_1",
+                  "moduleId": "uniequip_002_qiubai"
+                },
+                {
+                  "operatorId": "char_322_lmlee",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_lmlee_2",
+                  "moduleId": "uniequip_002_lmlee"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_2015_dusk",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_dusk_2",
+                  "moduleId": "uniequip_002_dusk"
+                },
+                {
+                  "operatorId": "char_1050_chen3",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_chen3_3",
+                  "moduleId": "uniequip_002_chen3"
+                },
+                {
+                  "operatorId": "char_4222_taraxa",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_taraxa_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_2026_yu",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_yu_3",
+                  "moduleId": "uniequip_002_yu"
+                },
+                {
+                  "operatorId": "char_202_demkni",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_demkni_1",
+                  "moduleId": "uniequip_002_demkni"
+                },
+                {
+                  "operatorId": "char_1040_blaze2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_blaze2_3",
+                  "moduleId": "uniequip_002_blaze2"
+                },
+                {
+                  "operatorId": "char_193_frostl",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_frostl_1",
+                  "moduleId": "uniequip_002_frostl"
+                },
+                {
+                  "operatorId": "char_4151_tinman",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_tinman_1",
+                  "moduleId": "uniequip_002_tinman"
+                },
+                {
+                  "operatorId": "char_264_f12yin",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_f12yin_1",
+                  "moduleId": "uniequip_003_f12yin"
+                },
+                {
+                  "operatorId": "char_1045_svash2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_svash2_2",
+                  "moduleId": "uniequip_002_svash2"
+                },
+                {
+                  "operatorId": "char_4228_closur",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_closur_1",
+                  "moduleId": "uniequip_002_closur"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_07_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "yanShip"
+                ],
+                "additionalFactionIds": [
+                  "docShip",
+                  "investShip",
+                  "skillfulShip",
+                  "steadShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "104",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_ursus",
+            "band_jesica",
+            "band_ioleta",
+            "band_takecare",
+            "band_fund"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4245_alga",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_alga_1",
+                  "moduleId": "uniequip_002_alga"
+                },
+                {
+                  "operatorId": "char_4244_tocka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_tocka_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4247_oxi",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_oxi_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_485_pallas",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pallas_1",
+                  "moduleId": "uniequip_002_pallas"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_391_rosmon",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_rosmon_1",
+                  "moduleId": "uniequip_003_rosmon"
+                },
+                {
+                  "operatorId": "char_4146_nymph",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_nymph_1",
+                  "moduleId": "uniequip_002_nymph"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_11_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_13_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "ursusShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "deputShip",
+                  "preciShip",
+                  "skillfulShip",
+                  "swiftShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 3,
+              "operators": [
+                {
+                  "operatorId": "char_195_glassb",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_glassb_1",
+                  "moduleId": "uniequip_002_glassb"
+                },
+                {
+                  "operatorId": "char_194_leto",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_quickattack[3]",
+                  "moduleId": "uniequip_002_leto"
+                },
+                {
+                  "operatorId": "char_4207_branch",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_branch_1",
+                  "moduleId": "uniequip_002_branch"
+                },
+                {
+                  "operatorId": "char_4224_turdus",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_turdus_1",
+                  "moduleId": "uniequip_002_turdus"
+                },
+                {
+                  "operatorId": "char_4166_varkis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_varkis_1",
+                  "moduleId": "uniequip_002_varkis"
+                },
+                {
+                  "operatorId": "char_193_frostl",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_frostl_1",
+                  "moduleId": "uniequip_002_frostl"
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ctrail_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_367_swllow",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_swllow_1",
+                  "moduleId": "uniequip_002_swllow"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_02_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "ursusShip"
+                ],
+                "additionalFactionIds": [
+                  "indomShip",
+                  "preciShip",
+                  "skillfulShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 4,
+              "endRound": 7,
+              "operators": [
+                {
+                  "operatorId": "char_194_leto",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_quickattack[3]",
+                  "moduleId": "uniequip_002_leto"
+                },
+                {
+                  "operatorId": "char_4207_branch",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_branch_1",
+                  "moduleId": "uniequip_002_branch"
+                },
+                {
+                  "operatorId": "char_4224_turdus",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_turdus_1",
+                  "moduleId": "uniequip_002_turdus"
+                },
+                {
+                  "operatorId": "char_4166_varkis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_varkis_1",
+                  "moduleId": "uniequip_002_varkis"
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ctrail_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_195_glassb",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_glassb_1",
+                  "moduleId": "uniequip_002_glassb"
+                },
+                {
+                  "operatorId": "char_4245_alga",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_alga_1",
+                  "moduleId": "uniequip_002_alga"
+                },
+                {
+                  "operatorId": "char_4088_hodrer",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_hodrer_1",
+                  "moduleId": "uniequip_002_hodrer"
+                },
+                {
+                  "operatorId": "char_188_helage",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_helage_1",
+                  "moduleId": "uniequip_002_helage"
+                },
+                {
+                  "operatorId": "char_1051_headb2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_headb2_1",
+                  "moduleId": "uniequip_002_headb2"
+                },
+                {
+                  "operatorId": "char_4244_tocka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_tocka_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_391_rosmon",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_rosmon_1",
+                  "moduleId": "uniequip_003_rosmon"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_15_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_11_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_13_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "ursusShip"
+                ],
+                "additionalFactionIds": [
+                  "indomShip",
+                  "miraShip",
+                  "preciShip",
+                  "raidShip",
+                  "skillfulShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 8,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_194_leto",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_quickattack[3]",
+                  "moduleId": "uniequip_002_leto"
+                },
+                {
+                  "operatorId": "char_4207_branch",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_branch_1",
+                  "moduleId": "uniequip_002_branch"
+                },
+                {
+                  "operatorId": "char_4224_turdus",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_turdus_1",
+                  "moduleId": "uniequip_002_turdus"
+                },
+                {
+                  "operatorId": "char_195_glassb",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_glassb_1",
+                  "moduleId": "uniequip_002_glassb"
+                },
+                {
+                  "operatorId": "char_4245_alga",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_alga_1",
+                  "moduleId": "uniequip_002_alga"
+                },
+                {
+                  "operatorId": "char_4088_hodrer",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_hodrer_1",
+                  "moduleId": "uniequip_002_hodrer"
+                },
+                {
+                  "operatorId": "char_188_helage",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_helage_1",
+                  "moduleId": "uniequip_002_helage"
+                },
+                {
+                  "operatorId": "char_1051_headb2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_headb2_1",
+                  "moduleId": "uniequip_002_headb2"
+                },
+                {
+                  "operatorId": "char_4244_tocka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_tocka_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_391_rosmon",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_rosmon_1",
+                  "moduleId": "uniequip_003_rosmon"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_485_pallas",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pallas_1",
+                  "moduleId": "uniequip_002_pallas"
+                },
+                {
+                  "operatorId": "char_4247_oxi",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_oxi_3",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4146_nymph",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_nymph_1",
+                  "moduleId": "uniequip_002_nymph"
+                },
+                {
+                  "operatorId": "char_4133_logos",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_logos_3",
+                  "moduleId": "uniequip_003_logos"
+                },
+                {
+                  "operatorId": "char_249_mlyss",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mlyss_1",
+                  "moduleId": "uniequip_004_mlyss"
+                },
+                {
+                  "operatorId": "char_4134_cetsyr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cetsyr_3",
+                  "moduleId": "uniequip_002_cetsyr"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_15_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_11_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_13_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "ursusShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "deputShip",
+                  "docShip",
+                  "emptyShip",
+                  "maniShip",
+                  "raidShip",
+                  "skillfulShip",
+                  "swiftShip",
+                  "visiShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "105",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_bonus",
+            "band_support"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_206_gnosis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_gnosis_2",
+                  "moduleId": "uniequip_002_gnosis"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_1016_agoat2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_agoat2_2",
+                  "moduleId": "uniequip_002_agoat2"
+                },
+                {
+                  "operatorId": "char_1045_svash2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_svash2_2",
+                  "moduleId": "uniequip_002_svash2"
+                },
+                {
+                  "operatorId": "char_1046_sbell2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_sbell2_3",
+                  "moduleId": "uniequip_002_sbell2"
+                },
+                {
+                  "operatorId": "char_391_rosmon",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_rosmon_1",
+                  "moduleId": "uniequip_003_rosmon"
+                },
+                {
+                  "operatorId": "char_4244_tocka",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_tocka_1",
+                  "moduleId": ""
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "kjeragShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "preciShip",
+                  "skillfulShip",
+                  "suntShip",
+                  "swiftShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "106",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_transfer",
+            "band_amiya",
+            "band_damaztic",
+            "band_mess",
+            "band_fund"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_4055_bgsnow",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bgsnow_2",
+                  "moduleId": "uniequip_003_bgsnow"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_4133_logos",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_logos_3",
+                  "moduleId": "uniequip_003_logos"
+                },
+                {
+                  "operatorId": "char_4058_pepe",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pepe_3",
+                  "moduleId": "uniequip_002_pepe"
+                },
+                {
+                  "operatorId": "char_4139_papyrs",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_papyrs_1",
+                  "moduleId": "uniequip_002_papyrs"
+                },
+                {
+                  "operatorId": "char_472_pasngr",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_pasngr_3",
+                  "moduleId": "uniequip_002_pasngr"
+                },
+                {
+                  "operatorId": "char_4204_mantra",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mantra_2",
+                  "moduleId": "uniequip_002_mantra"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_02_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "sargonShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "preciShip",
+                  "skillfulShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 3,
+              "operators": [
+                {
+                  "operatorId": "char_143_ghost",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_atk_up[3]",
+                  "moduleId": "uniequip_002_ghost"
+                },
+                {
+                  "operatorId": "char_193_frostl",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_frostl_1",
+                  "moduleId": "uniequip_002_frostl"
+                },
+                {
+                  "operatorId": "char_4166_varkis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_varkis_1",
+                  "moduleId": "uniequip_002_varkis"
+                },
+                {
+                  "operatorId": "char_367_swllow",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_swllow_2",
+                  "moduleId": "uniequip_002_swllow"
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ctrail_1",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4139_papyrs",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_papyrs_1",
+                  "moduleId": "uniequip_002_papyrs"
+                },
+                {
+                  "operatorId": "char_328_cammou",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_atk_up[2]",
+                  "moduleId": "uniequip_002_cammou"
+                },
+                {
+                  "operatorId": "char_4198_christ",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_christ_1",
+                  "moduleId": "uniequip_002_christ"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "preciShip",
+                  "skillfulShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 4,
+              "endRound": 7,
+              "operators": [
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_427_vigil",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_vigil_3",
+                  "moduleId": "uniequip_002_vigil"
+                },
+                {
+                  "operatorId": "char_4232_hbound",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_hbound_2",
+                  "moduleId": "uniequip_002_hbound"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "preciShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 8,
+              "endRound": 10,
+              "operators": [
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_171_bldsk",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bldsk_1",
+                  "moduleId": "uniequip_002_bldsk"
+                },
+                {
+                  "operatorId": "char_179_cgbird",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cgbird_3",
+                  "moduleId": "uniequip_002_cgbird"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_472_pasngr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pasngr_3",
+                  "moduleId": "uniequip_002_pasngr"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "preciShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 11,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_1047_halo2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_halo2_1",
+                  "moduleId": "uniequip_003_halo2"
+                },
+                {
+                  "operatorId": "char_4055_bgsnow",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bgsnow_2",
+                  "moduleId": "uniequip_003_bgsnow"
+                },
+                {
+                  "operatorId": "char_4058_pepe",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pepe_3",
+                  "moduleId": "uniequip_002_pepe"
+                },
+                {
+                  "operatorId": "char_4179_monstr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_monstr_1",
+                  "moduleId": "uniequip_002_monstr"
+                }
+              ],
+              "equips": [],
+              "activeFactions": null,
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "107",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_mech"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_ctrail_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_1034_jesca2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_jesca2_3",
+                  "moduleId": "uniequip_002_jesca2"
+                },
+                {
+                  "operatorId": "char_4072_ironmn",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ironmn_3",
+                  "moduleId": "uniequip_002_ironmn"
+                },
+                {
+                  "operatorId": "char_485_pallas",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_pallas_3",
+                  "moduleId": "uniequip_002_pallas"
+                },
+                {
+                  "operatorId": "char_1019_siege2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_siege2_3",
+                  "moduleId": "uniequip_002_siege2"
+                },
+                {
+                  "operatorId": "char_4162_cathy",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cathy_2",
+                  "moduleId": "uniequip_002_cathy"
+                },
+                {
+                  "operatorId": "char_4114_harold",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_harold_2",
+                  "moduleId": "uniequip_002_harold"
+                },
+                {
+                  "operatorId": "char_618_acrbot",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_acrbot_1",
+                  "moduleId": "uniequip_002_acrbot"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_16_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_12_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_14_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_09_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "victoriaShip"
+                ],
+                "additionalFactionIds": [
+                  "deputShip",
+                  "miraShip",
+                  "skillfulShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "108",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_bonus"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_129_bluep",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bluep_1",
+                  "moduleId": "uniequip_002_bluep"
+                },
+                {
+                  "operatorId": "char_4163_rosesa",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_rosesa_1",
+                  "moduleId": "uniequip_002_rosesa"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_293_thorns",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_thorns_3",
+                  "moduleId": "uniequip_002_thorns"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_4042_lumen",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_lumen_3",
+                  "moduleId": "uniequip_003_lumen"
+                },
+                {
+                  "operatorId": "char_4232_hbound",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_hbound_2",
+                  "moduleId": "uniequip_002_hbound"
+                },
+                {
+                  "operatorId": "char_4066_highmo",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_highmo_1",
+                  "moduleId": "uniequip_002_highmo"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_1_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_08_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_14_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_08_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_04_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "iberiaShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "preciShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 7,
+              "operators": [
+                {
+                  "operatorId": "char_4041_chnut",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_chnut_1",
+                  "moduleId": "uniequip_002_chnut"
+                },
+                {
+                  "operatorId": "char_367_swllow",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_swllow_1",
+                  "moduleId": "uniequip_002_swllow"
+                },
+                {
+                  "operatorId": "char_469_indigo",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_indigo_1",
+                  "moduleId": "uniequip_002_indigo"
+                },
+                {
+                  "operatorId": "char_129_bluep",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_bluep_1",
+                  "moduleId": "uniequip_002_bluep"
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4166_varkis",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_varkis_1",
+                  "moduleId": "uniequip_002_varkis"
+                },
+                {
+                  "operatorId": "char_4207_branch",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_branch_1",
+                  "moduleId": "uniequip_002_branch"
+                },
+                {
+                  "operatorId": "char_195_glassb",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_glassb_1",
+                  "moduleId": "uniequip_002_glassb"
+                },
+                {
+                  "operatorId": "char_4163_rosesa",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_rosesa_1",
+                  "moduleId": "uniequip_002_rosesa"
+                },
+                {
+                  "operatorId": "char_4232_hbound",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_hbound_2",
+                  "moduleId": "uniequip_002_hbound"
+                },
+                {
+                  "operatorId": "char_4066_highmo",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_highmo_1",
+                  "moduleId": "uniequip_002_highmo"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_355_ethan",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ethan_2",
+                  "moduleId": "uniequip_002_ethan"
+                },
+                {
+                  "operatorId": "char_4054_malist",
+                  "eliteLevel": 0,
+                  "skillId": "skcom_quickattack[3]",
+                  "moduleId": "uniequip_002_malist"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_1_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_08_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "iberiaShip"
+                ],
+                "additionalFactionIds": [
+                  "docShip",
+                  "indomShip",
+                  "preciShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 8,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_4163_rosesa",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_rosesa_1",
+                  "moduleId": "uniequip_002_rosesa"
+                },
+                {
+                  "operatorId": "char_4232_hbound",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_hbound_2",
+                  "moduleId": "uniequip_002_hbound"
+                },
+                {
+                  "operatorId": "char_4066_highmo",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_highmo_1",
+                  "moduleId": "uniequip_002_highmo"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_002_archet"
+                },
+                {
+                  "operatorId": "char_355_ethan",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_ethan_2",
+                  "moduleId": "uniequip_002_ethan"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_heyak_1",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_400_weedy",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_weedy_3",
+                  "moduleId": "uniequip_002_weedy"
+                },
+                {
+                  "operatorId": "char_179_cgbird",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_cgbird_3",
+                  "moduleId": "uniequip_002_cgbird"
+                },
+                {
+                  "operatorId": "char_293_thorns",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_thorns_3",
+                  "moduleId": "uniequip_002_thorns"
+                },
+                {
+                  "operatorId": "char_4009_irene",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_irene_2",
+                  "moduleId": "uniequip_003_irene"
+                },
+                {
+                  "operatorId": "char_1039_thorn2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_thorn2_2",
+                  "moduleId": "uniequip_002_thorn2"
+                },
+                {
+                  "operatorId": "char_249_mlyss",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_mlyss_3",
+                  "moduleId": "uniequip_004_mlyss"
+                },
+                {
+                  "operatorId": "char_485_pallas",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_pallas_3",
+                  "moduleId": "uniequip_002_pallas"
+                },
+                {
+                  "operatorId": "char_129_bluep",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_bluep_1",
+                  "moduleId": "uniequip_002_bluep"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_1_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_1_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_05_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_09_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_07_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_08_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "iberiaShip"
+                ],
+                "additionalFactionIds": [
+                  "arcaneShip",
+                  "docShip",
+                  "emptyShip",
+                  "preciShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      },
+      {
+        "guide": {
+          "id": "109",
+          "title": "测试攻略",
+          "strategyIds": [
+            "band_mech"
+          ],
+          "versionId": "V3_1",
+          "latestEditAt": 1700000000000,
+          "tabs": [
+            {
+              "type": "FORMATION",
+              "startRound": 0,
+              "endRound": 0,
+              "operators": [
+                {
+                  "operatorId": "char_618_acrbot",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_acrbot_1",
+                  "moduleId": "uniequip_002_acrbot"
+                },
+                {
+                  "operatorId": "char_430_fartth",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_fartth_2",
+                  "moduleId": "uniequip_003_fartth"
+                },
+                {
+                  "operatorId": "char_237_gravel",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_gravel_1",
+                  "moduleId": "uniequip_002_gravel"
+                },
+                {
+                  "operatorId": "char_423_blemsh",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_blemsh_2",
+                  "moduleId": "uniequip_003_blemsh"
+                },
+                {
+                  "operatorId": "char_4064_mlynar",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_mlynar_3",
+                  "moduleId": "uniequip_002_mlynar"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_004_archet"
+                },
+                {
+                  "operatorId": "char_1014_nearl2",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_nearl2_3",
+                  "moduleId": "uniequip_002_nearl2"
+                },
+                {
+                  "operatorId": "char_350_surtr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_surtr_3",
+                  "moduleId": "uniequip_003_surtr"
+                }
+              ],
+              "equips": [
+                {
+                  "equipId": "chess_item_6_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_06_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_03_e_a"
+                },
+                {
+                  "equipId": "chess_item_5_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_4_04_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_02_e_a"
+                },
+                {
+                  "equipId": "chess_item_3_10_e_a"
+                },
+                {
+                  "equipId": "chess_item_2_01_e_a"
+                },
+                {
+                  "equipId": "chess_item_6_12_e_a"
+                }
+              ],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "kazimierzShip"
+                ],
+                "additionalFactionIds": [
+                  "indomShip",
+                  "preciShip",
+                  "raidShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 1,
+              "endRound": 7,
+              "operators": [
+                {
+                  "operatorId": "char_618_acrbot",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_acrbot_1",
+                  "moduleId": "uniequip_002_acrbot"
+                },
+                {
+                  "operatorId": "char_1027_greyy2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_greyy2_2",
+                  "moduleId": "uniequip_002_greyy2"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_ctrail_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4031_liesel",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_liesel_1",
+                  "moduleId": "uniequip_002_liesel"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_004_archet"
+                },
+                {
+                  "operatorId": "char_237_gravel",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_gravel_1",
+                  "moduleId": "uniequip_002_gravel"
+                },
+                {
+                  "operatorId": "char_4166_varkis",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_varkis_2",
+                  "moduleId": "uniequip_002_varkis"
+                },
+                {
+                  "operatorId": "char_423_blemsh",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_blemsh_2",
+                  "moduleId": "uniequip_003_blemsh"
+                },
+                {
+                  "operatorId": "char_355_ethan",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_ethan_2",
+                  "moduleId": "uniequip_002_ethan"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [],
+                "additionalFactionIds": [
+                  "indomShip",
+                  "miraShip",
+                  "preciShip",
+                  "raidShip",
+                  "skillfulShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            },
+            {
+              "type": "ROUND",
+              "startRound": 8,
+              "endRound": 13,
+              "operators": [
+                {
+                  "operatorId": "char_618_acrbot",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_acrbot_1",
+                  "moduleId": "uniequip_002_acrbot"
+                },
+                {
+                  "operatorId": "char_4165_ctrail",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_ctrail_2",
+                  "moduleId": ""
+                },
+                {
+                  "operatorId": "char_4031_liesel",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_liesel_1",
+                  "moduleId": "uniequip_002_liesel"
+                },
+                {
+                  "operatorId": "char_332_archet",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_archet_3",
+                  "moduleId": "uniequip_004_archet"
+                },
+                {
+                  "operatorId": "char_237_gravel",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_gravel_1",
+                  "moduleId": "uniequip_002_gravel"
+                },
+                {
+                  "operatorId": "char_423_blemsh",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_blemsh_2",
+                  "moduleId": "uniequip_003_blemsh"
+                },
+                {
+                  "operatorId": "char_4064_mlynar",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_mlynar_3",
+                  "moduleId": "uniequip_002_mlynar"
+                },
+                {
+                  "operatorId": "char_430_fartth",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_fartth_2",
+                  "moduleId": "uniequip_003_fartth"
+                },
+                {
+                  "operatorId": "char_4027_heyak",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_heyak_2",
+                  "moduleId": "uniequip_002_heyak"
+                },
+                {
+                  "operatorId": "char_4010_etlchi",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_etlchi_3",
+                  "moduleId": "uniequip_002_etlchi"
+                },
+                {
+                  "operatorId": "char_1014_nearl2",
+                  "eliteLevel": 1,
+                  "skillId": "skchr_nearl2_3",
+                  "moduleId": "uniequip_002_nearl2"
+                },
+                {
+                  "operatorId": "char_350_surtr",
+                  "eliteLevel": 0,
+                  "skillId": "skchr_surtr_3",
+                  "moduleId": "uniequip_003_surtr"
+                }
+              ],
+              "equips": [],
+              "activeFactions": {
+                "coreFactionIds": [
+                  "kazimierzShip"
+                ],
+                "additionalFactionIds": [
+                  "indomShip",
+                  "miraShip",
+                  "preciShip",
+                  "raidShip",
+                  "skillfulShip",
+                  "suntShip"
+                ]
+              },
+              "description": ""
+            }
+          ]
+        },
+        "poster": {
+          "nickname": "测试作者"
+        },
+        "isInvalid": false,
+        "relation": {
+          "collected": false
+        },
+        "stats": {
+          "liked": "3",
+          "viewed": "12",
+          "collected": "2"
+        },
+        "season": {
+          "phaseName": "序列I"
+        }
+      }
+    ],
+    "pageToken": "next-page",
+    "hasMore": true,
+    "pageSize": 10
+  }
+}

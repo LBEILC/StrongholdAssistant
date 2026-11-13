@@ -160,6 +160,11 @@ export interface Connection {
    * 「MuMu 画面不是横屏 16:9，请在模拟器设置里改成 1920×1080 之类的分辨率」「找到 2 个 MuMu 实例，请在设置里选一个」
    */
   problem?: string
+  /**
+   * 从游戏画面认出的主题（v0.9.2），connected 且已经认出来时才有；认到的和上次不同时宿主推一次 onConnection。
+   * gameThemeAuto 时商店识别和「跟随游戏主题」的界面皮肤都用它
+   */
+  theme?: GameTheme
 }
 
 /** 正在运行的一个 MuMu 实例（v0.5.0） */
@@ -451,7 +456,13 @@ export type SkinId = GameTheme | 'classic'
 export type UiSkin = 'follow' | SkinId
 
 export interface Settings {
+  /**
+   * 游戏主题。gameThemeAuto 为 true 时是宿主最近一次认到的主题（宿主认到新主题就改这一项并保存，下次启动先用它）；
+   * 为 false 时是用户手动选的，宿主不改。商店识别按它来
+   */
   gameTheme: GameTheme
+  /** 自动识别游戏主题（v0.9.2，默认 true）。界面里选了某个主题就设成 false，选「自动识别」设回 true */
+  gameThemeAuto: boolean
   /** 界面皮肤（v0.8.0，默认 'follow'）。只影响助手界面的样子，和商店识别无关 */
   uiSkin: UiSkin
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
@@ -657,6 +668,52 @@ export interface SklandGuide {
   /** guide.tabs：一篇攻略里的几个阵容（阶段），按页面顺序；至少一个 */
   stages: SklandStage[]
 }
+/**
+ * 森空岛攻略列表的查询（v0.9.2，阵容 → 森空岛，见 099）。宿主在隐藏的官方攻略页里调用页面自己的攻略服务，
+ * 登录和签名都由官方页面处理；只在用户翻页、搜索、改筛选时调用，一次一页（10 条）
+ */
+export interface SklandGuideQuery {
+  /** all 攻略大全；collected 我的收藏；published 我的发布（后两个要登录） */
+  section: 'all' | 'collected' | 'published'
+  /** 只对 all 有效：recommended 推荐（默认）/ latest 最新（最新要登录） */
+  sort?: 'recommended' | 'latest'
+  /** 标题关键词：森空岛按文字模糊匹配，不是干员搜索；空串当没传 */
+  keyword?: string
+  /** 以下只对 all 有效，用助手自己的编号，宿主换成森空岛的（找不到对应的就当没选）：核心盟约单选；附加盟约多选（都要包含）；策略单选 */
+  core?: CovenantId | null
+  extras?: CovenantId[]
+  strategyId?: string | null
+  /** 下一页：上一页返回的 pageToken 原样传回；第一页不传 */
+  pageToken?: string
+}
+export interface SklandGuideItem {
+  /** guideId，字符串 */
+  id: string
+  /** 详情页地址，和 sklandGuide 的入参同一格式 */
+  url: string
+  title: string
+  author: string
+  /** 最后编辑时间，ISO */
+  editedAt: string
+  /** 赛季阶段，如「序列I」 */
+  phaseName: string
+  stats: { likes: number; collections: number; views: number }
+  /** 当前账号收藏过（没登录为 false） */
+  collected: boolean
+  /** 列表里自带的整篇攻略，导入直接用，不再读详情；数据不完整或攻略已失效时为 null */
+  guide: SklandGuide | null
+}
+export interface SklandGuidePage {
+  items: SklandGuideItem[]
+  /** 还有下一页时给，原样传回；没有为 null */
+  pageToken: string | null
+  /**
+   * 要登录才能继续（v0.9.2）：没登录时攻略大全只给第一页（pageToken 为 null）、「最新」和个人列表给空列表，这一项为 true。
+   * 不为此报错；界面显示登录按钮（sklandLogin）
+   */
+  loginRequired: boolean
+}
+
 export interface SklandStage {
   /** tab.tabType（数字）：1 → 'FORMATION'（成型阵容），其他值转成字符串原样给，界面按顺序叫「阶段 N」 */
   type: string
@@ -798,6 +855,11 @@ export interface Api {
    * 失败时 reject 一个 Error，message 是给用户看的中文（打不开、超时、攻略不存在或已失效）
    */
   sklandGuide(url: string): Promise<SklandGuide>
+  /**
+   * 森空岛攻略列表的一页（v0.9.2，见 SklandGuideQuery 和 099）。界面丢弃过期的结果，宿主不用排队取消；
+   * 打不开、被限流、数据结构变了时 reject，message 是给用户看的中文
+   */
+  sklandGuides(q: SklandGuideQuery): Promise<SklandGuidePage>
   /**
    * 森空岛历史战绩（v0.7.0）：宿主弹一个看得见的森空岛小窗口（和 sklandGuide 共用登录状态的存储），打开攻略编辑页
    * https://game.skland.com/arknights/stronghold-guide/edit 。没登录时用户在窗口里自己登录；登录后用户点页面上的

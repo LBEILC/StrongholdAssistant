@@ -79,7 +79,7 @@ public sealed class DiagnosticsStore(string directory)
             }
             var all = JsonSerializer.SerializeToNode(settings, HostApi.JsonOptions)!.AsObject();
             // 白名单避免将未来增加的云端或账号字段带入诊断包。
-            string[] allowed = ["gameTheme", "uiSkin", "shopMarkers", "shopScanSpeed", "autoCheckUpdate", "updateSource", "updateProxy", "uiScale", "alwaysOnTop", "gameSource",
+            string[] allowed = ["gameTheme", "gameThemeAuto", "uiSkin", "shopMarkers", "shopScanSpeed", "autoCheckUpdate", "updateSource", "updateProxy", "uiScale", "alwaysOnTop", "gameSource",
                 "followGame", "dockSide", "overlaySide", "toggleHotkey", "refreshKey", "startupMode", "collapseMode", "focusCovenants", "focusOperators", "routes"];
             var safe = new JsonObject();
             foreach (var key in allowed) safe[key] = all[key]?.DeepClone();
@@ -88,7 +88,7 @@ public sealed class DiagnosticsStore(string directory)
             WriteJson(zip, "connection.json", connection);
             var systemFields = JsonSerializer.SerializeToNode(system, HostApi.JsonOptions)!.AsObject();
             var safeSystem = new JsonObject();
-            foreach (var key in new[] { "version", "windows", "dpi", "monitors", "dpiAwareness", "windowSnapshot" })
+            foreach (var key in new[] { "version", "windows", "dpi", "monitors", "dpiAwareness", "windowSnapshot", "detectedTheme", "configuredTheme" })
                 safeSystem[key] = systemFields[key]?.DeepClone();
             WriteJson(zip, "system.json", safeSystem);
         }

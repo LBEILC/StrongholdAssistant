@@ -28,7 +28,7 @@ npm run build
 npm run dev
 ```
 
-`.dev.vars` 和本地 D1 的 `.wrangler/` 已忽略。普通开发需提供有效的 Resend、Turnstile 配置；测试会替换网络请求，不会实际发信。网站 Cookie 标记为 Secure，本地验证 Cookie 可用 `npm run dev -- --local-protocol=https`，Bearer 接口不依赖 Cookie。
+`.dev.vars` 和本地 D1 的 `.wrangler/` 已忽略。普通开发需提供有效的发信服务、Turnstile 配置；阿里云三项配置齐全时使用 DirectMail，否则使用 Resend。需要本地使用阿里云时，在 `.dev.vars` 添加下文同名三项变量。测试会替换网络请求，全部使用假凭据，不会实际发信。网站 Cookie 标记为 Secure，本地验证 Cookie 可用 `npm run dev -- --local-protocol=https`，Bearer 接口不依赖 Cookie。
 
 验证命令：
 
@@ -44,7 +44,7 @@ npm run build
 
 以下云端操作由部署负责人执行。代码中的示例地址和空配置必须先替换，不把机密提交到仓库。
 
-1. 在 Resend 配置发信域名与 DNS 验证，取得 API Key；创建 Turnstile 站点，取得服务端 Secret。前端使用对应 Site Key，第一期后端不含验证小部件。
+1. 按下节准备阿里云邮件推送；切换期间也可继续在 Resend 配置发信域名与 DNS 验证，取得 API Key。创建 Turnstile 站点，取得服务端 Secret。前端使用对应 Site Key，第一期后端不含验证小部件。
 2. 在 `src/plaza` 登录 Cloudflare 并创建 Pages 项目、D1：
 
    ```powershell
@@ -59,20 +59,26 @@ npm run build
    npx wrangler d1 migrations apply stronghold-plaza --remote
    ```
 
-3. 设置四个机密（命令交互输入，不写进命令行或文件提交）：
+3. 设置机密（命令交互输入，不写进命令行或文件提交）：
 
    ```powershell
-   npx wrangler pages secret put RESEND_API_KEY --project-name stronghold-plaza
    npx wrangler pages secret put TURNSTILE_SECRET --project-name stronghold-plaza
    npx wrangler pages secret put CODE_PEPPER --project-name stronghold-plaza
    npx wrangler pages secret put IP_SECRET --project-name stronghold-plaza
+   npx wrangler pages secret put ALIYUN_DM_ACCESS_KEY_ID --project-name stronghold-plaza
+   npx wrangler pages secret put ALIYUN_DM_ACCESS_KEY_SECRET --project-name stronghold-plaza
+   npx wrangler pages secret put ALIYUN_DM_ACCOUNT --project-name stronghold-plaza
    ```
+
+   `ALIYUN_DM_ACCESS_KEY_ID` / `ALIYUN_DM_ACCESS_KEY_SECRET` 为下节 RAM 用户的 AccessKey，`ALIYUN_DM_ACCOUNT` 为发信地址。三项均非空才启用阿里云，缺少任意一项仍走 Resend；切换时应补齐三项。使用 Resend 时另执行 `npx wrangler pages secret put RESEND_API_KEY --project-name stronghold-plaza` 和 `npx wrangler pages secret put MAIL_FROM --project-name stronghold-plaza`。阿里云发信失败不会自动转发到 Resend，也不重试。
 
    `IP_SECRET` 使用独立的高熵随机密钥，用于按用途和 UTC 日期生成 IP 的 HMAC；部署新代码前设置该密钥并应用 `0005_server_privacy.sql`（增加来源列及导入唯一索引，清空旧资金汇总和限额记录，旧样本没有来源，按每个编号各算一个来源，现有资金表不受影响）。迁移后立刻部署新代码：旧代码写资金样本和导入记录时列数对不上，中间这段时间资金上报和导入计数会失败。
 
    `CODE_PEPPER` 用独立的高熵随机字符串，长期保存；改变它会让现有验证码和登录凭据失效。`MAIL_FROM`、`ADMIN_EMAILS`、`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD` 含域名和邮箱，同样用 `pages secret put` 设置，不写进 `wrangler.toml`（仓库会公开）。账号下有多个 Cloudflare 账户时，命令前设置环境变量 `CLOUDFLARE_ACCOUNT_ID`。团队域名不带协议，AUD 为下一步创建的 Access 应用标识。按需扩充 `ALLOWED_ORIGINS`；同源请求自动允许。
 
 4. 在 Cloudflare Zero Trust 的 Access Applications 新建 **Self-hosted** 应用。在同一应用内添加网站域名的两个路径 `/admin*` 和 `/api/admin/*`，使用同一个 AUD；Allow 策略只包含管理员邮箱，邮箱同时写入 `ADMIN_EMAILS`。应用的登录方式由部署负责人配置。后台还会验证 JWT 的签名、issuer、audience、到期时间和邮箱白名单。为启用的其他访问域名配置同等保护；预览环境若启用后台，也要配置相应绑定和机密。参见 [Access 应用配置](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/) 和 [JWT 校验](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)。
+   经 ESA 回源时，在 Pages 设置加密变量 `EDGE_SECRET`，与 ESA 回源头 `X-Plaza-Edge` 完全一致，并开启托管转换 `ali-real-client-ip`；后台使用受 Access 保护的 `sa-admin.lubeiluchen.com`（上述两个路径配置在此域名），`sa.lubeiluchen.com` 本身不再经过 Access。
+
 5. 先在仓库根目录运行上述 catalog 生成脚本，再到 `src/plaza` 执行：
 
    ```powershell
@@ -83,6 +89,25 @@ npm run build
    ```
 
    Wrangler 会从当前项目的 `functions/` 一并部署后端。按需要在 Pages 中绑定实际站点域名。命令说明见 [Pages 命令](https://developers.cloudflare.com/workers/wrangler/commands/pages/)，D1 和变量绑定见 [Pages bindings](https://developers.cloudflare.com/pages/functions/bindings/)。
+
+## 阿里云邮件推送准备
+
+以下由用户在阿里云和 DNS 控制台完成，工程实现和测试不读取真实凭据、不操作账号或发送真实邮件。
+
+1. 在中国内地（杭州）开通邮件推送按量付费，确认账号可用及发信额度。
+2. 添加发信域名 `mail.sa.lubeiluchen.com`，按控制台给出的记录配置 SPF（TXT）、DKIM、DMARC（TXT）及 MX，并完成域名验证。记录名、值和 MX 优先级以该域名的控制台配置为准，不照抄其他域名的值。
+3. 创建发信地址 `noreply@mail.sa.lubeiluchen.com`，邮件类型选择「触发邮件」，确认地址可用；将完整地址填入 `ALIYUN_DM_ACCOUNT`。本实现不启用回信地址。
+4. 创建专用 RAM 用户及 AccessKey，只授予本接口所需的 `dm:SingleSendMail` 权限；不用主账号 AccessKey。按 [SingleSendMail 授权信息](https://help.aliyun.com/zh/direct-mail/api-dm-2015-11-23-singlesendmail)，该操作使用 `Resource: "*"`，可使用以下自定义策略：
+
+   ```json
+   { "Version": "1", "Statement": [{ "Effect": "Allow", "Action": ["dm:SingleSendMail"], "Resource": "*" }] }
+   ```
+
+5. 按上节 `wrangler pages secret put` 命令录入三项机密，勿写入源码、部署配置或提交到仓库。
+
+请求固定使用杭州 HTTPS 端点、`Version=2015-11-23` 和 RPC 1.0 HMAC-SHA1 签名，使用 Web Crypto，无额外 SDK 依赖。签名测试采用[官方固定示例](https://help.aliyun.com/zh/direct-mail/signature)。
+
+错误映射：HTTP 429、`InvalidQuota`、`Throttling`、`Throttling.User`、`Throttling.Api` 返回 `429 mail_quota`，沿用现有额度提示；其他失败（包括网络或响应解析失败）返回 `502 mail_failed`。阿里云[公共错误码](https://help.aliyun.com/zh/direct-mail/api-dm-2015-11-23-errorcodes)中的 `InvalidSendMail.Spam` 同时可能表示限频、额度或内容反垃圾，无法仅凭该码区分，按一般失败处理。限流也沿用现有「今天能发的验证码邮件用完了」提示。
 
 ## 实现约定
 

@@ -114,6 +114,7 @@ public sealed partial class HostApi
     private async Task SklandLogoutAsync()
     {
         _sklandLogoutGeneration++;
+        if (_sklandGuidesQueue is not null) await _sklandGuidesQueue.CloseAsync();
         var sessions = _sklandSessions.ToArray();
         try
         {

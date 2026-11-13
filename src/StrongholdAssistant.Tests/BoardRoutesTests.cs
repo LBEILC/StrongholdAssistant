@@ -25,20 +25,16 @@ public sealed class BoardRoutesTests
                     foreach (var segment in segments)
                     {
                         foreach (var point in segment) Check(point);
-                        // 共线合并后，线段中间的格子及斜走两侧仍必须可走。
+                        // 共线合并后，每段必须是横线或竖线，中间的格子仍必须可走。
                         for (int i = 1; i < segment.Length; i++)
                         {
                             var a = segment[i - 1]; var b = segment[i];
+                            Assert.True(a.Col == b.Col || a.Row == b.Row, $"{map.Name}/{level.Name}: {a} → {b}");
                             int dc = Math.Sign(b.Col - a.Col), dr = Math.Sign(b.Row - a.Row);
                             int steps = (int)Math.Max(Math.Abs(b.Col - a.Col), Math.Abs(b.Row - a.Row));
                             for (int n = 1; n <= steps; n++)
                             {
                                 Check(new(a.Col + dc * n, a.Row + dr * n));
-                                if (dc != 0 && dr != 0)
-                                {
-                                    Check(new(a.Col + dc * (n - 1), a.Row + dr * n));
-                                    Check(new(a.Col + dc * n, a.Row + dr * (n - 1)));
-                                }
                             }
                         }
                     }
@@ -55,6 +51,22 @@ public sealed class BoardRoutesTests
                     Assert.True(grid[row][col].GetBoolean(), $"{map.Name}/{level.Name}: {p}");
                 }
             }
+    }
+
+    [Theory]
+    [InlineData("m09", .5)]
+    [InlineData("m02", .5)]
+    [InlineData("m01", 3.5)]
+    public void RoundFiveGroundRoutesPreferLeftOnEqualDistance(string mapId, double startRow)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(Data, "garrison_routes.json")));
+        var routes = doc.RootElement.GetProperty("maps").GetProperty(mapId).GetProperty("levels")
+            .GetProperty("05").GetProperty("routes").Deserialize<EnemyRoute[]>(HostApi.JsonOptions)!;
+        var route = Assert.Single(routes, r => r.Motion == "walk" && r.Segments[0][0] == new RoutePoint(7.5, startRow));
+        RoutePoint[] expected = mapId == "m01"
+            ? [new(7.5, 3.5), new(5.5, 3.5), new(5.5, .5), new(1.5, .5), new(1.5, 3.5), new(-.5, 3.5)]
+            : [new(7.5, .5), new(.5, .5), new(.5, 3.5), new(-.5, 3.5)];
+        Assert.Equal(expected, Assert.Single(route.Segments));
     }
 
     [Fact]

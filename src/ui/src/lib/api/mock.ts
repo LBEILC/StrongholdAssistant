@@ -189,6 +189,7 @@ let session: Session = {
 // 关注的样例：一个可用、一个阵容不完整的盟约，再加两名会被禁的干员，方便看提示
 let settings: Settings = {
   gameTheme: 'terminal',
+  gameThemeAuto: true,
   uiSkin: 'follow',
   shopMarkers: true,
   shopScanSpeed: 'normal',
@@ -283,7 +284,7 @@ export const mockApi: Api = {
     const overlay = q.includes('overlay')
     const side = q.includes('sideright') ? 'right' : q.includes('sideleft') ? 'left' : overlay ? 'left' : 'right'
     // 游戏默认按管理员身份算（PC 客户端实际如此）；?gameNormal：游戏不是管理员，单键都能用
-    return wait({ state: 'connected', resolution: '1920×1080', side, gameElevated: !q.includes('gameNormal'), ...(overlay && { fullscreen: true, overlay: true }) })
+    return wait({ state: 'connected', resolution: '1920×1080', side, theme: 'closure' as const, gameElevated: !q.includes('gameNormal'), ...(overlay && { fullscreen: true, overlay: true }) })
   },
   match: () => wait(match),
   rescan: () => {
@@ -505,6 +506,54 @@ export const mockApi: Api = {
       versionId: 'V3_1',
       stages: url.includes('multi') ? [early, formation] : [formation],
     }
+  },
+  // 假数据：森空岛攻略列表（v0.9.2）。按核心盟约各编几篇，每页 10 条；?sklandGuest：没登录（只有攻略大全第一页）；
+  // 关键词里带 fail：模拟读取失败
+  sklandGuides: async (q) => {
+    await new Promise((r) => setTimeout(r, 600))
+    if (q.keyword?.includes('fail')) throw new Error('森空岛攻略列表读不出来，稍后再试。')
+    const guest = location.search.includes('sklandGuest')
+    if (guest && (q.section !== 'all' || q.sort === 'latest')) return { items: [], pageToken: null, loginRequired: true }
+    const ops = catalog.operators.filter((o) => o.charId && !o.obtain)
+    const cores = catalog.covenants.filter((c) => c.kind === 'core')
+    const titles = ['开荒稳过', '叠层速通', '前期兜底后期斩首', '二本轮椅', '抢播报', '无脑成型', '低费运营']
+    let all = Array.from({ length: q.section === 'all' ? 34 : q.section === 'collected' ? 4 : 2 }, (_, i) => {
+      const core = cores[i % cores.length]
+      const mine = ops.filter((o) => o.core.includes(core.id))
+      const members = [...mine.slice(i % 3, (i % 3) + 6), ...ops.filter((o) => !o.core.includes(core.id)).slice(i * 2, i * 2 + 2)].slice(0, 8)
+      const guide = {
+        url: `https://game.skland.com/arknights/stronghold-guide/detail?guideId=${9000 + i}`,
+        title: `${core.name}${titles[i % titles.length]}`,
+        author: ['海盐虾条', '东湖628', '诗生歆乃', 'Vaeklay', '十三天天'][i % 5],
+        strategies: [catalog.strategies[i % catalog.strategies.length].id],
+        versionId: 'V3_1',
+        stages: [{ type: 'FORMATION', startRound: 0, endRound: 0, operators: members.map((o, j) => ({ id: o.charId!, elite: j < 2 })), equipment: [], covenants: [], notes: '示例：前期凑对子升本，成型后转叠层。' }],
+      }
+      return {
+        id: String(9000 + i),
+        url: guide.url,
+        title: guide.title,
+        author: guide.author,
+        editedAt: new Date(Date.now() - i * 3.6e6).toISOString(),
+        phaseName: '序列I',
+        stats: { likes: 1200 - i * 31, collections: 3100 - i * 70, views: 20000 - i * 400 },
+        collected: q.section === 'collected',
+        guide: i === 7 ? null : guide,
+        _core: core.id,
+        _ops: members,
+      }
+    })
+    if (q.section === 'all') {
+      if (q.core) all = all.filter((g) => g._core === q.core)
+      for (const e of q.extras ?? []) all = all.filter((g) => g._ops.filter((o) => o.extra.includes(e)).length >= 2)
+      if (q.strategyId) all = all.filter((g) => g.guide?.strategies[0] === q.strategyId)
+      if (q.sort === 'latest') all.reverse()
+    }
+    if (q.keyword?.trim()) all = all.filter((g) => g.title.includes(q.keyword!.trim()))
+    const from = Number(q.pageToken ?? 0)
+    const page = all.slice(from, from + 10).map(({ _core, _ops, ...g }) => g)
+    const more = from + 10 < all.length && !(guest && from === 0)
+    return { items: page, pageToken: more ? String(from + 10) : null, loginRequired: guest }
   },
   // 假数据：森空岛历史战绩，1.5 秒后返回三局
   sklandHistory: async () => {

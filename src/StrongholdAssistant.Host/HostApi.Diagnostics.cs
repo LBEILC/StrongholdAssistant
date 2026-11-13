@@ -42,6 +42,8 @@ public sealed partial class HostApi
         {
             version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion,
             windows = RuntimeInformation.OSDescription,
+            detectedTheme = _detectedTheme,
+            configuredTheme = Settings.GameTheme,
             dpi = hwnd == 0 ? 96 : User32.GetWindowDpiScale(hwnd) * 96,
             monitors = DiagnosticMonitors.Read(),
             dpiAwareness = User32.DescribeDpiAwareness(User32.GetDpiAwarenessContextForProcess(

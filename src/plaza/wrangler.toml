@@ -10,4 +10,4 @@ migrations_dir = "migrations"
 
 # MAIL_FROM、ADMIN_EMAILS、ACCESS_TEAM_DOMAIN、ACCESS_AUD 含域名和邮箱，用 Pages 机密变量设置，不写在这里（见 README）。
 [vars]
-ALLOWED_ORIGINS = "https://app.local,http://localhost:5178"
+ALLOWED_ORIGINS = "https://app.local,http://localhost:5178,https://sa.lubeiluchen.com"

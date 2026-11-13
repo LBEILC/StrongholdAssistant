@@ -16,28 +16,28 @@ export function snap(grid, p) {
 
 export function shortest(grid, start, end) {
   const key = p => p.join(',');
-  const open = [{ p: start, cost: 0 }], costs = new Map([[key(start), 0]]), prev = new Map();
+  const directions = [[0, -1], [-1, 0], [1, 0], [0, 1]];
+  const open = [end], costs = new Map([[key(end), 0]]);
   const can = (r, c) => grid[r]?.[c] === true;
   if (!can(...start) || !can(...end)) throw new Error(`不可走的路线端点 ${start} → ${end}`);
-  while (open.length) {
-    open.sort((a, b) => a.cost - b.cost || a.p[0] - b.p[0] || a.p[1] - b.p[1]);
-    const { p, cost } = open.shift();
-    if (cost > costs.get(key(p))) continue;
-    if (key(p) === key(end)) {
-      const result = [p];
-      while (prev.has(key(result[0]))) result.unshift(prev.get(key(result[0])));
-      return result;
-    }
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-      if ((!dr && !dc) || !can(p[0] + dr, p[1] + dc)) continue;
-      if (dr && dc && (!can(p[0] + dr, p[1]) || !can(p[0], p[1] + dc))) continue;
-      const q = [p[0] + dr, p[1] + dc], next = cost + (dr && dc ? Math.SQRT2 : 1);
-      if (next < (costs.get(key(q)) ?? Infinity) - 1e-9) {
-        costs.set(key(q), next); prev.set(key(q), p); open.push({ p: q, cost: next });
-      }
+  // 从目标格计算四向距离，再按左、上、下、右选择等长最短路。
+  for (let i = 0; i < open.length; i++) {
+    const p = open[i];
+    for (const [dr, dc] of directions) {
+      const q = [p[0] + dr, p[1] + dc];
+      if (!can(...q) || costs.has(key(q))) continue;
+      costs.set(key(q), costs.get(key(p)) + 1);
+      open.push(q);
     }
   }
-  throw new Error(`无通路 ${start} → ${end}`);
+  if (!costs.has(key(start))) throw new Error(`无通路 ${start} → ${end}`);
+  const result = [start];
+  while (costs.get(key(result.at(-1))) > 0) {
+    const p = result.at(-1);
+    result.push(directions.map(([dr, dc]) => [p[0] + dr, p[1] + dc])
+      .find(q => costs.get(key(q)) === costs.get(key(p)) - 1));
+  }
+  return result;
 }
 
 export function simplify(points) {

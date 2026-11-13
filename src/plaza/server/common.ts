@@ -4,9 +4,13 @@ export interface Env {
  DB: D1Database
  RESEND_API_KEY: string
  MAIL_FROM: string
+ ALIYUN_DM_ACCESS_KEY_ID?: string
+ ALIYUN_DM_ACCESS_KEY_SECRET?: string
+ ALIYUN_DM_ACCOUNT?: string
  TURNSTILE_SECRET: string
  CODE_PEPPER: string
  IP_SECRET: string
+ EDGE_SECRET?: string
  ADMIN_EMAILS: string
  ACCESS_TEAM_DOMAIN: string
  ACCESS_AUD: string
@@ -27,10 +31,16 @@ export async function hash(text: string) {
  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('')
 }
+export function clientIp(env: Env, request: Request) {
+ const edgeIp = request.headers.get('ali-real-client-ip')
+ if (env.EDGE_SECRET && request.headers.get('X-Plaza-Edge') === env.EDGE_SECRET && edgeIp !== null)
+  return edgeIp.trim()
+ return request.headers.get('CF-Connecting-IP') ?? 'local'
+}
 export async function ipSource(env: Env, request: Request, purpose: 'income' | 'import', now = Date.now()) {
  const encoder = new TextEncoder()
  const key = await crypto.subtle.importKey('raw', encoder.encode(env.IP_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
- const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ const ip = clientIp(env, request)
  const bytes = await crypto.subtle.sign('HMAC', key, encoder.encode(`${purpose}:${iso(now).slice(0, 10)}:${ip}`))
  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('')
 }

@@ -39,7 +39,8 @@
   )
 
   async function copyCode() {
-    const text = `【卫戍协议助手阵容】${l!.name} ${p!.code}`
+    // 带上帖子链接（v0.9.2）：助手导入时按链接读帖子，简介一起带进去；旧版助手只认分享码，照样能导
+    const text = `【卫戍协议助手阵容】${l!.name} ${p!.code} ${location.origin}/p/${p!.id}`
     try {
       await navigator.clipboard.writeText(text)
     } catch {

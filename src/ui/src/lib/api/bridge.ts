@@ -75,6 +75,7 @@ export const bridgeApi: Api = {
   plazaToken: call('plazaToken'),
   plazaLogout: call('plazaLogout'),
   sklandGuide: call('sklandGuide'),
+  sklandGuides: call('sklandGuides'),
   sklandHistory: call('sklandHistory'),
   sklandAccount: call('sklandAccount'),
   sklandLogout: call('sklandLogout'),

@@ -11,6 +11,7 @@
   import Icon from './components/Icon.svelte'
   import logo from '../static/icon-64.png'
   import Tooltip from './components/Tooltip.svelte'
+  import PasswordGate from './components/PasswordGate.svelte'
 
   session.load()
   // 在助手的登录小窗口里只显示页面本身
@@ -50,6 +51,9 @@
   </div>
 </header>
 {/if}
+
+<!-- 已登录但还没密码：先设密码（登录页里自己有这一步，隐私说明页不拦） -->
+{#if session.me && !session.me.hasPassword && r.page !== 'login' && r.page !== 'privacy'}<PasswordGate />{/if}
 
 <main>
   {#if r.page === 'home'}

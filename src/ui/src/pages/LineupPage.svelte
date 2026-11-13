@@ -11,6 +11,7 @@
   import Icon from '../components/Icon.svelte'
   import Seg from '../components/Seg.svelte'
   import PlazaView from '../components/PlazaView.svelte'
+  import SklandView from '../components/SklandView.svelte'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
 
@@ -21,9 +22,10 @@
     { id: 'target', label: '目标' },
     { id: 'mine', label: '我的阵容', count: app.lineups.length },
     { id: 'plaza', label: '广场' },
+    { id: 'skland', label: '森空岛' },
   ])
   // 切换方向：按分段顺序，往右的从右边滑入
-  const order: LineupView[] = ['target', 'mine', 'plaza']
+  const order: LineupView[] = ['target', 'mine', 'plaza', 'skland']
   let prev: LineupView = app.lineupView
   let dir = $state(1)
   $effect.pre(() => {
@@ -35,8 +37,9 @@
   const wbViews: { id: LineupView; label: string }[] = [
     { id: 'target', label: '目标' },
     { id: 'plaza', label: '广场' },
+    { id: 'skland', label: '森空岛' },
   ]
-  const wbView = $derived<LineupView>(app.lineupView === 'plaza' ? 'plaza' : 'target')
+  const wbView = $derived<LineupView>(app.lineupView === 'plaza' || app.lineupView === 'skland' ? app.lineupView : 'target')
   const t = $derived(app.target)
   // 当前阶段的样子（本阶段 + 后面阶段的关键干员）；没有阶段时就是整套阵容
   const a = $derived(app.active)
@@ -216,7 +219,7 @@
       <Seg items={wbViews} value={wbView} onchange={(v) => (app.lineupView = v)} />
       {#key wbView}
       <div class="pane" in:fly={{ x: 24 * dir, duration: 220, easing: cubicOut }}>
-        {#if wbView === 'plaza'}<PlazaView />{:else}{@render targetView()}{/if}
+        {#if wbView === 'plaza'}<PlazaView />{:else if wbView === 'skland'}<SklandView />{:else}{@render targetView()}{/if}
       </div>
       {/key}
     </div>
@@ -233,6 +236,8 @@
     {@render mineView(false)}
   {:else if app.lineupView === 'plaza'}
     <PlazaView />
+  {:else if app.lineupView === 'skland'}
+    <SklandView />
   {/if}
   </div>
   {/key}

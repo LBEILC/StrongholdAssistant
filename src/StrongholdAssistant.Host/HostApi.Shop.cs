@@ -10,6 +10,7 @@ public sealed partial class HostApi
     public HostSettingsStore SettingsStore { get; private set; } = null!;
     public SettingsDto Settings { get; private set; } = new("terminal", true, true);
     private ShopReader? _shopReader;
+    private string? _detectedTheme;
     private string[] _trackedNames = [];
     public IReadOnlyList<string> TrackedNames => Volatile.Read(ref _trackedNames);
     private string[] _secondaryNames = [];
@@ -57,6 +58,8 @@ public sealed partial class HostApi
 
     public void SaveSettings(SettingsDto settings)
     {
+        if (settings.GameThemeAuto && _detectedTheme is { } detected)
+            settings = settings with { GameTheme = detected };
         settings = settings with { ToggleHotkey = Settings.ToggleHotkey, RunAsAdmin = Settings.RunAsAdmin };
         ValidateSettings(settings);
         var theme = Theme(settings.GameTheme);
@@ -65,6 +68,17 @@ public sealed partial class HostApi
         BoardRoutesEnabled = settings.Routes.Enabled;
         if (_shopReader is not null) _shopReader.Theme = theme;
         ShopChanged?.Invoke();
+    }
+
+    internal void ObserveTheme(GameThemeReading reading)
+    {
+        string theme = reading.Theme.ToString().ToLowerInvariant();
+        if (_detectedTheme == theme) return;
+        _detectedTheme = theme;
+        Connection = Connection with { Theme = Connection.State == "connected" ? theme : null };
+        if (Settings.GameThemeAuto && Settings.GameTheme != theme)
+            SaveSettings(Settings with { GameTheme = theme });
+        Changed?.Invoke("connection", Connection);
     }
 
     private async Task RefreshTrackingAsync()

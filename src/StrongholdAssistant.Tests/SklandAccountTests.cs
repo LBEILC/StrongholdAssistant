@@ -5,6 +5,8 @@ namespace StrongholdAssistant.Tests;
 public sealed class SklandAccountTests
 {
     [Theory]
+    [InlineData("""{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[{"nickName":"甲#0001","roles":[]}]}]}}""", "甲#0001")]
+    [InlineData("""{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[{"roles":[]}]}]}}""", "明日方舟角色")]
     [InlineData("""{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[{"nickname":"甲#0001"},{"nickname":"乙#0002","isDefault":true}]}]}}""", "乙#0002")]
     [InlineData("""{"code":0,"data":{"list":[{"appCode":"endfield","bindingList":[{"nickname":"其他游戏","isDefault":true}]},{"appCode":"arknights","bindingList":[{"nickname":"甲#0001"},{"nickname":"乙#0002"}]}]}}""", "甲#0001")]
     [InlineData("""{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[]}]}}""", null)]

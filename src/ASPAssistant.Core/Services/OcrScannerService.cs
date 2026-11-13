@@ -18,6 +18,9 @@ public class OcrScannerService : IDisposable
     private readonly ShopReader _shopReader;
     private readonly IOcrEngine _ocrEngine;
     private readonly DiagnosticOcrEngine _trace;
+    private readonly GameThemeDetector _themeDetector;
+    private readonly GameThemeTracker _themeTracker = new();
+    public event Action<GameThemeReading>? ThemeDetected;
     public event Action<byte[]?, string, double?, string[]>? RecognitionFailed;
     private readonly GameState.GameState _gameState;
     private readonly Func<IReadOnlyList<string>> _getTrackedNames;
@@ -115,6 +118,7 @@ public class OcrScannerService : IDisposable
         _shopReader = shopReader;
         _trace = ocrEngine as DiagnosticOcrEngine ?? new DiagnosticOcrEngine(ocrEngine);
         _ocrEngine = _trace;
+        _themeDetector = new GameThemeDetector(_trace);
         _informationDetector = new InformationScreenDetector(_trace, ocrStrategy);
         _gameState = gameState;
         _getTrackedNames = getTrackedNames;
@@ -151,6 +155,7 @@ public class OcrScannerService : IDisposable
         _pauseBanScreenDetection = paused;
         if (paused)
         {
+            _themeTracker.Observe(null);
             BoardFrameReady?.Invoke(null, null);
             // Freeze state transitions while overlays cover the game window.
             // Keep _banScreenActive as-is, but clear accumulated edge counters
@@ -186,6 +191,7 @@ public class OcrScannerService : IDisposable
             double captureMs = clock.Elapsed.TotalMilliseconds - fingerprintMs;
             if (screenshot == null)
             {
+                _themeTracker.Observe(null);
                 BoardFrameReady?.Invoke(null, null);
                 InvalidateShop();
                 _informationState.Suspend();
@@ -265,6 +271,20 @@ public class OcrScannerService : IDisposable
         double publishMs = clock.Elapsed.TotalMilliseconds;
         if (changed && _shopReader.Failure is { } failure)
             RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
+
+        // 商店先发布。确认新主题后宿主同步更新设置；本帧后续读数和下一帧商店用新主题。
+        var detected = await _themeDetector.ReadAsync(screenshot, width, height);
+        if (_themeTracker.Observe(detected))
+        {
+            AppLogger.Info("GameTheme", $"theme={detected!.Theme} score={detected.Score:F4}");
+            ThemeDetected?.Invoke(detected);
+        }
+        if (theme != _shopReader.Theme)
+        {
+            theme = _shopReader.Theme;
+            _economyStable = _skipEconomy = false;
+            _economyContext = null;
+        }
 
         // 静止画面不读资金；画面变化但资金稳定时隔轮读。刷新和名称变化立即恢复。
         bool economyChanged = _economyContext is null || !_economyContext.AsSpan().SequenceEqual(fingerprint.Context);

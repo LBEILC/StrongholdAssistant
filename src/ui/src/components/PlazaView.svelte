@@ -6,6 +6,7 @@
   import LineupCard from './LineupCard.svelte'
   import Icon from './Icon.svelte'
   import BondIcon from './BondIcon.svelte'
+  import StrategyGrid from './StrategyGrid.svelte'
   import { asset } from '../lib/assets'
 
   // 阵容页的「广场」分段：网站上的阵容。默认按本局排（识别过本局时）：目标盟约阵容不完整的、名单被禁多的往后；
@@ -42,9 +43,12 @@
   const targetCovs = $derived(app.active?.goals.map((g) => g.id) ?? [])
   const sameAsTarget = $derived(targetCovs.length > 0 && targetCovs.length === f.covenants.length && targetCovs.every((id) => f.covenants.includes(id)))
   let sq = $state('')
-  const stratHits = $derived(
-    sq.trim() ? app.catalog.strategies.filter((s) => s.name.includes(sq.trim()) || s.initiator.includes(sq.trim())).slice(0, 8) : [],
-  )
+  let pickingSt = $state(false)
+  const pickSt = (id: string) => {
+    f.strategy = id === f.strategy ? null : id
+    pickingSt = false
+    sq = ''
+  }
   const strat = $derived(app.catalog.strategies.find((s) => s.id === f.strategy))
   const clearFilters = () => {
     f.covenants = []
@@ -134,24 +138,22 @@
         {/each}
       </div>
     {/each}
+    <!-- 策略：和本局页选策略一样，点开是策略网格（可搜），点头像选上并收起；再点已选的那个取消 -->
     <div class="fh"><span>策略</span></div>
-    {#if strat}
-      <div class="chips">
-        <button class="chip" onclick={() => (f.strategy = null)} title="取消策略筛选">
-          <img src={asset.strategy(strat.id)} alt="" />{strat.name}<Icon name="close" size={11} />
-        </button>
+    {#if pickingSt}
+      <div class="sph">
+        <input bind:value={sq} placeholder="搜名字、发起者、效果" />
+        <button class="link" onclick={() => ((pickingSt = false), (sq = ''))}>收起</button>
       </div>
+      <StrategyGrid selected={f.strategy} q={sq} onpick={pickSt} />
     {:else}
-      <input class="sq" type="text" placeholder="输入策略名或发起人" bind:value={sq} />
-      {#if stratHits.length}
-        <div class="chips">
-          {#each stratHits as s (s.id)}
-            <button class="chip pick" onclick={() => ((f.strategy = s.id), (sq = ''))}><img src={asset.strategy(s.id)} alt="" />{s.name}</button>
-          {/each}
-        </div>
-      {:else if sq.trim()}
-        <p class="none">没有叫这个的策略。</p>
-      {/if}
+      <div class="chips">
+        <button class="stbtn" class:on={!!strat} onclick={() => (pickingSt = true)} title="点一下选策略">
+          {#if strat}<img src={asset.strategy(strat.id)} alt="" /><b>{strat.name}</b><span>{strat.initiator}</span>{:else}<span>全部策略</span>{/if}
+          <span class="chev"><Icon name="arrowDown" size={12} /></span>
+        </button>
+        {#if strat}<button class="link" onclick={() => (f.strategy = null)}>不限策略</button>{/if}
+      </div>
     {/if}
     {#if count}<button class="link clear" onclick={clearFilters}>清除筛选</button>{/if}
   </div>
@@ -242,8 +244,7 @@
     outline: none;
     box-shadow: none;
   }
-  .search input::placeholder,
-  .sq::placeholder {
+  .search input::placeholder {
     color: var(--fg-4);
   }
   .x {
@@ -343,7 +344,14 @@
     background: var(--mint-tint);
     box-shadow: inset 0 0 0 1px var(--mint-lo);
   }
-  .sq {
+  .sph {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sph input {
+    flex: 1;
+    min-width: 0;
     height: 28px;
     padding: 0 8px;
     font-size: var(--fs-base);
@@ -353,8 +361,47 @@
     outline: none;
     box-shadow: inset 0 0 0 1px var(--line);
   }
-  .sq:focus {
+  .sph input:focus {
     box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .sph input::placeholder {
+    color: var(--fg-4);
+  }
+  /* 策略按钮：没选时写「全部策略」，选了显示头像、名字、发起者；点开是策略网格 */
+  .stbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 6px 0 8px;
+    font-size: var(--fs-base);
+    color: var(--fg-2);
+    background: var(--bg-2);
+  }
+  .stbtn:hover {
+    color: var(--fg-0);
+    background: var(--bg-3);
+  }
+  .stbtn.on {
+    padding-left: 3px;
+    background: var(--mint-tint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .stbtn img {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+  }
+  .stbtn b {
+    color: var(--fg-0);
+  }
+  .stbtn span {
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .stbtn .chev {
+    display: grid;
+    color: var(--fg-4);
   }
   .chips {
     display: flex;
@@ -387,16 +434,6 @@
   .chip:hover :global(svg) {
     color: var(--fg-0);
   }
-  .chip.pick {
-    padding-right: 8px;
-    color: var(--fg-2);
-    background: var(--bg-2);
-    box-shadow: none;
-  }
-  .chip.pick:hover {
-    color: var(--fg-0);
-    background: var(--bg-3);
-  }
   .link {
     font-size: var(--fs-sm);
     color: var(--mint);
@@ -408,11 +445,6 @@
   .clear {
     align-self: flex-start;
     margin-top: 2px;
-  }
-  .none {
-    margin: 0;
-    font-size: var(--fs-sm);
-    color: var(--fg-4);
   }
   .sorts button {
     height: 26px;

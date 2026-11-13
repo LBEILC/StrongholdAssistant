@@ -64,7 +64,7 @@ class Plaza {
         this.me = null
         api.plazaLogout()
       }
-      throw new PlazaError(data?.error ?? 'http', data?.message ?? `请求失败（${r.status}），请稍后再试。`, r.status)
+      throw new PlazaError(data?.error ?? 'http', data?.message ?? (r.status >= 500 ? `暂时连不上阵容广场服务器（${r.status}），过几分钟再试。` : `请求失败（${r.status}），请稍后再试。`), r.status)
     }
     return data as T
   }
@@ -104,6 +104,11 @@ class Plaza {
     await api.plazaLogout()
     this.token = null
     this.me = null
+  }
+
+  /** 设登录密码（v0.9.2，广场必须有密码）：还没密码的账号不用当前密码 */
+  async setPassword(password: string) {
+    this.me = await this.req<Me>('PUT', '/me/password', { password })
   }
 
   async setNickname(nickname: string) {

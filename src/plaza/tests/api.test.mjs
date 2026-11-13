@@ -1,15 +1,16 @@
 import { after, before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createHmac } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { build } from 'esbuild'
 import { Miniflare } from 'miniflare'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 
 const built = await build({
- stdin: { contents: "export * from './server/api'; export * from './server/catalog'", resolveDir: process.cwd(), loader: 'ts' },
+ stdin: { contents: "export * from './server/api'; export * from './server/catalog'; export { ipSource } from './server/common'; export { signMail } from './server/mail'", resolveDir: process.cwd(), loader: 'ts' },
  bundle: true, platform: 'neutral', format: 'esm', write: false, loader: { '.txt': 'text' },
 })
-const { handleRequest, catalog, encodeLineup, fingerprint } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
+const { handleRequest, catalog, encodeLineup, fingerprint, ipSource, signMail } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
 const originalFetch = globalThis.fetch
 let mf, db, env, privateKey, jwk
 const mails = new Map()
@@ -98,6 +99,132 @@ async function access(email) {
  return { 'Cf-Access-Jwt-Assertion': await new SignJWT({ email }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
   .setIssuer('https://' + env.ACCESS_TEAM_DOMAIN).setAudience(env.ACCESS_AUD).setIssuedAt().setExpirationTime('1h').sign(privateKey) }
 }
+
+test('102 签名匹配阿里云官方 POST 示例', async () => {
+ // https://help.aliyun.com/zh/direct-mail/signature；固定示例含需按 RFC 3986 编码的特殊字符。
+ const params = {
+  Version: '2015-11-23', ToAddress: '1@test.com', Timestamp: '2016-10-20T06:27:56Z',
+  TagName: '2', Subject: '3', SignatureVersion: '1.0',
+  SignatureNonce: 'c1b2c332-4cfb-4a0f-b8cc-ebe622aa0a5c', SignatureMethod: 'HMAC-SHA1',
+  ReplyToAddress: 'true', RegionId: 'cn-hangzhou', HtmlBody: '4', Format: 'XML',
+  AddressType: '1', Action: 'SingleSendMail', AccountName: "<a%b'>", AccessKeyId: 'testid',
+ }
+ assert.equal(await signMail(params, 'testsecret'), 'llJfXJjBW3OacrVgxxsITgYaYm0=')
+})
+
+const aliyunConfig = {
+ ALIYUN_DM_ACCESS_KEY_ID: 'test-only-id', ALIYUN_DM_ACCESS_KEY_SECRET: 'test-only-secret',
+ ALIYUN_DM_ACCOUNT: 'noreply@example.com',
+}
+for (const configured of [false, true]) test('102 配置切换发信服务：' + (configured ? '阿里云' : 'Resend'), async t => {
+ const fetch = globalThis.fetch
+ let sends = 0
+ t.mock.method(globalThis, 'fetch', async (url, options) => {
+  if (String(url).includes('turnstile')) return fetch(url, options)
+  sends++
+  assert.equal(String(url), configured ? 'https://dm.aliyuncs.com/' : 'https://api.resend.com/emails')
+  if (!configured) return fetch(url, options)
+  assert.equal(options.method, 'POST')
+  assert.equal(options.headers['Content-Type'], 'application/x-www-form-urlencoded')
+  const params = Object.fromEntries(new URLSearchParams(options.body))
+  for (const [key, value] of Object.entries({
+   AccessKeyId: aliyunConfig.ALIYUN_DM_ACCESS_KEY_ID, AccountName: aliyunConfig.ALIYUN_DM_ACCOUNT,
+   Action: 'SingleSendMail', AddressType: '1', ReplyToAddress: 'false', ToAddress: 'mail@example.com',
+   FromAlias: '卫戍协议助手', ClickTrace: '0', Format: 'JSON', Version: '2015-11-23',
+   RegionId: 'cn-hangzhou', SignatureMethod: 'HMAC-SHA1', SignatureVersion: '1.0',
+  })) assert.equal(params[key], value)
+  assert.match(params.Subject, /^卫戍协议助手验证码：\d{6}$/)
+  const code = params.Subject.slice(-6)
+  assert.equal(params.TextBody, `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人在登录卫戍协议助手的阵容广场，请忽略这封邮件。`)
+  assert.match(params.Timestamp, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
+  assert.match(params.SignatureNonce, /^[\da-f-]{36}$/)
+  const { Signature, ...unsigned } = params
+  assert.equal(Signature, await signMail(unsigned, aliyunConfig.ALIYUN_DM_ACCESS_KEY_SECRET))
+  return Response.json({ EnvId: 'test-mail', RequestId: 'test-request' })
+ })
+ const response = await handleRequest(new Request('https://plaza.example/api/auth/code', {
+  method: 'POST', body: JSON.stringify({ email: 'mail@example.com', turnstileToken: 'test-token' }),
+ }), { ...env, ...(configured ? aliyunConfig : {}) })
+ assert.equal(response.status, 200)
+ assert.deepEqual(await response.json(), { retryAfter: 60 })
+ assert.equal(sends, 1)
+})
+
+for (const scenario of [
+ { code: 'InvalidQuota', status: 429 },
+ { code: 'Throttling.User', status: 429 },
+ { code: 'InvalidMailAddress.NotFound', status: 424 },
+ { code: 'InvalidSendMail.Spam', status: 424 },
+]) test('102 阿里云错误映射：' + scenario.code, async t => {
+ const fetch = globalThis.fetch
+ let sends = 0
+ t.mock.method(globalThis, 'fetch', async (url, options) => {
+  if (String(url).includes('turnstile')) return fetch(url, options)
+  assert.equal(String(url), 'https://dm.aliyuncs.com/')
+  sends++
+  return Response.json({ Code: scenario.code, Message: '模拟服务端失败' }, { status: 400 })
+ })
+ const response = await handleRequest(new Request('https://plaza.example/api/auth/code', {
+  method: 'POST', body: JSON.stringify({ email: 'error@example.com', turnstileToken: 'test-token' }),
+ }), { ...env, ...aliyunConfig })
+ assert.equal(response.status, scenario.status)
+ const result = await response.json()
+ assert.equal(result.error, scenario.status === 429 ? 'mail_quota' : 'mail_failed')
+ if (scenario.status === 429) assert.match(result.message, /^今天能发的验证码邮件用完了/)
+ assert.equal(sends, 1)
+})
+
+test('101 正式域名的 POST 经 pages.dev 回源可通过来源校验', async () => {
+ const config = await readFile('wrangler.toml', 'utf8')
+ const allowed = config.match(/^ALLOWED_ORIGINS = "([^"]+)"/m)[1]
+ const response = await handleRequest(new Request('https://stronghold-plaza.pages.dev/api/auth/code', {
+  method: 'POST', headers: { Origin: 'https://sa.lubeiluchen.com', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'esa-origin@example.com', turnstileToken: 'test-token' }),
+ }), { ...env, ALLOWED_ORIGINS: allowed })
+ assert.equal(response.status, 200)
+ assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://sa.lubeiluchen.com')
+})
+
+for (const scenario of [
+ { name: '可信回源', secret: 'test-edge-secret', edge: 'test-edge-secret', expected: '192.0.2.10' },
+ { name: '回源头错误', secret: 'test-edge-secret', edge: 'wrong', expected: '192.0.2.20' },
+ { name: '回源头缺失', secret: 'test-edge-secret', expected: '192.0.2.20' },
+ { name: '未配置密钥', edge: 'test-edge-secret', expected: '192.0.2.20' },
+ { name: '未配置密钥且无 CF IP', edge: 'test-edge-secret', noCf: true, expected: 'local' },
+]) test('101 ' + scenario.name + '使用预期 IP 限流、验证和生成来源', async t => {
+ const edgeEnv = { ...env, EDGE_SECRET: scenario.secret }
+ const headers = {
+  'Content-Type': 'application/json', 'ali-real-client-ip': ' 192.0.2.10 ',
+  ...(!scenario.noCf && { 'CF-Connecting-IP': '192.0.2.20' }),
+  ...(scenario.edge && { 'X-Plaza-Edge': scenario.edge }),
+ }
+ const email = 'esa@example.com'
+ const makeRequest = (path, body) => new Request('https://stronghold-plaza.pages.dev' + path, {
+  method: 'POST', headers, body: JSON.stringify(body),
+ })
+ const fetch = globalThis.fetch
+ t.mock.method(globalThis, 'fetch', async (url, options) => {
+  if (String(url) === 'https://challenges.cloudflare.com/turnstile/v0/siteverify')
+   assert.equal(options.body.get('remoteip'), scenario.expected)
+  return fetch(url, options)
+ })
+ const codeRequest = makeRequest('/api/auth/code', { email, turnstileToken: 'test-token' })
+ assert.equal((await handleRequest(codeRequest, edgeEnv)).status, 200)
+ assert.equal((await db.prepare('SELECT ip FROM login_codes WHERE email=?').bind(email).first()).ip, scenario.expected)
+ const passwordRequest = () => makeRequest('/api/auth/password', { email, password: 'wrong-password', turnstileToken: 'test-token' })
+ assert.equal((await handleRequest(passwordRequest(), edgeEnv)).status, 401)
+ assert.equal((await db.prepare('SELECT ip FROM password_attempts WHERE email=?').bind(email).first()).ip, scenario.expected)
+ // 用不同邮箱的失败记录占满同一 IP，确认限额查询也采用该 IP。
+ await db.batch(Array.from({ length: 29 }, (_, i) => db.prepare(
+  'INSERT INTO password_attempts(email,ip,created_at,success) VALUES(?,?,?,0)',
+ ).bind(`esa-${i}@example.com`, scenario.expected, new Date().toISOString())))
+ assert.equal((await handleRequest(passwordRequest(), edgeEnv)).status, 429)
+ const now = Date.parse('2026-11-14T12:00:00Z')
+ for (const purpose of ['income', 'import']) {
+  const expected = createHmac('sha256', env.IP_SECRET).update(`${purpose}:2026-11-14:${scenario.expected}`).digest('hex')
+  assert.equal(await ipSource(edgeEnv, codeRequest, purpose, now), expected)
+ }
+})
 
 test('登录、错误码、昵称、Cookie、登出、60 秒限频与第六次失效', async () => {
  const email = 'account@example.com', code = await codeFor(email.toUpperCase())

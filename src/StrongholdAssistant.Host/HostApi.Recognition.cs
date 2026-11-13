@@ -58,6 +58,7 @@ public sealed partial class HostApi
 
     public void UpdateConnection(Connection connection)
     {
+        connection = connection with { Theme = connection.State == "connected" ? _detectedTheme : null };
         if (Connection == connection) return;
         Connection = connection;
         if (connection.State != "connected") ObserveBoardFrame(null, null);

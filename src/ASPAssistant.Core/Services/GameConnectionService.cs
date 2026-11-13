@@ -1,6 +1,7 @@
 // Modified for ASP Assistant Arknights on 2026-11-11; see NOTICE.
 // 2026-11-12：MuMu 显示区域按实际截图比例映射。
 // 2026-11-12：参考 PR #5，改为自动发现与来源选择，共享主窗口及画面区域；只保留截图控制器。
+// 2026-11-14：按游戏所在 display 选择实例，非主屏显式指定 ADB 截图目标。
 using ASPAssistant.Core.Interop;
 using MaaFramework.Binding;
 using MaaFramework.Binding.Buffers;
@@ -13,6 +14,7 @@ public sealed record GameConnectionState(string? Source = null, IntPtr Window = 
 public sealed class GameConnectionService : IDisposable
 {
     private readonly object _gate = new();
+    private (string Serial, int Display)? _loggedCapture;
     private MaaAdbController? _controller;
     private MumuDevice? _device;
     private IReadOnlyList<MumuDevice> _devices = [];
@@ -34,6 +36,7 @@ public sealed class GameConnectionService : IDisposable
             _controller?.Dispose();
             _controller = null;
             _device = null;
+            _loggedCapture = null;
             _discoverAfter = _retryAfter = default;
             SetState(new());
             return true;
@@ -73,7 +76,7 @@ public sealed class GameConnectionService : IDisposable
                     if (DateTime.UtcNow >= _discoverAfter)
                     {
                         _discoverAfter = DateTime.UtcNow.AddSeconds(5);
-                        try { _devices = DiscoverMumuDevices(); }
+                        try { _devices = DiscoverMumuDevices().Select(MumuDisplay.Inspect).ToArray(); }
                         catch { _devices = []; }
                     }
                     return _devices;
@@ -84,6 +87,8 @@ public sealed class GameConnectionService : IDisposable
                 _controller?.Dispose();
                 _controller = null;
                 _device = selected.Device;
+                _retryAfter = default;
+                if (_device is null) _loggedCapture = null;
                 SetState(new(selected.Source, selected.Window, selected.Problem));
             }
             else if (selected.Device is null)
@@ -111,19 +116,32 @@ public sealed class GameConnectionService : IDisposable
             if (_disposed || _device is null || !IsAdb || DateTime.UtcNow < _retryAfter) return null;
             try
             {
-                if (_controller is null)
-                {
-                    _controller = new MaaAdbController(_device.AdbPath, _device.Serial,
-                        AdbScreencapMethods.Encode | AdbScreencapMethods.EncodeToFileAndPull
-                            | AdbScreencapMethods.RawWithGzip | AdbScreencapMethods.RawByNetcat,
-                        AdbInputMethods.AdbShell, config: _device.Config,
-                        agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
-                    if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded) throw new IOException();
-                    _controller.SetOption_ScreenshotUseRawSize(true);
-                }
-                if (_controller.Screencap().Wait() != MaaJobStatus.Succeeded) throw new IOException();
                 using var image = new MaaImageBuffer();
-                if (!_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException();
+                if (_device.DisplayId == 0)
+                {
+                    // 已确认游戏在主屏，保留原有截图方法和性能。
+                    if (_controller is null)
+                    {
+                        _controller = new MaaAdbController(_device.AdbPath, _device.Serial,
+                            AdbScreencapMethods.Encode | AdbScreencapMethods.EncodeToFileAndPull
+                                | AdbScreencapMethods.RawWithGzip | AdbScreencapMethods.RawByNetcat,
+                            AdbInputMethods.AdbShell, config: _device.Config,
+                            agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
+                        if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded) throw new IOException();
+                        _controller.SetOption_ScreenshotUseRawSize(true);
+                    }
+                    if (_controller.Screencap().Wait() != MaaJobStatus.Succeeded
+                        || !_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException();
+                }
+                else if (!image.TrySetEncodedData(MumuDisplay.Capture(_device)) || image.IsEmpty)
+                    throw new IOException();
+                var capture = (Serial: _device.Serial, Display: _device.DisplayId!.Value);
+                if (_loggedCapture != capture)
+                {
+                    var method = capture.Display == 0 ? "MaaFramework ADB auto" : "adb exec-out screencap -p -d";
+                    AppLogger.Info("MuMu", $"serial={capture.Serial} display={capture.Display} capture={method}");
+                    _loggedCapture = capture;
+                }
                 var width = image.Width;
                 var height = image.Height;
                 if (!WindowGeometry.IsSupportedGameAspectRatio(width, height))
@@ -143,7 +161,8 @@ public sealed class GameConnectionService : IDisposable
                 _controller?.Dispose();
                 _controller = null;
                 _retryAfter = DateTime.UtcNow.AddSeconds(5);
-                SetState(State with { Problem = GameSourceSelection.AdbProblem, Width = 0, Height = 0 });
+                // TODO(design): 审阅 display 截图失败时的提示文案。
+                SetState(State with { Problem = "MuMu 游戏画面截图失败，请提供诊断包以排查显示屏兼容性。", Width = 0, Height = 0 });
                 return null;
             }
         }

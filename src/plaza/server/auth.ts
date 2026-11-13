@@ -1,5 +1,6 @@
-import { body, DAY, dayStart, empty, fail, hash, hasBlocked, iso, json, me, stmt, string, type Env, type UserRow } from './common'
+import { body, clientIp, DAY, dayStart, empty, fail, hash, hasBlocked, iso, json, me, stmt, string, type Env, type UserRow } from './common'
 import { checkPassword, hashPassword } from './password'
+import { sendCodeMail } from './mail'
 
 export interface Context { request: Request; env: Env; cookie?: string }
 export const cookie = (token: string, seconds = 30 * DAY / 1000) =>
@@ -33,7 +34,7 @@ function emailValue(value: unknown) {
 }
 async function turnstile(ctx: Context, token: string) {
  const { request, env } = ctx
- const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ const ip = clientIp(env, request)
  const challenge = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
   method: 'POST', body: new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, remoteip: ip }),
  })
@@ -49,7 +50,7 @@ async function cleanLoginRecords(env: Env) {
 }
 async function sendCode(ctx: Context) {
  const { request, env } = ctx, input = await body(request)
- const email = emailValue(input.email), ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ const email = emailValue(input.email), ip = clientIp(env, request)
  await cleanLoginRecords(env)
  await turnstile(ctx, string(input.turnstileToken))
  const now = iso(), start = dayStart()
@@ -78,12 +79,7 @@ async function sendCode(ctx: Context) {
   AND (SELECT COUNT(*) FROM login_codes WHERE ip=? AND created_at>=?)<30`,
   email, ip, codeHash, now, iso(Date.now() + 600000), email, iso(Date.now() - 60000), email, start, ip, start).run()
  if (!inserted.meta.changes) limited()
- const sent = await fetch('https://api.resend.com/emails', {
-  method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ from: env.MAIL_FROM, to: [email], subject: `卫戍协议助手登录验证码：${code}`,
-   text: `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人在登录卫戍协议助手的阵容广场，请忽略这封邮件。` }),
- })
- if (!sent.ok) fail(502, 'mail_failed', '验证码发送失败，请稍后再试。')
+ await sendCodeMail(env, email, code)
  return json({ retryAfter: 60 })
 }
 async function verify(ctx: Context) {
@@ -116,7 +112,7 @@ async function passwordLogin(ctx: Context) {
  const email = emailValue(input.email), password = string(input.password)
  await cleanLoginRecords(env)
  await turnstile(ctx, string(input.turnstileToken))
- const ip = request.headers.get('CF-Connecting-IP') ?? 'local'
+ const ip = clientIp(env, request)
  const counts = await stmt(env, `SELECT
   (SELECT COUNT(*) FROM password_attempts WHERE email=? AND success=0 AND created_at>=?
    AND id>COALESCE((SELECT MAX(id) FROM password_attempts WHERE email=? AND success=1),0)) AS emails,

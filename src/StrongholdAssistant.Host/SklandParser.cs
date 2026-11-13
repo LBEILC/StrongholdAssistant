@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using ASPAssistant.Core;
 
 namespace StrongholdAssistant.Host;
 
@@ -23,7 +24,7 @@ public sealed record SklandRecord(string Id, string? StrategyId, SklandOperator[
     string[] Equipment, bool Success, string Time, string StartTime, int CoinSpent, int Kills,
     SklandCovenant[] Covenants, SklandBoss[] Bosses, string Mode, string Difficulty, int PassRound, string VersionId);
 
-public static class SklandParser
+public static partial class SklandParser
 {
     public static SklandAccount? ParseAccount(string json)
     {
@@ -35,7 +36,21 @@ public static class SklandParser
         var bindings = Elements(game, "bindingList").ToArray();
         var role = bindings.FirstOrDefault(b => Optional(b, "isDefault").ValueKind == JsonValueKind.True);
         if (role.ValueKind == JsonValueKind.Undefined) role = bindings.FirstOrDefault();
-        return Option(role, "nickname") is { } nickname ? new(nickname) : null;
+        if (role.ValueKind == JsonValueKind.Object)
+            foreach (var property in role.EnumerateObject())
+                if (property.Name.Equals("nickname", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.ValueKind == JsonValueKind.String
+                    && property.Value.GetString() is { Length: > 0 } nickname)
+                    return new(nickname);
+
+        // 昵称未能解析时只记录首项字段名；不记录角色标识或凭据值。
+        var first = bindings.FirstOrDefault();
+        var fields = first.ValueKind == JsonValueKind.Object
+            ? first.EnumerateObject().Select(p => p.Name)
+                .Where(name => name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+            : [];
+        AppLogger.Info("Skland", "账号昵称解析失败 bindingList[0] 字段名: " + string.Join(",", fields));
+        return bindings.Length > 0 ? new("明日方舟角色") : null;
     }
 
     // 登录表单出现时重置等待起点，登录完成后给页面完整的 15 秒加载时间。
@@ -68,24 +83,29 @@ public static class SklandParser
         var wrapper = data.GetProperty("guide");
         if (wrapper.GetProperty("invalid").GetInt32() != 0)
             throw new ArgumentException("这篇攻略不存在或已失效。");
-        var guide = wrapper.GetProperty("guide");
+        return ParseGuideContent(wrapper.GetProperty("guide"),
+            Option(Optional(wrapper, "poster"), "nickname") ?? "", url);
+    }
+
+    private static SklandGuide ParseGuideContent(JsonElement guide, string author, string url, bool decoded = false)
+    {
         var stages = guide.GetProperty("tabs").EnumerateArray().Select(tab =>
         {
-            var tabType = tab.GetProperty("tabType").GetInt32();
-            var factions = Optional(tab, "activeBonds");
+            var tabType = decoded ? (Text(tab, "type") == "FORMATION" ? 1 : 2) : tab.GetProperty("tabType").GetInt32();
+            var factions = Optional(tab, decoded ? "activeFactions" : "activeBonds");
             return new SklandStage(tabType == 1 ? "FORMATION" : tabType.ToString(CultureInfo.InvariantCulture),
                 tab.GetProperty("startRound").GetInt32(),
-                tab.GetProperty("endRound").GetInt32(), Elements(tab, "recChars")
-                    .Select(o => new SklandOperator(Text(o, "charId"), Optional(o, "mergeLevel") is
+                tab.GetProperty("endRound").GetInt32(), Elements(tab, decoded ? "operators" : "recChars")
+                    .Select(o => new SklandOperator(Text(o, decoded ? "operatorId" : "charId"), Optional(o, decoded ? "eliteLevel" : "mergeLevel") is
                         { ValueKind: not JsonValueKind.Undefined and not JsonValueKind.Null } level && level.GetInt32() == 1,
                         Option(o, "skillId"), Option(o, "moduleId"))).ToArray(),
-                Elements(tab, "recItems").Select(e => Text(e, "itemId")).ToArray(),
-                Strings(factions, "seasonBondIds").Concat(Strings(factions, "regularBondIds"))
+                Elements(tab, decoded ? "equips" : "recItems").Select(e => Text(e, decoded ? "equipId" : "itemId")).ToArray(),
+                Strings(factions, decoded ? "coreFactionIds" : "seasonBondIds").Concat(Strings(factions, decoded ? "additionalFactionIds" : "regularBondIds"))
                     .Select(BondId).ToArray(),
-                Option(tab, "operationIdea") ?? "");
+                Option(tab, decoded ? "description" : "operationIdea") ?? "");
         }).ToArray();
         if (stages.Length == 0) throw new ArgumentException("这篇攻略不存在或已失效。");
-        return new(NormalizeGuideUrl(url), Text(guide, "title"), Option(Optional(wrapper, "poster"), "nickname") ?? "",
+        return new(NormalizeGuideUrl(url), Text(guide, "title"), author,
             Strings(guide, "strategyIds"),
             Text(guide, "versionId"), stages);
     }

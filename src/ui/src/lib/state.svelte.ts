@@ -10,7 +10,7 @@ import { ELITE_COVENANT, fillDefaults, defaultsFromLineup } from './opconfig'
 import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
 
 export type Tab = 'match' | 'lineup' | 'codex' | 'history'
-export type LineupView = 'target' | 'mine' | 'plaza'
+export type LineupView = 'target' | 'mine' | 'plaza' | 'skland'
 export type Detail =
   | { kind: 'operator'; name: string }
   | { kind: 'equipment'; name: string }
@@ -77,6 +77,10 @@ export class AppState {
   private autoCollapsed = false
   settings = $state<Settings>(settings)
   appInfo: AppInfo = appInfo
+  /** 现在按哪套游戏主题算（v0.9.2）：自动识别时用宿主认到的，还没认出来就用上次认到 / 手动选的 */
+  get gameTheme() {
+    return (this.settings.gameThemeAuto && this.connection.theme) || this.settings.gameTheme
+  }
   /** 游戏是管理员身份、助手不是：单独按的键收不到，「按住才显示」也做不了（v0.9.1），只有组合键能用 */
   get keysBlocked() {
     return !this.appInfo.elevated && this.connection.gameElevated === true
@@ -405,19 +409,20 @@ export class AppState {
     })
   }
   /** 分享码导入成新阵容；asTarget 时顺便设为目标 */
-  importLineup(l: Lineup, asTarget: boolean) {
-    return this.attempt(() => this.doImport(l, asTarget))
+  /** stay：留在当前页面（森空岛列表里连着挑几篇时用），只弹提示 */
+  importLineup(l: Lineup, asTarget: boolean, stay = false) {
+    return this.attempt(() => this.doImport(l, asTarget, stay))
   }
   /** 存阵容前把默认技能、模组写进去（默认只预填，之后改默认不影响已有阵容） */
   private filled(l: Lineup) {
     return fillDefaults(l, (n) => this.op(n), this.settings.operatorDefaults)
   }
-  private async doImport(l: Lineup, asTarget: boolean) {
+  private async doImport(l: Lineup, asTarget: boolean, stay = false) {
     const saved = await api.saveLineup(this.filled(l))
     this.lineups = await api.lineups()
     if (asTarget) this.setTarget(saved.id)
     this.importOpen = false
-    this.lineupView = asTarget ? 'target' : 'mine'
+    if (asTarget || !stay) this.lineupView = asTarget ? 'target' : 'mine'
     this.showToast(asTarget ? `已导入「${saved.name}」并设为目标` : `已导入「${saved.name}」`)
   }
 

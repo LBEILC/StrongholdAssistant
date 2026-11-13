@@ -122,13 +122,14 @@ public partial class MainWindow
         {
             var items = state.ShopItems.ToArray();
             var generation = _scanner.ShopGeneration;
-            bool animate = !_scanner.RemovingChangedShopItems;
+            // 卡槽变了立即移除（093）；淡出照常播（150 ms，从移除那一刻开始，不拖慢移除）
+            bool removing = _scanner.RemovingChangedShopItems;
             var capturedAt = _scanner.ChangedShopCapturedAt;
             Dispatcher.BeginInvoke(() =>
             {
                 if (generation != _scanner.ShopGeneration) return;
-                _shopItems = items; RefreshShopOverlay(animate);
-                if (!animate) ASPAssistant.Core.AppLogger.Info("ShopTiming", $"画面变化到覆盖层移除={(DateTimeOffset.UtcNow - capturedAt).TotalMilliseconds:F1}ms");
+                _shopItems = items; RefreshShopOverlay();
+                if (removing) ASPAssistant.Core.AppLogger.Info("ShopTiming", $"画面变化到覆盖层移除={(DateTimeOffset.UtcNow - capturedAt).TotalMilliseconds:F1}ms");
             });
         };
         _scanner.SetShopScanSpeed(_api.Settings.ShopScanSpeed);
@@ -139,6 +140,7 @@ public partial class MainWindow
             RefreshShopOverlay();
         };
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
+        _scanner.ThemeDetected += reading => Dispatcher.Invoke(() => _api.ObserveTheme(reading));
         _api.InitializeBoardRoutes(data);
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
         _scanner.BoardFrameReady += (frame, reading) => _api.ObserveBoardFrame(frame, reading, _scanner.BoardShopVisible, _scanner.BoardMainScreenVisible);

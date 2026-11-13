@@ -155,11 +155,10 @@
     <div class="pw">
       {#if pwMode === 'none'}
         <p class="muted small">
-          {me.hasPassword ? '已设置。登录时可以选「密码登录」，也可以继续用验证码登录。' : '没有设置，登录只能用邮箱验证码。设了密码以后可以直接用密码登录，验证码登录照样能用。'}
+          {me.hasPassword ? '已设置。忘了密码可以在登录页点「忘记密码」，用邮箱验证码重设。' : '还没有设置，设好才能继续用广场。'}
         </p>
         <div class="pwacts">
           <button class="btn sm" onclick={() => (pwMode = 'set')}>{me.hasPassword ? '修改密码' : '设置密码'}</button>
-          {#if me.hasPassword}<button class="btn ghost sm" onclick={() => (pwMode = 'delete')}>删除密码</button>{/if}
         </div>
       {:else}
         <div class="pwform">

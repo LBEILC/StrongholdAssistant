@@ -5,6 +5,7 @@
   import { app } from '../lib/state.svelte'
   import { api, type SklandGuide, type SklandRecord } from '../lib/api'
   import { decodeLineup } from '../lib/share'
+  import { plaza, postToLineup, type Post } from '../lib/plaza.svelte'
   import { recordTitle, recordToLineup, sklandLink, guideToLineup } from '../lib/skland'
   import { allStages, stageLabel, stageView } from '../lib/stages'
   import LineupCard from './LineupCard.svelte'
@@ -17,6 +18,21 @@
   let name = $state('')
   let box: HTMLTextAreaElement | undefined = $state()
   const link = $derived(sklandLink(text))
+  // 阵容广场的帖子链接（v0.9.2）：网站复制分享码时带上，读帖子拿简介；只粘链接也能导入。只按 id 向广场读，不访问链接里的域名
+  const postId = $derived(link ? null : (text.match(/https?:\/\/[^\s/]+\/p\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)?.[1] ?? null))
+  let post = $state<Post | null>(null)
+  let postErr = $state('')
+  $effect(() => {
+    const id = postId
+    post = null
+    postErr = ''
+    if (!id) return
+    plaza
+      .post(id)
+      .then((p) => id === postId && (post = p))
+      .catch((e) => id === postId && (postErr = (e as Error).message))
+  })
+  const fromPost = $derived(post?.current ? postToLineup(post) : null)
   const result = $derived(!link && text.trim() ? decodeLineup(text, app.catalog) : null)
 
   // 森空岛：链接变了就重新读；读的过程中又换了链接，旧结果丢掉
@@ -79,7 +95,12 @@
     picked ? recordToLineup(picked, app.catalog) : guide ? guideToLineup(guide, app.catalog) : null,
   )
 
-  const base = $derived(sk?.lineup ?? (result?.ok ? result.lineup : null))
+  const base = $derived(sk?.lineup ?? fromPost ?? (result?.ok ? result.lineup : null))
+  // 从广场帖子导入的记一次导入数（和广场里点导入一样）
+  const doImport = (asTarget: boolean) => {
+    if (fromPost && post) plaza.imported(post.id).catch(() => {})
+    app.importLineup(lineup!, asTarget)
+  }
   const lineup = $derived(base ? { ...base, name: name.trim() || base.name } : null)
   const close = () => (app.importOpen = false)
 
@@ -113,7 +134,7 @@
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
     <div class="scroll">
-    <p class="hint">粘贴别人发来的分享码，整句消息也可以；也可以粘贴森空岛的阵容攻略链接。</p>
+    <p class="hint">粘贴别人发来的分享码，整句消息也可以；也可以粘贴阵容广场或森空岛攻略的链接。</p>
     <textarea bind:this={box} bind:value={text} rows="3" placeholder="【卫戍协议助手阵容】叙拉古 · 家族 SA2-…" spellcheck="false" oninput={() => (picked = null)}></textarea>
     <div class="hist">
       <button class="lnk" disabled={histBusy} onclick={history}><Icon name="download" size={12} />{histBusy ? '等待森空岛窗口…' : '从森空岛历史战绩导入'}</button>
@@ -154,8 +175,20 @@
           <button onclick={() => api.openUrl(link!)}>在浏览器里打开<Icon name="arrowRight" size={12} /></button>
         {/snippet}
       </ErrorNote>
-    {:else if result && !result.ok}
+    {:else if postId && !post && !postErr && !(result?.ok)}
+      <p class="reading"><i class="spin"></i>正在从阵容广场读取…</p>
+    {:else if postId && postErr && !(result?.ok)}
+      <p class="err">读不到这篇广场阵容：{postErr}</p>
+    {:else if post && !post.current && !(result?.ok)}
+      <p class="err">这篇广场阵容是旧赛季的，导入不了。</p>
+    {:else if result && !result.ok && !postId}
       <p class="err">{result.error}</p>
+    {/if}
+    {#if fromPost && post}
+      <div class="src">
+        <span class="tag term">PLAZA</span>
+        <span class="by">阵容广场 · {post.author.nickname}</span>
+      </div>
     {/if}
 
     {#if sk}
@@ -189,15 +222,15 @@
         <input bind:value={name} maxlength="30" />
       </label>
       <div class="preview"><LineupCard lineup={lineup.stages?.length && stageIx >= 0 ? stageView(lineup, stageIx) : lineup} menu={false} /></div>
-      {#if sk && lineup.description}<p class="desc">{lineup.description}</p>{/if}
+      {#if (sk || fromPost) && lineup.description}<p class="desc">{lineup.description}</p>{/if}
     {/if}
 
     </div>
     <footer>
       <button class="ghost" onclick={close}>取消</button>
       <span class="sp"></span>
-      <button class="secondary" disabled={!lineup} onclick={() => app.importLineup(lineup!, false)}>导入</button>
-      <button class="primary" disabled={!lineup} onclick={() => app.importLineup(lineup!, true)}>导入并设为目标</button>
+      <button class="secondary" disabled={!lineup} onclick={() => doImport(false)}>导入</button>
+      <button class="primary" disabled={!lineup} onclick={() => doImport(true)}>导入并设为目标</button>
     </footer>
   </aside>
 {/if}

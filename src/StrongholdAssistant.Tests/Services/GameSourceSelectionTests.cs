@@ -17,7 +17,7 @@ public class GameSourceSelectionTests
     {
         var result = GameSourceSelection.Find(source, serial, () => hasPc ? (IntPtr)1 : IntPtr.Zero,
             () => [new((IntPtr)2, "MuMu")],
-            () => Enumerable.Range(0, count).Select(i => new MumuDevice("MuMu", "adb.exe", $"device-{i}", "{}")).ToArray());
+            () => Enumerable.Range(0, count).Select(i => new MumuDevice("MuMu", "adb.exe", $"device-{i}", "{}") { DisplayId = 0 }).ToArray());
         Assert.Equal(expectedSource, result.Source);
         Assert.Equal(expectedSerial, result.Device?.Serial);
         Assert.Equal(problem, result.Problem);
@@ -31,7 +31,22 @@ public class GameSourceSelectionTests
     {
         var result = GameSourceSelection.Find("mumu", "", () => throw new Exception("不应查找 PC"),
             () => [new((IntPtr)2, "MuMu 1"), new((IntPtr)3, "MuMu 2")],
-            () => [new(deviceName, "adb.exe", "device", "{}")]);
+            () => [new(deviceName, "adb.exe", "device", "{}") { DisplayId = 0 }]);
         Assert.Equal((IntPtr)expected, result.Window);
+    }
+
+    [Theory]
+    [InlineData("", 3, "game", null)]
+    [InlineData("", null, null, GameSourceSelection.GameMissingProblem)]
+    [InlineData("desktop", 3, null, GameSourceSelection.GameMissingProblem)]
+    public void SelectsOnlyRunningGameAndHonorsExplicitSerial(string serial, int? display,
+        string? expectedSerial, string? problem)
+    {
+        var result = GameSourceSelection.Find("mumu", serial, () => IntPtr.Zero,
+            () => [new((IntPtr)2, "MuMu")],
+            () => [new("MuMu", "adb.exe", "desktop", "{}"),
+                new("MuMu", "adb.exe", "game", "{}") { DisplayId = display }]);
+        Assert.Equal(expectedSerial, result.Device?.Serial);
+        Assert.Equal(problem, result.Problem);
     }
 }

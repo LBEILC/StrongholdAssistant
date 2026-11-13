@@ -22,6 +22,7 @@
   import Toast from './components/Toast.svelte'
   import ChangelogSheet from './components/ChangelogSheet.svelte'
   import WhatsNew from './components/WhatsNew.svelte'
+  import PlazaPasswordGate from './components/PlazaPasswordGate.svelte'
   import Tooltip from './components/Tooltip.svelte'
   import { api } from './lib/api'
   import { skin } from './lib/skin.svelte'
@@ -44,7 +45,7 @@
     'flag', 'round', 'panel', 'sweep',
   ]
   $effect(() => {
-    skin.id = app.settings.uiSkin === 'follow' ? app.settings.gameTheme : app.settings.uiSkin
+    skin.id = app.settings.uiSkin === 'follow' ? app.gameTheme : app.settings.uiSkin
     const root = document.documentElement
     root.dataset.skin = skin.id
     for (const f of SKIN_IMAGES) root.style.setProperty(`--skin-${f.replace('_', '-')}`, `url(${asset.skin(f)})`)
@@ -174,6 +175,8 @@
 <ContextMenu />
 <Tooltip />
 {#if app.phase !== 'boot'}<WhatsNew />{/if}
+<!-- 阵容广场账号还没密码：先设密码（v0.9.2） -->
+<PlazaPasswordGate />
 
 <style>
   /* 启动：标题栏和原生骨架一致、不动，其余区块等宿主显示网页后依次淡入上移 */

@@ -33,6 +33,7 @@ public sealed class HostSettingsStore(string path)
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
+            GameThemeAuto = json["gameThemeAuto"]?.GetValue<bool>() ?? true,
             RunAsAdmin = json["runAsAdmin"]?.GetValue<bool>() ?? false,
             UiSkin = uiSkin,
             Routes = RouteOverlaySettings.Load(json["routes"]),

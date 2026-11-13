@@ -375,6 +375,7 @@ public sealed partial class HostApi
         {
             case "plazaLogin": return await PlazaLoginAsync();
             case "sklandGuide": return await SklandGuideAsync(args[0].GetString()!);
+            case "sklandGuides": return await SklandGuidesAsync(Read<SklandGuideQuery>(0));
             case "sklandAccount": return ReadSklandAccount();
             case "sklandLogin": return await SklandLoginAsync();
             case "sklandLogout": await SklandLogoutAsync(); return null;

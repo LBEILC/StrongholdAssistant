@@ -20,6 +20,7 @@ public sealed partial class HostApi
         var logoutGeneration = _sklandLogoutGeneration;
         try
         {
+            if (_sklandGuidesQueue is not null) await _sklandGuidesQueue.CloseAsync();
             var read = SklandLoginSessionReader ?? ReadSklandLoginSessionAsync;
             var json = await read(false);
             if (logoutGeneration != _sklandLogoutGeneration) return null;

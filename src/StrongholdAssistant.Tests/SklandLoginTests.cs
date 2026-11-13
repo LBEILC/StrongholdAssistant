@@ -6,8 +6,11 @@ public sealed class SklandLoginTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
-    [Fact]
-    public async Task LoggedInReturnsFreshRoleWithoutOpeningWindow()
+    [Theory]
+    [InlineData("""{"nickName":"新昵称","roles":[]}""", "新昵称")]
+    [InlineData("""{"nickname":"新昵称","roles":[]}""", "新昵称")]
+    [InlineData("""{"roles":[]}""", "明日方舟角色")]
+    public async Task LoggedInReturnsFreshRoleWithoutOpeningWindow(string binding, string expected)
     {
         var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
         Directory.CreateDirectory(_directory);
@@ -16,12 +19,13 @@ public sealed class SklandLoginTests : IDisposable
         api.SklandLoginSessionReader = visible =>
         {
             calls.Add(visible);
-            return Task.FromResult<string?>("""{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[{"nickname":"新昵称"}]}]}}""");
+            return Task.FromResult<string?>(
+                """{"code":0,"data":{"list":[{"appCode":"arknights","bindingList":[""" + binding + "]}]}}");
         };
 
         var result = Assert.IsType<SklandAccount>(await api.InvokeAsync("sklandLogin", []));
 
-        Assert.Equal("新昵称", result.Nickname);
+        Assert.Equal(expected, result.Nickname);
         Assert.Equal(new[] { false }, calls);
         Assert.Equal(result, Assert.IsType<SklandAccount>(await api.InvokeAsync("sklandAccount", [])));
     }

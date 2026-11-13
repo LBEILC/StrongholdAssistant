@@ -58,7 +58,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   }
   if (!r.ok) {
     const e = data as { error?: string; message?: string } | undefined
-    throw new ApiError(e?.error ?? 'http', e?.message ?? `请求失败（${r.status}），请稍后再试。`, r.status)
+    throw new ApiError(e?.error ?? 'http', e?.message ?? (r.status >= 500 ? `暂时连不上阵容广场服务器（${r.status}），过几分钟再试。` : `请求失败（${r.status}），请稍后再试。`), r.status)
   }
   return data as T
 }
