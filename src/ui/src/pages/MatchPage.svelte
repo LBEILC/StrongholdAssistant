@@ -52,7 +52,9 @@
         { label: '显示路线', on: r.enabled, run: () => toggleRoutes(!r.enabled) },
         'sep' as const,
         pick('display', 'always', '显示：一直显示'),
-        pick('display', 'hold', `显示：按住 ${r.hotkey} 才显示`),
+        app.keysBlocked
+          ? { label: '显示：按住才显示（要管理员身份）', on: false, disabled: true, run: () => {} }
+          : pick('display', 'hold', `显示：按住 ${r.hotkey} 才显示`),
         pick('display', 'peek', '显示：新回合先看几秒'),
         'sep' as const,
         pick('overlap', 'cycle', '路线多时：依次循环'),

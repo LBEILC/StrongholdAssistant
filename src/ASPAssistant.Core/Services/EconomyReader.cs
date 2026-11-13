@@ -4,7 +4,10 @@ using System.Text.RegularExpressions;
 
 namespace ASPAssistant.Core.Services;
 
-public sealed record EconomyReading(int? Round, int? Money, int? Level, int? UpgradeCost, bool IsRest);
+public sealed record EconomyReading(int? Round, int? Money, int? Level, int? UpgradeCost, bool IsRest)
+{
+    public bool IsFinalRound { get; init; }
+}
 
 /// <summary>复用商店截图；顶部读回合，右下读资金，LEVEL 标签定位升级面板。</summary>
 public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShopTheme.Terminal)
@@ -17,14 +20,17 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
         var top = await ocr.RecognizeRegionAsync(png, (int)(width * .32), 0, (int)(width * .25), (int)(height * .09));
         string heading = string.Join("", top.OrderBy(t => t.Box.X).Select(t => t.Text));
         var roundLabel = top.FirstOrDefault(t => t.Text.Trim() == "回合");
-        var combinedRound = top.Select(t => Regex.Match(t.Text, @"^回合\s*(\d+)$")).FirstOrDefault(m => m.Success);
-        int? round = combinedRound is null ? null : Number(combinedRound.Groups[1].Value);
+        var combinedRound = top.Select(t => Regex.Match(t.Text, @"^回合\s*([\d?？﹖\s]+)$")).FirstOrDefault(m => m.Success);
+        string roundText = combinedRound?.Groups[1].Value ?? "";
         if (roundLabel is not null)
         {
             var digits = await ocr.RecognizeLineAsync(png, roundLabel.Box.X + roundLabel.Box.W + 5,
                 roundLabel.Box.Y, (int)(52 * scale), roundLabel.Box.H);
-            round = Number(string.Join("", digits.Select(t => t.Text)));
+            roundText = string.Join("", digits.Select(t => t.Text));
         }
+        int? round = Number(roundText);
+        bool isRest = heading.Contains("休息") || heading.Contains("休整");
+        bool isFinalRound = isRest && Regex.IsMatch(roundText.Trim(), @"^[?？﹖](\s*[?？﹖])?$");
         var moneyText = await ocr.RecognizeLineAsync(png, (int)(width - 130 * scale),
             (int)(height - 273 * scale), (int)(65 * scale), (int)(38 * scale));
         int? money = Number(string.Join("", moneyText.Select(t => t.Text)));
@@ -36,7 +42,7 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
         {
             int center = label.Box.X + label.Box.W / 2;
             if (panel.Any(t => t.Text == "已满级" && Math.Abs(t.Box.X + t.Box.W / 2 - center) < 60 * scale))
-                return new(round, money, 6, null, heading.Contains("休息") || heading.Contains("休整"));
+                return new(round, money, 6, null, isRest) { IsFinalRound = isFinalRound };
             bool closure = theme == GameShopTheme.Closure;
             // 可露希尔未检出 LEVEL 时，从底部定位完整等级字形，并避开两侧箭头。
             bool closureUpgrade = closure && label.Text == "升级";
@@ -50,7 +56,7 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
                 (int)(height - 273 * scale), (int)(52 * scale), (int)(38 * scale));
             cost = level == 6 ? null : Number(string.Join("", price.Select(t => t.Text)));
         }
-        return new(round, money, level, cost, heading.Contains("休息") || heading.Contains("休整"));
+        return new(round, money, level, cost, isRest) { IsFinalRound = isFinalRound };
     }
 
     private static int? Number(string text) => Regex.IsMatch(text.Trim(), @"^\d{1,3}$")

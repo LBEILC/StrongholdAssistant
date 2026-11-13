@@ -117,6 +117,18 @@ public partial class MainWindow : Window
                 if (windowCommand == "redock") Redock();
                 result = null;
             }
+            else if (request.Method == "setRunAsAdmin")
+            {
+                var on = request.Params[0].GetBoolean();
+                if (on && !ProcessElevation.Current)
+                {
+                    ProcessElevation.RestartElevated();
+                    _api.SaveRunAsAdmin(true);
+                    Close();
+                }
+                else _api.SaveRunAsAdmin(on); // 关闭后下次普通启动生效。
+                result = null;
+            }
             else if (request.Method == "setHotkey")
             {
                 SetHotkey(request.Params[0].GetString()!);

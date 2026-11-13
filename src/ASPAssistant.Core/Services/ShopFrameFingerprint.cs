@@ -6,7 +6,7 @@ using ASPAssistant.Core.Models;
 namespace ASPAssistant.Core.Services;
 
 // 只比较名称条，避开卡面入场和悬停光效；辅助区域另行判断资金和信息页变化。
-internal sealed record ShopFrameFingerprint(byte[] Names, byte[] Context)
+internal sealed record ShopFrameFingerprint(byte[] Names, byte[] Context, double Left, double Right)
 {
     public static ShopFrameFingerprint Read(byte[] png, GameShopTheme theme)
     {
@@ -41,7 +41,22 @@ internal sealed record ShopFrameFingerprint(byte[] Names, byte[] Context)
         var heading = Sample(source, new Rectangle(0, 0, source.Width, source.Height / 2), 384, 96);
         var economy = Sample(source, new Rectangle(0, source.Height - (int)(310 * scale),
             source.Width, Math.Max(1, (int)(310 * scale))), 384, 96);
-        return new(names, [.. heading, .. economy]);
+        return new(names, [.. heading, .. economy], left / (double)source.Width, right / (double)source.Width);
+    }
+
+    public bool ChangedSlot(ShopFrameFingerprint current, ShopItem item)
+    {
+        var region = item.CardRegion.Width > 0 ? item.CardRegion : item.OcrRegion;
+        int left = Math.Clamp((int)((region.X - Left) / (Right - Left) * 768), 0, 767);
+        int right = Math.Clamp((int)((region.X + region.Width - Left) / (Right - Left) * 768), left + 1, 768);
+        for (int y = 0; y < 24; y++)
+            for (int x = left; x < right; x += 16)
+            {
+                int end = Math.Min(right, x + 16), difference = 0;
+                for (int i = x; i < end; i++) difference += Math.Abs(Names[y * 768 + i] - current.Names[y * 768 + i]);
+                if (difference > (end - x) * 10) return true;
+            }
+        return false;
     }
 
     private static byte[] Sample(Bitmap source, Rectangle region, int width, int height)

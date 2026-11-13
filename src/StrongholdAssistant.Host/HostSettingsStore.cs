@@ -19,12 +19,21 @@ public sealed class HostSettingsStore(string path)
     public SettingsDto LoadSettings()
     {
         var json = Read();
+        if (json["routeHotkeyMigrated"] is null)
+        {
+            if (json["routes"] is JsonObject routes && routes["hotkey"] is JsonValue hotkey
+                && hotkey.TryGetValue<string>(out var oldHotkey) && oldHotkey == "Alt")
+                routes["hotkey"] = "Alt+R";
+            json["routeHotkeyMigrated"] = true;
+            Write(json);
+        }
         var uiSkin = json["uiSkin"] is JsonValue value && value.TryGetValue<string>(out var skin)
             && skin is ("follow" or "terminal" or "ursus" or "closure" or "classic") ? skin : "follow";
         var settings = new SettingsDto(json["gameTheme"]?.GetValue<string>() ?? "terminal",
             json["shopMarkers"]?.GetValue<bool>() ?? true,
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
+            RunAsAdmin = json["runAsAdmin"]?.GetValue<bool>() ?? false,
             UiSkin = uiSkin,
             Routes = RouteOverlaySettings.Load(json["routes"]),
             ShopScanSpeed = json["shopScanSpeed"] is JsonValue speedValue
@@ -83,8 +92,9 @@ public sealed class HostSettingsStore(string path)
             || !Uri.TryCreate(proxy, UriKind.Absolute, out var uri)
             || uri.Host.Length == 0 || uri.Port is < 1 or > 65535))
             throw new ArgumentException("代理地址格式不对。");
-        Merge(settings);
+        Merge(settings with { RunAsAdmin = Read()["runAsAdmin"]?.GetValue<bool>() ?? false });
     }
+    public void SaveRunAsAdmin(bool on) => Merge(new { runAsAdmin = on });
     public void SaveDock(DockSettings dock) => Merge(dock);
 
     private void Merge<T>(T value)
@@ -92,6 +102,11 @@ public sealed class HostSettingsStore(string path)
         var json = Read();
         foreach (var property in JsonSerializer.SerializeToNode(value, HostApi.JsonOptions)!.AsObject())
             json[property.Key] = property.Value?.DeepClone();
+        Write(json);
+    }
+
+    private void Write(JsonObject json)
+    {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path + ".tmp", json.ToJsonString(HostApi.JsonOptions));
         File.Move(path + ".tmp", path, true);

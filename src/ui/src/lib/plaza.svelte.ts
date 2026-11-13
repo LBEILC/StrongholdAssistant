@@ -110,10 +110,15 @@ class Plaza {
     this.me = await this.req<Me>('PATCH', '/me', { nickname })
   }
 
-  /** sort 为 'favorite' 时只列我收藏的（要登录） */
-  list(q: { sort: 'hot' | 'new' | 'featured' | 'favorite'; covenant?: string[]; cursor?: string | null }) {
+  /** 广场的搜索和筛选（v0.9.1）：切页面、切排序都保留，重启清空 */
+  filter = $state<{ q: string; covenants: string[]; strategy: string | null }>({ q: '', covenants: [], strategy: null })
+
+  /** sort 为 'favorite' 时只列我收藏的（要登录）；q 搜阵容名、简介、作者、干员、装备 */
+  list(q: { sort: 'hot' | 'new' | 'featured' | 'favorite'; q?: string; covenant?: string[]; strategy?: string | null; cursor?: string | null }) {
     const p = new URLSearchParams(q.sort === 'favorite' ? { favorite: '1', limit: '50' } : { sort: q.sort, limit: '50' })
+    if (q.q?.trim()) p.set('q', q.q.trim())
     for (const c of q.covenant ?? []) p.append('covenant', c)
+    if (q.strategy) p.set('strategy', q.strategy)
     if (q.cursor) p.set('cursor', q.cursor)
     return this.req<PostList>('GET', '/posts?' + p)
   }

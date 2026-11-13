@@ -51,7 +51,7 @@ public sealed class BoardRouteFrameTests
             Assert.Equal(2, calls);
             for (int i = 0; i < 3; i++) api.ObserveBoardFrame(clean, rest with { IsRest = false }, true);
             Assert.Null(events[^1]);
-            api.ObserveBoardFrame(clean, rest, true);
+            api.ObserveBoardFrame(clean, rest with { Round = 15 }, true);
             Assert.NotNull(events[^1]);
             api.UpdateConnection(new("disconnected"));
             Assert.Null(events[^1]);

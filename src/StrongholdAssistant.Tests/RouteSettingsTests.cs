@@ -18,7 +18,7 @@ public sealed class RouteSettingsTests : IDisposable
         Assert.Equal(new RouteOverlaySettings(), store.LoadSettings().Routes);
         File.WriteAllText(path, """{"routes":{"enabled":true,"display":"hold"}}""");
         Assert.Equal(new RouteOverlaySettings(true, "hold"), store.LoadSettings().Routes);
-        File.WriteAllText(path, """{"routes":{"enabled":true,"display":"bad","peekSeconds":16,"hotkey":"Ctrl+R","overlap":7,"cycleSeconds":0,"fly":"bad","side":"right"}}""");
+        File.WriteAllText(path, """{"routes":{"enabled":true,"display":"bad","peekSeconds":16,"hotkey":"Unknown","overlap":7,"cycleSeconds":0,"fly":"bad","side":"right"}}""");
         Assert.Equal(new RouteOverlaySettings(true, Side: "right"), store.LoadSettings().Routes);
         File.WriteAllText(path, """{"routes":{"enabled":"yes","display":"peek","peekSeconds":"bad","hotkey":"Unknown","overlap":"all","cycleSeconds":3,"fly":"off","side":"bad"}}""");
         var valid = new RouteOverlaySettings(Display: "peek", Overlap: "all", CycleSeconds: 3, Fly: "off");
@@ -27,7 +27,7 @@ public sealed class RouteSettingsTests : IDisposable
         store.SaveSettings(settings with { Routes = valid with { Hotkey = "F2" } });
         Assert.Equal(valid with { Hotkey = "F2" }, store.LoadSettings().Routes);
         foreach (var invalid in new[] { valid with { Display = "bad" }, valid with { PeekSeconds = 2 },
-            valid with { Hotkey = "Ctrl+R" }, valid with { Overlap = "bad" }, valid with { CycleSeconds = 6 },
+            valid with { Hotkey = "Unknown" }, valid with { Overlap = "bad" }, valid with { CycleSeconds = 6 },
             valid with { Fly = "bad" }, valid with { Side = "bad" } })
             Assert.Throws<ArgumentException>(() => store.SaveSettings(settings with { Routes = invalid }));
     }

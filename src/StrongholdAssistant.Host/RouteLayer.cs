@@ -74,12 +74,46 @@ public sealed class RouteLayer : Canvas
         Rebuild();
     }
 
+    /// <summary>
+    /// 只收得到「按一下」（游戏是管理员身份、助手不是，快捷键注册成系统热键，没有松开）。
+    /// 这时「按住才显示」做不了，按「一直显示」处理；按键走 <see cref="TapHotkey"/>。
+    /// </summary>
+    public bool TapOnly
+    {
+        get => _tapOnly;
+        set
+        {
+            if (_tapOnly == value) return;
+            _tapOnly = value;
+            _hotkeyDown = false;
+            if (_routes is not null) ApplyDisplay(false);
+        }
+    }
+    private bool _tapOnly;
+    private string Display => _tapOnly && _settings.Display == "hold" ? "always" : _settings.Display;
+
+    /// <summary>系统热键按了一下：一直显示时切换隐藏 / 显示；新回合先看几秒时再显示几秒。</summary>
+    public void TapHotkey()
+    {
+        if (_routes is null) return;
+        if (Display == "always")
+        {
+            _hiddenByKey = !_hiddenByKey;
+            Fade(!_hiddenByKey, 160);
+            return;
+        }
+        Fade(true, 120);
+        _peekTimer.Stop();
+        _peekTimer.Interval = TimeSpan.FromSeconds(_settings.PeekSeconds);
+        _peekTimer.Start();
+    }
+
     /// <summary>路线快捷键按下 / 松开。</summary>
     public void SetHotkey(bool down)
     {
         _hotkeyDown = down;
         if (_routes is null) return;
-        if (_settings.Display == "always")
+        if (Display == "always")
         {
             if (!down) return;
             _hiddenByKey = !_hiddenByKey;
@@ -93,7 +127,7 @@ public sealed class RouteLayer : Canvas
     private void ApplyDisplay(bool newRound)
     {
         _peekTimer.Stop();
-        switch (_settings.Display)
+        switch (Display)
         {
             case "always":
                 Fade(!_hiddenByKey, 180);

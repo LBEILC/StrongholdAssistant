@@ -29,12 +29,13 @@ export interface MenuState {
   items: MenuEntry[]
 }
 
-export const menu = $state<{ open: MenuState | null }>({ open: null })
+export const menu = $state<{ open: MenuState | null; at: number }>({ open: null, at: 0 })
 
 export function openMenu(e: MouseEvent, m: Omit<MenuState, 'x' | 'y'>) {
   e.preventDefault()
   e.stopPropagation()
   menu.open = { ...m, x: e.clientX, y: e.clientY }
+  menu.at = performance.now()
 }
 
 export type TextField = HTMLInputElement | HTMLTextAreaElement

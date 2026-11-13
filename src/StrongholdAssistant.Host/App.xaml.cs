@@ -31,9 +31,17 @@ public partial class App : Application
             Shutdown(await PackageRecognitionCheck.RunAsync(e.Args));
             return;
         }
-        var deepLink = e.Args.FirstOrDefault();
+        await ProcessElevation.WaitForPreviousAsync(e.Args);
+        var noGame = e.Args.Contains("--no-game");
+        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant", "settings.json");
+        var deepLink = e.Args.FirstOrDefault(DeepLinkChannel.IsValid);
         _instance = new Mutex(true, @"Local\StrongholdAssistant", out _ownsInstance);
         _activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activate");
+        if (_ownsInstance)
+        {
+            ProcessElevation.AllowSameUser(_instance.SafeWaitHandle);
+            ProcessElevation.AllowSameUser(_activation.SafeWaitHandle);
+        }
         if (!_ownsInstance)
         {
             AllowSetForegroundWindow(-1);
@@ -42,9 +50,14 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        if (!noGame && !ProcessElevation.Current && !e.Args.Contains("--keep-identity")
+            && new HostSettingsStore(settingsPath).LoadSettings().RunAsAdmin)
+        {
+            try { ProcessElevation.RestartElevated(); Shutdown(); return; }
+            catch (ArgumentException) { /* 取消授权后继续普通运行，不重试。 */ }
+        }
         // 无游戏模式供打包验收使用，不启动窗口跟踪或截图。
         new UpdateService().CleanupStaleStagingDirs();
-        var noGame = e.Args.Contains("--no-game");
         var userDirectory = noGame
             ? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"))
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");

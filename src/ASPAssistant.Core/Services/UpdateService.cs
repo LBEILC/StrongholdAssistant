@@ -461,6 +461,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    $start.FileName = $path");
         sb.AppendLine("    $start.WorkingDirectory = $appDir");
         sb.AppendLine("    $start.UseShellExecute = $false");
+        sb.AppendLine("    $start.Arguments = '--keep-identity'");
         sb.AppendLine("    $start.EnvironmentVariables.Remove('STRONGHOLD_UPDATE_STARTUP_RESULT')");
         sb.AppendLine("    if ($resultPath) { $start.EnvironmentVariables['STRONGHOLD_UPDATE_STARTUP_RESULT'] = $resultPath }");
         sb.AppendLine("    $process = [System.Diagnostics.Process]::Start($start)");

@@ -130,6 +130,7 @@ public class OcrScannerService : IDisposable
     // 宿主按覆盖层需求启用；复用这一轮截图与资金识别的休整期/回合读数。
     public Func<bool> BoardRoutesRequested { get; set; } = () => false;
     public event Action<byte[]?, EconomyReading?>? BoardFrameReady;
+    public bool BoardMainScreenVisible { get; private set; }
     public bool BoardShopVisible => _shopReader.HasVisibleCards;
 
     public void Start() => _scanTimer.Start();
@@ -232,6 +233,21 @@ public class OcrScannerService : IDisposable
         fingerprint ??= ShopFrameFingerprint.Read(screenshot, theme);
         fingerprintMs += clock.Elapsed.TotalMilliseconds;
         bool changed = forced || _fingerprint is null || !ShopFrameFingerprint.SameNames(_fingerprint.Names, fingerprint.Names);
+        if (_fingerprint is { } previous && changed)
+        {
+            lock (_shopGate)
+            {
+                if (_refreshWindow.RemoveChanged(item => key != _frameKey || previous.ChangedSlot(fingerprint, item), capturedAt, out var remaining))
+                {
+                    _gameState.ShopItems = remaining.ToList();
+                    ChangedShopCapturedAt = capturedAt;
+                    RemovingChangedShopItems = true;
+                    try { GameStateUpdated?.Invoke(_gameState); }
+                    finally { RemovingChangedShopItems = false; }
+                    AppLogger.Info("ShopTiming", $"画面变化清除标记 captureToRemove={(DateTimeOffset.UtcNow - capturedAt).TotalMilliseconds:F1}ms（发布到覆盖层）");
+                }
+            }
+        }
         double? shopMs = null, economyMs = null, informationMs = null;
         if (changed)
         {
@@ -287,7 +303,10 @@ public class OcrScannerService : IDisposable
         if (_pauseBanScreenDetection || _banScreenActive) PublishShopItems([], false, capturedAt);
         // 商店已先发布，棋盘识别不会推迟本轮商店结果。
         if (BoardRoutesRequested())
+        {
+            BoardMainScreenVisible = await new BoardSurfaceReader(_ocrEngine).IsMainScreenAsync(screenshot, width, height);
             BoardFrameReady?.Invoke(_pauseBanScreenDetection || _banScreenActive ? null : screenshot, boardEconomy);
+        }
         double total = captureMs + fingerprintMs + (shopMs ?? 0) + publishMs + (economyMs ?? 0) + (informationMs ?? 0);
         // 有卡片时至多每两秒一行；慢轮（超过 800 ms）始终记录。
         if (total >= 800 || _shopReader.HasVisibleCards && Environment.TickCount64 - _lastTimingLog >= 2000)
@@ -297,6 +316,9 @@ public class OcrScannerService : IDisposable
             AppLogger.Info("ShopTiming", $"capture={Ms(captureMs)} fingerprint={Ms(fingerprintMs)} shop={Ms(shopMs)} publish={Ms(publishMs)} economy={Ms(economyMs)} information={Ms(informationMs)} captureToPublish={captureMs + fingerprintMs + (shopMs ?? 0) + publishMs:F1}ms");
         }
     }
+
+    public DateTimeOffset ChangedShopCapturedAt { get; private set; }
+    public bool RemovingChangedShopItems { get; private set; }
 
     private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible, DateTimeOffset capturedAt)
     {

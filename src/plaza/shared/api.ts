@@ -124,6 +124,8 @@ export interface Post {
  * 查询参数：sort = 'featured' | 'new' | 'hot'（默认 'hot'：点赞 × 2 + 导入数，相同按新到旧）；
  * covenant（盟约 id，可重复，要求目标盟约全部包含）；strategy（策略 id）；author（账号 id，看某人发的，含旧赛季）；
  * season = 'current'（默认）| 'all'；cursor（上一页返回的）；limit（默认 20，最多 50）。
+ * q（v0.9.1，搜索）：去掉首尾空格后最多 40 字，按空格分成最多 3 个词，每个词都要命中下面任意一项（不分大小写）：
+ * 阵容名、简介、作者昵称、任一阶段里的干员名、装备名、目标盟约名；空串当没传。可以和其他筛选、排序、收藏一起用。
  * favorite = '1'（v0.7.0）：只列当前账号收藏的（要登录，没登录 401），含旧赛季，按收藏时间新到旧，忽略 sort 和 season。
  */
 export interface PostList {

@@ -76,6 +76,8 @@ function deviceId() {
 
 export interface ListQuery {
   sort?: 'hot' | 'new' | 'featured'
+  /** 搜索（v0.9.1）：阵容名、简介、作者、干员、装备，空格分开的几个词都要命中 */
+  q?: string
   /** 只列我收藏的（v0.7.0，要登录） */
   favorite?: boolean
   covenant?: string[]
@@ -90,6 +92,7 @@ export const api = {
     const p = new URLSearchParams()
     if (q.favorite) p.set('favorite', '1')
     else if (q.sort) p.set('sort', q.sort)
+    if (q.q?.trim()) p.set('q', q.q.trim())
     for (const c of q.covenant ?? []) p.append('covenant', c)
     if (q.strategy) p.set('strategy', q.strategy)
     if (q.author) p.set('author', q.author)

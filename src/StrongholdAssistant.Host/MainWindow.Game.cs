@@ -122,10 +122,13 @@ public partial class MainWindow
         {
             var items = state.ShopItems.ToArray();
             var generation = _scanner.ShopGeneration;
+            bool animate = !_scanner.RemovingChangedShopItems;
+            var capturedAt = _scanner.ChangedShopCapturedAt;
             Dispatcher.BeginInvoke(() =>
             {
                 if (generation != _scanner.ShopGeneration) return;
-                _shopItems = items; RefreshShopOverlay();
+                _shopItems = items; RefreshShopOverlay(animate);
+                if (!animate) ASPAssistant.Core.AppLogger.Info("ShopTiming", $"画面变化到覆盖层移除={(DateTimeOffset.UtcNow - capturedAt).TotalMilliseconds:F1}ms");
             });
         };
         _scanner.SetShopScanSpeed(_api.Settings.ShopScanSpeed);
@@ -138,7 +141,7 @@ public partial class MainWindow
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
         _api.InitializeBoardRoutes(data);
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
-        _scanner.BoardFrameReady += (frame, reading) => _api.ObserveBoardFrame(frame, reading, _scanner.BoardShopVisible);
+        _scanner.BoardFrameReady += (frame, reading) => _api.ObserveBoardFrame(frame, reading, _scanner.BoardShopVisible, _scanner.BoardMainScreenVisible);
         // 敌人路线：识别结果在扫描线程上来，交给界面线程画
         _api.BoardRoutesChanged += routes => Dispatcher.BeginInvoke(() =>
         {
@@ -308,6 +311,12 @@ public partial class MainWindow
 
     private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (message == User32.WM_HOTKEY && wParam.ToInt32() == 3)
+        {
+            handled = true;
+            _routeSystemHotkey.Tap(_overlay.TapRouteHotkey);
+            return IntPtr.Zero;
+        }
         if (message == User32.WM_HOTKEY && _hotkeyId != 0 && wParam.ToInt32() == _hotkeyId)
         {
             handled = true;
@@ -427,6 +436,7 @@ public partial class MainWindow
     private async Task RefreshSettingsAsync(bool followedBefore)
     {
         _refreshKey = HotkeyParser.Parse(_api.Settings.RefreshKey);
+        RefreshRouteHotkey(_api.Connection.GameElevated == true);
         if (_connectGame)
         {
             await Task.Run(() =>
@@ -454,9 +464,11 @@ public partial class MainWindow
             : state.Source == "mumu" && state.Width > 0 && state.Problem is null;
         string? resolution = !connected ? null : state.Source == "mumu"
             ? $"{state.Width}×{state.Height}" : $"{viewport!.Value.Width}×{viewport.Value.Height}";
+        bool? gameElevated = connected ? state.Source == "pc" && ProcessElevation.ForWindow(state.Window) : null;
+        RefreshRouteHotkey(gameElevated == true);
         _api.UpdateConnection(new(connected ? "connected" : "searching", resolution,
             connected ? _tracker.IsFullscreen : null, connected && _overlayMode,
-            connected ? state.Source : null, state.Problem, connected ? _side : null));
+            connected ? state.Source : null, state.Problem, connected ? _side : null, gameElevated));
     }
 
     protected override async void OnClosing(CancelEventArgs e)
@@ -487,6 +499,7 @@ public partial class MainWindow
         await _scanner.WaitForIdleAsync();
         await _automaticScan;
         await _api!.WaitForRecordingAsync();
+        _routeSystemHotkey.Dispose(() => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 3));
         UnregisterHotkey();
         _source?.RemoveHook(OnWindowMessage);
         _overlay.Close();
@@ -494,11 +507,11 @@ public partial class MainWindow
         _ = Dispatcher.BeginInvoke(Close);
     }
 
-    private void RefreshShopOverlay()
+    private void RefreshShopOverlay(bool animate = true)
     {
         _api.UpdateShopTracking(_shopItems);
         var items = _api.Settings.ShopMarkers ? _shopItems : [];
-        _overlay.UpdateShopItems(items);
+        _overlay.UpdateShopItems(items, animate);
         if (!_connectGame || _closing || _capturingInformation || _lastGameRect is null
             || (!items.Any(i => i.IsTracked || i.IsSecondary) && !_overlay.HasMarkers && !_overlay.HasRoutes))
         {

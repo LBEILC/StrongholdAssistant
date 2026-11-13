@@ -217,6 +217,63 @@ test('点赞取消、导入去重、热度/最新/精选、盟约策略筛选和
  }
 })
 
+test('094 搜索阵容、简介、作者、各阶段干员装备和目标盟约，多个词全部命中', async () => {
+ const user = await login('SearchAuthor'), other = await login('其他玩家')
+ const original = lineup('SearchTitle', [{ id: 'siracusa', level: 1 }])
+ original.members = [{ name: catalog.operators[0].name, equipment: [{ name: catalog.equipment[0].name, priority: true }] }]
+ original.equipment = [catalog.equipment[1].name]
+ original.stages = [{ name: '过渡', fromRound: 1, toRound: 4, goals: [],
+  members: [{ name: catalog.operators[1].name, equipment: [{ name: catalog.equipment[2].name, priority: false }] }],
+  equipment: [catalog.equipment[3].name] }]
+ const post = await ok('/api/posts', { method: 'POST', token: user.token,
+  body: { code: encodeLineup(original, catalog), description: 'SearchDescription' } })
+ const unrelated = lineup('无关阵容', [])
+ unrelated.members = []; unrelated.equipment = []
+ await ok('/api/posts', { method: 'POST', token: other.token, body: { code: encodeLineup(unrelated, catalog), description: '' } })
+ for (const word of ['searchtitle', 'searchdescription', 'searchauthor', ...catalog.operators.slice(0, 2).map(o => o.name),
+  ...catalog.equipment.slice(0, 4).map(e => e.name), '叙拉古', '叙拉', 'searchtitle\tsearchdescription']) {
+  assert.deepEqual((await ok('/api/posts?' + new URLSearchParams({ q: word }))).posts.map(p => p.id), [post.id], word)
+ }
+ assert.deepEqual((await ok('/api/posts?q=' + encodeURIComponent('SearchTitle 不存在'))).posts, [])
+})
+
+test('094 LIKE 特殊字符按字面匹配，空搜索等同未传', async () => {
+ const user = await login()
+ for (const name of ['字面%值', '字面_值', '字面\\值', '字面普通值']) await publish(user, name)
+ for (const word of ['%', '_', '\\']) {
+  assert.deepEqual((await ok('/api/posts?q=' + encodeURIComponent(word))).posts.map(p => p.lineup.name), ['字面' + word + '值'])
+ }
+ const all = await ok('/api/posts')
+ assert.deepEqual(await ok('/api/posts?q='), all)
+ assert.deepEqual(await ok('/api/posts?q=' + encodeURIComponent(' \t\n ')), all)
+})
+
+test('094 搜索叠加盟约收藏筛选，分页游标绑定中文关键词', async () => {
+ const user = await login(), ids = []
+ for (const [name, goals, favorite] of [
+  ['搜索甲', [{ id: 'siracusa', level: 1 }], true],
+  ['搜索乙', [{ id: 'siracusa', level: 1 }], true],
+  ['搜索未收藏', [{ id: 'siracusa', level: 1 }], false],
+  ['搜索其他盟约', [], true],
+  ['无关名称', [{ id: 'siracusa', level: 1 }], true],
+ ]) {
+  const post = await publish(user, name, goals)
+  if (favorite) await ok('/api/posts/' + post.id + '/favorite', { method: 'POST', token: user.token })
+  if (name === '搜索甲' || name === '搜索乙') ids.push(post.id)
+ }
+ const filters = new URLSearchParams({ q: '搜索', covenant: 'siracusa', favorite: '1', limit: '1' })
+ const first = await ok('/api/posts?' + filters, { token: user.token })
+ assert.ok(first.cursor)
+ assert.match(JSON.parse(Buffer.from(first.cursor, 'base64').toString('utf8')).key, /搜索/)
+ filters.set('cursor', first.cursor)
+ const second = await ok('/api/posts?' + filters, { token: user.token })
+ assert.equal(second.cursor, null)
+ assert.deepEqual([...first.posts, ...second.posts].map(p => p.id).sort(), ids.sort())
+ filters.set('q', '搜索甲')
+ const changed = await request('/api/posts?' + filters, { token: user.token })
+ assert.equal(changed.status, 400); assert.equal(changed.data.error, 'bad_cursor')
+})
+
 test('后台 Access 签名与邮箱名单、下架、封禁及凭据失效', async () => {
  const user = await login(), post = await publish(user)
  assert.equal((await request('/api/admin/posts')).status, 403)

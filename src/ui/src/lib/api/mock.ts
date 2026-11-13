@@ -163,6 +163,7 @@ let lineups: Lineup[] = [
 // 样例：目标阵容带两件装备，另外单独追踪一件
 lineups[0].equipment = catalog.equipment.filter((e) => e.tier >= 4).slice(0, 2).map((e) => e.name)
 lineups[0].strategyId = catalog.strategies[0].id
+lineups[0].description = '前期先凑叙拉古 2 人，见到家族盟约的干员优先拿，金币够就升人口。\n过渡阶段别急着卖低费，等关键干员到位再换。\n成型后主 C 站中间，两边放阻挡，首领回合留一个减速。'
 // 样例：第一名关键干员配了三件候选、两件优先；第二名一件候选
 lineups[0].members[0].equipment = [
   { name: '维式重锤', priority: true },
@@ -191,7 +192,7 @@ let settings: Settings = {
   uiSkin: 'follow',
   shopMarkers: true,
   shopScanSpeed: 'normal',
-  routes: { enabled: false, display: 'always', peekSeconds: 6, hotkey: 'Alt', overlap: 'cycle', cycleSeconds: 2.2, fly: 'main', side: 'auto' },
+  routes: { enabled: false, display: 'always', peekSeconds: 6, hotkey: 'Alt+R', overlap: 'cycle', cycleSeconds: 2.2, fly: 'main', side: 'auto' },
   autoCheckUpdate: true,
   updateSource: 'github',
   mirrorChyanCdk: '',
@@ -208,6 +209,7 @@ let settings: Settings = {
   focusOperators: autoBanned().slice(0, 2),
   toggleHotkey: 'Alt+S',
   refreshKey: 'D',
+  runAsAdmin: false,
   startupMode: 'remember',
   shareIncome: false,
   cloudSync: { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] },
@@ -280,7 +282,8 @@ export const mockApi: Api = {
     const q = location.search
     const overlay = q.includes('overlay')
     const side = q.includes('sideright') ? 'right' : q.includes('sideleft') ? 'left' : overlay ? 'left' : 'right'
-    return wait({ state: 'connected', resolution: '1920×1080', side, ...(overlay && { fullscreen: true, overlay: true }) })
+    // 游戏默认按管理员身份算（PC 客户端实际如此）；?gameNormal：游戏不是管理员，单键都能用
+    return wait({ state: 'connected', resolution: '1920×1080', side, gameElevated: !q.includes('gameNormal'), ...(overlay && { fullscreen: true, overlay: true }) })
   },
   match: () => wait(match),
   rescan: () => {
@@ -372,6 +375,12 @@ export const mockApi: Api = {
     if (location.search.includes('hotkeyBusy')) throw new Error('这个组合被别的软件占用了，换一个试试。')
     settings = { ...settings, toggleHotkey: combo }
   },
+  // 原型不会真的重启：?admin 当作已经是管理员身份；?adminDeny：用户不同意系统确认
+  setRunAsAdmin: async (on) => {
+    await wait(null, 500)
+    if (on && location.search.includes('adminDeny')) throw new Error('没有同意管理员授权，助手还是普通身份运行。')
+    settings = { ...settings, runAsAdmin: on }
+  },
   onHotkey: (cb) => {
     const f = (e: KeyboardEvent) => e.key === 'F2' && cb()
     addEventListener('keydown', f)
@@ -414,7 +423,7 @@ export const mockApi: Api = {
   saveSettings: async (s) => {
     settings = structuredClone(s)
   },
-  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false, workbench: location.search.includes('wb') }, 0),
+  appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false, workbench: location.search.includes('wb'), elevated: location.search.includes('admin') && !location.search.includes('adminDeny') }, 0),
   openDataFolder: async () => {},
   // ?mumu2：模拟多开两个实例
   mumuInstances: () =>

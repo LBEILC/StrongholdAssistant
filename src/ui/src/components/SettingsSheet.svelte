@@ -157,27 +157,55 @@
   // v0.7.2 起允许单键：单键只在游戏或助手在前台时生效、不拦截按键（宿主实现）
   let recording = $state<'toggle' | 'refresh' | 'route' | null>(null)
   let hkMsg = $state('')
+  /** hkMsg 是哪一个按键给的，提示显示在那一行下面 */
+  let hkFor = $state<'toggle' | 'refresh' | 'route' | null>(null)
   const keyName = (e: KeyboardEvent) =>
     e.key === ' ' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
+  // 单键要收得到（v0.9.1）：游戏是管理员身份、助手不是时，单独按的键收不到，只收组合键
+  const SINGLE_BLOCKED = '游戏是以管理员身份运行的，单独一个键收不到：换成组合键（如 Alt+R），或者打开下面的「以管理员身份运行」。'
+  const MODS = ['Control', 'Alt', 'Shift', 'Meta']
+  // 路线快捷键可以单独按 Alt、Ctrl、Shift：按下修饰键先记着，松开时中间没按别的键才算单按
+  let loneMod = $state<string | null>(null)
   function recordKey(e: KeyboardEvent) {
     if (!recording) return
     e.preventDefault()
     e.stopPropagation()
     if (e.key === 'Escape') return void (recording = null)
-    // 路线快捷键是单个键（按住显示），Alt、Ctrl、Shift 单独按也算
-    if (recording === 'route') {
-      recording = null
-      return setRoutes({ hotkey: e.key === 'Control' ? 'Ctrl' : e.key === 'Meta' ? 'Win' : keyName(e) })
-    }
-    if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
+    if (MODS.includes(e.key)) return void (loneMod = e.key)
+    loneMod = null
     const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
     const combo = [...mods, keyName(e)].join('+')
+    if (app.keysBlocked && single(combo)) return void ((hkMsg = SINGLE_BLOCKED), (hkFor = recording), (recording = null))
     const target = recording
     recording = null
     if (target === 'toggle') applyHotkey(combo)
+    else if (target === 'route') setRoutes({ hotkey: combo })
     else set('refreshKey', combo)
   }
+  function recordKeyUp(e: KeyboardEvent) {
+    if (recording !== 'route' || e.key !== loneMod) return
+    e.preventDefault()
+    loneMod = null
+    recording = null
+    if (app.keysBlocked) return void ((hkMsg = SINGLE_BLOCKED), (hkFor = 'route'))
+    setRoutes({ hotkey: e.key === 'Control' ? 'Ctrl' : e.key === 'Meta' ? 'Win' : e.key })
+  }
   const single = (combo: string) => !!combo && !/(Ctrl|Alt|Shift|Win)\+/.test(combo)
+
+  // 以管理员身份运行（v0.9.1）：打开会以管理员身份重启，用户不同意时提示原因
+  let adminBusy = $state(false)
+  let adminMsg = $state('')
+  async function setAdmin(on: boolean) {
+    adminBusy = true
+    adminMsg = ''
+    try {
+      await api.setRunAsAdmin(on)
+      app.settings.runAsAdmin = on
+    } catch (e) {
+      adminMsg = (e as Error).message
+    }
+    adminBusy = false
+  }
   async function applyHotkey(combo: string) {
     try {
       await api.setHotkey(combo)
@@ -186,6 +214,7 @@
       hkMsg = ''
     } catch (e) {
       hkMsg = (e as Error).message
+      hkFor = 'toggle'
     }
   }
 
@@ -342,7 +371,7 @@
         <span class="hkl">显示方式</span>
         <div class="scales three grow">
           <button class:on={rt.display === 'always'} onclick={() => setRoutes({ display: 'always' })}>一直显示</button>
-          <button class:on={rt.display === 'hold'} onclick={() => setRoutes({ display: 'hold' })}>按住才显示</button>
+          <button class:on={rt.display === 'hold'} disabled={app.keysBlocked} title={app.keysBlocked ? '要打开「以管理员身份运行」才能用' : undefined} onclick={() => setRoutes({ display: 'hold' })}>按住才显示</button>
           <button class:on={rt.display === 'peek'} onclick={() => setRoutes({ display: 'peek' })}>新回合先看</button>
         </div>
       </div>
@@ -355,18 +384,30 @@
       {/if}
       <div class="hk">
         <span class="hkl">快捷键</span>
-        <button class="hkb" class:rec={recording === 'route'} onclick={() => ((recording = recording === 'route' ? null : 'route'), (hkMsg = ''))} onkeydown={recordKey}>
+        <button class="hkb" class:rec={recording === 'route'} onclick={() => ((recording = recording === 'route' ? null : 'route'), (hkMsg = ''))} onkeydown={recordKey} onkeyup={recordKeyUp}>
           {recording === 'route' ? '按下想用的键…' : rt.hotkey}
         </button>
       </div>
-      <p class="note">
-        {rt.display === 'always'
-          ? `休整期一直显示，进入战斗、离开棋盘时自动隐藏；按 ${rt.hotkey} 临时隐藏，再按一次显示。`
-          : rt.display === 'hold'
-          ? `平时不显示，按住 ${rt.hotkey} 时显示，松开就隐藏。`
-          : `每个新回合进休整期时显示 ${rt.peekSeconds} 秒再淡出，之后按住 ${rt.hotkey} 还能再看。`}
-        按键照样会传给游戏，别选游戏里有用的键。
-      </p>
+      {#if hkMsg && recording === null && hkFor === 'route'}
+        <p class="note bad">{hkMsg}</p>
+      {:else if recording === 'route'}
+        <p class="note">{app.keysBlocked ? '按一个组合键，如 Alt+R；Esc 取消。' : '单按一个键（Alt、Ctrl、Shift 单独按也算）或组合键，如 Alt+R；Esc 取消。'}</p>
+      {:else if app.keysBlocked && single(rt.hotkey)}
+        <p class="note bad">「{rt.hotkey}」是单独一个键，游戏是以管理员身份运行的，现在收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
+      {:else}
+        <p class="note">
+          {#if app.keysBlocked && rt.display === 'hold'}
+            现在收不到「按住」和「松开」，先按一直显示处理；按 {rt.hotkey} 临时隐藏，再按一次显示。
+          {:else if rt.display === 'always'}
+            休整期一直显示，进入战斗、离开棋盘时自动隐藏；按 {rt.hotkey} 临时隐藏，再按一次显示。
+          {:else if rt.display === 'hold'}
+            平时不显示，按住 {rt.hotkey} 时显示，松开就隐藏。
+          {:else}
+            每个新回合进休整期时显示 {rt.peekSeconds} 秒再淡出，之后{app.keysBlocked ? '按一下' : '按住'} {rt.hotkey} 还能再看。
+          {/if}
+          {app.keysBlocked ? '这个组合键由助手占用，游戏里收不到。' : '按键照样会传给游戏，别选游戏里有用的键。'}
+        </p>
+      {/if}
       <div class="hk">
         <span class="hkl">路线多时</span>
         <div class="scales two grow">
@@ -453,10 +494,12 @@
         </button>
         {#if app.settings.toggleHotkey && recording !== 'toggle'}<button class="link" onclick={() => applyHotkey('')}>关闭</button>{/if}
       </div>
-      {#if hkMsg}
+      {#if hkMsg && hkFor === 'toggle'}
         <p class="note bad">{hkMsg}</p>
       {:else if recording === 'toggle'}
-        <p class="note">单按一个键（如 Tab、`）或 Ctrl / Alt / Shift 加一个键；Esc 取消。</p>
+        <p class="note">{app.keysBlocked ? 'Ctrl / Alt / Shift 加一个键；Esc 取消。' : '单按一个键（如 Tab、`）或 Ctrl / Alt / Shift 加一个键；Esc 取消。'}</p>
+      {:else if app.keysBlocked && single(app.settings.toggleHotkey)}
+        <p class="note bad">「{app.settings.toggleHotkey}」是单独一个键，游戏是以管理员身份运行的，在游戏里按收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
       {:else if app.appInfo.hotkeyFailed && app.settings.toggleHotkey}
         <p class="note bad">「{app.settings.toggleHotkey}」被别的软件占用了，没生效，换一个试试。</p>
       {:else if single(app.settings.toggleHotkey)}
@@ -472,7 +515,34 @@
         </button>
         {#if app.settings.refreshKey && recording !== 'refresh'}<button class="link" onclick={() => set('refreshKey', '')}>关闭</button>{/if}
       </div>
-      <p class="note">游戏里按这个键刷新商店时，旧的商店标记马上消失，认到新的商店再标；游戏默认是 D。</p>
+      {#if hkMsg && hkFor === 'refresh'}
+        <p class="note bad">{hkMsg}</p>
+      {:else if app.keysBlocked && app.settings.refreshKey}
+        <p class="note bad">游戏是以管理员身份运行的，在游戏里按 {app.settings.refreshKey} 收不到。要用的话打开下面的「以管理员身份运行」；不用也行，换商店后标记会自己跟上。</p>
+      {:else}
+        <p class="note">游戏里按这个键刷新商店时，旧的商店标记马上消失，认到新的商店再标；游戏默认是 D。</p>
+      {/if}
+    </section>
+
+    <!-- 以管理员身份运行（v0.9.1）：游戏是管理员身份时，单独按的键要助手也是管理员才收得到 -->
+    <section>
+      <label class="row">
+        <span class="lbl"><b>以管理员身份运行</b><small>游戏是以管理员身份运行的，助手也是管理员才收得到单独按的键：路线的 Alt、「按住才显示」、商店刷新键 D。打开后每次启动助手会弹一次系统确认</small></span>
+        <input type="checkbox" class="sw" checked={app.settings.runAsAdmin} disabled={adminBusy} onchange={(e) => setAdmin(e.currentTarget.checked)} />
+      </label>
+      {#if adminMsg}
+        <p class="note bad">{adminMsg}</p>
+      {:else if adminBusy}
+        <p class="note">{app.settings.runAsAdmin ? '正在关闭…' : '正在以管理员身份重启，请在系统弹出的确认框里点「是」。'}</p>
+      {:else if app.settings.runAsAdmin && !app.appInfo.elevated}
+        <p class="note bad">已经打开，但这次启动没有同意系统确认，助手还是普通身份。重启助手再试一次。</p>
+      {:else if app.appInfo.elevated}
+        <p class="note">现在是管理员身份，单键都能用。{app.settings.runAsAdmin ? '' : '关掉的设置下次启动生效。'}</p>
+      {:else if app.connection.gameElevated === false}
+        <p class="note">连上的游戏不是管理员身份运行，不用打开，单键也能用。</p>
+      {:else}
+        <p class="note">不打开也行：快捷键用组合键（如 Alt+R），按一下切换显示；只是用不了单键和「按住才显示」。</p>
+      {/if}
     </section>
 
     <section>
@@ -862,6 +932,13 @@
     color: var(--mint-ink);
     font-weight: 700;
     background: var(--mint);
+  }
+  /* 用不了的选项（如收不到单键时的「按住才显示」）：字压暗、划掉 */
+  .scales button:disabled {
+    color: var(--fg-4);
+    background: var(--bg-1);
+    text-decoration: line-through;
+    cursor: not-allowed;
   }
   .radio {
     width: 12px;

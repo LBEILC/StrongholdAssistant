@@ -35,6 +35,26 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
 
         using var stream = new MemoryStream(screenshot);
         using var source = new Bitmap(stream);
+        // 居中的 16:9 录屏黑边不属于游戏视口；实际宽屏商店则锚定视口右下角。
+        int contentWidth = (int)Math.Round(height * 16.0 / 9);
+        int padding = (width - contentWidth) / 2;
+        if (padding > 0 && Enumerable.Range(0, 20).All(n =>
+            source.GetPixel(padding / 2, n * height / 20).ToArgb() == Color.Black.ToArgb()
+            && source.GetPixel(width - 1 - padding / 2, n * height / 20).ToArgb() == Color.Black.ToArgb()))
+        {
+            using var cropped = source.Clone(new Rectangle(padding, 0, contentWidth, height), PixelFormat.Format32bppArgb);
+            using var croppedBytes = new MemoryStream();
+            cropped.Save(croppedBytes, ImageFormat.Png);
+            var croppedItems = await ReadAsync(croppedBytes.ToArray(), contentWidth, height, trackedNames);
+            foreach (var item in croppedItems)
+            {
+                var ocr = item.OcrRegion;
+                item.OcrRegion = ((padding + ocr.X * contentWidth) / width, ocr.Y, ocr.Width * contentWidth / width, ocr.Height);
+                var card = item.CardRegion;
+                item.CardRegion = ((padding + card.X * contentWidth) / width, card.Y, card.Width * contentWidth / width, card.Height);
+            }
+            return croppedItems;
+        }
         // Small captures lose thin strokes in the frozen white labels. Normalize
         // their working height before cropping; output coordinates remain ratios.
         using var enlarged = height < 1080 ? new Bitmap((int)Math.Round(width * 1080.0 / height), 1080) : null;
@@ -53,7 +73,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         double scale = Math.Min(width / 1920.0, height / 1080.0);
         HasVisibleCards = ShopLayout.HasCards(workingImage, k, theme);
         int ShopY(double y) => (int)Math.Round(height - (1080 - y) * scale * k);
-        int ShopX(double offset) => (int)Math.Round(width - (width / 2.0 - offset * scale) * k);
+        int ShopX(double offset) => (int)Math.Round(width - (960 - offset) * scale * k);
         int Size(double size) => (int)Math.Round(size * scale * k);
         // Isolate and enlarge small, dim text. Including the snowflakes below this
         // strip makes the detector merge or lose frozen card names.

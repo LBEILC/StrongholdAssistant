@@ -1,5 +1,5 @@
 import type { AdminPost, Post, PostLineup } from '../shared/api'
-import { catalog, decodeLineup, fingerprint } from './catalog'
+import { catalog, covenantNames, decodeLineup, fingerprint } from './catalog'
 import { authenticate, type Context } from './auth'
 import { body, dayStart, description, empty, fail, hasBlocked, hash, ipSource, iso, json, mask, needNickname, stmt, string, type Env } from './common'
 
@@ -36,6 +36,7 @@ function decodePostCode(text: string) {
 }
 export async function listPosts(ctx: Context, viewer: string | null, admin = false) {
  const q = new URL(ctx.request.url).searchParams, env = ctx.env
+ const search = admin ? '' : [...(q.get('q') ?? '').trim()].slice(0, 40).join('')
  const favorite = !admin && q.get('favorite') === '1'
  if (favorite && !viewer) fail(401, 'unauthorized', '请先登录。')
  const sort = admin || favorite ? 'new' : q.get('sort') ?? 'hot'
@@ -64,13 +65,28 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
    values.push(covenant)
   }
   if (q.has('strategy')) { where.push("json_extract(p.lineup,'$.strategyId')=?"); values.push(q.get('strategy')!) }
+  for (const word of search.split(/\s+/).filter(Boolean).slice(0, 3)) {
+   const pattern = '%' + word.replace(/[\\%_]/g, '\\$&') + '%'
+   const covenants = covenantNames.filter(([name]) => name.toLowerCase().includes(word.toLowerCase())).map(([, id]) => id)
+   where.push(`(json_extract(p.lineup,'$.name') LIKE ? ESCAPE '\\'
+    OR p.description LIKE ? ESCAPE '\\' OR u.nickname LIKE ? ESCAPE '\\'
+    OR EXISTS(SELECT 1 FROM (
+     SELECT p.lineup AS value UNION ALL SELECT value FROM json_each(p.lineup,'$.stages')
+    ) stage WHERE
+     EXISTS(SELECT 1 FROM json_each(stage.value,'$.members') m
+      WHERE json_extract(m.value,'$.name') LIKE ? ESCAPE '\\'
+       OR EXISTS(SELECT 1 FROM json_each(m.value,'$.equipment') e WHERE json_extract(e.value,'$.name') LIKE ? ESCAPE '\\'))
+     OR EXISTS(SELECT 1 FROM json_each(stage.value,'$.equipment') e WHERE e.value LIKE ? ESCAPE '\\'))
+    ${covenants.length ? `OR EXISTS(SELECT 1 FROM json_each(p.lineup,'$.goals') g WHERE json_extract(g.value,'$.id') IN (${covenants.map(() => '?').join(',')}))` : ''})`)
+   values.push(pattern, pattern, pattern, pattern, pattern, pattern, ...covenants)
+  }
  }
  // 游标绑定当前筛选，防止换排序后误用旧游标。
- const queryKey = JSON.stringify([admin, favorite, sort, where, values])
+ const queryKey = JSON.stringify([admin, favorite, sort, where, values, search])
  if (q.has('cursor')) {
   let cursor: { key: string; rank: number; time: string; id: string }
   try {
-   cursor = JSON.parse(atob(q.get('cursor')!))
+   cursor = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(q.get('cursor')!), c => c.charCodeAt(0))))
    if (cursor.key !== queryKey || typeof cursor.rank !== 'number' || typeof cursor.time !== 'string' || typeof cursor.id !== 'string') throw new Error()
   } catch { return fail(400, 'bad_cursor', '分页参数不正确。') }
   where.push(`(${rank},${time},p.id)<(?,?,?)`)
@@ -82,7 +98,7 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
   viewer, viewer, ...values, limit + 1).all<PostRow>()).results
  const more = rows.length > limit
  const page = rows.slice(0, limit), last = page.at(-1)
- const cursor = more ? btoa(JSON.stringify({ key: queryKey, rank: last!.rank, time: last!.favorite_time, id: last!.id })) : null
+ const cursor = more ? btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify({ key: queryKey, rank: last!.rank, time: last!.favorite_time, id: last!.id })))) : null
  return json({ posts: page.map(admin ? toAdminPost : toPost), cursor })
 }
 export async function posts(ctx: Context, path: string) {

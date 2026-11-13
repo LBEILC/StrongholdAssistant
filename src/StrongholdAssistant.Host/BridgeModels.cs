@@ -40,6 +40,7 @@ public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedA
 }
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public bool RunAsAdmin { get; init; }
     public RouteOverlaySettings Routes { get; init; } = new();
     public string UiSkin { get; init; } = "follow";
     public string ShopScanSpeed { get; init; } = "normal";
@@ -89,7 +90,8 @@ public sealed record Connection(string State,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Fullscreen = null, bool Overlay = false,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Source = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Problem = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Side = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Side = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? GameElevated = null);
 public sealed record MumuInstance(string Serial, string Name);
 public sealed record ScanStatus(bool Busy,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Message = null,

@@ -64,6 +64,7 @@ public sealed partial class HostApi
         if (connection.State != "connected")
             lock (_historyGate)
             {
+                ResetBoardRound();
                 _observedRound = null;
                 _pendingEconomyRound = null;
                 _pendingStartMoney = null;

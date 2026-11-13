@@ -83,7 +83,7 @@ public class UpdateScriptExecutionTests
             public static class TestUpdateHost {
                 public static void Main(string[] args) {
                     var root = AppDomain.CurrentDomain.BaseDirectory;
-                    if (args.Length > 0) {
+                    if (args.Length > 0 && args[0] != "--keep-identity") {
                         File.WriteAllText(Path.Combine(root, "held.ready"), "ready");
                         var wait = System.Diagnostics.Stopwatch.StartNew();
                         while (!File.Exists(Path.Combine(root, "release.hold")) && wait.ElapsedMilliseconds < 30000)

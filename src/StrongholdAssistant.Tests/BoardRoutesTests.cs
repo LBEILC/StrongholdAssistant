@@ -130,14 +130,14 @@ public sealed class BoardRoutesTests
             api.ApplyRecognizedMatch(api.Match with { BossId = "enemy_9017_achunt" }, []);
             rest = rest with { Round = 14 };
             api.ObserveBoardFrame(frame, rest); api.ObserveBoardFrame(frame, rest);
-            Assert.Equal(3, events.Count);
+            Assert.Equal(4, events.Count); // 换局先清除旧路线。
             api.ApplyRecognizedMatch(api.Match with { BossId = "enemy_9013_acstmk" }, []);
             api.ObserveBoardFrame(frame, rest); api.ObserveBoardFrame(frame, rest);
-            Assert.Equal(4, events.Count);
+            Assert.Equal(6, events.Count);
             board = null;
             rest = rest with { Round = 15 };
             api.ObserveBoardFrame(frame, rest); api.ObserveBoardFrame(frame, rest);
-            Assert.Equal(5, events.Count); Assert.Null(events[^1]);
+            Assert.Equal(7, events.Count); Assert.Null(events[^1]);
             int before = calls;
             api.ObserveBoardFrame(frame, rest with { IsRest = false });
             api.BoardRoutesEnabled = false;

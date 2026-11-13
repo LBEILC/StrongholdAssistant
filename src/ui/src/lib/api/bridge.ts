@@ -80,6 +80,7 @@ export const bridgeApi: Api = {
   sklandLogout: call('sklandLogout'),
   sklandLogin: call('sklandLogin'),
   setHotkey: call('setHotkey'),
+  setRunAsAdmin: call('setRunAsAdmin'),
   exportDiagnostics: call('exportDiagnostics'),
   addIncome: call('addIncome'),
   removeIncome: call('removeIncome'),

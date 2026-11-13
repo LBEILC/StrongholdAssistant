@@ -14,6 +14,13 @@ public sealed class ShopRefreshWindow(TimeProvider? time = null)
         _stabilizer.Reset();
         _notBefore = _time.GetUtcNow().AddMilliseconds(500);
     }
+    internal bool RemoveChanged(Func<ASPAssistant.Core.Models.ShopItem, bool> changed,
+        DateTimeOffset capturedAt, out IReadOnlyList<ASPAssistant.Core.Models.ShopItem> items)
+    {
+        items = [];
+        return Accept(capturedAt) && _stabilizer.RemoveChanged(changed, out items);
+    }
+
     public bool Accept(DateTimeOffset captureStarted) => captureStarted >= _notBefore;
     public bool TryUpdate(IReadOnlyList<ASPAssistant.Core.Models.ShopItem> items, DateTimeOffset captureStarted,
         bool shopVisible, out IReadOnlyList<ASPAssistant.Core.Models.ShopItem> stable)

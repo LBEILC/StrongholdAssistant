@@ -77,6 +77,10 @@ export class AppState {
   private autoCollapsed = false
   settings = $state<Settings>(settings)
   appInfo: AppInfo = appInfo
+  /** 游戏是管理员身份、助手不是：单独按的键收不到，「按住才显示」也做不了（v0.9.1），只有组合键能用 */
+  get keysBlocked() {
+    return !this.appInfo.elevated && this.connection.gameElevated === true
+  }
   update = $state<UpdateStatus>({ state: 'idle' })
   settingsOpen = $state(false)
   /** 「导入分享码」面板 */

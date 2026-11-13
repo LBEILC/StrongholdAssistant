@@ -14,6 +14,9 @@ public sealed partial class HostApi
     private readonly Dictionary<BoardCamera, BoardMatch> _boardCameras = new();
     private string? _boardMap;
     private int? _boardRound;
+    private int? _acceptedBoardRound;
+    private readonly RoundJumpConfirmation _boardJump = new();
+    private string? _roundRejectionState;
     private Size _boardSize;
     private bool _boardRoutesEnabled;
     private BoardRoutes? _boardRoutes;
@@ -21,6 +24,7 @@ public sealed partial class HostApi
     private int _nonRestReadings;
     private byte[]? _latestBoardFrame;
     private string? _recognitionLogState, _queryLogState;
+    private bool? _boardMainScreen;
     private DateTimeOffset? _lastFailedBoardLog;
     internal Action<string> BoardLog { get; set; } = message => AppLogger.Info("Board", message);
     internal Func<DateTimeOffset> BoardClock { get; set; } = () => DateTimeOffset.UtcNow;
@@ -64,31 +68,54 @@ public sealed partial class HostApi
 
     internal void ObserveBoardFrame(byte[]? frame, EconomyReading? reading) => ObserveBoardFrame(frame, reading, true);
 
-    internal void ObserveBoardFrame(byte[]? frame, EconomyReading? reading, bool shopVisible)
+    internal void ObserveBoardFrame(byte[]? frame, EconomyReading? reading, bool shopVisible, bool mainScreen = true)
     {
         lock (_boardGate)
         {
             if (!_boardRoutesEnabled) return;
             if (frame is null)
             {
+                _boardJump.Reset();
                 ClearBoard();
+                return;
+            }
+            if (_boardMainScreen != mainScreen)
+            {
+                _boardMainScreen = mainScreen;
+                BoardLog($"休整期主画面={mainScreen} reason={(mainScreen ? "就绪控件可见" : "有弹窗或就绪控件不可见")}");
+            }
+            if (!mainScreen)
+            {
+                _boardJump.Reset();
+                PublishBoardRoutes(null);
                 return;
             }
             if (reading is { IsRest: false })
             {
+                _boardJump.Reset();
                 if (++_nonRestReadings >= 3) ClearBoard();
                 return;
             }
             if (reading is { IsRest: true }) _nonRestReadings = 0;
             // OCR 降频或暂时没读到回合，不把它当作离开休整期。
-            if (reading is not { IsRest: true, Round: >= 1 and <= 15 }) return;
+            if (reading is not { IsRest: true }) { _boardJump.Reset(); return; }
+            int? round = reading.IsFinalRound ? _boardRouteStore.LastRound(Match.Solo, Match.Mode?.Id) : reading.Round;
+            if (round is not (>= 1 and <= 15)) { _boardJump.Reset(); return; }
+            if (!_boardJump.Accept(_acceptedBoardRound, round.Value, BoardClock()))
+            {
+                string rejection = $"拒绝回合 round={round} confirmed={_acceptedBoardRound} reason=同局只接受当前或下一回合";
+                if (rejection != _roundRejectionState) { BoardLog(rejection); _roundRejectionState = rejection; }
+                return;
+            }
+            _roundRejectionState = null;
+            _acceptedBoardRound = round;
             using var stream = new MemoryStream(frame);
             using var image = Image.FromStream(stream);
-            if (_boardRound != reading.Round || _boardSize != image.Size)
+            if (_boardRound != round || _boardSize != image.Size)
             {
                 _boardCameras.Clear();
                 _boardMap = null;
-                _boardRound = reading.Round;
+                _boardRound = round;
                 _boardSize = image.Size;
             }
             var camera = shopVisible ? BoardCamera.Expanded : BoardCamera.Collapsed;
@@ -104,8 +131,8 @@ public sealed partial class HostApi
             BoardRoutes? routes = null;
             if (board is not null)
             {
-                routes = _boardRouteStore.Find(board, reading.Round.Value, Match.Solo, Match.BossId, Match.Mode?.Id, out var reason);
-                var query = $"查询 map={board.MapId} mode={Match.Mode?.Id ?? (Match.Solo ? "mode_single_20" : "mode_multi_normal")} round={reading.Round} solo={Match.Solo} boss={Match.BossId ?? "null"} routes={routes?.Routes.Count ?? 0} reason={reason ?? "成功"}";
+                routes = _boardRouteStore.Find(board, round.Value, Match.Solo, Match.BossId, Match.Mode?.Id, out var reason);
+                var query = $"查询 map={board.MapId} mode={Match.Mode?.Id ?? (Match.Solo ? "mode_single_20" : "mode_multi_normal")} round={round} solo={Match.Solo} boss={Match.BossId ?? "null"} routes={routes?.Routes.Count ?? 0} reason={reason ?? "成功"}";
                 if (query != _queryLogState) { BoardLog(query); _queryLogState = query; }
             }
             PublishBoardRoutes(routes);
@@ -135,6 +162,17 @@ public sealed partial class HostApi
         _boardMap = null;
         _boardRound = null;
         PublishBoardRoutes(null);
+    }
+
+    private void ResetBoardRound()
+    {
+        lock (_boardGate)
+        {
+            _acceptedBoardRound = null;
+            _boardJump.Reset();
+            _roundRejectionState = null;
+            ClearBoard();
+        }
     }
 
     private void PublishBoardRoutes(BoardRoutes? next)

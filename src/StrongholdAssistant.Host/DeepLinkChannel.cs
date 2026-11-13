@@ -16,8 +16,7 @@ public sealed class DeepLinkChannel(string name) : IDisposable
         {
             while (!_stop.IsCancellationRequested)
             {
-                using var pipe = new NamedPipeServerStream(name, PipeDirection.In, 1,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                using var pipe = ProcessElevation.CreateDeepLinkPipe(name);
                 await pipe.WaitForConnectionAsync(_stop.Token);
                 using var reader = new StreamReader(pipe, Encoding.UTF8);
                 var buffer = new char[2001];

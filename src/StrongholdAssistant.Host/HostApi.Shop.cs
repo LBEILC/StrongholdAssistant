@@ -57,7 +57,7 @@ public sealed partial class HostApi
 
     public void SaveSettings(SettingsDto settings)
     {
-        settings = settings with { ToggleHotkey = Settings.ToggleHotkey };
+        settings = settings with { ToggleHotkey = Settings.ToggleHotkey, RunAsAdmin = Settings.RunAsAdmin };
         ValidateSettings(settings);
         var theme = Theme(settings.GameTheme);
         SettingsStore.SaveSettings(settings);
@@ -131,6 +131,12 @@ public sealed partial class HostApi
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
+    public void SaveRunAsAdmin(bool on)
+    {
+        SettingsStore.SaveRunAsAdmin(on);
+        Settings = Settings with { RunAsAdmin = on };
+    }
+
     public bool HotkeyFailed { get; set; }
     public bool StartupWorkbench { get; private set; }
 
@@ -144,6 +150,7 @@ public sealed partial class HostApi
 
     private object AppInfo() => new
     {
+        elevated = ProcessElevation.Current,
         dataDir = DataDirectory,
         hotkeyFailed = HotkeyFailed,
         workbench = StartupWorkbench,

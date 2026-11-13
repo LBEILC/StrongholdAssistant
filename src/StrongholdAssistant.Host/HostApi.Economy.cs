@@ -14,6 +14,7 @@ public sealed partial class HostApi
 {
     private Dictionary<string, int> _baseMoney = [];
     private int? _observedRound;
+    private readonly RoundJumpConfirmation _economyJump = new();
     private int? _startMoney;
     private int? _pendingEconomyRound;
     private int? _pendingStartMoney;
@@ -113,11 +114,19 @@ public sealed partial class HostApi
         {
             if (!reading.IsRest || reading.Round is not (>= 1 and <= 15))
             {
+                _economyJump.Reset();
                 _pendingEconomyRound = null;
                 _pendingStartMoney = null;
                 return;
             }
             int round = reading.Round.Value;
+            // 第 1 回合仍按既有两帧确认规则判断新局。
+            if (!_economyJump.Accept(round == 1 ? null : _observedRound, round, BoardClock()))
+            {
+                _pendingEconomyRound = null;
+                _pendingStartMoney = null;
+                return;
+            }
             if (_observedRound != round)
             {
                 _pendingStartMoney = null;
@@ -194,8 +203,10 @@ public sealed partial class HostApi
 
     private void ClearEconomy()
     {
+        ResetBoardRound();
         _roundSamples.Clear();
         _observedRound = null;
+        _economyJump.Reset();
         _pendingEconomyRound = null;
         _pendingStartMoney = null;
         _startMoney = null;

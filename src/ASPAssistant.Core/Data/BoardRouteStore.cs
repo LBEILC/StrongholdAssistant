@@ -19,6 +19,11 @@ public sealed class BoardRouteStore
     public BoardRoutes? Find(BoardMatch board, int round, bool solo, string? bossId, string? mode)
         => Find(board, round, solo, bossId, mode, out _);
 
+    // battles 由 activity_table 的模式回合列表生成。
+    public int? LastRound(bool solo, string? mode) =>
+        _data.Battles.TryGetValue(mode ?? (solo ? "mode_single_20" : "mode_multi_normal"), out var rounds)
+            ? rounds.Keys.Select(int.Parse).Max() : null;
+
     public BoardRoutes? Find(BoardMatch board, int round, bool solo, string? bossId, string? mode, out string? reason)
     {
         reason = null;

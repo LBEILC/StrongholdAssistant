@@ -93,6 +93,14 @@ public sealed class ShopStateStabilizer
     }
 
     /// <summary>Clears all stable state (call when the game screen changes).</summary>
+    public bool RemoveChanged(Func<ShopItem, bool> changed, out IReadOnlyList<ShopItem> items)
+    {
+        var ids = _stable.Where(pair => changed(pair.Value.Item)).Select(pair => pair.Key).ToArray();
+        foreach (var id in ids) _stable.Remove(id);
+        items = _stable.Values.Select(entry => entry.Item).ToArray();
+        return ids.Length > 0;
+    }
+
     public void Reset()
     {
         _stable.Clear();

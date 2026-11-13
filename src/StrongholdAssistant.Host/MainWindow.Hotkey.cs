@@ -11,6 +11,17 @@ public partial class MainWindow
     private readonly KeyboardRouter _keyboardRouter = new();
     private readonly RouteHotkeyRouter _routeHotkeyRouter = new();
     private Hotkey? _refreshKey;
+    private readonly RouteSystemHotkey _routeSystemHotkey = new();
+    private bool _keysBlocked;
+
+    private void RefreshRouteHotkey(bool gameElevated)
+    {
+        _keysBlocked = ProcessElevation.KeysBlocked(ProcessElevation.Current, gameElevated);
+        _routeSystemHotkey.Configure(_keysBlocked, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value,
+            key => RegisterHotkey(3, key),
+            () => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 3),
+            blocked => { _routeHotkeyRouter.Reset(); _overlay.SetRouteTapOnly(blocked); });
+    }
 
     private void InitializeHotkey()
     {
@@ -20,14 +31,14 @@ public partial class MainWindow
         _keyboardHook = new KeyboardHook((key, down, modifiers, foreground) =>
         {
             var game = _tracker.CurrentGameWindowHandle;
-            // 钩子线程只投递，不等待 UI、日志文件或识别锁。
+            // 原始输入线程只投递，不等待 UI、日志文件或识别锁。
             Dispatcher.BeginInvoke(() =>
             {
                 if (_closing) return;
                 var actions = _keyboardRouter.Observe(key, down, modifiers, foreground,
                     game, hwnd, _hotkey, _refreshKey);
-                var routeDown = _routeHotkeyRouter.Observe(key, down, foreground,
-                    game, hwnd, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value);
+                var routeDown = _keysBlocked ? null : _routeHotkeyRouter.Observe(key, down, foreground,
+                    game, hwnd, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value, modifiers);
                 if (routeDown is { } pressed) _api.PublishRouteHotkey(pressed);
                 if (actions.Refresh)
                 {

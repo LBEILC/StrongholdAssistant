@@ -33,7 +33,10 @@
 
 <svelte:window
   onkeydown={(e) => m && e.key === 'Escape' && (e.stopPropagation(), close())}
-  onblur={close}
+  onblur={() => {
+    // 游戏在前台时右键侧栏，窗口这时才被激活，焦点来回切一下会触发失焦；刚弹出的菜单不因此关掉
+    if (performance.now() - menu.at > 600) close()
+  }}
   onresize={close}
   onpointerdown={(e) => m && !box?.contains(e.target as Node) && close()}
   onwheel={close}

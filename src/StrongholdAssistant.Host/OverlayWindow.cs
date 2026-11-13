@@ -64,10 +64,10 @@ public sealed class OverlayWindow : Window
         });
     }
 
-    public void UpdateShopItems(IReadOnlyList<ShopItem> items)
+    public void UpdateShopItems(IReadOnlyList<ShopItem> items, bool animate = true)
     {
         _items = items;
-        _canvas.Update(items, ActualWidth, ActualHeight);
+        _canvas.Update(items, ActualWidth, ActualHeight, animate);
     }
 
     public void UpdateRoutes(BoardRoutes? routes, RouteOverlaySettings settings)
@@ -80,6 +80,17 @@ public sealed class OverlayWindow : Window
     public void UpdateRouteSettings(RouteOverlaySettings settings)
     {
         if (settings != _routeSettings) UpdateRoutes(_boardRoutes, settings);
+    }
+
+    public void SetRouteTapOnly(bool value)
+    {
+        _routes.SetHotkey(false);
+        _routes.TapOnly = value;
+    }
+    public void TapRouteHotkey()
+    {
+        ASPAssistant.Core.AppLogger.Info("Board", "系统热键 OverlayWindow → RouteLayer.TapHotkey");
+        _routes.TapHotkey();
     }
 
     public void SetRouteHotkey(bool down)

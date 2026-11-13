@@ -11,6 +11,19 @@
   let sort = $state<Sort>((['hot', 'new', 'featured'] as const).find((s) => s === q0.get('sort')) ?? 'hot')
   let picked = $state<string[]>(q0.getAll('covenant'))
   let strat = $state<string | null>(q0.get('strategy'))
+  // 搜索（v0.9.1）：打字停 0.3 秒再查；写进地址栏 ?q=
+  let kw = $state(q0.get('q') ?? '')
+  let typed = $state(kw)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const typing = (v: string) => {
+    typed = v
+    clearTimeout(timer)
+    timer = setTimeout(() => (kw = v.trim()), 300)
+  }
+  const clearSearch = () => {
+    clearTimeout(timer)
+    typed = kw = ''
+  }
   // 本地开发：?demo 显示示例阵容
   const demo = import.meta.env.DEV && q0.has('demo')
 
@@ -26,8 +39,8 @@
     error = ''
     try {
       const r = demo
-        ? { posts: (await import('../demo')).demoPosts.filter((p) => picked.every((c) => p.lineup.goals.some((g) => g.id === c)) && (!strat || p.lineup.strategyId === strat)), cursor: null }
-        : await api.posts({ sort, covenant: picked, strategy: strat, cursor: more ? cursor : null })
+        ? { posts: (await import('../demo')).demoPosts.filter((p) => picked.every((c) => p.lineup.goals.some((g) => g.id === c)) && (!strat || p.lineup.strategyId === strat) && (!kw || JSON.stringify([p.lineup, p.author.nickname]).includes(kw))), cursor: null }
+        : await api.posts({ sort, q: kw, covenant: picked, strategy: strat, cursor: more ? cursor : null })
       if (my !== seq) return
       posts = more ? [...posts, ...r.posts] : r.posts
       cursor = r.cursor
@@ -41,6 +54,7 @@
   $effect(() => {
     const p = new URLSearchParams()
     if (sort !== 'hot') p.set('sort', sort)
+    if (kw) p.set('q', kw)
     for (const c of picked) p.append('covenant', c)
     if (strat) p.set('strategy', strat)
     if (demo) p.set('demo', '')
@@ -105,11 +119,16 @@
   </aside>
 
   <div class="list">
+    <div class="search">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
+      <input type="search" placeholder="搜阵容名、干员、装备、作者，空格分开多个词" value={typed} oninput={(e) => typing(e.currentTarget.value)} onkeydown={(e) => e.key === 'Escape' && clearSearch()} aria-label="搜索阵容" />
+      {#if typed}<button class="x" onclick={clearSearch} aria-label="清空搜索">×</button>{/if}
+    </div>
     {#if error}
       <div class="state"><p class="err">{error}</p><button class="btn ghost sm" onclick={() => load()}>重试</button></div>
     {:else if !posts.length && !loading}
       <div class="state">
-        <p>{filtered ? '没有符合条件的阵容，换个筛选试试。' : sort === 'featured' ? '还没有精选阵容。' : '广场里还没有阵容。点上面的「新建阵容」，或者在卫戍协议助手里右键阵容卡「发布到广场」。'}</p>
+        <p>{filtered || kw ? '没有符合条件的阵容，换个关键词或筛选试试。' : sort === 'featured' ? '还没有精选阵容。' : '广场里还没有阵容。点上面的「新建阵容」，或者在卫戍协议助手里右键阵容卡「发布到广场」。'}</p>
       </div>
     {:else}
       <div class="grid">
@@ -245,6 +264,49 @@
   .clear {
     align-self: flex-start;
   }
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    margin-bottom: 14px;
+    padding: 0 8px 0 12px;
+    color: var(--fg-4);
+    background: var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .search:focus-within {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    font: inherit;
+    font-size: 15px;
+    color: var(--fg-1);
+    background: none;
+    border: 0;
+    outline: none;
+  }
+  .search input::placeholder {
+    color: var(--fg-4);
+  }
+  .search input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .x {
+    width: 26px;
+    height: 26px;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--fg-3);
+  }
+  .x:hover {
+    color: var(--fg-1);
+    background: var(--bg-3);
+  }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
@@ -277,6 +339,14 @@
     }
     .filters {
       position: static;
+    }
+    /* 窄屏筛选区在上面一长段：搜索框提到最前 */
+    .list {
+      display: contents;
+    }
+    .search {
+      order: -1;
+      margin-bottom: 0;
     }
     .bonds {
       grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));

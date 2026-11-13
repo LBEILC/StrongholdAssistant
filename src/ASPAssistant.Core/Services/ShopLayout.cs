@@ -20,7 +20,7 @@ public static class ShopLayout
         // UI90 与 UI100 样图测得的锚点差：间距测量 k 略小于设置比例，
         // 卡身原点按两端样图校准，名称裁剪和 GameUiScale 的换算保持不变。
         double anchor = (k - 1) * baseScale;
-        return new RectangleF((float)(width - width / 2.0 * k + (-599 + slot * 220) * scale - 72 * anchor),
+        return new RectangleF((float)(width - 960 * scale + (-599 + slot * 220) * scale - 72 * anchor),
             (float)(height - (1080 - top) * scale - 36 * anchor), (float)(210 * scale),
             (float)((bottom - top) * scale + 36 * anchor));
     }

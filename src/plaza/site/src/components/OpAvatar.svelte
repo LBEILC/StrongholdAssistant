@@ -75,8 +75,10 @@
     object-view-box: inset(0px 16px 0px 4px);
     box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
   }
+  /* 角标伸出头像外面，要压在右边那张头像的精锐标签（z-index 2）和等阶色条上面 */
   .pe {
     position: absolute;
+    z-index: 3;
     right: -4px;
     bottom: -4px;
     display: flex;

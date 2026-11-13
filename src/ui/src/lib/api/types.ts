@@ -150,6 +150,12 @@ export interface Connection {
   /** 连上的是哪种游戏（v0.5.0）：PC 客户端，或 MuMu 模拟器里的安卓版。connected 时才有 */
   source?: 'pc' | 'mumu'
   /**
+   * 游戏是不是以管理员身份运行（v0.9.1），connected 时才有；MuMu 为 false。
+   * 游戏是管理员、助手不是时，Windows 不把游戏前台时的按键交给助手：单独一个键（Alt、D、Tab 这类）收不到，
+   * 只有系统注册的组合键（Alt+S 这类）能用。界面据此限制单键和「按住才显示」，见 AppInfo.elevated
+   */
+  gameElevated?: boolean
+  /**
    * 找到游戏但用不了时给用户看的原因和办法（v0.5.0），state 为 searching 时才有，例如
    * 「MuMu 画面不是横屏 16:9，请在模拟器设置里改成 1920×1080 之类的分辨率」「找到 2 个 MuMu 实例，请在设置里选一个」
    */
@@ -421,7 +427,11 @@ export interface RouteOverlaySettings {
   /** 'always' 休整期一直显示（按快捷键临时隐藏 / 再显示）；'hold' 按住快捷键时显示；'peek' 新回合先显示 peekSeconds 秒再淡出，之后按住快捷键还能看。默认 'always' */
   display: 'always' | 'hold' | 'peek'
   peekSeconds: number // 3～15，默认 6
-  /** 快捷键，单个键，写法同 refreshKey（如 'Alt'、'Tab'、'R'）。宿主只看不拦，默认 'Alt' */
+  /**
+   * 快捷键，写法同 toggleHotkey：单个键（'Alt'、'Tab'、'R'，Alt / Ctrl / Shift 单独按也算）或组合键（'Alt+R'）。默认 'Alt+R'（v0.9.1，原来是 'Alt'）。
+   * 单键和「按住才显示」要收到按下、松开，只在收得到单键时可用（见 Connection.gameElevated）；只看不拦，按键照样传给游戏。
+   * 收不到单键时组合键注册成系统热键，只有「按下」：一直显示 = 按一下隐藏 / 再显示，新回合先看几秒 = 按一下再看几秒
+   */
   hotkey: string
   /** 路线多的时候：'cycle' 依次循环，一次突出一条（默认）；'all' 全部一起显示 */
   overlap: 'cycle' | 'all'
@@ -512,6 +522,11 @@ export interface Settings {
    * 识别到新的商店画面再显示，免得旧标记挂在新卡上。写法同 toggleHotkey，一般是单键；只看不拦，按键照样传给游戏
    */
   refreshKey: string
+  /**
+   * 以管理员身份运行（v0.9.1，默认 false）：游戏是管理员身份运行时，助手也要是管理员才收得到单独按的键（路线的 Alt、商店刷新键 D、单键的收起键）。
+   * 打开后每次启动弹一次系统确认。只能经 setRunAsAdmin 改，saveSettings 里改了这一项宿主忽略
+   */
+  runAsAdmin: boolean
   /** 启动时打开（v0.7.2，默认 'remember'）：remember 上次关闭时是侧栏还是工作台就打开哪个；sidebar 总是侧栏；workbench 总是工作台 */
   startupMode: 'remember' | 'sidebar' | 'workbench'
   /**
@@ -551,6 +566,8 @@ export interface AppInfo {
   hotkeyFailed: boolean
   /** 启动时宿主打开的是工作台（v0.7.2，按 Settings.startupMode 决定）；界面据此初始化 app.workbench */
   workbench: boolean
+  /** 助手现在是不是以管理员身份运行（v0.9.1）。Settings.runAsAdmin 打开但用户没同意系统确认时仍是 false */
+  elevated: boolean
 }
 
 /** 备份文件的预览：导入前给用户确认 */
@@ -810,6 +827,12 @@ export interface Api {
    * 被占用或写法不对时 reject，message 给用户看（如「这个组合被别的软件占用了，换一个试试。」），旧的照旧生效
    */
   setHotkey(combo: string): Promise<void>
+  /**
+   * 打开 / 关闭「以管理员身份运行」（v0.9.1）。打开：保存后以管理员身份重启助手（弹系统确认）；用户不同意时不保存、
+   * reject，message 给用户看（「没有同意管理员授权，助手还是普通身份运行。」）。关闭：保存，重启成普通身份；做不到就下次启动生效。
+   * 重启时窗口会关掉重开，界面不用另做处理
+   */
+  setRunAsAdmin(on: boolean): Promise<void>
   /**
    * 导出诊断包（v0.7.2）：弹保存对话框，把日志、最近几次识别失败的截图和原因、版本、画面和设置摘要打成一个 zip，返回保存路径；取消返回 null。
    * 不含广场和森空岛凭据、云同步状态、CDK，路径里的用户名打码

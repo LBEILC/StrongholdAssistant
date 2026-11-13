@@ -60,9 +60,12 @@ public sealed class StageTrackingTests : IDisposable
         api.ObserveEconomy(new(5, 10, 1, 5, true));
         Assert.Equal(2, changed);
         AssertStage(api, "siracusa", "慕斯", "卡达", "随身身份牌");
-        api.ObserveEconomy(new(9, 10, 1, 5, true));
-        api.ObserveEconomy(new(9, 10, 1, 5, true));
-        Assert.Equal(3, changed);
+        for (int round = 6; round <= 9; round++)
+        {
+            api.ObserveEconomy(new(round, 10, 1, 5, true));
+            api.ObserveEconomy(new(round, 10, 1, 5, true));
+        }
+        Assert.Equal(6, changed);
         AssertStage(api, "yan", "卡达");
     }
 
@@ -82,6 +85,7 @@ public sealed class StageTrackingTests : IDisposable
         AssertStage(api, "siracusa", "慕斯", "卡达", "随身身份牌");
         await api.SaveSessionAsync(session with { Stage = 2 });
         AssertStage(api, "yan", "卡达");
+        await api.ResetMatchAsync();
         api.ObserveEconomy(new(5, 10, 1, 5, true));
         api.ObserveEconomy(new(5, 10, 1, 5, true));
         await api.SaveSessionAsync(session with { Stage = 3 });

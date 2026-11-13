@@ -55,4 +55,5 @@
 | `src/StrongholdAssistant.Tests/TestData/shop-closure-li-user-1665x1012.jpg` | 用户提供的可露希尔商店截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；游戏画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/*-ui100-2000x1125.png` | 用户提供的 UI 100 信息页、禁用头像页和商店截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/solo-opening-*.png`、`mumu-solo-*.png` | 用户提供的 PC 单人开局页、MuMu 单人开局及对局详情截图，由 WebP 转为 PNG，只用于测试 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/board-enemy-panel.png`、`shop-wide-ui100.png`、`shop-terminal-frozen-1610.png` | 诊断包中的敌人面板、宽屏商店和冻结商店截图；商店图只保留底部区域，只用于测试，不进发布包 | 用户于 2026-11-13 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |

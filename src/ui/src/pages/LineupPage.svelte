@@ -65,6 +65,16 @@
         {/snippet}
       </SectionHeader>
 
+      <!-- 简介：不用进编辑也能看；点标题折叠，收起时只露第一行。折叠状态记住 -->
+      {#if t.description?.trim()}
+        {@const folded = !!app.folded['target.desc']}
+        <button class="desc" class:folded onclick={() => app.toggleFold('target.desc')} aria-expanded={!folded} title={folded ? '展开简介' : '收起简介'}>
+          <span class="dh">简介</span>
+          <span class="dt">{t.description.trim()}</span>
+          <span class="chev"><Icon name="arrowDown" size={14} /></span>
+        </button>
+      {/if}
+
       <!-- 阶段：默认自动按回合切；点某个阶段固定住，点「自动」恢复 -->
       {#if stages.length > 1}
         <div class="stagesw">
@@ -255,17 +265,17 @@
   .mw {
     position: relative;
     display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
   }
+  /* 优先装备：头像四个角都有用途（关键、禁用、精锐 / 转职、技能 / 关注），不再盖在头像上，放在名字下面单独一行 */
   .pe {
-    position: absolute;
-    right: -3px;
-    bottom: -3px;
     display: flex;
     gap: 1px;
     padding: 1px;
     background: var(--bg-0);
     box-shadow: inset 0 0 0 1px var(--gold);
-    pointer-events: none;
   }
   .pe img {
     width: 15px;
@@ -319,6 +329,62 @@
     grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
     gap: 8px 4px;
     justify-items: center;
+  }
+  /* 展开：标题和箭头一行，正文在下面；收起：标题、第一行、箭头排成一行 */
+  .desc {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 4px 10px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px 10px 8px;
+    text-align: left;
+    background: var(--bg-1);
+    box-shadow: inset 2px 0 0 var(--mint-lo);
+  }
+  .desc:hover {
+    background: var(--bg-2);
+  }
+  .dh {
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .desc .chev {
+    grid-row: 1;
+    grid-column: 2;
+    display: grid;
+    color: var(--fg-4);
+    transition: transform var(--t-mid) var(--ease-out);
+  }
+  .desc.folded .chev {
+    transform: rotate(-90deg);
+  }
+  .desc:hover .chev {
+    color: var(--fg-1);
+  }
+  .dt {
+    grid-column: 1 / -1;
+    font-size: var(--fs-base);
+    line-height: 1.55;
+    color: var(--fg-1);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .desc.folded {
+    grid-template-columns: auto 1fr auto;
+  }
+  .desc.folded .chev {
+    grid-column: 3;
+  }
+  .desc.folded .dt {
+    grid-row: 1;
+    grid-column: 2;
+    min-width: 0;
+    color: var(--fg-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .bondlist {
     display: flex;
@@ -504,6 +570,9 @@
     flex-wrap: wrap;
     gap: 4px;
   }
+  .desc + .stagesw {
+    margin-top: 8px;
+  }
   .stagesw button {
     height: 26px;
     padding: 0 10px;
@@ -530,8 +599,9 @@
   .mw.later::after {
     content: '后';
     position: absolute;
+    z-index: 3;
     right: 0;
-    bottom: 16px;
+    top: 41px;
     padding: 0 3px;
     font-size: var(--fs-2xs);
     color: var(--gold-ink);
