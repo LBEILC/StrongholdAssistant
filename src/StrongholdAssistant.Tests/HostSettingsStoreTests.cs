@@ -7,6 +7,24 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void ShopScanSpeedDefaultsAndSurvivesReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{}");
+        var store = new HostSettingsStore(path);
+        Assert.Equal("normal", store.LoadSettings().ShopScanSpeed);
+        store.SaveSettings(store.LoadSettings() with { ShopScanSpeed = "fast" });
+        Assert.Equal("fast", new HostSettingsStore(path).LoadSettings().ShopScanSpeed);
+        Assert.Contains("\"shopScanSpeed\":\"fast\"", File.ReadAllText(path));
+        Assert.Throws<ArgumentException>(() => store.SaveSettings(store.LoadSettings() with { ShopScanSpeed = "invalid" }));
+        File.WriteAllText(path, """{"shopScanSpeed":123}""");
+        Assert.Equal("normal", store.LoadSettings().ShopScanSpeed);
+        File.WriteAllText(path, """{"shopScanSpeed":"invalid"}""");
+        Assert.Equal("normal", store.LoadSettings().ShopScanSpeed);
+    }
+
+    [Fact]
     public void UiSkinDefaultsAndSurvivesReload()
     {
         Directory.CreateDirectory(_directory);

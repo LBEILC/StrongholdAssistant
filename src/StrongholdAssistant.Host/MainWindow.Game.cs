@@ -128,7 +128,12 @@ public partial class MainWindow
                 _shopItems = items; RefreshShopOverlay();
             });
         };
-        _api.ShopChanged += RefreshShopOverlay;
+        _scanner.SetShopScanSpeed(_api.Settings.ShopScanSpeed);
+        _api.ShopChanged += () =>
+        {
+            _scanner.SetShopScanSpeed(_api.Settings.ShopScanSpeed);
+            RefreshShopOverlay();
+        };
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
         await _api.InitializeRecognitionAsync(data, _ocr, async () =>
         {
@@ -144,11 +149,16 @@ public partial class MainWindow
     private void InitializeGameTracking()
     {
         _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial);
-        _capture.Connection.Changed += _ => Dispatcher.BeginInvoke(PublishConnection);
+        _capture.Connection.Changed += _ =>
+        {
+            _scanner?.InvalidateShop();
+            Dispatcher.BeginInvoke(PublishConnection);
+        };
         _tracker.GameWindowMoved += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowPolled += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
         _tracker.GameWindowLost += () => Dispatcher.BeginInvoke(() =>
         {
+            _scanner?.InvalidateShop();
             _ = _api.StopContinuousAsync(windowLost: true);
             _lastGameRect = null;
             _lastClientRect = null;
@@ -219,6 +229,7 @@ public partial class MainWindow
     private void UpdateGame(RECT game)
     {
         if (_closing) return;
+        if (!_lastGameRect.Equals(game)) _scanner?.InvalidateShop();
         _lastGameRect = game;
         RefreshShopOverlay();
         var client = _tracker.CurrentViewport;

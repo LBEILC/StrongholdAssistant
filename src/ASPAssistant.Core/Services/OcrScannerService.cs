@@ -1,6 +1,8 @@
 ﻿// 2026-11-12：复用商店扫描截图读取回合与资金，通过事件交给宿主记录。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Threading.Channels;
+// 2026-11-13：先发布商店，按名称指纹复用结果，辅助识别降频并支持热切换扫描速度。
+using System.Diagnostics;
 // 2026-11-12：刷新键清空商店状态并过滤旧截图；收集失败现场和 OCR 步骤。
 using System.Timers;
 using ASPAssistant.Core.GameModes;
@@ -24,12 +26,31 @@ public class OcrScannerService : IDisposable
     private readonly Timer _scanTimer;
     private readonly object _shopGate = new();
     private readonly ShopRefreshWindow _refreshWindow = new();
+    private int _cacheVersion;
+    private int _readVersion = -1;
+    private ShopFrameFingerprint? _fingerprint;
+    private (int Width, int Height, GameShopTheme Theme) _frameKey;
+    private string[] _trackedNames = [];
+    private IReadOnlyList<ShopItem> _cachedItems = [];
+    private EconomyReading? _lastEconomy;
+    private bool _economyStable;
+    private bool _skipEconomy;
+    private byte[]? _economyContext;
+    private byte[]? _informationContext;
+    private long _lastTimingLog;
+    public void InvalidateShop() => Interlocked.Increment(ref _cacheVersion);
+    public void SetShopScanSpeed(string speed)
+    {
+        double interval = speed == "fast" ? 250 : 800;
+        if (_scanTimer.Interval != interval) _scanTimer.Interval = interval;
+    }
     public int ShopGeneration { get { lock (_shopGate) return _refreshWindow.Generation; } }
     public void RefreshShop()
     {
         lock (_shopGate)
         {
             _refreshWindow.Refresh();
+            InvalidateShop();
             _gameState.ShopItems = [];
         }
     }
@@ -144,10 +165,21 @@ public class OcrScannerService : IDisposable
         _trace.Clear();
         try
         {
+            var clock = Stopwatch.StartNew();
             var capturedAt = _refreshWindow.CaptureStarted();
-            screenshot = _captureService.CaptureScreen();
+            ShopFrameFingerprint? fingerprint = null;
+            double fingerprintMs = 0;
+            var theme = _shopReader.Theme;
+            screenshot = _captureService.CaptureScreen(inspect: bitmap =>
+            {
+                var comparison = Stopwatch.StartNew();
+                fingerprint = ShopFrameFingerprint.Read(bitmap, theme);
+                fingerprintMs = comparison.Elapsed.TotalMilliseconds;
+            });
+            double captureMs = clock.Elapsed.TotalMilliseconds - fingerprintMs;
             if (screenshot == null)
             {
+                InvalidateShop();
                 _informationState.Suspend();
                 PublishShopItems([], false, capturedAt);
                 return;
@@ -161,18 +193,8 @@ public class OcrScannerService : IDisposable
             if (imgWidth <= 0 || imgHeight <= 0)
                 return;
 
-            // Ban screen detection runs every tick unless explicitly paused
-            // (e.g. when app-owned overlays cover the game window).
-            if (!_pauseBanScreenDetection)
-                await DetectBanScreenAsync(screenshot, imgWidth, imgHeight);
-
-            if (_pauseBanScreenDetection || _banScreenActive)
-            {
-                PublishShopItems([], false, capturedAt);
-                return;
-            }
-
-            await ScanShopAsync(screenshot, imgWidth, imgHeight, capturedAt);
+            if (theme != _shopReader.Theme) fingerprint = null;
+            await ScanFrameAsync(screenshot, imgWidth, imgHeight, capturedAt, captureMs, fingerprint, fingerprintMs);
         }
         catch (Exception ex)
         {
@@ -187,14 +209,76 @@ public class OcrScannerService : IDisposable
         }
     }
 
-    private async Task ScanShopAsync(byte[] screenshot, int width, int height, DateTimeOffset capturedAt)
+    // 样图测试直接调用这一轮流程；截图仍只由计时器负责。
+    private async Task ScanFrameAsync(byte[] screenshot, int width, int height, DateTimeOffset capturedAt, double captureMs,
+        ShopFrameFingerprint? fingerprint, double fingerprintMs)
     {
-        var rawItems = await _shopReader.ReadAsync(screenshot, width, height, _getTrackedNames());
-        if (_shopReader.Failure is { } failure)
+        lock (_shopGate)
+            if (!_refreshWindow.Accept(capturedAt)) return;
+        int version = Volatile.Read(ref _cacheVersion);
+        var theme = _shopReader.Theme;
+        var tracked = _getTrackedNames().ToArray();
+        var key = (width, height, theme);
+        bool forced = version != _readVersion || key != _frameKey || !tracked.SequenceEqual(_trackedNames);
+        var clock = Stopwatch.StartNew();
+        // ADB 返回编码图；样图测试也走这一入口。PC 截图已经在编码前生成了指纹。
+        fingerprint ??= ShopFrameFingerprint.Read(screenshot, theme);
+        fingerprintMs += clock.Elapsed.TotalMilliseconds;
+        bool changed = forced || _fingerprint is null || !ShopFrameFingerprint.SameNames(_fingerprint.Names, fingerprint.Names);
+        double? shopMs = null, economyMs = null, informationMs = null;
+        if (changed)
+        {
+            clock.Restart();
+            _cachedItems = await _shopReader.ReadAsync(screenshot, width, height, tracked);
+            shopMs = clock.Elapsed.TotalMilliseconds;
+            _fingerprint = fingerprint;
+            _readVersion = version;
+            _frameKey = key;
+            _trackedNames = tracked;
+            _economyStable = _skipEconomy = false;
+        }
+        clock.Restart();
+        PublishShopItems(_cachedItems, _shopReader.HasVisibleCards, capturedAt);
+        double publishMs = clock.Elapsed.TotalMilliseconds;
+        if (changed && _shopReader.Failure is { } failure)
             RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
-        if (EconomyRead is not null)
-            EconomyRead.Invoke(await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadAsync(screenshot, width, height));
-        PublishShopItems(rawItems, _shopReader.HasVisibleCards, capturedAt);
+
+        // 静止画面不读资金；画面变化但资金稳定时隔轮读。刷新和名称变化立即恢复。
+        bool economyChanged = _economyContext is null || !_economyContext.AsSpan().SequenceEqual(fingerprint.Context);
+        if (EconomyRead is not null && (changed || economyChanged))
+        {
+            if (!_skipEconomy || changed)
+            {
+                clock.Restart();
+                var reading = await new EconomyReader(_ocrEngine, theme).ReadAsync(screenshot, width, height);
+                _economyStable = reading == _lastEconomy;
+                _lastEconomy = reading;
+                _economyContext = fingerprint.Context;
+                EconomyRead.Invoke(reading);
+                economyMs = clock.Elapsed.TotalMilliseconds;
+                _skipEconomy = _economyStable;
+            }
+            else _skipEconomy = false;
+        }
+        // 状态机尚未稳定、等待对局详情时继续确认；稳定的商店静帧不再做信息页 OCR。
+        bool informationChanged = _informationContext is null || !_informationContext.AsSpan().SequenceEqual(fingerprint.Context);
+        if (!_pauseBanScreenDetection && (forced || informationChanged || _banScreenActive
+            || _informationState.IsConsumed || AwaitingDetail() || !_shopReader.HasVisibleCards))
+        {
+            clock.Restart();
+            await DetectBanScreenAsync(screenshot, width, height);
+            _informationContext = fingerprint.Context;
+            informationMs = clock.Elapsed.TotalMilliseconds;
+        }
+        if (_pauseBanScreenDetection || _banScreenActive) PublishShopItems([], false, capturedAt);
+        double total = captureMs + fingerprintMs + (shopMs ?? 0) + publishMs + (economyMs ?? 0) + (informationMs ?? 0);
+        // 有卡片时至多每两秒一行；慢轮（超过 800 ms）始终记录。
+        if (total >= 800 || _shopReader.HasVisibleCards && Environment.TickCount64 - _lastTimingLog >= 2000)
+        {
+            _lastTimingLog = Environment.TickCount64;
+            static string Ms(double? value) => value is { } ms ? $"{ms:F1}ms" : "skip";
+            AppLogger.Info("ShopTiming", $"capture={Ms(captureMs)} fingerprint={Ms(fingerprintMs)} shop={Ms(shopMs)} publish={Ms(publishMs)} economy={Ms(economyMs)} information={Ms(informationMs)} captureToPublish={captureMs + fingerprintMs + (shopMs ?? 0) + publishMs:F1}ms");
+        }
     }
 
     private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible, DateTimeOffset capturedAt)

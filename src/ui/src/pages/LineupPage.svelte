@@ -31,6 +31,12 @@
     dir = order.indexOf(v) >= order.indexOf(prev) ? 1 : -1
     prev = v
   })
+  // 工作台：我的阵容常驻左边，右边只分目标 / 广场
+  const wbViews: { id: LineupView; label: string }[] = [
+    { id: 'target', label: '目标' },
+    { id: 'plaza', label: '广场' },
+  ]
+  const wbView = $derived<LineupView>(app.lineupView === 'plaza' ? 'plaza' : 'target')
   const t = $derived(app.target)
   // 当前阶段的样子（本阶段 + 后面阶段的关键干员）；没有阶段时就是整套阵容
   const a = $derived(app.active)
@@ -43,162 +49,209 @@
   const targetEqs = $derived(a ? lineupEquipment(a) : [])
 </script>
 
+<!-- 目标：目标盟约进度、想抓的干员、还能抓的干员 -->
+{#snippet targetView()}
+  {#if t}
+    <section>
+      <SectionHeader title={t.name} en="CURRENT TARGET">
+        {#snippet icon()}
+          <Icon name="focus" size={18} />
+        {/snippet}
+        {#snippet right()}
+          <span class="hacts">
+            <button class="ghost" onclick={() => app.edit(t)}><Icon name="pencil" size={14} />编辑</button>
+            <button class="ghost" onclick={() => app.setTarget(null)}>取消目标</button>
+          </span>
+        {/snippet}
+      </SectionHeader>
+
+      <!-- 阶段：默认自动按回合切；点某个阶段固定住，点「自动」恢复 -->
+      {#if stages.length > 1}
+        <div class="stagesw">
+          <button class="auto" class:on={app.session.stage == null} onclick={() => app.setStage(null)} title="按读到的回合自动切换">自动</button>
+          {#each stages as s, i (i)}
+            <button class:on={app.stageIx === i} onclick={() => app.setStage(i)}>{s.final ? '成型阵容' : stageLabel(s)}</button>
+          {/each}
+        </div>
+        <p class="stagenote">
+          {#if app.session.stage != null}已固定在这个阶段，点「自动」按回合切换。
+          {:else if round != null}第 {round} 回合 · 自动切到这个阶段。
+          {:else}还没读到回合，先按成型阵容；进休整期后自动切换。{/if}
+          后面阶段的关键干员也一起追踪。
+        </p>
+      {/if}
+
+      <div class="bondlist">
+        {#each app.goalProgress as g (g.covenant.id)}
+          {@const eff = g.covenant.effects[0]}
+          <button class="brow" class:active={g.active} class:done={g.done} onclick={() => (app.detail = { kind: 'covenant', id: g.covenant.id })}>
+            <BondIcon id={g.covenant.id} size={30} on={g.active} incomplete={app.matchCovenant(g.covenant.id)?.incomplete} />
+            <span class="bmain">
+              <span class="bt">
+                <b>{g.covenant.name}</b>
+                <span class="lvl term">{g.level === 2 ? 'II' : 'I'}</span>
+                <span class="ticks">
+                  {#each Array(Math.max(g.have, g.need)) as _, i}
+                    <i class:have={i < g.have} class:th={g.covenant.thresholds.includes(i + 1)}></i>
+                  {/each}
+                </span>
+                <span class="cnt"><em>{g.have}</em>/{g.need}</span>
+              </span>
+              {#if eff}<span class="eff" class:off={!g.active}>{eff.text}</span>{/if}
+            </span>
+          </button>
+        {:else}
+          <p class="none">还没有目标盟约，点「编辑」选。</p>
+        {/each}
+      </div>
+
+      <div class="sub">想抓的干员<em>{a!.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
+      <div class="ops">
+        {#each a!.members as m (m.name)}
+          {@const pe = m.equipment?.filter((x) => x.priority) ?? []}
+          <span class="mw" class:later={!own.has(m.name)} title={own.has(m.name) ? undefined : '后面阶段的关键干员，提前追踪'}>
+            <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), app.settings.operatorDefaults)} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
+            {#if pe.length}
+              <span class="pe" title="优先装备：{pe.map((x) => x.name).join('、')}">
+                {#each pe.slice(0, 3) as x (x.name)}<img src={asset.equipment(x.name)} alt="" />{/each}
+              </span>
+            {/if}
+          </span>
+        {:else}
+          <p class="none">还没有想抓的干员。</p>
+        {/each}
+      </div>
+
+      <div class="sub">装备<em>{targetEqs.length} 件 · 点一下切换追踪；金框是干员的优先装备，商店里按关键标记</em></div>
+      <div class="ops">
+        {#each targetEqs as n (n)}
+          <span class="ew" class:pri={app.priorityEq.has(n)}><EqTile name={n} size={48} dim={!app.trackedEq.has(n)} onclick={() => app.toggleTrackedEq(n)} /></span>
+        {:else}
+          <p class="none wide">还没有。在「编辑」里加，或在装备详情、右键菜单里「加入目标」。</p>
+        {/each}
+      </div>
+
+      {#if a!.goals.length}
+        <div class="sub">还能抓<em>目标盟约里没被禁的其他干员 · 点开可加入目标或追踪</em></div>
+        <div class="ops">
+          {#each picks as o (o.name)}
+            <OpTile name={o.name} size={48} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+          {:else}
+            <p class="none">没有了。</p>
+          {/each}
+        </div>
+        {#if app.pickable.length > 10}
+          <button class="more" onclick={() => (allPicks = !allPicks)}>{allPicks ? '收起' : `展开全部 ${app.pickable.length} 名`}</button>
+        {/if}
+      {/if}
+    </section>
+  {:else}
+    <div class="empty">
+      <p>还没有目标阵容。</p>
+      <div class="row">
+        <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
+        <button class="secondary" onclick={() => (app.lineupView = 'mine')}>从我的阵容选</button>
+        <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
+      </div>
+      <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
+    </div>
+  {/if}
+{/snippet}
+
+<!-- 我的阵容；compact：工作台左边的常驻列表，卡片只留标题和盟约 -->
+{#snippet mineView(compact: boolean)}
+  <section>
+    <SectionHeader title="我的阵容" tag="{app.lineups.length} 套" en="SAVED LINEUPS">
+      {#snippet icon()}
+        <Icon name="grid" size={18} />
+      {/snippet}
+      {#snippet right()}
+        <span class="hacts">
+          <button class="ghost" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
+          <button class="ghost" onclick={() => app.edit(null)}><Icon name="add" size={14} />新建</button>
+        </span>
+      {/snippet}
+    </SectionHeader>
+    {#if !compact}<p class="hint">点「导入」可以粘贴分享码、森空岛攻略链接，或者从森空岛历史战绩里挑一局。右键阵容卡也能编辑、复制分享码、设为目标、删除；目标盟约本局阵容不完整、名单里被禁的多的排在后面。</p>{/if}
+    {#if !app.lineups.length}
+      <div class="empty">
+        <p>还没有阵容。</p>
+        <div class="row">
+          <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
+          <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
+        </div>
+        <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
+      </div>
+    {/if}
+    <div class="list">
+      {#each [...app.lineups].sort((a, b) => (compact ? +(app.session.targetLineupId === b.id) - +(app.session.targetLineupId === a.id) : 0) || app.lineupPenalty(a) - app.lineupPenalty(b)) as l (l.id)}
+        {@const isT = app.session.targetLineupId === l.id}
+        <LineupCard lineup={l} target={isT} headOnly={compact} ontitle={() => app.edit(l)}>
+          {#snippet sub()}{#if l.note}<span class="note">{l.note}</span>{/if}{/snippet}
+          {#snippet actions()}
+            {#if !compact}<button class="act quiet" onclick={() => app.edit(l)}><span class="ei"><Icon name="pencil" size={13} /></span>编辑</button>{/if}
+            {#if !isT}<button class="act" onclick={() => app.setTarget(l.id)}>设为目标</button>{/if}
+          {/snippet}
+        </LineupCard>
+      {/each}
+    </div>
+  </section>
+{/snippet}
+
+{#if app.workbench}
+  <!-- 工作台：左边常驻我的阵容，右边目标 / 广场；编辑器在右边展开，不挡列表 -->
+  <div class="wbl">
+    <div class="mylist">{@render mineView(true)}</div>
+    <div class="page">
+      <Seg items={wbViews} value={wbView} onchange={(v) => (app.lineupView = v)} />
+      {#key wbView}
+      <div class="pane" in:fly={{ x: 24 * dir, duration: 220, easing: cubicOut }}>
+        {#if wbView === 'plaza'}<PlazaView />{:else}{@render targetView()}{/if}
+      </div>
+      {/key}
+    </div>
+  </div>
+{:else}
 <div class="page">
   <Seg items={views} value={app.lineupView} onchange={(v) => (app.lineupView = v)} />
 
   {#key app.lineupView}
   <div class="pane" in:fly={{ x: 24 * dir, duration: 220, easing: cubicOut }}>
   {#if app.lineupView === 'target'}
-    {#if t}
-      <section>
-        <SectionHeader title={t.name} en="CURRENT TARGET">
-          {#snippet icon()}
-            <Icon name="focus" size={18} />
-          {/snippet}
-          {#snippet right()}
-            <span class="hacts">
-              <button class="ghost" onclick={() => app.edit(t)}><Icon name="pencil" size={14} />编辑</button>
-              <button class="ghost" onclick={() => app.setTarget(null)}>取消目标</button>
-            </span>
-          {/snippet}
-        </SectionHeader>
-
-        <!-- 阶段：默认自动按回合切；点某个阶段固定住，点「自动」恢复 -->
-        {#if stages.length > 1}
-          <div class="stagesw">
-            <button class="auto" class:on={app.session.stage == null} onclick={() => app.setStage(null)} title="按读到的回合自动切换">自动</button>
-            {#each stages as s, i (i)}
-              <button class:on={app.stageIx === i} onclick={() => app.setStage(i)}>{s.final ? '成型阵容' : stageLabel(s)}</button>
-            {/each}
-          </div>
-          <p class="stagenote">
-            {#if app.session.stage != null}已固定在这个阶段，点「自动」按回合切换。
-            {:else if round != null}第 {round} 回合 · 自动切到这个阶段。
-            {:else}还没读到回合，先按成型阵容；进休整期后自动切换。{/if}
-            后面阶段的关键干员也一起追踪。
-          </p>
-        {/if}
-
-        <div class="bondlist">
-          {#each app.goalProgress as g (g.covenant.id)}
-            {@const eff = g.covenant.effects[0]}
-            <button class="brow" class:active={g.active} class:done={g.done} onclick={() => (app.detail = { kind: 'covenant', id: g.covenant.id })}>
-              <BondIcon id={g.covenant.id} size={30} on={g.active} incomplete={app.matchCovenant(g.covenant.id)?.incomplete} />
-              <span class="bmain">
-                <span class="bt">
-                  <b>{g.covenant.name}</b>
-                  <span class="lvl term">{g.level === 2 ? 'II' : 'I'}</span>
-                  <span class="ticks">
-                    {#each Array(Math.max(g.have, g.need)) as _, i}
-                      <i class:have={i < g.have} class:th={g.covenant.thresholds.includes(i + 1)}></i>
-                    {/each}
-                  </span>
-                  <span class="cnt"><em>{g.have}</em>/{g.need}</span>
-                </span>
-                {#if eff}<span class="eff" class:off={!g.active}>{eff.text}</span>{/if}
-              </span>
-            </button>
-          {:else}
-            <p class="none">还没有目标盟约，点「编辑」选。</p>
-          {/each}
-        </div>
-
-        <div class="sub">想抓的干员<em>{a!.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
-        <div class="ops">
-          {#each a!.members as m (m.name)}
-            {@const pe = m.equipment?.filter((x) => x.priority) ?? []}
-            <span class="mw" class:later={!own.has(m.name)} title={own.has(m.name) ? undefined : '后面阶段的关键干员，提前追踪'}>
-              <OpTile name={m.name} transform={m.transform} isKey={m.key} elite={!!m.elite} skill={customSkill(m, app.op(m.name), app.settings.operatorDefaults)} size={54} dim={!app.tracked.has(m.name)} onclick={() => app.toggleTracked(m.name)} />
-              {#if pe.length}
-                <span class="pe" title="优先装备：{pe.map((x) => x.name).join('、')}">
-                  {#each pe.slice(0, 3) as x (x.name)}<img src={asset.equipment(x.name)} alt="" />{/each}
-                </span>
-              {/if}
-            </span>
-          {:else}
-            <p class="none">还没有想抓的干员。</p>
-          {/each}
-        </div>
-
-        <div class="sub">装备<em>{targetEqs.length} 件 · 点一下切换追踪；金框是干员的优先装备，商店里按关键标记</em></div>
-        <div class="ops">
-          {#each targetEqs as n (n)}
-            <span class="ew" class:pri={app.priorityEq.has(n)}><EqTile name={n} size={48} dim={!app.trackedEq.has(n)} onclick={() => app.toggleTrackedEq(n)} /></span>
-          {:else}
-            <p class="none wide">还没有。在「编辑」里加，或在装备详情、右键菜单里「加入目标」。</p>
-          {/each}
-        </div>
-
-        {#if a!.goals.length}
-          <div class="sub">还能抓<em>目标盟约里没被禁的其他干员 · 点开可加入目标或追踪</em></div>
-          <div class="ops">
-            {#each picks as o (o.name)}
-              <OpTile name={o.name} size={48} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
-            {:else}
-              <p class="none">没有了。</p>
-            {/each}
-          </div>
-          {#if app.pickable.length > 10}
-            <button class="more" onclick={() => (allPicks = !allPicks)}>{allPicks ? '收起' : `展开全部 ${app.pickable.length} 名`}</button>
-          {/if}
-        {/if}
-      </section>
-    {:else}
-      <div class="empty">
-        <p>还没有目标阵容。</p>
-        <div class="row">
-          <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
-          <button class="secondary" onclick={() => (app.lineupView = 'mine')}>从我的阵容选</button>
-          <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
-        </div>
-        <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
-      </div>
-    {/if}
+    {@render targetView()}
   {:else if app.lineupView === 'mine'}
-    <section>
-      <SectionHeader title="我的阵容" tag="{app.lineups.length} 套" en="SAVED LINEUPS">
-        {#snippet icon()}
-          <Icon name="grid" size={18} />
-        {/snippet}
-        {#snippet right()}
-          <span class="hacts">
-            <button class="ghost" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
-            <button class="ghost" onclick={() => app.edit(null)}><Icon name="add" size={14} />新建</button>
-          </span>
-        {/snippet}
-      </SectionHeader>
-      <p class="hint">点「导入」可以粘贴分享码、森空岛攻略链接，或者从森空岛历史战绩里挑一局。右键阵容卡也能编辑、复制分享码、设为目标、删除；目标盟约本局阵容不完整、名单里被禁的多的排在后面。</p>
-      {#if !app.lineups.length}
-        <div class="empty">
-          <p>还没有阵容。</p>
-          <div class="row">
-            <button class="primary" onclick={() => app.edit(null)}><Icon name="add" size={15} />新建阵容</button>
-            <button class="secondary" onclick={() => (app.importOpen = true)} title={IMPORT_TIP}><Icon name="paste" size={14} />导入</button>
-          </div>
-          <p class="sk">导入可以粘贴分享码、森空岛攻略链接，<br />或者从森空岛历史战绩里挑一局。</p>
-        </div>
-      {/if}
-      <div class="list">
-        {#each [...app.lineups].sort((a, b) => app.lineupPenalty(a) - app.lineupPenalty(b)) as l (l.id)}
-          {@const isT = app.session.targetLineupId === l.id}
-          <LineupCard lineup={l} target={isT} ontitle={() => app.edit(l)}>
-            {#snippet sub()}{#if l.note}<span class="note">{l.note}</span>{/if}{/snippet}
-            {#snippet actions()}
-              <button class="act quiet" onclick={() => app.edit(l)}><span class="ei"><Icon name="pencil" size={13} /></span>编辑</button>
-              {#if !isT}<button class="act" onclick={() => app.setTarget(l.id)}>设为目标</button>{/if}
-            {/snippet}
-          </LineupCard>
-        {/each}
-      </div>
-    </section>
+    {@render mineView(false)}
   {:else if app.lineupView === 'plaza'}
     <PlazaView />
   {/if}
   </div>
   {/key}
 </div>
+{/if}
 
 <style>
+  /* 工作台：左边我的阵容列表、右边目标 / 广场，各自滚动 */
+  .wbl {
+    height: 100%;
+    display: grid;
+    grid-template-columns: var(--wb-list-w) minmax(0, 1fr);
+  }
+  .mylist {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px;
+    border-right: 1px solid var(--line);
+  }
+  .wbl > .page {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* 左边列表窄，卡片一列（宽屏的多列网格不用在这里） */
+  .mylist .list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
   .mw {
     position: relative;
     display: inline-flex;

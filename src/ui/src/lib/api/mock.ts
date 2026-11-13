@@ -190,6 +190,7 @@ let settings: Settings = {
   gameTheme: 'terminal',
   uiSkin: 'follow',
   shopMarkers: true,
+  shopScanSpeed: 'normal',
   autoCheckUpdate: true,
   updateSource: 'github',
   mirrorChyanCdk: '',

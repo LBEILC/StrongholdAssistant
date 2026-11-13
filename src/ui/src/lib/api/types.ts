@@ -416,6 +416,11 @@ export interface Settings {
   /** 界面皮肤（v0.8.0，默认 'follow'）。只影响助手界面的样子，和商店识别无关 */
   uiSkin: UiSkin
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
+  /**
+   * 商店识别速度（v0.8.3）：'normal' 标准（默认，和以前差不多的占用）；'fast' 快速（识别得更勤，换商店后标记更快跟上，
+   * 多占一些 CPU）。宿主按这个调识别节奏，改了马上生效
+   */
+  shopScanSpeed: 'normal' | 'fast'
   autoCheckUpdate: boolean // 启动时检查新版本
   /**
    * 更新源（v0.7.2，默认 'github'）。mirrorchyan：检查走 Mirror酱；填了有效 CDK 时从 Mirror酱 下载，

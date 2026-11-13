@@ -299,6 +299,14 @@
         <span class="lbl"><b>商店标记</b><small>在游戏商店里给追踪的干员打标记</small></span>
         <input type="checkbox" class="sw" checked={app.settings.shopMarkers} onchange={(e) => set('shopMarkers', e.currentTarget.checked)} />
       </label>
+      <div class="hk">
+        <span class="hkl">识别速度</span>
+        <div class="scales two grow">
+          <button class:on={app.settings.shopScanSpeed === 'normal'} onclick={() => set('shopScanSpeed', 'normal')}>标准</button>
+          <button class:on={app.settings.shopScanSpeed === 'fast'} onclick={() => set('shopScanSpeed', 'fast')}>快速</button>
+        </div>
+      </div>
+      <p class="note">{app.settings.shopScanSpeed === 'fast' ? '识别得更勤，换商店后标记跟得更快，会多占一些 CPU；电脑吃力时换回标准。' : '占用低，换商店后标记稍慢一点跟上。'}</p>
     </section>
 
     <section>

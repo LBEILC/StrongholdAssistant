@@ -22,15 +22,19 @@
   // 向上收起时点目标名也先展开
   const goTarget = () => (app.collapsed && app.setCollapsed(false), app.setTab('lineup'), (app.lineupView = 'target'))
   const fx = { duration: 160, easing: cubicOut, start: 0.6 }
+  // rail：工作台左栏里竖着放。目标名在左栏上面单独显示，这里只写「追踪」；头像一行排满就换行，多了在栏里滚
+  let { rail = false }: { rail?: boolean } = $props()
 </script>
 
 {#if t || total || !app.folded['hint.noTarget']}
-<section class="tracker">
+<section class="tracker" class:rail>
   {#if t || total}
     <!-- 右键标题行：换目标、切阶段、全部追踪、清空追踪 -->
     <div class="head" role="presentation" oncontextmenu={(e) => openMenu(e, targetMenu())}>
       <span class="lbl term">Track</span>
-      {#if t}
+      {#if rail}
+        <span class="name muted">追踪</span>
+      {:else if t}
         <button class="name" onclick={goTarget} title="目标阵容：{t.name}">{t.name}{#if stageName}<em class="stg">{stageName}</em>{/if}</button>
       {:else}
         <span class="name muted">单独追踪</span>
@@ -274,6 +278,26 @@
   .close:hover {
     color: var(--fg-1);
     background: var(--bg-3);
+  }
+  /* 工作台左栏 */
+  .rail {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    background: none;
+    border-bottom: none;
+  }
+  .rail::before {
+    display: none;
+  }
+  .rail .row {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    align-content: flex-start;
+    scrollbar-width: thin;
   }
   .stg {
     margin-left: 6px;

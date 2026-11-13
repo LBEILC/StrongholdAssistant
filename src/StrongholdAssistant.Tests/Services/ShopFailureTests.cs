@@ -55,8 +55,8 @@ public class ShopFailureTests(EnemyRecognitionFixture fixture)
         var failures = new List<string>();
         scanner.RecognitionFailed += (_, failure, _, _) => failures.Add(failure);
         // 直接运行计时器使用的商店步骤，不启动计时器或真实截屏。
-        await (Task)typeof(OcrScannerService).GetMethod("ScanShopAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(scanner, [bytes, 1920, 1080, DateTimeOffset.UtcNow])!;
+        await (Task)typeof(OcrScannerService).GetMethod("ScanFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(scanner, [bytes, 1920, 1080, DateTimeOffset.UtcNow, 0d, null, 0d])!;
         Assert.Empty(state.ShopItems);
         return failures;
     }

@@ -27,7 +27,7 @@ public class ScreenCaptureService
     /// Requires the window to be visible and not fully occluded.
     /// Returns PNG bytes, or null if the window is not found.
     /// </summary>
-    public byte[]? CaptureScreen(IntPtr allowedForeground = default)
+    public byte[]? CaptureScreen(IntPtr allowedForeground = default, Action<Bitmap>? inspect = null)
     {
         if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth);
         var hwnd = Connection.FindGameWindow();
@@ -91,7 +91,7 @@ public class ScreenCaptureService
                 return null;
             }
 
-            return EncodeCapture(raw);
+            return EncodeCapture(raw, inspect);
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
@@ -102,7 +102,7 @@ public class ScreenCaptureService
         }
     }
     // 合成图验收与真实截屏共享缩小、编码路径。
-    public byte[] EncodeCapture(Bitmap raw)
+    public byte[] EncodeCapture(Bitmap raw, Action<Bitmap>? inspect = null)
     {
         using var resized = raw.Width > MaxCaptureWidth
             ? new Bitmap(MaxCaptureWidth, (int)(raw.Height * ((float)MaxCaptureWidth / raw.Width)), PixelFormat.Format32bppArgb)
@@ -113,6 +113,8 @@ public class ScreenCaptureService
             graphics.InterpolationMode = InterpolationMode.Bilinear;
             graphics.DrawImage(raw, 0, 0, resized.Width, resized.Height);
         }
+        // 识别循环直接用缩放后的截图生成指纹，避免编码后再解码同一张 PNG。
+        inspect?.Invoke(resized ?? raw);
         using var stream = new MemoryStream();
         (resized ?? raw).Save(stream, ImageFormat.Png);
         return stream.ToArray();

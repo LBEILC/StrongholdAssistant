@@ -41,6 +41,7 @@ public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedA
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
     public string UiSkin { get; init; } = "follow";
+    public string ShopScanSpeed { get; init; } = "normal";
     public string UpdateSource { get; init; } = "github";
     public string UpdateProxy { get; init; } = "";
     public string MirrorChyanCdk { get; init; } = "";

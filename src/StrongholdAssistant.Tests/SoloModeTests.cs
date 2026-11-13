@@ -71,8 +71,8 @@ public sealed class SoloModeTests(EnemyRecognitionFixture fixture)
         async Task Tick()
         {
             var (w, h) = Size(shot);
-            await (Task)typeof(OcrScannerService).GetMethod("DetectBanScreenAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .Invoke(scanner, [shot, w, h])!;
+            await (Task)typeof(OcrScannerService).GetMethod("ScanFrameAsync", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(scanner, [shot, w, h, DateTimeOffset.UtcNow, 0d, null, 0d])!;
             await automatic;
         }
         try

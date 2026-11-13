@@ -105,6 +105,10 @@
 
   /* 等阶角标高度相对 size 的比例（各皮肤角标宽高比不同：终端方的，乌萨斯扁长） */
   --tier-h: 1;
+  /* 工作台左栏宽 */
+  --rail-w: 224px;
+  /* 工作台阵容页左边「我的阵容」列表宽 */
+  --wb-list-w: 300px;
 
   /* 图鉴卡底部：名字条、盟约小图标（终端卡面是深色，名字直接压在卡框的青绿条上） */
   --card-name-bg: transparent;
@@ -608,13 +612,14 @@ aside.sheet > .scroll {
   color: var(--cream);
   background: var(--rust);
 }
-/* 按钮、小切换组：平行四边形；主按钮和选中项铁锈红配米白字 */
-:root[data-skin='ursus'] :is(.btn, .tool, .chip, .tog, .add, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button, .lc .badge, .trk) {
+/* 按钮、小切换组：平行四边形；主按钮和选中项铁锈红配米白字。
+   放图标的按钮（技能、模组）不切：图标是方的，切了四个角就没了；同一排的「不带」也跟着方的 */
+:root[data-skin='ursus'] :is(.btn, .tool, .chip, .tog, .add, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button, .lc .badge, .trk):not(:has(> img), .opt.txt) {
   border-radius: 0;
   clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
 }
 /* 斜角会切到字，普通按钮左右加宽；小标签（＋收入、追踪、TARGET）本来就窄，不加宽 */
-:root[data-skin='ursus'] :is(.btn, .tool, .tog, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button) {
+:root[data-skin='ursus'] :is(.btn, .tool, .tog, .opt, .act, .primary, .secondary, .stagesw button, .scales button, .sorts button):not(:has(> img), .opt.txt) {
   padding-left: calc(var(--slant) + 6px);
   padding-right: calc(var(--slant) + 6px);
 }
@@ -656,10 +661,6 @@ aside.sheet > .scroll {
     inset 0 3px 0 var(--rust),
     inset 0 0 0 1px var(--line-strong),
     0 8px 24px rgb(var(--shade-rgb) / 0.6);
-}
-/* 首领条、带左侧色条的提示框：右下角斜切 */
-:root[data-skin='ursus'] :is(.boss, .focus, .note) {
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
 }
 /* 英文装饰字都是粗斜体 */
 :root[data-skin='ursus'] .term {

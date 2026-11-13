@@ -281,6 +281,7 @@
 
     <!-- 上半区（目标盟约、已选）和下半区（挑选）一起滚动：已选的多了也不会把挑选区挤没 -->
     <div class="body">
+    <div class="secs">
     <div class="sec">
       <div class="lbl">目标盟约<em>点一下选上，有 II 档的再点升 II 档，再点取消；本局阵容不完整的核心盟约不能选</em></div>
       <BondPick state={goalState} onpick={(id) => app.cycleGoal(id)} />
@@ -381,6 +382,7 @@
       {/if}
     </div>
 
+    </div>
     <div class="pick">
       <div class="phead" bind:clientHeight={pheadH}>
       <Seg
@@ -783,6 +785,26 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+  }
+  /* 宽（工作台）：左边阵容内容、右边挑选区，各自滚动 */
+  .ed {
+    container-type: inline-size;
+  }
+  @container (min-width: 700px) {
+    .body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+      overflow: hidden;
+    }
+    .secs {
+      min-height: 0;
+      overflow-y: auto;
+      border-right: 1px solid var(--line);
+    }
+    .pick {
+      min-height: 0;
+      overflow-y: auto;
+    }
   }
   .pick {
     display: flex;

@@ -135,7 +135,8 @@
     position: relative;
     padding-left: 30px;
   }
-  @media (max-width: 360px) {
+  /* 按所在区域的宽度（侧栏、工作台的窄栏）藏掉英文小字 */
+  @container (max-width: 360px) {
     .en {
       display: none;
     }

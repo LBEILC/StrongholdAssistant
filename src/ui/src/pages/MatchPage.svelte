@@ -40,6 +40,9 @@
     stq = ''
   }
   // 目标阵容固定排第一个（不管本局合不合适，方便对照）；其余按目标盟约里阵容不完整的个数、再按名单被禁人数排序，一共取 3 套
+  // 工作台里够宽就排成三栏（宽度按页面自己量，侧栏里不会触发）
+  let pageW = $state(0)
+  const wide = $derived(app.workbench && pageW >= 960)
   const usable = $derived(
     app.lineups
       .map((l) => ({ l, bad: app.session.targetLineupId === l.id ? -Infinity : app.lineupPenalty(l) }))
@@ -126,44 +129,7 @@
   const ruleOnly = $derived(m.source !== 'none' && !m.bansScanned && !app.continuous)
 </script>
 
-<div class="page">
-  <div class="status">
-    <span class="st" class:ok={m.source !== 'none'}>
-      <span class="term">Info</span>
-      {m.source === 'recognized' ? '已识别' : m.source === 'manual' ? '已修正' : m.awaitingDetail ? '等对局详情' : '未识别'}
-      {#if m.solo}<b class="solo">单人</b>{/if}
-      <em>{ago}</em>
-    </span>
-    <span class="tools">
-      <button class="tool" class:on={edit} onclick={() => (app.matchEdit = !edit)}>
-        <Icon name="pencil" size={13} />{edit ? '完成' : '修正'}
-      </button>
-      <button class="tool" class:busy={app.scanning && !app.continuous} onclick={() => app.rescan()} disabled={app.scanning || app.continuous}>
-        <span class="spin"><Icon name="refresh" size={13} /></span>
-        {app.scanning && !app.continuous ? '识别中…' : '重新识别'}
-      </button>
-      <button
-        class="tool"
-        class:live={app.continuous}
-        onclick={() => app.toggleContinuous()}
-        disabled={app.scanning && !app.continuous}
-        title="点一次后在游戏里往下滚动禁用列表，会自动逐屏识别"
-      >
-        {#if app.continuous}<span class="live-dot"></span>停止{:else}<Icon name="scan" size={13} />持续识别{/if}
-      </button>
-      {#if m.source !== 'none'}
-        <button
-          class="tool"
-          class:arm={armReset}
-          onclick={reset}
-          disabled={app.scanning || app.continuous}
-          title="清掉本局的盟约、禁用干员、首领等信息；打完一局编辑阵容时用"
-        >
-          <Icon name={armReset ? 'trash' : 'close'} size={13} />{armReset ? '确认清空' : '清空'}
-        </button>
-      {/if}
-    </span>
-  </div>
+{#snippet bInfo()}
   <EconomyBar />
   {#if m.awaitingDetail && !app.continuous}
     <div class="solo-guide">
@@ -222,7 +188,9 @@
       <div class="focus ok"><Icon name="heartFill" size={13} />关注的 {app.settings.focusCovenants.length} 个盟约、{app.settings.focusOperators.length} 名干员本局都可用</div>
     {/if}
   {/if}
+{/snippet}
 
+{#snippet bStrategy()}
   {#if pickingSt}
     <div class="stpick">
       <div class="sph">
@@ -246,7 +214,9 @@
       <Icon name="add" size={14} />选本局策略<em>识别读不到策略；选上后资金预测会按策略算</em>
     </button>
   {/if}
+{/snippet}
 
+{#snippet bCore()}
   <section>
     <SectionHeader
       title="核心盟约"
@@ -266,7 +236,9 @@
       </div>
     {/if}
   </section>
+{/snippet}
 
+{#snippet bExtra()}
   <section>
     <SectionHeader
       title="附加盟约"
@@ -286,7 +258,9 @@
       </div>
     {/if}
   </section>
+{/snippet}
 
+{#snippet bBanned()}
   <section>
     <SectionHeader
       title="本局禁用干员"
@@ -357,7 +331,9 @@
       </div>
     {/if}
   </section>
+{/snippet}
 
+{#snippet bEnemy()}
   <section>
     <SectionHeader title="敌方情报" en="HOSTILE INTEL" ontoggle={fold('enemy')} folded={!open('enemy')}>
       {#snippet icon()}
@@ -387,7 +363,9 @@
     </div>
     {/if}
   </section>
+{/snippet}
 
+{#snippet bLineups()}
   <section>
     <SectionHeader title="本局可用阵容" en="LINEUP PLANNER" ontoggle={fold('lineups')} folded={!open('lineups')}>
       {#snippet icon()}
@@ -411,6 +389,62 @@
     </div>
     {/if}
   </section>
+{/snippet}
+
+<div class="page" class:wide bind:clientWidth={pageW}>
+  <div class="status">
+    <span class="st" class:ok={m.source !== 'none'}>
+      <span class="term">Info</span>
+      {m.source === 'recognized' ? '已识别' : m.source === 'manual' ? '已修正' : m.awaitingDetail ? '等对局详情' : '未识别'}
+      {#if m.solo}<b class="solo">单人</b>{/if}
+      <em>{ago}</em>
+    </span>
+    <span class="tools">
+      <button class="tool" class:on={edit} onclick={() => (app.matchEdit = !edit)}>
+        <Icon name="pencil" size={13} />{edit ? '完成' : '修正'}
+      </button>
+      <button class="tool" class:busy={app.scanning && !app.continuous} onclick={() => app.rescan()} disabled={app.scanning || app.continuous}>
+        <span class="spin"><Icon name="refresh" size={13} /></span>
+        {app.scanning && !app.continuous ? '识别中…' : '重新识别'}
+      </button>
+      <button
+        class="tool"
+        class:live={app.continuous}
+        onclick={() => app.toggleContinuous()}
+        disabled={app.scanning && !app.continuous}
+        title="点一次后在游戏里往下滚动禁用列表，会自动逐屏识别"
+      >
+        {#if app.continuous}<span class="live-dot"></span>停止{:else}<Icon name="scan" size={13} />持续识别{/if}
+      </button>
+      {#if m.source !== 'none'}
+        <button
+          class="tool"
+          class:arm={armReset}
+          onclick={reset}
+          disabled={app.scanning || app.continuous}
+          title="清掉本局的盟约、禁用干员、首领等信息；打完一局编辑阵容时用"
+        >
+          <Icon name={armReset ? 'trash' : 'close'} size={13} />{armReset ? '确认清空' : '清空'}
+        </button>
+      {/if}
+    </span>
+  </div>
+  {#if wide}
+    <!-- 工作台：三栏一屏放下。左：盟约；中：资金、提醒、策略、敌方情报、禁用；右：本局可用阵容 -->
+    <div class="cols">
+      <div class="col">{@render bCore()}{@render bExtra()}</div>
+      <div class="col">{@render bInfo()}{@render bStrategy()}{@render bEnemy()}{@render bBanned()}</div>
+      <div class="col">{@render bLineups()}</div>
+    </div>
+  {:else}
+    {@render bInfo()}
+    {@render bStrategy()}
+    {@render bCore()}
+    {@render bExtra()}
+    {@render bBanned()}
+    {@render bEnemy()}
+    {@render bLineups()}
+  {/if}
 </div>
 
 <style>
@@ -1011,6 +1045,28 @@
     .status {
       column-span: all;
     }
+  }
+  /* 乌萨斯：首领条、关注提醒、识别提示右下角斜切（只管本页的这几个，别处同名的类不动） */
+  :global([data-skin='ursus']) :is(.boss, .focus, .note) {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  }
+  /* 工作台三栏：各栏从上往下排，互不对齐行高 */
+  .page.wide {
+    display: flex;
+    columns: auto;
+  }
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .col {
+    min-width: 0;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
   /* 可露希尔：「关注的被影响了」是千禧年系统的报错对话框——粉紫渐变标题栏、关闭是小方块、粉色窗口边；
      「都可用」、识别提示是青色描边的小提示条；策略栏是带窗口边的小窗口 */

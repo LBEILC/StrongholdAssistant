@@ -2,6 +2,8 @@
   import { app } from './lib/state.svelte'
   import TitleBar from './components/TitleBar.svelte'
   import BondTracker from './components/BondTracker.svelte'
+  import Icon from './components/Icon.svelte'
+  import WorkbenchRail from './components/WorkbenchRail.svelte'
   import Tabs from './components/Tabs.svelte'
   import DetailSheet from './components/DetailSheet.svelte'
   import LineupEditor from './components/LineupEditor.svelte'
@@ -102,11 +104,10 @@
 <div class="shell {app.phase}" class:wb={app.workbench}>
   <TitleBar />
   {#if app.workbench}
-    <!-- 工作台：左边竖排导航，右边追踪列表和内容；详情面板停在右侧，不挡左边 -->
+    <!-- 工作台：左栏（导航、目标、追踪、更新），右边内容；详情面板停在右侧，不挡左边 -->
     <div class="wbody">
-      <Tabs vertical />
+      <WorkbenchRail />
       <div class="wcol">
-        <BondTracker />
         {@render body()}
       </div>
     </div>
@@ -119,17 +120,17 @@
 {/if}
 
 {#snippet body()}
-  {#if app.update.state === 'available' || app.update.state === 'downloading' || app.update.state === 'ready'}
+  {#if !app.workbench && (app.update.state === 'available' || app.update.state === 'downloading' || app.update.state === 'ready')}
     <button class="updbar" onclick={() => (app.settingsOpen = true)}>
       <b class="term">Update</b>
       {app.update.state === 'available' ? `发现新版本 v${app.update.version}，点这里更新` : app.update.state === 'downloading' ? `正在下载 v${app.update.version}…` : '下载完成，即将重启'}
     </button>
   {/if}
-  <div class="content" class:wb={app.workbench} class:docked={app.workbench && (!!app.detail || !!plaza.viewing)}>
+  <div class="content" class:wb={app.workbench} class:lineup={app.tab === 'lineup'} class:docked={app.workbench && (!!app.detail || !!plaza.viewing || app.tab === 'codex')}>
     <main bind:this={scroller}>
       {#key app.tab}
         <!-- 历史页在工作台里左右两栏各自滚动，需要撑满滚动区的高度 -->
-        <div class:fill={app.tab === 'history'} in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
+        <div class:fill={app.tab === 'history' || (app.workbench && app.tab === 'lineup')} in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
           <!-- 一页渲染出错只挡住这一页，别的页照常能切 -->
           <svelte:boundary onerror={(e) => console.error(e)}>
             {#if app.tab === 'match'}
@@ -154,6 +155,13 @@
       {/key}
     </main>
     <DetailSheet />
+    {#if app.workbench && app.tab === 'codex' && !app.detail}
+      <!-- 工作台图鉴：右边常驻详情栏，没选中时给个提示 -->
+      <aside class="idle">
+        <Icon name="grid" size={28} />
+        <p>点一名干员、一件装备、一个策略或首领，<br />详情显示在这里。</p>
+      </aside>
+    {/if}
     <LineupEditor />
     <BanPicker />
     <ImportSheet />
@@ -288,10 +296,6 @@
     min-height: 0;
     display: flex;
   }
-  .wbody > :global(.tabs) {
-    flex: none;
-    width: 132px;
-  }
   .wcol {
     flex: 1;
     min-width: 0;
@@ -299,7 +303,7 @@
     flex-direction: column;
   }
   .content.wb main > :global(div) {
-    max-width: 1180px;
+    max-width: 1440px;
     margin: 0 auto;
   }
   /* 面板都停在右边：详情、广场帖子一栏宽，编辑器和禁用选择宽一些 */
@@ -317,7 +321,16 @@
   .content.wb > :global(aside.ed) {
     width: min(720px, 66%);
   }
-  .content.wb :global(aside > .grip) {
+  /* 阵容页：编辑器、禁用选择铺满右边，左边「我的阵容」列表露着 */
+  .content.wb.lineup > :global(aside.ed) {
+    left: var(--wb-list-w);
+    width: auto;
+  }
+  .content.wb.lineup > :global(.scrim) {
+    right: auto;
+    width: var(--wb-list-w);
+  }
+  .content.wb :global(aside .grip) {
     display: none;
   }
   .content.wb > :global(.scrim) {
@@ -326,6 +339,27 @@
   /* 详情和广场帖子不遮左边：左边照常能点，点别的卡片直接换内容 */
   .content.wb > :global(.scrim.dock) {
     display: none;
+  }
+  .idle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(440px, 46%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    font-size: var(--fs-base);
+    line-height: 1.6;
+    color: var(--fg-4);
+    background: var(--bg-1);
+    box-shadow: -1px 0 0 var(--line);
+  }
+  .idle p {
+    margin: 0;
   }
   .content.docked main {
     margin-right: min(440px, 46%);
