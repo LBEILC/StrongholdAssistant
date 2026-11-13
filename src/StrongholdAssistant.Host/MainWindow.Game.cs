@@ -300,16 +300,18 @@ public partial class MainWindow
             if (!_api.Settings.FollowGame) RememberFreeBounds();
             else if (_overlayMode && _lastClientRect is { } client)
             {
-                var offset = new SidePanelOffset((_side == "right" ? rect.Right - client.Right : rect.Left - client.Left) / scale,
-                    (rect.Top - client.Top) / scale);
+                var offset = WindowGeometry.SnapOverlayOffset(new SidePanelOffset(
+                    (_side == "right" ? rect.Right - client.Right : rect.Left - client.Left) / scale,
+                    (rect.Top - client.Top) / scale), client, scale, _dock.Width * _uiScale, _side);
                 _dock = _side == "right" ? _dock with { OverlayRightOffsetDip = offset } : _dock with { OverlayOffsetDip = offset };
             }
             else if (_lastGameRect is { } game)
             {
-                var offset = WindowGeometry.CaptureFollowOffset(game, placement, scale, _side);
+                var offset = WindowGeometry.SnapOffset(WindowGeometry.CaptureFollowOffset(game, placement, scale, _side));
                 _dock = _side == "left" ? _dock with { FollowLeftOffsetDip = offset } : _dock with { FollowOffsetDip = offset };
             }
             _api.SettingsStore.SaveDock(_dock);
+            if (_api.Settings.FollowGame && _lastGameRect is { } currentGame) UpdateGame(currentGame);
         }
         if (message == 0x02E0) // WM_DPICHANGED：等 WPF 应用新的 DPI 后重新计算。
             Dispatcher.BeginInvoke(() =>
@@ -356,6 +358,17 @@ public partial class MainWindow
     {
         if (_lastGameRect is { } game) UpdateGame(game);
         else ApplyScale(null);
+    }
+
+    private void Redock()
+    {
+        _dock = _dock with
+        {
+            FollowOffsetDip = null, FollowLeftOffsetDip = null,
+            OverlayOffsetDip = null, OverlayRightOffsetDip = null
+        };
+        _api.SettingsStore.SaveDock(_dock);
+        if (!_workbench && _api.Settings.FollowGame && _lastGameRect is { } game) UpdateGame(game);
     }
 
     private void SetCollapsed(bool collapsed)

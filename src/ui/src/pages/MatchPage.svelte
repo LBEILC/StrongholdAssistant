@@ -39,10 +39,10 @@
     pickingSt = false
     stq = ''
   }
-  // 我的阵容先按目标盟约里阵容不完整的个数、再按名单被禁人数排序，取前 3
+  // 目标阵容固定排第一个（不管本局合不合适，方便对照）；其余按目标盟约里阵容不完整的个数、再按名单被禁人数排序，一共取 3 套
   const usable = $derived(
     app.lineups
-      .map((l) => ({ l, bad: app.lineupPenalty(l) }))
+      .map((l) => ({ l, bad: app.session.targetLineupId === l.id ? -Infinity : app.lineupPenalty(l) }))
       .sort((a, b) => a.bad - b.bad)
       .slice(0, 3),
   )

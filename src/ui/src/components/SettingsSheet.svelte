@@ -110,6 +110,12 @@
   ]
   let instances = $state<MumuInstance[]>([])
   const loadInstances = async () => (instances = app.settings.gameSource === 'pc' ? [] : await api.mumuInstances())
+  // 贴边选项：点哪个（包括当前选中的）都顺便清掉拖动记下的位置，侧栏贴回去（v0.8.2）
+  const dock = <K extends 'dockSide' | 'overlaySide'>(k: K, v: (typeof app.settings)[K]) => {
+    if (app.settings[k] !== v) set(k, v)
+    api.windowCommand('redock')
+  }
+
   // 森空岛账号（v0.8.0）：宿主记下的上次读到的角色；换账号就退出登录，下次导入时重新登录
   let skland = $state<{ nickname: string } | null>(null)
   const sklandLogout = async () => {
@@ -313,21 +319,22 @@
         <div class="hk">
           <span class="hkl">贴在游戏</span>
           <div class="scales three grow">
-            <button class:on={app.settings.dockSide === 'auto'} onclick={() => set('dockSide', 'auto')}>自动</button>
-            <button class:on={app.settings.dockSide === 'right'} onclick={() => set('dockSide', 'right')}>右边</button>
-            <button class:on={app.settings.dockSide === 'left'} onclick={() => set('dockSide', 'left')}>左边</button>
+            <button class:on={app.settings.dockSide === 'auto'} onclick={() => dock('dockSide', 'auto')}>自动</button>
+            <button class:on={app.settings.dockSide === 'right'} onclick={() => dock('dockSide', 'right')}>右边</button>
+            <button class:on={app.settings.dockSide === 'left'} onclick={() => dock('dockSide', 'left')}>左边</button>
           </div>
         </div>
         <div class="hk">
           <span class="hkl">盖在画面</span>
           <div class="scales two grow">
-            <button class:on={app.settings.overlaySide === 'left'} onclick={() => set('overlaySide', 'left')}>左侧</button>
-            <button class:on={app.settings.overlaySide === 'right'} onclick={() => set('overlaySide', 'right')}>右侧</button>
+            <button class:on={app.settings.overlaySide === 'left'} onclick={() => dock('overlaySide', 'left')}>左侧</button>
+            <button class:on={app.settings.overlaySide === 'right'} onclick={() => dock('overlaySide', 'right')}>右侧</button>
           </div>
         </div>
         <p class="note">
           {app.settings.dockSide === 'auto' ? '右边放得下贴右边，不够就贴左边，两边都放不下（或全屏）时盖在游戏画面上。' : `只贴${app.settings.dockSide === 'right' ? '右' : '左'}边，放不下（或全屏）时盖在游戏画面上。`}
           {app.settings.overlaySide === 'right' ? '盖在右侧会挡住准备就绪、刷新这些按钮附近。' : ''}收成竖条时，竖条贴着游戏窗口那条边。
+          拖动侧栏会记住位置；拖回边上附近，或者再点一下上面的选项，就贴回去。
         </p>
       {/if}
     </section>

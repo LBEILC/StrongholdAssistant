@@ -105,6 +105,24 @@ public static class WindowGeometry
         => new((placement.Left - (side == "left" ? game.Left - placement.WidthDip * dpiScale : game.Right)) / dpiScale,
             (placement.Top - game.Top) / dpiScale);
 
+    // 横纵分别按 DIP 吸附；两轴都回到默认位置时不保留手动偏移。
+    public static SidePanelOffset? SnapOffset(SidePanelOffset offset, SidePanelOffset? defaultOffset = null)
+    {
+        var target = defaultOffset ?? new SidePanelOffset(0, 0);
+        var x = Math.Abs(offset.X - target.X) <= 40 ? target.X : offset.X;
+        var y = Math.Abs(offset.Y - target.Y) <= 40 ? target.Y : offset.Y;
+        return x == target.X && y == target.Y ? null : new SidePanelOffset(x, y);
+    }
+
+    public static SidePanelOffset? SnapOverlayOffset(SidePanelOffset offset, RECT client,
+        double dpiScale, double widthDip, string side = "left")
+    {
+        var bounds = OverlayBounds(client, dpiScale, widthDip, null, side);
+        var origin = side == "right" ? client.Right - (int)Math.Round(widthDip * dpiScale) : client.Left;
+        return SnapOffset(offset, new SidePanelOffset((bounds.Left - origin) / dpiScale,
+            (bounds.Top - client.Top) / dpiScale));
+    }
+
     public static RECT FollowBounds(RECT game, RECT workArea, double dpiScale, double widthDip,
         double? heightDip, bool fullscreen, SidePanelOffset offset, string side = "right")
     {

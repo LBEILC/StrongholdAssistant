@@ -113,7 +113,8 @@ public partial class MainWindow : Window
             if (request.Method == "windowCommand")
             {
                 windowCommand = request.Params[0].GetString();
-                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready" or "workbench" or "sidebar")) throw new ArgumentException("窗口命令无效。");
+                if (windowCommand is not ("minimize" or "close" or "collapse" or "expand" or "ready" or "workbench" or "sidebar" or "redock")) throw new ArgumentException("窗口命令无效。");
+                if (windowCommand == "redock") Redock();
                 result = null;
             }
             else if (request.Method == "setHotkey")

@@ -802,8 +802,9 @@ export interface Api {
    * 在游戏所在的屏幕居中；放不下就按屏幕工作区缩小），可拖动改大小（最小 960×640）；期间不跟随游戏、不自动进覆盖模式，
    * 置顶按用户设置。sidebar：回到侧栏，位置和大小照「跟随游戏窗口」设置恢复（跟随就重新贴到游戏旁，不跟随就回到侧栏的自由位置）。
    * 每次启动都是侧栏；收起（collapse / collapseUp）只在侧栏里用
+   * redock（v0.8.2）：清掉跟随、覆盖时拖动记下的位置（四个偏移都清），侧栏马上贴回默认位置。设置里点「贴在游戏」「盖在画面」的选项时发
    */
-  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready' | 'workbench' | 'sidebar'): Promise<void>
+  windowCommand(cmd: 'minimize' | 'close' | 'collapse' | 'expand' | 'ready' | 'workbench' | 'sidebar' | 'redock'): Promise<void>
   /**
    * 向上收起（v0.4.2）：宽度和左上角不变，高度改成 height（界面 CSS 像素，宿主乘界面缩放）。
    * 收起期间内容高度变了（追踪列表增减）界面会再发一次；跟随游戏时上边仍和游戏对齐。expand 恢复
