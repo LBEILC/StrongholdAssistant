@@ -50,7 +50,7 @@ public sealed partial class HostApi
         var local = _history.SingleOrDefault(r => r.Id == _activeRecord)?.Local;
         _activeRecord = null;
         if (local?.Mode is null || EconomyRule(local.StrategyId) is not null) return;
-        var samples = _roundSamples.Where(p => p.Value >= 0).OrderBy(p => p.Key)
+        var samples = _roundSamples.Where(p => p.Key is >= 1 and <= 15 && p.Value >= 0).OrderBy(p => p.Key)
             .Select(p => new RoundMoney(p.Key, p.Value)).ToArray();
         foreach (var sample in samples)
         {

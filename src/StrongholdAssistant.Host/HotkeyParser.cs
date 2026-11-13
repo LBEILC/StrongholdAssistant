@@ -32,6 +32,7 @@ public static class HotkeyParser
         {
             vk = key switch
             {
+                "ALT" => 0x12, "CTRL" => 0x11, "SHIFT" => 0x10,
                 "TAB" => 9, "SPACE" or " " => 32, "ENTER" => 13,
                 "BACKSPACE" => 8, "DELETE" => 46, "INSERT" => 45,
                 "HOME" => 36, "END" => 35, "PAGEUP" => 33, "PAGEDOWN" => 34,

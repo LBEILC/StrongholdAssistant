@@ -88,7 +88,9 @@ public sealed partial class HostApi
             }),
             enemyTypes = enemies.RootElement.GetProperty("types").EnumerateObject().Select(e => new
             {
-                code = e.Value.GetProperty("typeCode").GetString(), name = e.Value.GetProperty("typeName").GetString()
+                code = e.Value.GetProperty("typeCode").GetString(), name = e.Value.GetProperty("typeName").GetString(),
+                firstHalf = EnemyVariants(e.Value.GetProperty("firstHalfVariants")),
+                secondHalf = EnemyVariants(e.Value.GetProperty("secondHalfVariants"))
             }),
             strategies = strategies.Select(s => new { id = s.Id, name = s.Name, initiator = s.Initiator, description = Clean(s.Description) })
         }, JsonOptions);
@@ -102,10 +104,18 @@ public sealed partial class HostApi
         api._modes = extra["modes"]!.Deserialize<GameModeInfo[]>(JsonOptions)!;
         api.SettingsStore = new HostSettingsStore(Path.Combine(userDirectory, "settings.json"));
         api.Settings = api.SettingsStore.LoadSettings();
+        api.BoardRoutesEnabled = api.Settings.Routes.Enabled;
         api.StartupWorkbench = api.SettingsStore.StartInWorkbench();
         await api.RefreshTrackingAsync();
         return api;
     }
+
+    private static object[] EnemyVariants(JsonElement variants) => variants.EnumerateArray().Select(v => (object)new
+    {
+        id = v.GetProperty("specialEnemyId").GetString(),
+        name = v.GetProperty("enemyName").GetString(),
+        weight = v.GetProperty("weight").GetDouble()
+    }).ToArray();
 
     private static string Clean(string text) => Regex.Replace(text, @"<[@$][^>]*>|</>", "");
 
@@ -366,6 +376,7 @@ public sealed partial class HostApi
             case "plazaLogin": return await PlazaLoginAsync();
             case "sklandGuide": return await SklandGuideAsync(args[0].GetString()!);
             case "sklandAccount": return ReadSklandAccount();
+            case "sklandLogin": return await SklandLoginAsync();
             case "sklandLogout": await SklandLogoutAsync(); return null;
             case "sklandHistory": return await SklandHistoryAsync(args.Length > 0 && args[0].ValueKind == JsonValueKind.Object
                 && args[0].TryGetProperty("silent", out var silent) && silent.GetBoolean());

@@ -132,9 +132,24 @@ public partial class MainWindow
         _api.ShopChanged += () =>
         {
             _scanner.SetShopScanSpeed(_api.Settings.ShopScanSpeed);
+            _overlay.UpdateRouteSettings(_api.Settings.Routes);
             RefreshShopOverlay();
         };
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
+        _api.InitializeBoardRoutes(data);
+        _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
+        _scanner.BoardFrameReady += (frame, reading) => _api.ObserveBoardFrame(frame, reading, _scanner.BoardShopVisible);
+        // 敌人路线：识别结果在扫描线程上来，交给界面线程画
+        _api.BoardRoutesChanged += routes => Dispatcher.BeginInvoke(() =>
+        {
+            _overlay.UpdateRoutes(routes, _api.Settings.Routes);
+            RefreshShopOverlay();
+        });
+        _api.RouteHotkeyChanged += down =>
+        {
+            ASPAssistant.Core.AppLogger.Info("Board", $"快捷键 MainWindow 收到 down={down}");
+            _overlay.SetRouteHotkey(down);
+        };
         await _api.InitializeRecognitionAsync(data, _ocr, async () =>
         {
             await _scanner.WaitForIdleAsync();
@@ -485,7 +500,7 @@ public partial class MainWindow
         var items = _api.Settings.ShopMarkers ? _shopItems : [];
         _overlay.UpdateShopItems(items);
         if (!_connectGame || _closing || _capturingInformation || _lastGameRect is null
-            || (!items.Any(i => i.IsTracked || i.IsSecondary) && !_overlay.HasMarkers))
+            || (!items.Any(i => i.IsTracked || i.IsSecondary) && !_overlay.HasMarkers && !_overlay.HasRoutes))
         {
             _overlay.Hide();
             return;

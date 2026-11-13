@@ -84,9 +84,11 @@ public sealed class BanAvatarTests(ASPAssistant.Tests.Services.EnemyRecognitionF
             api.ApplyRecognizedMatch(first with { BossId = "enemy_9029_acfnc" }, ["真言"]);
             Assert.Equal(new[] { "真言" }, api.Match.BannedOperators);
             api.SetOperatorBanned("泡泡", true);
-            var differentCovenants = api.Match with { Covenants = api.Match.Covenants.Where(c => c.Id != "sargon").ToArray() };
-            api.ApplyRecognizedMatch(differentCovenants, ["锏"]);
-            Assert.Equal(new[] { "锏" }, api.Match.BannedOperators);
+            // 滚动缺少一个盟约不算换局，完整盟约、头像累计与手动禁用都保留。
+            var partialCovenants = api.Match with { Covenants = api.Match.Covenants.Where(c => c.Id != "sargon").ToArray() };
+            api.ApplyRecognizedMatch(partialCovenants, ["锏"]);
+            Assert.Equal(new[] { "真言", "锏", "泡泡" }.Order(), api.Match.BannedOperators.Order());
+            Assert.Equal(first.Covenants, api.Match.Covenants);
         }
         finally
         {

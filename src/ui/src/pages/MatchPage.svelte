@@ -30,6 +30,46 @@
       app.showToast((e as Error).message, true)
     }
   }
+  // 敌方情报：路线覆盖的快速开关（同设置里的总开关）；展开的特训敌人
+  const toggleRoutes = (on: boolean) => {
+    app.settings.routes.enabled = on
+    app.saveSettings()
+    app.showToast(on ? '已打开敌人路线：休整期在棋盘上画本回合路线' : '已关闭敌人路线')
+  }
+  let openType = $state<string | null>(null)
+  const setRoutes = (patch: Partial<typeof app.settings.routes>) => {
+    app.settings.routes = { ...app.settings.routes, ...patch }
+    app.saveSettings()
+  }
+  // 右键菜单：常用的几项直接在这里改，其余去设置页
+  const routeMenu = () => {
+    const r = app.settings.routes
+    const pick = <K extends keyof typeof r>(k: K, v: (typeof r)[K], label: string) => ({ label, on: r[k] === v, run: () => setRoutes({ [k]: v }) })
+    return {
+      title: '敌人路线',
+      sub: r.enabled ? '休整期画在游戏棋盘上' : '现在关着',
+      items: [
+        { label: '显示路线', on: r.enabled, run: () => toggleRoutes(!r.enabled) },
+        'sep' as const,
+        pick('display', 'always', '显示：一直显示'),
+        pick('display', 'hold', `显示：按住 ${r.hotkey} 才显示`),
+        pick('display', 'peek', '显示：新回合先看几秒'),
+        'sep' as const,
+        pick('overlap', 'cycle', '路线多时：依次循环'),
+        pick('overlap', 'all', '路线多时：全部一起'),
+        'sep' as const,
+        pick('fly', 'main', '飞行：只显示最多的一条'),
+        pick('fly', 'all', '飞行：全部'),
+        pick('fly', 'off', '飞行：不显示'),
+        'sep' as const,
+        pick('side', 'auto', '联机首领：自动'),
+        pick('side', 'left', '联机首领：我在左侧'),
+        pick('side', 'right', '联机首领：我在右侧'),
+        'sep' as const,
+        { label: '更多设置…', icon: 'settings' as const, run: () => (app.settingsOpen = true) },
+      ],
+    }
+  }
   const strategy = $derived(app.catalog.strategies.find((s) => s.id === m.strategyId))
   // 策略识别不了（v0.7.0），用户自己选：资金预测和学习要看策略
   let pickingSt = $state(false)
@@ -339,6 +379,13 @@
       {#snippet icon()}
         <img src={asset.stage('img_title_icon_enemy')} alt="" class="ti" />
       {/snippet}
+      {#snippet right()}
+        <!-- 敌人路线：左键开关，右键改显示方式等（和设置「敌人路线」是同一组设置）。按钮要直接放在标题栏里，才能盖过折叠点击层 -->
+        <button class="rbtn" class:on={app.settings.routes.enabled} onclick={() => toggleRoutes(!app.settings.routes.enabled)}
+          oncontextmenu={(e) => openMenu(e, routeMenu())} title="在游戏棋盘上画本回合敌人会走的路线。左键开关，右键改显示方式">
+          <i></i>路线{app.settings.routes.enabled ? '开' : '关'}
+        </button>
+      {/snippet}
     </SectionHeader>
     {#if open('enemy')}
     <div class="enemy" transition:slide={sl}>
@@ -355,10 +402,31 @@
       {/if}
       {#each m.enemyTypes as code (code)}
         {@const t = app.catalog.enemyTypes.find((x) => x.code === code)!}
-        <div class="etype">
+        <!-- 点开看这种特训敌人前半段、后半段各可能是谁（一局里各随机出一种） -->
+        <button class="etype" class:open={openType === code} onclick={() => (openType = openType === code ? null : code)} aria-expanded={openType === code}>
           <span class="ei"><img src={asset.enemyType(code)} alt="" /></span>
-          <span>特训敌人 · {t.name}</span>
-        </div>
+          <span class="en">特训敌人 · {t.name}</span>
+          <span class="ex"><Icon name="arrowDown" size={14} /></span>
+        </button>
+        {#if openType === code}
+          <div class="variants" transition:slide={sl}>
+            {#each [{ label: '前半段', list: t.firstHalf }, { label: '后半段', list: t.secondHalf }] as half (half.label)}
+              {@const total = half.list.reduce((s, v) => s + v.weight, 0)}
+              <div class="vhalf">
+                <span class="vlabel">{half.label}<small>随机一种</small></span>
+                <div class="vgrid">
+                  {#each half.list as v (v.id)}
+                    <div class="vitem" title={v.name}>
+                      <span class="vimg"><img src={asset.enemy(v.id)} alt="" onerror={(e) => e.currentTarget.classList.add('miss')} /><b>{v.name.slice(0, 1)}</b></span>
+                      <span class="vname">{v.name}</span>
+                      <span class="vp">{Math.round((v.weight / total) * 100)}%</span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
       {/each}
     </div>
     {/if}
@@ -998,7 +1066,7 @@
     font-weight: 600;
     color: var(--fg-1);
   }
-  .etype > span:last-child {
+  .etype > .en {
     flex: 1;
     text-align: center;
     letter-spacing: 0.05em;
@@ -1013,6 +1081,133 @@
   .ei img {
     width: 22px;
     height: 22px;
+  }
+  /* 特训敌人一行可以点开 */
+  button.etype {
+    width: 100%;
+    padding: 0;
+    border-radius: 0;
+  }
+  button.etype:hover,
+  button.etype.open {
+    background: var(--bg-3);
+  }
+  .etype .ex {
+    width: 32px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    color: var(--fg-4);
+    transition: transform var(--t-mid) var(--ease-out);
+  }
+  .etype.open .ex {
+    transform: rotate(180deg);
+    color: var(--fg-2);
+  }
+  .variants {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 8px 10px;
+    background: var(--bg-1);
+    margin-bottom: 2px;
+  }
+  .vlabel {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--fg-2);
+    margin-bottom: 4px;
+  }
+  .vlabel small {
+    font-weight: 400;
+    color: var(--fg-4);
+  }
+  .vgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 4px;
+  }
+  .vitem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px 3px 3px;
+    background: var(--bg-2);
+    min-width: 0;
+  }
+  .vimg {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    background: rgb(var(--hl-rgb) / 0.05);
+  }
+  .vimg img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+  }
+  .vimg img:global(.miss) {
+    display: none;
+  }
+  /* 图标还没到时显示名字的第一个字 */
+  .vimg b {
+    position: absolute;
+    font-size: var(--fs-sm);
+    color: var(--fg-4);
+  }
+  .vname {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--fs-sm);
+    line-height: 1.25;
+    color: var(--fg-1);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .vp {
+    flex: none;
+    font-size: var(--fs-2xs);
+    color: var(--fg-4);
+    font-variant-numeric: tabular-nums;
+  }
+  /* 敌方情报标题右侧的「路线」按钮：亮着 = 开 */
+  .rbtn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 6px;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .rbtn i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--fg-4);
+  }
+  .rbtn.on {
+    color: var(--mint);
+  }
+  .rbtn.on i {
+    background: var(--mint);
+    box-shadow: 0 0 6px rgb(var(--mint-rgb) / 0.8);
+  }
+  .rbtn:hover {
+    color: var(--fg-1);
+  }
+  .rbtn.on:hover {
+    color: var(--mint-hi);
   }
   .recs {
     display: flex;

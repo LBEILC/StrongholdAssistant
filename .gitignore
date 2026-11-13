@@ -11,3 +11,4 @@ dist/
 out/
 .dev.vars
 .wrangler/
+src/ui/dev/samples/

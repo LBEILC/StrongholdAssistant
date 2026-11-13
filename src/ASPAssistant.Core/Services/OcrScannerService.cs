@@ -127,6 +127,11 @@ public class OcrScannerService : IDisposable
         _ = Task.Run(ProcessManualScansAsync);
     }
 
+    // 宿主按覆盖层需求启用；复用这一轮截图与资金识别的休整期/回合读数。
+    public Func<bool> BoardRoutesRequested { get; set; } = () => false;
+    public event Action<byte[]?, EconomyReading?>? BoardFrameReady;
+    public bool BoardShopVisible => _shopReader.HasVisibleCards;
+
     public void Start() => _scanTimer.Start();
 
     // 2026-11-11：StrongholdAssistant 录入及关闭前等待检测释放 OCR。
@@ -145,6 +150,7 @@ public class OcrScannerService : IDisposable
         _pauseBanScreenDetection = paused;
         if (paused)
         {
+            BoardFrameReady?.Invoke(null, null);
             // Freeze state transitions while overlays cover the game window.
             // Keep _banScreenActive as-is, but clear accumulated edge counters
             // to avoid immediate false lost/detected transitions after resume.
@@ -179,6 +185,7 @@ public class OcrScannerService : IDisposable
             double captureMs = clock.Elapsed.TotalMilliseconds - fingerprintMs;
             if (screenshot == null)
             {
+                BoardFrameReady?.Invoke(null, null);
                 InvalidateShop();
                 _informationState.Suspend();
                 PublishShopItems([], false, capturedAt);
@@ -245,7 +252,8 @@ public class OcrScannerService : IDisposable
 
         // 静止画面不读资金；画面变化但资金稳定时隔轮读。刷新和名称变化立即恢复。
         bool economyChanged = _economyContext is null || !_economyContext.AsSpan().SequenceEqual(fingerprint.Context);
-        if (EconomyRead is not null && (changed || economyChanged))
+        EconomyReading? boardEconomy = _lastEconomy;
+        if ((EconomyRead is not null || BoardRoutesRequested()) && (changed || economyChanged))
         {
             if (!_skipEconomy || changed)
             {
@@ -253,12 +261,18 @@ public class OcrScannerService : IDisposable
                 var reading = await new EconomyReader(_ocrEngine, theme).ReadAsync(screenshot, width, height);
                 _economyStable = reading == _lastEconomy;
                 _lastEconomy = reading;
+                boardEconomy = reading;
                 _economyContext = fingerprint.Context;
-                EconomyRead.Invoke(reading);
+                EconomyRead?.Invoke(reading);
                 economyMs = clock.Elapsed.TotalMilliseconds;
                 _skipEconomy = _economyStable;
             }
-            else _skipEconomy = false;
+            else
+            {
+                _skipEconomy = false;
+                // 顶栏有变化但本轮资金 OCR 降频时，不用旧的休整期状态启动棋盘识别。
+                boardEconomy = null;
+            }
         }
         // 状态机尚未稳定、等待对局详情时继续确认；稳定的商店静帧不再做信息页 OCR。
         bool informationChanged = _informationContext is null || !_informationContext.AsSpan().SequenceEqual(fingerprint.Context);
@@ -271,6 +285,9 @@ public class OcrScannerService : IDisposable
             informationMs = clock.Elapsed.TotalMilliseconds;
         }
         if (_pauseBanScreenDetection || _banScreenActive) PublishShopItems([], false, capturedAt);
+        // 商店已先发布，棋盘识别不会推迟本轮商店结果。
+        if (BoardRoutesRequested())
+            BoardFrameReady?.Invoke(_pauseBanScreenDetection || _banScreenActive ? null : screenshot, boardEconomy);
         double total = captureMs + fingerprintMs + (shopMs ?? 0) + publishMs + (economyMs ?? 0) + (informationMs ?? 0);
         // 有卡片时至多每两秒一行；慢轮（超过 800 ms）始终记录。
         if (total >= 800 || _shopReader.HasVisibleCards && Environment.TickCount64 - _lastTimingLog >= 2000)

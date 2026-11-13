@@ -6,6 +6,8 @@
 
 ## 界面素材
 
+`data/garrison_routes.json` 的敌人路线由 `scripts/generate-garrison-routes.mjs` 从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 国服 `gamedata/levels/activities/act3autochess/` 的关卡文件和 `activity_table.json`（`act3autochess/V3_1`）生成（2026-11-13）；游戏数据归上海鹰角网络所有。`data/garrison_board_refs.json` 的棋盘镜头和各地图颜色样本改编自 [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) dev 分支（Apache-2.0），样本取自游戏画面。测试用的 4 张棋盘截图 `src/StrongholdAssistant.Tests/TestData/board-*.bmp` 同样来自该项目，画面归上海鹰角网络所有。
+
 | 位置 | 内容 | 来源 |
 |---|---|---|
 | `src/ui/public/assets/game/bond/` | 盟约图标（文件名为游戏盟约 id 去掉 `Ship`） | [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) `cn` 分支，commit `774d93398fc56df29b4f55e406edda1a9df451e9`，`assets/dyn/ui/autochess/[uc]autochesscommon/arts/bondicon/` |
@@ -42,7 +44,7 @@
 | `src/ui/public/assets/data/operators/` | 干员头像（缩放并转为 webp） | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/icons/`（取自 PRTS） |
 | `data/operator_avatars/*.png` | 头像识别模板（默认头像），141 张 128×128 PNG；与界面头像同源 | 同上 `data/icons/operators/`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
 | `data/operator_avatars/<干员名>/` | 头像识别模板（默认、精二、各皮肤头像），463 张 128×128 PNG，由 `scripts/generate-avatar-templates.ps1` 生成 | [yuanyan3060/ArknightsGameResource](https://github.com/yuanyan3060/ArknightsGameResource) `avatar/`，commit `62fe51e`，由原始 PNG 缩放；游戏美术归上海鹰角网络所有 |
-| `src/ui/public/assets/data/equipment/`、`bosses/`、`enemy_types/`、`strategies/` | 装备、首领、敌人类型、策略图标（缩放并转为 webp） | 同上（取自 PRTS、SPDatabase） |
+| `src/ui/public/assets/data/equipment/`、`bosses/`、`enemy_types/`、`enemies/`、`strategies/` | 装备、首领、敌人类型、特训敌人候选（`enemies/`，由 `scripts/convert-enemy-icons.gd` 转换）、策略图标（缩放并转为 webp） | 同上（取自 PRTS、SPDatabase） |
 | `data/*.json` | 宿主读取的当期数据（干员、盟约、装备、首领、敌人类型、策略等）；`covenant_ids.json` 是盟约中文名到盟约 id 的对照 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/`（取自 PRTS、SPDatabase）；盟约 id 取自 [PRTS](https://prts.wiki) 的 `activity_table.json` |
 | `data/model/ocr/` | 文字识别模型（`det.onnx`、`rec.onnx`、`keys.txt`），由 MaaFramework 加载 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `data/model/ocr/`，为 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 模型（Apache-2.0） |
 | `src/StrongholdAssistant.Tests/TestData/*.png` | 测试用的游戏截图（开局信息页、商店、局内画面），只用于测试，不进发布包 | [bingyunhe/asp-assistant-arknights](https://github.com/bingyunhe/asp-assistant-arknights) `src/ASPAssistant.Tests/TestData/`；画面内容归上海鹰角网络所有 |

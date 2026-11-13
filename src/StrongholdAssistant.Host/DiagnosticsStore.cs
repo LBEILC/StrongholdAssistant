@@ -19,11 +19,7 @@ public sealed class DiagnosticsStore(string directory)
             using var stream = new MemoryStream(screenshot);
             using var image = new Bitmap(stream);
             width = image.Width; height = image.Height;
-            double ratio = Math.Min(1, 1920.0 / Math.Max(image.Width, image.Height));
-            using var small = new Bitmap(image, Math.Max(1, (int)(image.Width * ratio)), Math.Max(1, (int)(image.Height * ratio)));
-            using var encoded = new MemoryStream();
-            small.Save(encoded, ImageFormat.Png);
-            png = encoded.ToArray();
+            png = DiagnosticPng(image);
         }
         var details = $"画面: {width?.ToString() ?? "未知"}×{height?.ToString() ?? "未知"}; 来源: {source ?? "未连接"}; UI 缩放: {scale?.ToString("F3") ?? "未测得"}\n步骤: {reason}\n{string.Join('\n', steps)}";
         var message = Redact(reason + "\n" + details);
@@ -45,12 +41,19 @@ public sealed class DiagnosticsStore(string directory)
         return message;
     }
 
-    public void Export(string path, SettingsDto settings, Connection connection, object system)
+    public void Export(string path, SettingsDto settings, Connection connection, object system, byte[]? boardFrame = null)
     {
         lock (_gate)
         {
             using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
             using var zip = new ZipArchive(fileStream, ZipArchiveMode.Create);
+            if (boardFrame is not null)
+            {
+                using var input = new MemoryStream(boardFrame);
+                using var image = new Bitmap(input);
+                using var output = zip.CreateEntry("diagnostics/board-latest.png").Open();
+                output.Write(DiagnosticPng(image));
+            }
             foreach (var folder in new[] { "logs", "diagnostics" })
             {
                 var root = Path.Combine(directory, folder);
@@ -77,7 +80,7 @@ public sealed class DiagnosticsStore(string directory)
             var all = JsonSerializer.SerializeToNode(settings, HostApi.JsonOptions)!.AsObject();
             // 白名单避免将未来增加的云端或账号字段带入诊断包。
             string[] allowed = ["gameTheme", "uiSkin", "shopMarkers", "shopScanSpeed", "autoCheckUpdate", "updateSource", "updateProxy", "uiScale", "alwaysOnTop", "gameSource",
-                "followGame", "dockSide", "overlaySide", "toggleHotkey", "refreshKey", "startupMode", "collapseMode", "focusCovenants", "focusOperators"];
+                "followGame", "dockSide", "overlaySide", "toggleHotkey", "refreshKey", "startupMode", "collapseMode", "focusCovenants", "focusOperators", "routes"];
             var safe = new JsonObject();
             foreach (var key in allowed) safe[key] = all[key]?.DeepClone();
             safe["updateProxy"] = settings.UpdateProxy == "" ? "system" : new Uri(settings.UpdateProxy).Scheme;
@@ -89,6 +92,15 @@ public sealed class DiagnosticsStore(string directory)
                 safeSystem[key] = systemFields[key]?.DeepClone();
             WriteJson(zip, "system.json", safeSystem);
         }
+    }
+
+    private static byte[] DiagnosticPng(Bitmap image)
+    {
+        double ratio = Math.Min(1, 1920.0 / Math.Max(image.Width, image.Height));
+        using var small = new Bitmap(image, Math.Max(1, (int)(image.Width * ratio)), Math.Max(1, (int)(image.Height * ratio)));
+        using var encoded = new MemoryStream();
+        small.Save(encoded, ImageFormat.Png);
+        return encoded.ToArray();
     }
 
     private static void WriteJson(ZipArchive zip, string name, object value)

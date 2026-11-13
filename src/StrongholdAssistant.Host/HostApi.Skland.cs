@@ -199,6 +199,7 @@ public sealed partial class HostApi
 
     public async Task<SklandGuide> SklandGuideAsync(string url)
     {
+        if (_sklandLoginActive) throw new SklandException("森空岛窗口已经开着");
         url = SklandParser.NormalizeGuideUrl(url);
         _cancelSklandGuide?.Invoke();
         var completion = new TaskCompletionSource<SklandGuide>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -275,6 +276,7 @@ public sealed partial class HostApi
 
     public Task<SklandRecord[]?> SklandHistoryAsync(bool silent = false)
     {
+        if (_sklandLoginActive) throw new SklandException("森空岛窗口已经开着");
         if (silent) return _silentSklandHistory ??= ReadSilentSklandHistoryAsync();
         if (_sklandHistoryWindow is not null)
         {

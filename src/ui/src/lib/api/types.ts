@@ -99,6 +99,18 @@ export interface BossHp {
 export interface EnemyType {
   code: string
   name: string
+  /**
+   * 这种特训敌人在前半段、后半段可能是哪一种（v0.9.0），一局里各随机出一种，weight 是权重（同一段里按权重算出现概率）。
+   * 来自 data/enemy_types.json 的 firstHalfVariants / secondHalfVariants
+   */
+  firstHalf: EnemyVariant[]
+  secondHalf: EnemyVariant[]
+}
+
+export interface EnemyVariant {
+  id: string // 敌人 id，如 enemy_1041_lazerd；图标 asset.enemy(id)
+  name: string
+  weight: number
 }
 
 export interface Strategy {
@@ -403,6 +415,23 @@ export interface Lineup {
   updatedAt: string // ISO 时间
 }
 
+/** 敌人路线覆盖的设置（v0.9.0），宿主改了马上生效 */
+export interface RouteOverlaySettings {
+  enabled: boolean // 总开关，默认 false
+  /** 'always' 休整期一直显示（按快捷键临时隐藏 / 再显示）；'hold' 按住快捷键时显示；'peek' 新回合先显示 peekSeconds 秒再淡出，之后按住快捷键还能看。默认 'always' */
+  display: 'always' | 'hold' | 'peek'
+  peekSeconds: number // 3～15，默认 6
+  /** 快捷键，单个键，写法同 refreshKey（如 'Alt'、'Tab'、'R'）。宿主只看不拦，默认 'Alt' */
+  hotkey: string
+  /** 路线多的时候：'cycle' 依次循环，一次突出一条（默认）；'all' 全部一起显示 */
+  overlap: 'cycle' | 'all'
+  cycleSeconds: number // 每条停留秒数，1～5，默认 2.2
+  /** 飞行路线：'main' 只显示敌人最多的一条（默认）；'all' 全部（重合的合并）；'off' 不显示 */
+  fly: 'main' | 'all' | 'off'
+  /** 联机首领回合自己在哪一侧：'auto' 自动识别（认不出时两边都画，默认）；'left' / 'right' 手动指定 */
+  side: 'auto' | 'left' | 'right'
+}
+
 /** 游戏内正在使用的卫戍协议主题：三套主题商店名称栏的位置不同，商店识别要按主题来 */
 export type GameTheme = 'terminal' | 'ursus' | 'closure' // 卫戍协议终端 / 乌萨斯齐心团 / 「全能的」可露希尔
 
@@ -421,6 +450,8 @@ export interface Settings {
    * 多占一些 CPU）。宿主按这个调识别节奏，改了马上生效
    */
   shopScanSpeed: 'normal' | 'fast'
+  /** 敌人路线覆盖（v0.9.0）：在游戏棋盘上画本回合敌人会走的路线。本局页「敌方情报」里的快速开关就是 routes.enabled */
+  routes: RouteOverlaySettings
   autoCheckUpdate: boolean // 启动时检查新版本
   /**
    * 更新源（v0.7.2，默认 'github'）。mirrorchyan：检查走 Mirror酱；填了有效 CDK 时从 Mirror酱 下载，
@@ -768,6 +799,12 @@ export interface Api {
    * 森空岛窗口开着就先关掉（正在等的 sklandHistory 返回 null）。下次读历史战绩时会弹窗重新登录
    */
   sklandLogout(): Promise<void>
+  /**
+   * 登录森空岛（v0.9.0，设置「森空岛账号」里的「登录」）：已经登录就直接返回角色（顺便刷新记下的昵称），不弹窗；
+   * 没登录时弹出看得见的森空岛小窗口（和 sklandGuide / sklandHistory 共用登录状态），用户在里面登录，
+   * 宿主认出已登录、读到角色后关窗返回 { nickname } 并记下。用户关掉窗口返回 null。不读攻略、不读历史战绩
+   */
+  sklandLogin(): Promise<{ nickname: string } | null>
   /**
    * 改收起 / 展开快捷键（v0.7.0）：先注册新组合，成功才保存进 Settings.toggleHotkey 并注销旧的；'' 为关闭。
    * 被占用或写法不对时 reject，message 给用户看（如「这个组合被别的软件占用了，换一个试试。」），旧的照旧生效

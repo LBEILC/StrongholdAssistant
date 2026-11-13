@@ -103,7 +103,7 @@ public partial class MainWindow : Window
             var request = JsonSerializer.Deserialize<BridgeRequest>(e.WebMessageAsJson, HostApi.JsonOptions)!;
             id = request.Id;
             // 重扫由识别锁判忙；登录复用窗口结果，不占用存储请求锁。
-            if (request.Method is not ("rescan" or "scanContinuous" or "plazaLogin" or "sklandGuide" or "sklandHistory"))
+            if (request.Method is not ("rescan" or "scanContinuous" or "plazaLogin" or "sklandGuide" or "sklandHistory" or "sklandLogin"))
             {
                 await _requests.WaitAsync();
                 locked = true;

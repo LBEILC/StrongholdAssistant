@@ -37,6 +37,9 @@
     app.settings[k] = v
     app.saveSettings()
   }
+  // 敌人路线（v0.9.0）：一组设置整体存
+  const rt = $derived(app.settings.routes)
+  const setRoutes = (patch: Partial<typeof app.settings.routes>) => set('routes', { ...app.settings.routes, ...patch })
   const u = $derived(app.update)
 
   // Mirror酱：新 CDK 第一个带它检查的 app 拿分成，所以填完（失焦或回车）立刻检查一次，顺便校验 CDK、显示到期日
@@ -116,12 +119,27 @@
     api.windowCommand('redock')
   }
 
-  // 森空岛账号（v0.8.0）：宿主记下的上次读到的角色；换账号就退出登录，下次导入时重新登录
+  // 森空岛账号（v0.8.0）：宿主记下的上次读到的角色；换账号就退出登录。v0.9.0 加「登录」入口，不用先去导入
   let skland = $state<{ nickname: string } | null>(null)
+  let sklandBusy = $state(false)
+  const sklandLogin = async () => {
+    sklandBusy = true
+    try {
+      const a = await api.sklandLogin()
+      if (a) {
+        skland = a
+        app.showToast(`已登录森空岛：${a.nickname}`)
+      }
+    } catch (e) {
+      app.showToast((e as Error).message, true)
+    } finally {
+      sklandBusy = false
+    }
+  }
   const sklandLogout = async () => {
     await api.sklandLogout()
     skland = null
-    app.showToast('已退出森空岛登录，下次导入时在弹出的窗口里登录')
+    app.showToast('已退出森空岛登录')
   }
   $effect(() => {
     if (app.settingsOpen) {
@@ -137,7 +155,7 @@
 
   // 按键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）。
   // v0.7.2 起允许单键：单键只在游戏或助手在前台时生效、不拦截按键（宿主实现）
-  let recording = $state<'toggle' | 'refresh' | null>(null)
+  let recording = $state<'toggle' | 'refresh' | 'route' | null>(null)
   let hkMsg = $state('')
   const keyName = (e: KeyboardEvent) =>
     e.key === ' ' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
@@ -146,6 +164,11 @@
     e.preventDefault()
     e.stopPropagation()
     if (e.key === 'Escape') return void (recording = null)
+    // 路线快捷键是单个键（按住显示），Alt、Ctrl、Shift 单独按也算
+    if (recording === 'route') {
+      recording = null
+      return setRoutes({ hotkey: e.key === 'Control' ? 'Ctrl' : e.key === 'Meta' ? 'Win' : keyName(e) })
+    }
     if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return
     const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
     const combo = [...mods, keyName(e)].join('+')
@@ -309,6 +332,74 @@
       <p class="note">{app.settings.shopScanSpeed === 'fast' ? '识别得更勤，换商店后标记跟得更快，会多占一些 CPU；电脑吃力时换回标准。' : '占用低，换商店后标记稍慢一点跟上。'}</p>
     </section>
 
+    <!-- 敌人路线（v0.9.0）：休整期在棋盘上画本回合路线；本局页「敌方情报」里的快速开关就是这里的总开关 -->
+    <section>
+      <label class="row">
+        <span class="lbl"><b>敌人路线</b><small>休整期在游戏棋盘上画本回合敌人会走的路线；本局页「敌方情报」也能快速开关</small></span>
+        <input type="checkbox" class="sw" checked={rt.enabled} onchange={(e) => setRoutes({ enabled: e.currentTarget.checked })} />
+      </label>
+      <div class="hk">
+        <span class="hkl">显示方式</span>
+        <div class="scales three grow">
+          <button class:on={rt.display === 'always'} onclick={() => setRoutes({ display: 'always' })}>一直显示</button>
+          <button class:on={rt.display === 'hold'} onclick={() => setRoutes({ display: 'hold' })}>按住才显示</button>
+          <button class:on={rt.display === 'peek'} onclick={() => setRoutes({ display: 'peek' })}>新回合先看</button>
+        </div>
+      </div>
+      {#if rt.display === 'peek'}
+        <div class="hk">
+          <span class="hkl">先显示</span>
+          <input class="rng" type="range" min="3" max="15" step="1" value={rt.peekSeconds} oninput={(e) => setRoutes({ peekSeconds: +e.currentTarget.value })} />
+          <span class="rngv">{rt.peekSeconds} 秒</span>
+        </div>
+      {/if}
+      <div class="hk">
+        <span class="hkl">快捷键</span>
+        <button class="hkb" class:rec={recording === 'route'} onclick={() => ((recording = recording === 'route' ? null : 'route'), (hkMsg = ''))} onkeydown={recordKey}>
+          {recording === 'route' ? '按下想用的键…' : rt.hotkey}
+        </button>
+      </div>
+      <p class="note">
+        {rt.display === 'always'
+          ? `休整期一直显示，进入战斗、离开棋盘时自动隐藏；按 ${rt.hotkey} 临时隐藏，再按一次显示。`
+          : rt.display === 'hold'
+          ? `平时不显示，按住 ${rt.hotkey} 时显示，松开就隐藏。`
+          : `每个新回合进休整期时显示 ${rt.peekSeconds} 秒再淡出，之后按住 ${rt.hotkey} 还能再看。`}
+        按键照样会传给游戏，别选游戏里有用的键。
+      </p>
+      <div class="hk">
+        <span class="hkl">路线多时</span>
+        <div class="scales two grow">
+          <button class:on={rt.overlap === 'cycle'} onclick={() => setRoutes({ overlap: 'cycle' })}>依次循环</button>
+          <button class:on={rt.overlap === 'all'} onclick={() => setRoutes({ overlap: 'all' })}>全部一起</button>
+        </div>
+      </div>
+      {#if rt.overlap === 'cycle'}
+        <div class="hk">
+          <span class="hkl">每条停留</span>
+          <input class="rng" type="range" min="1" max="5" step="0.1" value={rt.cycleSeconds} oninput={(e) => setRoutes({ cycleSeconds: +e.currentTarget.value })} />
+          <span class="rngv">{rt.cycleSeconds.toFixed(1)} 秒</span>
+        </div>
+      {/if}
+      <div class="hk">
+        <span class="hkl">飞行路线</span>
+        <div class="scales three grow">
+          <button class:on={rt.fly === 'main'} onclick={() => setRoutes({ fly: 'main' })}>最多的一条</button>
+          <button class:on={rt.fly === 'all'} onclick={() => setRoutes({ fly: 'all' })}>全部</button>
+          <button class:on={rt.fly === 'off'} onclick={() => setRoutes({ fly: 'off' })}>不显示</button>
+        </div>
+      </div>
+      <div class="hk">
+        <span class="hkl">联机首领</span>
+        <div class="scales three grow">
+          <button class:on={rt.side === 'auto'} onclick={() => setRoutes({ side: 'auto' })}>自动</button>
+          <button class:on={rt.side === 'left'} onclick={() => setRoutes({ side: 'left' })}>我在左侧</button>
+          <button class:on={rt.side === 'right'} onclick={() => setRoutes({ side: 'right' })}>我在右侧</button>
+        </div>
+      </div>
+      <p class="note">联机的首领回合，会移动的首领左右各一只、路线不一样，只画你这一侧；自动认不出时两边都画。</p>
+    </section>
+
     <section>
       <label class="row">
         <span class="lbl"
@@ -435,8 +526,14 @@
 
     <section>
       <h4>森空岛账号 <small>导入森空岛攻略和历史战绩时用</small></h4>
-      <p class="acct"><span>{#if skland}已登录：<b>{skland.nickname}</b>{:else}还没读到登录的账号。{/if}</span>
-        <button class="link" onclick={sklandLogout}>退出登录</button>
+      <p class="acct">
+        {#if skland}
+          <span>已登录：<b>{skland.nickname}</b></span>
+          <button class="link" onclick={sklandLogout}>退出登录</button>
+        {:else}
+          <span>{sklandBusy ? '在弹出的森空岛窗口里登录，登录好会自动关掉。' : '还没登录森空岛。'}</span>
+          <button class="link" disabled={sklandBusy} onclick={sklandLogin}>{sklandBusy ? '登录中…' : '登录'}</button>
+        {/if}
       </p>
     </section>
 
@@ -1097,6 +1194,19 @@
   }
   .hkl {
     font-size: var(--fs-md);
+  }
+  .rng {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--mint);
+  }
+  .rngv {
+    flex: none;
+    min-width: 44px;
+    text-align: right;
+    font-size: var(--fs-base);
+    color: var(--fg-2);
+    font-variant-numeric: tabular-nums;
   }
   .hkb {
     min-width: 92px;

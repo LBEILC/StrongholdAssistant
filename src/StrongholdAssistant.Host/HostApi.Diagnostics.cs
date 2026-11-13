@@ -30,7 +30,8 @@ public sealed partial class HostApi
         };
         if (dialog.ShowDialog(DialogOwner) != true) return null;
         var system = ReadDiagnosticSystem();
-        await Task.Run(() => _diagnostics.Export(dialog.FileName, Settings, Connection, system));
+        var boardFrame = GetDiagnosticBoardFrame();
+        await Task.Run(() => _diagnostics.Export(dialog.FileName, Settings, Connection, system, boardFrame));
         return dialog.FileName;
     }
 

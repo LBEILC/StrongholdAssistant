@@ -23,6 +23,15 @@ https://github.com/bingyunhe/asp-assistant-arknights/pull/5
 That pull request is distributed under the Apache License, Version 2.0;
 the adapted files carry modification notices in their source headers.
 
+Garrison Protocol board recognition and projection (colour sampling, distance
+capping and trimmed mean in BoardRecognizer, the board camera corners and the
+per-map colour references in data/garrison_board_refs.json) are adapted from the
+dev branch of ASP Assistant · Arknights (commit e4bee0d and later):
+https://github.com/bingyunhe/asp-assistant-arknights
+That code and data are distributed under the Apache License, Version 2.0; the
+adapted files carry modification notices in their source headers. Enemy routes
+are generated from game level data and do not use that project's hand-made routes.
+
 Game art, data, character names and fonts retain the rights and attribution
 of their respective owners; see ASSETS.md. The software license does not
 relicense these assets. This project is not affiliated with or endorsed by

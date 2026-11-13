@@ -60,8 +60,16 @@ public sealed partial class HostApi
     {
         if (Connection == connection) return;
         Connection = connection;
+        if (connection.State != "connected") ObserveBoardFrame(null, null);
         if (connection.State != "connected")
-            lock (_historyGate) { _observedRound = null; _openingObserved = false; _canReadStart = false; }
+            lock (_historyGate)
+            {
+                _observedRound = null;
+                _pendingEconomyRound = null;
+                _pendingStartMoney = null;
+                _openingObserved = false;
+                _canReadStart = false;
+            }
         Changed?.Invoke("connection", connection);
     }
 
@@ -170,8 +178,10 @@ public sealed partial class HostApi
         bool enemyChanged = (next.BossId is not null && next.BossId != Match.BossId)
             || (next.EnemyTypes.Length > 0 && Match.EnemyTypes.Length > 0
                 && !next.EnemyTypes.ToHashSet().SetEquals(Match.EnemyTypes));
-        bool covenantsChanged = next.Covenants.Length > 0 && Match.Covenants.Length > 0
-            && !Match.Covenants.OrderBy(c => c.Id).SequenceEqual(next.Covenants.OrderBy(c => c.Id));
+        var currentCovenants = Match.Covenants.ToDictionary(c => c.Id);
+        // 滚动只会减少可见盟约；仅新增盟约或已读状态变化才参与换局判断。
+        bool covenantsChanged = currentCovenants.Count > 0 && next.Covenants.Any(c =>
+            !currentCovenants.TryGetValue(c.Id, out var current) || current.Incomplete != c.Incomplete);
         bool newMatch = opening || enemyChanged || covenantsChanged;
         var previous = newMatch ? new HashSet<string>() : Match.BannedOperators.ToHashSet();
         if (newMatch)
@@ -185,7 +195,8 @@ public sealed partial class HostApi
         else MergeBanGroups(grid);
         Match = next with
         {
-            Covenants = next.Covenants.Length > 0 ? next.Covenants : newMatch ? [] : Match.Covenants,
+            Covenants = newMatch ? next.Covenants : Match.Covenants.Concat(next.Covenants)
+                .GroupBy(c => c.Id).Select(g => g.Last()).ToArray(),
             BossId = next.BossId ?? (newMatch ? null : Match.BossId),
             EnemyTypes = next.EnemyTypes.Length > 0 ? next.EnemyTypes : newMatch ? [] : Match.EnemyTypes,
             StrategyId = newMatch ? null : Match.StrategyId,

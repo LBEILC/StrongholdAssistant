@@ -191,6 +191,7 @@ let settings: Settings = {
   uiSkin: 'follow',
   shopMarkers: true,
   shopScanSpeed: 'normal',
+  routes: { enabled: false, display: 'always', peekSeconds: 6, hotkey: 'Alt', overlap: 'cycle', cycleSeconds: 2.2, fly: 'main', side: 'auto' },
   autoCheckUpdate: true,
   updateSource: 'github',
   mirrorChyanCdk: '',
@@ -525,6 +526,12 @@ export const mockApi: Api = {
     return nickname ? { nickname } : null
   },
   sklandLogout: async () => localStorage.removeItem('mockSklandAccount'),
+  // 假数据：等一会儿当作在弹出的窗口里登录好了
+  sklandLogin: async () => {
+    await new Promise((r) => setTimeout(r, 1200))
+    localStorage.setItem('mockSklandAccount', '博士#1234')
+    return { nickname: '博士#1234' }
+  },
   onUpdate: (cb) => {
     updateListeners.add(cb)
     return () => updateListeners.delete(cb)

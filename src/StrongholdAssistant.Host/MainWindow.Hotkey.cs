@@ -9,6 +9,7 @@ public partial class MainWindow
     private Hotkey? _hotkey;
     private KeyboardHook? _keyboardHook;
     private readonly KeyboardRouter _keyboardRouter = new();
+    private readonly RouteHotkeyRouter _routeHotkeyRouter = new();
     private Hotkey? _refreshKey;
 
     private void InitializeHotkey()
@@ -18,11 +19,16 @@ public partial class MainWindow
         var hwnd = new WindowInteropHelper(this).Handle;
         _keyboardHook = new KeyboardHook((key, down, modifiers, foreground) =>
         {
-            var actions = _keyboardRouter.Observe(key, down, modifiers, foreground,
-                _tracker.CurrentGameWindowHandle, hwnd, _hotkey, _refreshKey);
-            if (actions.Toggle || actions.Refresh) Dispatcher.BeginInvoke(() =>
+            var game = _tracker.CurrentGameWindowHandle;
+            // 钩子线程只投递，不等待 UI、日志文件或识别锁。
+            Dispatcher.BeginInvoke(() =>
             {
                 if (_closing) return;
+                var actions = _keyboardRouter.Observe(key, down, modifiers, foreground,
+                    game, hwnd, _hotkey, _refreshKey);
+                var routeDown = _routeHotkeyRouter.Observe(key, down, foreground,
+                    game, hwnd, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value);
+                if (routeDown is { } pressed) _api.PublishRouteHotkey(pressed);
                 if (actions.Refresh)
                 {
                     _scanner?.RefreshShop();

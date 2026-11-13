@@ -11723,39 +11723,540 @@
  "enemyTypes": [
   {
    "code": "SPECIAL",
-   "name": "特异"
+   "name": "特异",
+   "firstHalf": [
+    {
+     "id": "enemy_1010_demon_2",
+     "name": "萨卡兹大剑组长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1045_hammer",
+     "name": "粉碎攻坚手",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1118_lidbox_2",
+     "name": "拳师囚犯",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1325_cbgpro_2",
+     "name": "高级军用猎狗",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1121_lifbos",
+     "name": "重犯",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1328_cbjedi",
+     "name": "弧光锋卫",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1006_shield_3",
+     "name": "重装五十夫长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1329_cbshld",
+     "name": "弧光镜卫",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1045_hammer_2",
+     "name": "粉碎攻坚组长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1387_winshd",
+     "name": "访问团持盾者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1121_lifbos_2",
+     "name": "传奇重犯",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1320_wdrrl_2",
+     "name": "萨卡兹悖谬暴虐兵长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10124_uashld_2",
+     "name": "集团军中坚盾卫",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1254_lypa_2",
+     "name": "测试用动力装甲",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1425_lrcmra_2",
+     "name": "渎罪奇美拉",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1329_cbshld_2",
+     "name": "弧光镜卫长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1072_dlancer",
+     "name": "萨卡兹穿刺手",
+     "weight": 10
+    }
+   ]
   },
   {
    "code": "FLY",
-   "name": "飞行"
+   "name": "飞行",
+   "firstHalf": [
+    {
+     "id": "enemy_1041_lazerd",
+     "name": "法术大师A1",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1355_mrfly",
+     "name": "护障",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1017_defdrn",
+     "name": "御4",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10084_hlegle",
+     "name": "“萨科塔之眼”",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1407_hummbd",
+     "name": "远眺",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1355_mrfly_2",
+     "name": "护障·P",
+     "weight": 8
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1005_yokai_3",
+     "name": "威龙",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1112_emppnt",
+     "name": "帝国炮火先兆者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1041_lazerd_2",
+     "name": "法术大师A2",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9009_acfort",
+     "name": "假想敌：黑云",
+     "weight": 10
+    }
+   ]
   },
   {
    "code": "TIMES",
-   "name": "频次"
+   "name": "频次",
+   "firstHalf": [
+    {
+     "id": "enemy_1195_sfyin_2",
+     "name": "明鉴",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1288_duskls_2",
+     "name": "深池逐火精锐战士",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1197_sfshu",
+     "name": "俗心",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1197_sfshu_2",
+     "name": "雅气",
+     "weight": 8
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1292_duskld",
+     "name": "深池逐火护卫",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1207_sfji",
+     "name": "沉沙",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1199_sfjin",
+     "name": "身观",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9010_acpupp",
+     "name": "假想敌：再生",
+     "weight": 10
+    }
+   ]
   },
   {
    "code": "ELEMENT",
-   "name": "元素"
+   "name": "元素",
+   "firstHalf": [
+    {
+     "id": "enemy_1161_tidmag",
+     "name": "控潮术师",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1305_mhslim_2",
+     "name": "炽焰源石虫",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_2025_syufo",
+     "name": "掠海漂移体",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1161_tidmag_2",
+     "name": "领潮员",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1439_dslntf",
+     "name": "元核孽生者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1275_dwlock_2",
+     "name": "萨卡兹王庭军精锐术师",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9007_acelem",
+     "name": "假想敌：淤困",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10067_ftsjc",
+     "name": "灼藤",
+     "weight": 8
+    }
+   ]
   },
   {
    "code": "DOT",
-   "name": "持续"
+   "name": "持续",
+   "firstHalf": [
+    {
+     "id": "enemy_1234_dsubrl",
+     "name": "深溟巢涌者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1272_nhtank",
+     "name": "萨卡兹枯朽战车",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1270_nhstlk",
+     "name": "逐腐兽",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_9006_actoxi",
+     "name": "假想敌：蚀裂",
+     "weight": 15
+    },
+    {
+     "id": "enemy_1234_dsubrl_2",
+     "name": "富营养的巢涌者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10122_uacann_2",
+     "name": "集团军重型火炮",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1272_nhtank_2",
+     "name": "尖端萨卡兹枯朽战车",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1270_nhstlk_2",
+     "name": "疯狂的逐腐兽",
+     "weight": 8
+    }
+   ]
   },
   {
    "code": "INVISIBLE",
-   "name": "隐匿"
+   "name": "隐匿",
+   "firstHalf": [
+    {
+     "id": "enemy_1299_ymkilr",
+     "name": "山海众头目",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10034_cnvsax",
+     "name": "节日爵士乐手",
+     "weight": 10
+    },
+    {
+     "id": "enemy_10042_prtrop_2",
+     "name": "扶桥老手",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1389_winbab_2",
+     "name": "访问团强攻冠军",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1299_ymkilr_2",
+     "name": "山海众秘使",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1404_msnip",
+     "name": "重弩突袭者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9008_acbunn",
+     "name": "假想敌：骨刺",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9034_acblk",
+     "name": "假想敌：影役",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1283_sgkill",
+     "name": "家族灭迹人",
+     "weight": 8
+    }
+   ]
   },
   {
    "code": "REFLECTION",
-   "name": "折射"
+   "name": "折射",
+   "firstHalf": [
+    {
+     "id": "enemy_1174_duholy",
+     "name": "深池伙友卫队",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1168_dumage",
+     "name": "深池暗影术师",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1170_dushld",
+     "name": "深池重甲卫士",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1174_duholy_2",
+     "name": "深池伙友卫队精英",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1170_dushld_2",
+     "name": "深池重甲卫士队长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1172_dugago",
+     "name": "守墓石像",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9011_acrefr",
+     "name": "假想敌：镜膜",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9039_acrefm",
+     "name": "假想敌：镜眼",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1175_dushdo_2",
+     "name": "深池伙友影刃精英",
+     "weight": 8
+    }
+   ]
   },
   {
    "code": "CRITIC",
-   "name": "致命"
+   "name": "致命",
+   "firstHalf": [
+    {
+     "id": "enemy_1375_ltnclr",
+     "name": "残党乐团管乐家",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1388_wingnt",
+     "name": "“投石机”",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1191_krgrg",
+     "name": "冰原卫法者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1431_lrmzrd",
+     "name": "注能魂灵法骸",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1406_chghmr",
+     "name": "战线推进者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1375_ltnclr_2",
+     "name": "巫王乐团管乐家",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1388_wingnt_2",
+     "name": "“榴弹炮”",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1191_krgrg_2",
+     "name": "冰原御法者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1219_mtrbty",
+     "name": "寻路者信使",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1409_bdguad_2",
+     "name": "马特奥的近卫",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1431_lrmzrd_2",
+     "name": "粹影魂灵法骸",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9040_accrit",
+     "name": "假想敌：丛生",
+     "weight": 10
+    }
+   ]
   },
   {
    "code": "REBORN",
-   "name": "复苏"
+   "name": "复苏",
+   "firstHalf": [
+    {
+     "id": "enemy_1226_dklord",
+     "name": "萨卡兹子裔集恨者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1362_dfat",
+     "name": "萨卡兹子裔责罚者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1225_dkmage",
+     "name": "萨卡兹子裔链术师",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1437_dsfull",
+     "name": "蕴核饲育者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1133_harchn",
+     "name": "变异巨岩蛛",
+     "weight": 10
+    }
+   ],
+   "secondHalf": [
+    {
+     "id": "enemy_1226_dklord_2",
+     "name": "萨卡兹子裔集怒者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1362_dfat_2",
+     "name": "萨卡兹子裔惩戒者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1225_dkmage_2",
+     "name": "萨卡兹子裔链术师组长",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1437_dsfull_2",
+     "name": "异光体饲育者",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1104_lfkght_3",
+     "name": "“左手”泰特斯·白杨",
+     "weight": 10
+    },
+    {
+     "id": "enemy_1133_harchn_2",
+     "name": "变异巨岩蛛α",
+     "weight": 10
+    },
+    {
+     "id": "enemy_9030_acpara",
+     "name": "萨卡兹子裔寄生者",
+     "weight": 10
+    }
+   ]
   }
  ],
  "strategies": [

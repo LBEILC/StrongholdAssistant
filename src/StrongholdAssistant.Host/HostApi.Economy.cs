@@ -15,6 +15,8 @@ public sealed partial class HostApi
     private Dictionary<string, int> _baseMoney = [];
     private int? _observedRound;
     private int? _startMoney;
+    private int? _pendingEconomyRound;
+    private int? _pendingStartMoney;
     private bool _canReadStart;
     private bool _openingObserved;
 
@@ -50,7 +52,7 @@ public sealed partial class HostApi
     private string MoneyKey(int round) => $"{Match.Mode!.Id}|{Match.Solo}|{round}";
     private (int? Amount, string Basis) BaseMoneySource(int round)
     {
-        if (Match.Mode is null) return (null, "none");
+        if (Match.Mode is null || round is < 1 or > 15) return (null, "none");
         int? own = _baseMoney.TryGetValue(MoneyKey(round), out int amount) ? amount : null;
         int? shared = _sharedMoney.GetValueOrDefault(MoneyKey(round));
         return shared is not null && (own is null || shared < own) ? (shared, "shared")
@@ -107,10 +109,25 @@ public sealed partial class HostApi
 
     internal void ObserveEconomy(EconomyReading reading)
     {
-        if (!reading.IsRest || reading.Round is not > 0) return;
         lock (_historyGate)
         {
+            if (!reading.IsRest || reading.Round is not (>= 1 and <= 15))
+            {
+                _pendingEconomyRound = null;
+                _pendingStartMoney = null;
+                return;
+            }
             int round = reading.Round.Value;
+            if (_observedRound != round)
+            {
+                _pendingStartMoney = null;
+                if (_pendingEconomyRound != round)
+                {
+                    _pendingEconomyRound = round;
+                    return;
+                }
+            }
+            _pendingEconomyRound = null;
             if (round == 1 && _observedRound > 1)
             {
                 BeginHistory();
@@ -122,11 +139,16 @@ public sealed partial class HostApi
                 _startMoney = null;
                 _observedRound = round;
             }
-            if (_canReadStart && _startMoney is null && reading.Money is { } first)
+            // 确认换回合的这一帧作为资金的首次读数，再等一帧相同值。
+            if (_canReadStart && _startMoney is null)
             {
-                _startMoney = first;
-                _canReadStart = false;
-                _roundSamples[round] = first - IncomeAt(Match.Economy?.Incomes ?? [], round);
+                if (reading.Money is { } moneySample && _pendingStartMoney == moneySample)
+                {
+                    _startMoney = moneySample;
+                    _canReadStart = false;
+                    _roundSamples[round] = moneySample - IncomeAt(Match.Economy?.Incomes ?? [], round);
+                }
+                _pendingStartMoney = reading.Money;
             }
             string now = DateTimeOffset.UtcNow.ToString("O");
             UpdateHistoryRound(round, _startMoney, now);
@@ -174,6 +196,8 @@ public sealed partial class HostApi
     {
         _roundSamples.Clear();
         _observedRound = null;
+        _pendingEconomyRound = null;
+        _pendingStartMoney = null;
         _startMoney = null;
         _canReadStart = false;
         _openingObserved = false;

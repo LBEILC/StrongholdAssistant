@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>敌人路线覆盖 · 原型</title>
+<!-- 开发用原型：用实拍样图 + 假数据定路线覆盖层的样式、显示时机和方式。样图在 dev/samples/（不进 git）。
+     定稿后照这里的参数写进宿主的覆盖层绘制层。 -->
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 13px/1.5 "MiSans", system-ui, sans-serif; background: #17191c; color: #d8dde3; display: flex; height: 100vh; }
+  aside { width: 260px; flex: none; padding: 14px 16px; overflow: auto; background: #1f2226; border-right: 1px solid #2c3036; }
+  aside h1 { font-size: 15px; margin: 0 0 4px; }
+  aside p.sub { margin: 0 0 12px; color: #8a929c; font-size: 12px; }
+  fieldset { border: 0; margin: 0 0 14px; padding: 0; }
+  legend { font-weight: 600; color: #aeb6c0; margin-bottom: 6px; font-size: 12px; }
+  label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+  select, input[type=range] { width: 100%; }
+  select { background: #2a2e34; color: inherit; border: 1px solid #3a3f46; padding: 4px; border-radius: 4px; }
+  button { background: #2f343b; color: inherit; border: 1px solid #454b53; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .hint { color: #8a929c; font-size: 12px; margin-top: 4px; }
+  main { flex: 1; display: grid; place-items: center; padding: 16px; min-width: 0; }
+  #stage { position: relative; max-width: 100%; max-height: calc(100vh - 32px); }
+  svg { display: block; max-width: 100%; max-height: calc(100vh - 32px); }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #aeb6c0; }
+  .legend-row svg { flex: none; }
+  .settings { background: #262a30; border: 1px solid #343941; border-radius: 6px; padding: 10px 12px; }
+  .settings legend { padding: 0 4px; }
+  .sub-l { color: #8a929c; font-size: 12px; margin: 8px 0 2px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row input[type=range] { flex: 1; }
+  .key { font-family: ui-monospace, monospace; min-width: 64px; }
+  .key.rec { border-color: #ff5a4e; color: #ffb3ad; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>敌人路线覆盖</h1>
+  <p class="sub">原型 · 样图 + 假数据（路线形状只作示意）</p>
+
+  <fieldset>
+    <legend>样图</legend>
+    <select id="sample"></select>
+    <label style="margin-top:4px"><input type="checkbox" id="crop" /> 只看棋盘（放大）</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>回合（假数据）</legend>
+    <select id="scene"></select>
+  </fieldset>
+
+  <fieldset class="settings">
+    <legend>设置（产品里放进设置页「敌人路线」）</legend>
+    <div class="sub-l">显示方式</div>
+    <label><input type="radio" name="mode" value="always" checked /> 休整期一直显示</label>
+    <label><input type="radio" name="mode" value="hold" /> 按住快捷键时显示</label>
+    <label><input type="radio" name="mode" value="peek" /> 新回合先显示几秒</label>
+    <div id="secondsRow" class="row"><span>显示</span><input type="range" id="seconds" min="3" max="15" value="6" /><span id="secondsV"></span></div>
+    <div class="sub-l">快捷键</div>
+    <div class="row"><button id="hotkey" class="key"></button><span class="hint" id="hotkeyHint">点一下，再按想用的键</span></div>
+    <div class="sub-l">路线多的时候</div>
+    <label><input type="radio" name="overlap" value="all" checked /> 全部一起显示</label>
+    <label><input type="radio" name="overlap" value="cycle" /> 依次循环，一次突出一条</label>
+    <div id="cycleRow" class="row"><span>每条</span><input type="range" id="cycleMs" min="10" max="50" value="22" /><span id="cycleV"></span></div>
+    <div class="sub-l">飞行路线</div>
+    <select id="flyMode">
+      <option value="all">全部（重合的合并）</option>
+      <option value="main" selected>只显示最多的一条</option>
+      <option value="off">不显示</option>
+    </select>
+    <div class="sub-l">联机首领回合 · 我在</div>
+    <label><input type="radio" name="side" value="auto" checked /> 自动识别（认不出时两边都画）</label>
+    <label><input type="radio" name="side" value="left" /> 左侧</label>
+    <label><input type="radio" name="side" value="right" /> 右侧</label>
+    <div class="hint" id="modeHint"></div>
+    <button id="newRound" style="margin-top:8px">模拟进入新回合</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>样式</legend>
+    <label><input type="checkbox" id="width" checked /> 线宽按敌人数量</label>
+    <label><input type="checkbox" id="arrows" checked /> 方向箭头</label>
+    <label><input type="checkbox" id="flow" checked /> 流动（慢速）</label>
+    <label><input type="checkbox" id="tag" checked /> 回合标签</label>
+    <label style="margin-top:6px">不透明度 <span id="opv"></span></label>
+    <input type="range" id="opacity" min="30" max="100" value="85" />
+  </fieldset>
+
+  <fieldset>
+    <legend>图例</legend>
+    <div id="legend"></div>
+  </fieldset>
+</aside>
+<main><div id="stage"></div></main>
+
+<script>
+// ── 投影：棋盘格坐标（列 −2～9、行 0～4，屏幕上从上到下）→ 客户区 0..1。商店展开时的镜头，取自上游 dev。
+const CAMERA = [[[0, 0], [0.346875, 0.2222222]], [[6, 0], [0.6484375, 0.2222222]], [[0, 4], [0.32890625, 0.5388889]], [[6, 4], [0.6765625, 0.5388889]]]
+function homography(pts) {
+  const A = [], b = []
+  for (const [[c, r], [x, y]] of pts) {
+    A.push([c, r, 1, 0, 0, 0, -x * c, -x * r]); b.push(x)
+    A.push([0, 0, 0, c, r, 1, -y * c, -y * r]); b.push(y)
+  }
+  const n = 8, m = A.map((row, i) => [...row, b[i]])
+  for (let i = 0; i < n; i++) {
+    let p = i
+    for (let k = i + 1; k < n; k++) if (Math.abs(m[k][i]) > Math.abs(m[p][i])) p = k
+    ;[m[i], m[p]] = [m[p], m[i]]
+    for (let k = 0; k < n; k++) if (k !== i) { const f = m[k][i] / m[i][i]; for (let j = i; j <= n; j++) m[k][j] -= f * m[i][j] }
+  }
+  const h = m.map((row, i) => row[n] / row[i])
+  return (c, r) => { const w = h[6] * c + h[7] * r + 1; return [(h[0] * c + h[1] * r + h[2]) / w, (h[3] * c + h[4] * r + h[5]) / w] }
+}
+const project = homography(CAMERA)
+
+// ── 假数据。地面路线借上游手工录入的格子；飞行按关卡数据换算（路线 (r,c) → 格 (c−1, 3−r)）。
+const cells = list => list.map(([c, r]) => [c + 0.5, r + 0.5])
+const flyFrom = (spawnRow, cps) => [[7.5, 3.5 - spawnRow], ...cps.map(([r, c]) => [c - 1 + 0.5, 3 - r + 0.5]), [-0.5, 3.5]]
+const MAPS = {
+  crates: {
+    name: '沙漠（中央木箱）',
+    top: cells([[7, 0], [6, 0], [5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [-1, 3]]),
+    bottom: cells([[7, 3], [6, 3], [5, 3], [5, 2], [5, 1], [5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [-1, 3]]),
+    // 首领回合（示意）：主路线贴上路后在左边巡逻；第二只先走下路到整备区一端，传送回中间再走上路
+    patrol: cells([[7, 1], [6, 1], [6, 0], [5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [1, 3], [1, 2], [1, 1], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [5, 1], [5, 2], [6, 2], [6, 1], [6, 0]]),
+    second: [cells([[7, 3], [6, 3], [5, 3], [5, 2], [5, 1], [5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [0, 4]]),
+             cells([[7, 0], [6, 0], [5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [0, 4]])],
+  },
+  palace: {
+    name: '宫殿（蓝箭头）',
+    top: cells([[7, 0], [6, 0], [6, 1], [5, 1], [4, 1], [4, 0], [3, 0], [2, 0], [2, 1], [1, 1], [0, 1], [0, 2], [0, 3], [-1, 3]]),
+    bottom: cells([[7, 3], [6, 3], [5, 3], [4, 3], [3, 3], [2, 3], [2, 2], [1, 2], [0, 2], [0, 3], [-1, 3]]),
+    patrol: cells([[7, 1], [6, 1], [6, 0], [5, 0], [4, 0], [3, 0], [2, 0], [2, 1], [1, 1], [0, 1], [0, 2], [0, 3], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [6, 1], [6, 0]]),
+    second: [cells([[7, 3], [6, 3], [5, 3], [4, 3], [3, 3], [2, 3], [1, 3], [0, 3], [0, 4]]),
+             cells([[7, 0], [6, 0], [6, 1], [5, 1], [4, 1], [4, 0], [3, 0], [2, 0], [2, 1], [1, 1], [0, 1], [0, 2], [0, 3], [0, 4]])],
+  },
+}
+const SAMPLES = [
+  { file: 'shop-ui100-2000x1125.jpg', label: '终端主题 · 界面缩放 100', map: 'crates' },
+  { file: 'shop-ursus-ui100-2000x1125.jpg', label: '乌萨斯主题 · 界面缩放 100', map: 'crates' },
+  { file: 'shop-terminal-ui100-2000x1125.jpg', label: '可露希尔主题 · 界面缩放 100', map: 'crates' },
+  { file: 'mumu-solo-gameplay.jpg', label: 'MuMu · 规程等级 16', map: 'palace' },
+]
+// 飞行折点（路线坐标 (r,c)，来自回合关卡）
+const F1 = [[0, 7], [3, 7], [3, 5], [0, 5], [0, 3], [3, 3], [3, 2], [0, 2]]
+const F2 = [[0, 6], [3, 6], [3, 3], [0, 3], [0, 2], [3, 2], [3, 1], [0, 1]]
+const F3 = [[3, 7], [0, 7], [0, 5], [3, 5], [3, 4], [0, 4], [0, 3], [3, 3], [3, 2], [0, 2]]
+const F4 = [[0, 6], [2, 6], [2, 4], [1, 4], [1, 3], [2, 3], [2, 1], [0, 1]]
+const SCENES = {
+  r2: { label: '第 2 回合（地面 6 · 飞行 9）', round: 2, build: m => [
+    { motion: 'walk', count: 6, segs: [m.bottom] },
+    { motion: 'fly', count: 9, segs: [flyFrom(0, F1)] }] },
+  r6: { label: '第 6 回合（两路地面 + 三种飞行）', round: 6, build: m => [
+    { motion: 'walk', count: 11, segs: [m.bottom] },
+    { motion: 'walk', count: 6, segs: [m.top] },
+    { motion: 'fly', count: 15, segs: [flyFrom(0, F2)] },
+    { motion: 'fly', count: 4, segs: [flyFrom(3, F3)] },
+    { motion: 'fly', count: 3, segs: [flyFrom(0, F4)] }] },
+  boss1: { label: '第 14 回合 · 铳（单人）', round: 14, boss: 'enemy_9017_achunt', build: m => [
+    { motion: 'walk', count: 10, segs: [m.bottom] },
+    { motion: 'fly', count: 8, segs: [flyFrom(0, F2)] },
+    { motion: 'walk', count: 1, boss: true, patrol: true, segs: [m.patrol] }] },
+  boss2: { label: '第 14 回合 · 铳（联机，两只）', round: 14, boss: 'enemy_9017_achunt', build: m => [
+    { motion: 'walk', count: 10, segs: [m.bottom] },
+    { motion: 'fly', count: 8, segs: [flyFrom(0, F2)] },
+    { motion: 'walk', count: 1, boss: true, patrol: true, side: 'left', segs: [m.patrol] },
+    { motion: 'walk', count: 1, boss: true, side: 'right', segs: m.second }] },
+  boss3: { label: '第 14 回合 · 胄（站着不动）', round: 14, boss: 'enemy_9013_acstmk', spot: [7.5, 1.5], build: m => [
+    { motion: 'walk', count: 12, segs: [m.bottom] },
+    { motion: 'walk', count: 6, segs: [m.top] },
+    { motion: 'fly', count: 8, segs: [flyFrom(0, F2)] }] },
+}
+
+// ── 绘制
+const COLORS = { walk: '#ff5a4e', fly: '#c79bff', boss: '#f3b322' }
+const LIFT = [0.2, -0.26]   // 飞行线往右上偏，横竖两个方向都不和地面线重合
+const BOSS_SHIFT = [-0.17, 0.2]   // 首领线往左下偏，和地面、飞行三条错开
+const $ = id => document.getElementById(id)
+const state = { visible: true, fade: null }
+let img = { w: 2000, h: 1125 }
+
+function opts() {
+  return { width: $('width').checked, arrows: $('arrows').checked, flow: $('flow').checked, tag: $('tag').checked,
+    opacity: $('opacity').value / 100, mode: document.querySelector('[name=mode]:checked').value,
+    fly: $('flyMode').value, side: document.querySelector('[name=side]:checked').value, seconds: +$('seconds').value,
+    overlap: document.querySelector('[name=overlap]:checked').value, cycleMs: +$('cycleMs').value * 100 }
+}
+// 折线拆成相邻格中心之间的单位步，方便和别的路线按格边合并
+function units(seg) {
+  const out = [seg[0]]
+  for (let i = 1; i < seg.length; i++) {
+    const [a, b] = [seg[i - 1], seg[i]], n = Math.max(1, Math.round(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]))))
+    for (let t = 1; t <= n; t++) out.push([a[0] + (b[0] - a[0]) * t / n, a[1] + (b[1] - a[1]) * t / n])
+  }
+  return out
+}
+// 只改现有图层的透明度，不重画，过渡才会生效
+function setVisible(v, ms) {
+  state.visible = v
+  const g = document.getElementById('routes')
+  if (!g) return
+  g.style.transition = `opacity ${ms}ms ease`
+  g.style.opacity = v ? opts().opacity : 0
+}
+// 地面线按单位格边合并：同一段只画一次，粗细按经过的敌人总数
+function mergeEdges(routes) {
+  const edges = new Map()
+  for (const r of routes) for (const seg of r.segs) for (let i = 1; i < seg.length; i++) {
+    const a = seg[i - 1], b = seg[i]
+    const key = [a, b].map(p => p.join(',')).sort().join('|') + '|' + r.motion + (r.boss ? 'B' : '')
+    const e = edges.get(key) ?? { a, b, count: 0, motion: r.motion, boss: !!r.boss, dirs: new Set() }
+    e.count += r.count; e.dirs.add(a.join(',') + '>' + b.join(','))
+    edges.set(key, e)
+  }
+  return [...edges.values()]
+}
+const px = ([c, r]) => { const [x, y] = project(c, r); return [x * img.w, y * img.h] }
+const pts = seg => seg.map(p => px(p).map(v => v.toFixed(1)).join(',')).join(' ')
+function widthFor(count, o, k) {
+  if (!o.width) return 6 * k
+  return (3.5 + 2.6 * Math.log2(1 + count / 2)) * k
+}
+
+function layer(routes, o, k) {
+  let svg = ''
+  const ground = routes.filter(r => r.motion === 'walk' && !r.boss)
+  const fly = routes.filter(r => r.motion === 'fly')
+  const boss = routes.filter(r => r.boss)
+  // 地面：深色描边 + 红色芯，合并后的单位边
+  const edges = mergeEdges(ground)
+  for (const pass of ['under', 'core']) for (const e of edges) {
+    const [a, b] = [px(e.a), px(e.b)], w = widthFor(e.count, o, k)
+    svg += pass === 'under'
+      ? `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#1b0806" stroke-opacity=".75" stroke-width="${w + 3.5 * k}" stroke-linecap="round"/>`
+      : `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${COLORS.walk}" stroke-width="${w}" stroke-linecap="round"/>`
+  }
+  // 地面方向：沿每条原始路线放箭头（每两格一个）
+  if (o.arrows) for (const r of ground) for (const seg of r.segs) svg += chevrons(seg, 'walk', 3, k)
+  // 流动：在线芯上叠一层慢速移动的亮点
+  if (o.flow) for (const r of ground) for (const seg of r.segs)
+    svg += `<polyline points="${pts(seg)}" fill="none" stroke="#ffd2cc" stroke-opacity=".55" stroke-width="${1.6 * k}" stroke-linecap="round" stroke-dasharray="${2 * k} ${34 * k}"><animate attributeName="stroke-dashoffset" from="${72 * k}" to="0" dur="2.4s" repeatCount="indefinite"/></polyline>`
+
+  // 飞行：紫色虚线，整体往右上偏 LIFT 格画「在空中」；和地面一样按单位格边合并，重合的段只画一条
+  const shownFly = fly
+  const lift = ([c, rr]) => [c + LIFT[0], rr + LIFT[1]]
+  const flyEdges = mergeEdges(shownFly.map(r => ({ ...r, segs: r.segs.map(units) })))
+  for (const pass of ['under', 'core']) for (const e of flyEdges) {
+    const [a, b] = [px(lift(e.a)), px(lift(e.b))], w = widthFor(e.count, o, k) * 0.5
+    svg += pass === 'under'
+      ? `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#14081f" stroke-opacity=".55" stroke-width="${w + 2.5 * k}" stroke-linecap="round" stroke-dasharray="${8 * k} ${7 * k}"/>`
+      : `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${COLORS.fly}" stroke-opacity=".9" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${8 * k} ${7 * k}"/>`
+  }
+  if (o.arrows) for (const r of shownFly) for (const seg of r.segs) svg += chevrons(seg.map(lift), 'fly', 4, k)
+
+  // 首领：金色，较粗；传送处断开，两端画空心圈。联机只画自己那一侧
+  for (const r of boss) {
+    r.segs.map(s => s.map(([c, rr]) => [c + BOSS_SHIFT[0], rr + BOSS_SHIFT[1]])).forEach((seg, i, segs) => {
+      const w = 5 * k
+      svg += `<polyline points="${pts(seg)}" fill="none" stroke="#2a1d02" stroke-opacity=".8" stroke-width="${w + 4 * k}" stroke-linejoin="round" stroke-linecap="round"/>`
+      svg += `<polyline points="${pts(seg)}" fill="none" stroke="${COLORS.boss}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${r.patrol ? `stroke-dasharray="${14 * k} ${6 * k}"` : ''}>${o.flow ? `<animate attributeName="stroke-dashoffset" from="${(r.patrol ? 40 : 0) * k}" to="0" dur="2s" repeatCount="indefinite"/>` : ''}</polyline>`
+      if (o.arrows) svg += chevrons(seg, 'boss', 2, k)
+      if (segs.length > 1) {
+        if (i < segs.length - 1) svg += ring(seg[seg.length - 1], k, '消失')
+        if (i > 0) svg += ring(seg[0], k, '出现')
+      }
+    })
+    svg += bossBadge([r.segs[0][0][0] + BOSS_SHIFT[0], r.segs[0][0][1] + BOSS_SHIFT[1]], k)
+  }
+  return svg
+}
+
+function render() {
+  const s = SAMPLES[$('sample').value], map = MAPS[s.map], scene = SCENES[$('scene').value], o = opts()
+  const k = img.h / 1080   // 线宽等按 1080p 设计，随画面缩放
+  const routes = scene.build(map)
+  const vb = $('crop').checked ? [0.15 * img.w, 0.08 * img.h, 0.72 * img.w, 0.5 * img.h] : [0, 0, img.w, img.h]
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.join(' ')}" width="${vb[2]}" height="${vb[3]}">
+    <defs>
+      <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${2.2 * k}" /></filter>
+      <marker id="chev-walk" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="${3.2}" markerHeight="${3.2}" orient="auto"><path d="M2 1 L7 5 L2 9" fill="none" stroke="#2a0d0b" stroke-width="3" stroke-linecap="round"/><path d="M2 1 L7 5 L2 9" fill="none" stroke="#ffe3df" stroke-width="1.6" stroke-linecap="round"/></marker>
+      <marker id="chev-fly" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="${3.6}" markerHeight="${3.6}" orient="auto"><path d="M2 1 L7 5 L2 9" fill="none" stroke="#1e1030" stroke-width="3" stroke-linecap="round"/><path d="M2 1 L7 5 L2 9" fill="none" stroke="#f1e6ff" stroke-width="1.6" stroke-linecap="round"/></marker>
+      <marker id="chev-boss" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="${3.2}" markerHeight="${3.2}" orient="auto"><path d="M2 1 L7 5 L2 9" fill="none" stroke="#2a1d02" stroke-width="3" stroke-linecap="round"/><path d="M2 1 L7 5 L2 9" fill="none" stroke="#fff3cf" stroke-width="1.6" stroke-linecap="round"/></marker>
+    </defs>
+    <image href="./samples/${s.file}" width="${img.w}" height="${img.h}" />
+    <g id="routes" style="opacity: ${state.visible ? o.opacity : 0}">`
+
+  // 先按选项筛出要画的路线：飞行三档、联机只看自己一侧
+  const flyAll = routes.filter(r => r.motion === 'fly')
+  const mainFly = flyAll.reduce((m, x) => !m || x.count > m.count ? x : m, null)
+  const shown = routes.filter(r => r.motion !== 'fly' || o.fly === 'all' || (o.fly === 'main' && r === mainFly))
+    .filter(r => !r.boss || o.side === 'auto' || !r.side || r.side === o.side)
+  cycle.items = o.overlap === 'cycle' ? shown : []
+  if (o.overlap === 'cycle') {
+    cycle.i %= Math.max(1, shown.length)
+    svg += shown.map((r, i) => `<g class="cyc" data-i="${i}" style="opacity:${i === cycle.i ? 1 : DIM};transition:opacity 400ms ease">${layer([r], o, k)}</g>`).join('')
+  } else svg += layer(shown, o, k)
+  if (scene.spot) svg += spot(scene.spot, k) + bossBadge(scene.spot, k, true)
+
+  if (o.tag) svg += roundTag(scene, shown, k)
+  svg += `</g></svg>`
+  $('stage').innerHTML = svg
+  restartCycle()
+}
+
+// ── 依次循环：重合的路线轮流高亮，当前这条正常显示，其余压到 DIM
+const DIM = 0.12
+const cycle = { i: 0, items: [], timer: null }
+function routeLabel(r) {
+  if (r.boss) return r.patrol ? '首领 · 巡逻' : '首领 · 另一只'
+  if (r.motion === 'fly') return `飞行 ${r.count} 只`
+  return `地面 · ${r.segs[0][0][1] < 2 ? '上路' : '下路'} ${r.count} 只`
+}
+function showCycle() {
+  document.querySelectorAll('#routes .cyc').forEach(g => g.style.opacity = +g.dataset.i === cycle.i ? 1 : DIM)
+  const sub = document.getElementById('tagSub')
+  if (sub && cycle.items.length) sub.textContent = `${cycle.i + 1}/${cycle.items.length} · ${routeLabel(cycle.items[cycle.i])}`
+}
+function restartCycle() {
+  clearInterval(cycle.timer)
+  if (!cycle.items.length) return
+  showCycle()
+  cycle.timer = setInterval(() => { cycle.i = (cycle.i + 1) % cycle.items.length; showCycle() }, opts().cycleMs)
+}
+
+function chevrons(seg, kind, every, k) {
+  // 每隔 every 个格边放一个箭头，放在格边中点
+  let out = '', n = 0
+  for (let i = 1; i < seg.length; i++) {
+    const a = seg[i - 1], b = seg[i], len = Math.hypot(b[0] - a[0], b[1] - a[1])
+    for (let t = 0.5; t < len; t += 1) {
+      if (n++ % every !== every - 1) continue
+      const p = [a[0] + (b[0] - a[0]) * t / len, a[1] + (b[1] - a[1]) * t / len]
+      const q = [a[0] + (b[0] - a[0]) * (t + 0.05) / len, a[1] + (b[1] - a[1]) * (t + 0.05) / len]
+      const [x1, y1] = px(p), [x2, y2] = px(q)
+      out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="none" marker-end="url(#chev-${kind})" stroke-width="${6 * k}"/>`
+    }
+  }
+  return out
+}
+function ring(p, k, text) {
+  const [x, y] = px(p)
+  return `<circle cx="${x}" cy="${y}" r="${9 * k}" fill="#2a1d02" fill-opacity=".55" stroke="${COLORS.boss}" stroke-width="${2.5 * k}" stroke-dasharray="${4 * k} ${3 * k}"/>
+    <text x="${x}" y="${y - 14 * k}" fill="#fff3cf" font-size="${15 * k}" font-weight="700" text-anchor="middle" paint-order="stroke" stroke="#2a1d02" stroke-width="${4 * k}">${text}</text>`
+}
+function bossBadge(p, k, still) {
+  const [x, y] = px(p), r = 22 * k, id = SCENES[$('scene').value].boss
+  return `<g transform="translate(${x} ${y - (still ? 0 : 0)})">
+    <circle r="${r + 3 * k}" fill="#2a1d02" fill-opacity=".85" stroke="${COLORS.boss}" stroke-width="${2.5 * k}"/>
+    <clipPath id="bc"><circle r="${r}"/></clipPath>
+    <image href="/assets/data/bosses/${id}.webp" x="${-r}" y="${-r}" width="${2 * r}" height="${2 * r}" clip-path="url(#bc)"/>
+  </g>`
+}
+function spot(p, k) {
+  const [x, y] = px(p)
+  return `<circle cx="${x}" cy="${y}" r="${30 * k}" fill="none" stroke="${COLORS.boss}" stroke-width="${3 * k}" opacity=".9">
+      <animate attributeName="r" values="${28 * k};${40 * k};${28 * k}" dur="2.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".9;.2;.9" dur="2.4s" repeatCount="indefinite"/></circle>`
+}
+function roundTag(scene, routes, k) {
+  // 回合标签贴在棋盘右上角（出生点上方），说明这是哪一回合的预测
+  const [x, y] = px([7.2, -0.35])
+  const walk = routes.filter(r => r.motion === 'walk' && !r.boss).reduce((s, r) => s + r.count, 0)
+  const fly = routes.filter(r => r.motion === 'fly').reduce((s, r) => s + r.count, 0)
+  const text = `第 ${scene.round} 回合路线`
+  const sub = [walk && `地面 ${walk}`, fly && `飞行 ${fly}`, routes.some(r => r.boss) || scene.spot ? '首领' : ''].filter(Boolean).join(' · ')
+  const w = 190 * k, h = 46 * k
+  return `<g transform="translate(${x - w} ${y - h})">
+    <rect width="${w}" height="${h}" rx="${4 * k}" fill="#101215" fill-opacity=".82" stroke="#ff5a4e" stroke-opacity=".7" stroke-width="${1.5 * k}"/>
+    <text x="${10 * k}" y="${19 * k}" fill="#f2f4f6" font-size="${15 * k}" font-weight="700">${text}</text>
+    <text id="tagSub" x="${10 * k}" y="${37 * k}" fill="#aeb6c0" font-size="${12.5 * k}">${sub}</text>
+  </g>`
+}
+
+function legend() {
+  const row = (svg, t) => `<div class="legend-row">${svg}<span>${t}</span></div>`
+  const line = (c, dash, w = 4) => `<svg width="34" height="12"><line x1="2" y1="6" x2="32" y2="6" stroke="#000" stroke-opacity=".6" stroke-width="${w + 3}" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''}/><line x1="2" y1="6" x2="32" y2="6" stroke="${c}" stroke-width="${w}" stroke-linecap="round" ${dash ? `stroke-dasharray="${dash}"` : ''}/></svg>`
+  $('legend').innerHTML = row(line(COLORS.walk), '地面（越粗敌人越多）') + row(line(COLORS.fly, '6 4', 3), '飞行') + row(line(COLORS.boss, '', 5), '首领') + row(line(COLORS.boss, '8 4', 5), '首领巡逻')
+}
+
+// ── 显示方式与快捷键
+// always：休整期一直显示，按快捷键临时隐藏 / 再显示
+// hold：  平时不显示，按住快捷键时显示
+// peek：  每个新回合先显示 N 秒再淡出，之后按住快捷键还能再看
+let peekTimer = null
+const hotkey = { key: 'Alt', code: 'AltLeft', recording: false }
+const keyLabel = () => hotkey.key === ' ' ? 'Space' : hotkey.key.length === 1 ? hotkey.key.toUpperCase() : hotkey.key
+function applyMode(fromNewRound) {
+  const o = opts()
+  clearTimeout(peekTimer)
+  $('secondsRow').style.display = o.mode === 'peek' ? '' : 'none'
+  $('secondsV').textContent = o.seconds + ' 秒'
+  $('hotkey').textContent = hotkey.recording ? '按下新按键…' : keyLabel()
+  $('modeHint').textContent = {
+    always: `休整期一直在，进入战斗、离开棋盘时自动隐藏。按 ${keyLabel()} 临时隐藏，再按一次显示。`,
+    hold: `平时不显示，按住 ${keyLabel()} 时显示，松开就隐藏。`,
+    peek: `每个新回合进休整期时显示 ${o.seconds} 秒，然后淡出；之后按住 ${keyLabel()} 还能再看。`,
+  }[o.mode]
+  if (o.mode === 'always') setVisible(true, 180)
+  else if (o.mode === 'hold') setVisible(false, 160)
+  else {
+    setVisible(true, 180)
+    peekTimer = setTimeout(() => setVisible(false, 1200), o.seconds * 1000)
+  }
+}
+const isHotkey = e => e.code === hotkey.code
+addEventListener('keydown', e => {
+  if (hotkey.recording) {
+    e.preventDefault()
+    if (e.key !== 'Escape') { hotkey.key = e.key; hotkey.code = e.code }
+    hotkey.recording = false; $('hotkey').classList.remove('rec'); applyMode(false); return
+  }
+  if (!isHotkey(e) || e.repeat) return
+  e.preventDefault()
+  const mode = opts().mode
+  if (mode === 'always') setVisible(!state.visible, 160)
+  else { clearTimeout(peekTimer); setVisible(true, 120) }
+})
+addEventListener('keyup', e => { if (isHotkey(e) && opts().mode !== 'always') setVisible(false, 220) })
+$('hotkey').onclick = () => { hotkey.recording = true; $('hotkey').classList.add('rec'); $('hotkey').textContent = '按下新按键…'; $('hotkey').blur() }
+$('newRound').onclick = () => {
+  // 模拟换回合：先瞬间隐藏，再按当前方式出现
+  setVisible(false, 0)
+  setTimeout(() => applyMode(true), 150)
+}
+
+// ── 初始化
+SAMPLES.forEach((s, i) => $('sample').add(new Option(s.label, i)))
+Object.entries(SCENES).forEach(([k, s]) => $('scene').add(new Option(s.label, k)))
+$('scene').value = 'r6'
+function loadSample() {
+  const s = SAMPLES[$('sample').value], im = new Image()
+  im.onload = () => { img = { w: im.naturalWidth, h: im.naturalHeight }; render() }
+  im.src = './samples/' + s.file
+}
+$('sample').onchange = loadSample
+$('scene').onchange = () => { cycle.i = 0; render() }
+for (const id of ['width', 'arrows', 'flow', 'tag', 'crop', 'flyMode']) $(id).onchange = render
+document.querySelectorAll('[name=side]').forEach(r => r.onchange = render)
+const syncCycleUi = () => { $('cycleRow').style.display = opts().overlap === 'cycle' ? '' : 'none'; $('cycleV').textContent = (opts().cycleMs / 1000).toFixed(1) + ' 秒' }
+document.querySelectorAll('[name=overlap]').forEach(r => r.onchange = () => { syncCycleUi(); cycle.i = 0; render() })
+$('cycleMs').oninput = () => { syncCycleUi(); restartCycle() }
+syncCycleUi()
+$('opacity').oninput = () => { $('opv').textContent = $('opacity').value + '%'; setVisible(state.visible, 0) }
+$('seconds').oninput = () => applyMode(false)
+document.querySelectorAll('[name=mode]').forEach(r => r.onchange = () => applyMode(false))
+$('opv').textContent = $('opacity').value + '%'
+legend(); loadSample(); applyMode(false)
+</script>
+</body>
+</html>

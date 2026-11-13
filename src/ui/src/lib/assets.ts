@@ -16,6 +16,7 @@ export const asset = {
   equipment: (name: string) => `${base}/data/equipment/${name}.webp`,
   boss: (id: string) => `${base}/data/bosses/${id}.webp`,
   enemyType: (code: string) => `${base}/data/enemy_types/${code}.webp`,
+  enemy: (id: string) => `${base}/data/enemies/${id}.webp`,
   strategy: (id: string) => `${base}/data/strategies/${id}.webp`,
   skill: (id: string) => `${base}/data/skills/${encodeURIComponent(id)}.webp`,
   module: (id: string) => `${base}/data/modules/${id}.webp`,

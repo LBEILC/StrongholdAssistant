@@ -101,7 +101,12 @@ public sealed partial class HostApi
 
     public MatchRecord[] History()
     {
-        lock (_historyGate) return _history.OrderByDescending(r => DateTimeOffset.Parse(r.Time)).ToArray();
+        lock (_historyGate) return _history.OrderByDescending(r => DateTimeOffset.Parse(r.Time))
+            .Select(r => r.Local is { } local ? r with { Local = local with
+            {
+                Rounds = local.Rounds.Where(s => s.Round is >= 1 and <= 15).ToArray(),
+                LastRound = local.LastRound is >= 1 and <= 15 ? local.LastRound : null
+            } } : r).ToArray();
     }
 
     public void DeleteRecord(string id)

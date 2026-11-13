@@ -13,10 +13,45 @@ public sealed class EconomyHistoryTests : IDisposable
         api.ApplyRecognizedMatch(api.Match with { Mode = new("mode_multi_hard", "联机困难") }, [], opening: true);
         api.SetMatchStrategy(strategy);
     }
-    private static void Read(HostApi api, int round, int? money) => api.ObserveEconomy(new(round, money, 1, 5, true));
+    private static void Read(HostApi api, int round, int? money) {
+        // 两帧确认回合，再一帧确认起始资金。
+        for (int i = 0; i < 3; i++) api.ObserveEconomy(new(round, money, 1, 5, true));
+    }
 
     private static SklandRecord Skland(string id) => new(id, null, [], [], true,
         "2026-11-12T01:00:00Z", "2026-11-12T00:00:00Z", 0, 0, [], [], "SINGLE", "HARD", 15, "1");
+
+    [Fact]
+    public async Task RoundAndStartingMoneyRequireConsecutiveValidReadings()
+    {
+        var api = await CreateApi();
+        Open(api);
+        Read(api, 11, 20);
+        var previous = api.Match.Economy;
+        foreach (int invalid in new[] { 112, 0, 16 })
+        {
+            Read(api, invalid, 1);
+            Assert.Equal(previous, api.Match.Economy);
+            Assert.Equal(11, Assert.Single(api.History()).Local!.LastRound);
+        }
+        void Tick(int round, int? money) => api.ObserveEconomy(new(round, money, 1, 5, true));
+        Tick(12, 4);
+        Assert.Equal(previous, api.Match.Economy);
+        Tick(11, 20);
+        Tick(12, 4);
+        Assert.Equal(11, api.Match.Economy!.Round);
+        Tick(12, 4);
+        Assert.Equal(12, api.Match.Economy.Round);
+        Assert.Null(api.Match.Economy.StartMoney);
+        Tick(12, 15);
+        Assert.Null(api.Match.Economy.StartMoney);
+        Tick(12, null);
+        Tick(12, 15);
+        Assert.Null(api.Match.Economy.StartMoney);
+        Tick(12, 15);
+        Assert.Equal(15, api.Match.Economy.StartMoney);
+        Assert.Equal(new RoundMoney(12, 15), Assert.Single(Assert.Single(api.History()).Local!.Rounds));
+    }
 
     [Theory]
     [InlineData(false)]

@@ -49,14 +49,18 @@ public sealed class StageTrackingTests : IDisposable
         int changed = 0;
         api.ShopChanged += () => changed++;
         api.ObserveEconomy(new(4, 10, 1, 5, true));
+        api.ObserveEconomy(new(4, 10, 1, 5, true));
         Assert.Equal(1, changed);
         // 本阶段已有的卡达不被后续关键标记覆盖；慕斯提前标记，但装备不提前带入。
         AssertStage(api, "empty", "初雪", "慕斯", "虹彩活血饮料");
         api.ObserveEconomy(new(4, 9, 1, 5, true));
+        api.ObserveEconomy(new(4, 9, 1, 5, true));
         Assert.Equal(1, changed);
+        api.ObserveEconomy(new(5, 10, 1, 5, true));
         api.ObserveEconomy(new(5, 10, 1, 5, true));
         Assert.Equal(2, changed);
         AssertStage(api, "siracusa", "慕斯", "卡达", "随身身份牌");
+        api.ObserveEconomy(new(9, 10, 1, 5, true));
         api.ObserveEconomy(new(9, 10, 1, 5, true));
         Assert.Equal(3, changed);
         AssertStage(api, "yan", "卡达");
@@ -67,15 +71,18 @@ public sealed class StageTrackingTests : IDisposable
     {
         var api = await CreateApi();
         api.ObserveEconomy(new(9, 10, 1, 5, true));
+        api.ObserveEconomy(new(9, 10, 1, 5, true));
         var session = await api.SessionAsync();
         await api.SaveSessionAsync(session with { Stage = 0 });
         AssertStage(api, "empty", "初雪", "慕斯", "虹彩活血饮料");
+        api.ObserveEconomy(new(10, 10, 1, 5, true));
         api.ObserveEconomy(new(10, 10, 1, 5, true));
         AssertStage(api, "empty", "初雪", "慕斯", "虹彩活血饮料");
         await api.SaveSessionAsync(session with { Stage = 1 });
         AssertStage(api, "siracusa", "慕斯", "卡达", "随身身份牌");
         await api.SaveSessionAsync(session with { Stage = 2 });
         AssertStage(api, "yan", "卡达");
+        api.ObserveEconomy(new(5, 10, 1, 5, true));
         api.ObserveEconomy(new(5, 10, 1, 5, true));
         await api.SaveSessionAsync(session with { Stage = 3 });
         AssertStage(api, "siracusa", "慕斯", "卡达", "随身身份牌");

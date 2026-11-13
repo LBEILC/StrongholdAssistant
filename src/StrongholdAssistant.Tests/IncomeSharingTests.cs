@@ -11,7 +11,10 @@ public sealed class IncomeSharingTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
     private static void Open(HostApi api) => api.ApplyRecognizedMatch(api.Match with { Mode = new("mode_multi_hard", "联机困难") }, [], opening: true);
-    private static void Read(HostApi api, int round, int money) => api.ObserveEconomy(new(round, money, 1, 5, true));
+    private static void Read(HostApi api, int round, int money) {
+        // 两帧确认回合，再一帧确认起始资金。
+        for (int i = 0; i < 3; i++) api.ObserveEconomy(new(round, money, 1, 5, true));
+    }
 
     private sealed class FakeHttp : HttpMessageHandler
     {
@@ -31,6 +34,42 @@ public sealed class IncomeSharingTests : IDisposable
             return request.Method == HttpMethod.Post ? new(HttpStatusCode.NoContent)
                 : new(HttpStatusCode.OK) { Content = JsonContent.Create(Table, options: HostApi.JsonOptions) };
         }
+    }
+
+    [Fact]
+    public async Task LegacyInvalidRoundsAreExcludedFromHistoryLearningAndReports()
+    {
+        var api = await CreateApi();
+        Open(api);
+        var record = Assert.Single(api.History());
+        RoundMoney[] rounds = [new(0, 1), new(11, 20), new(16, 1), new(112, 1)];
+        string path = Path.Combine(_directory, "history.json");
+        string legacy = JsonSerializer.Serialize(new[] { record with
+        {
+            Local = record.Local! with { Rounds = rounds, LastRound = 112 }
+        } }, HostApi.JsonOptions);
+        await File.WriteAllTextAsync(path, legacy);
+        api = await CreateApi();
+        var visible = Assert.Single(api.History()).Local!;
+        Assert.Equal(new[] { new RoundMoney(11, 20) }, visible.Rounds);
+        Assert.Null(visible.LastRound);
+        Assert.Equal(legacy, await File.ReadAllTextAsync(path));
+
+        using var handler = new FakeHttp();
+        using var http = new HttpClient(handler);
+        api.IncomeClient = http;
+        api.SaveSettings(api.Settings with { ShareIncome = true });
+        Open(api);
+        // 学习和上报只消费本局样本，不会重放历史；注入旧版可能留下的越界样本。
+        var samples = (Dictionary<int, int>)typeof(HostApi).GetField("_roundSamples",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(api)!;
+        foreach (var round in rounds) samples[round.Round] = round.StartMoney;
+        Open(api);
+        await api.IncomeReportTask;
+        Assert.Equal(new[] { new RoundMoney(11, 20) }, Assert.Single(handler.Reports).Samples);
+        var learned = JsonSerializer.Deserialize<Dictionary<string, int>>(
+            await File.ReadAllTextAsync(Path.Combine(_directory, "base-money.json")))!;
+        Assert.Equal(new KeyValuePair<string, int>("mode_multi_hard|False|11", 20), Assert.Single(learned));
     }
 
     [Fact]

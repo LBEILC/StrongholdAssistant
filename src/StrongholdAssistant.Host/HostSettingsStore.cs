@@ -26,6 +26,7 @@ public sealed class HostSettingsStore(string path)
             json["autoCheckUpdate"]?.GetValue<bool>() ?? true)
         {
             UiSkin = uiSkin,
+            Routes = RouteOverlaySettings.Load(json["routes"]),
             ShopScanSpeed = json["shopScanSpeed"] is JsonValue speedValue
                 && speedValue.TryGetValue<string>(out var speed) && speed is ("normal" or "fast") ? speed : "normal",
             UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",
@@ -70,6 +71,8 @@ public sealed class HostSettingsStore(string path)
     public void SaveSettings(SettingsDto settings)
     {
         ValidateSides(settings);
+        if (settings.Routes is null) throw new ArgumentException("敌人路线设置无效。");
+        settings.Routes.Validate();
         if (settings.ShopScanSpeed is not ("normal" or "fast"))
             throw new ArgumentException("商店识别速度无效。");
         if (settings.UiSkin is not ("follow" or "terminal" or "ursus" or "closure" or "classic"))
