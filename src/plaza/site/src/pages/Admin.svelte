@@ -4,9 +4,12 @@
   import { toast } from '../session.svelte'
   import { ago } from '../data'
   import Icon from '../components/Icon.svelte'
+  import AdminDashboard from '../components/AdminDashboard.svelte'
 
-  // 后台：Cloudflare Access 保护（/admin 和 /api/admin/*），能打开这页说明已经过了 Access 登录
-  let tab = $state<'reports' | 'posts' | 'comments' | 'users'>('reports')
+  // 后台：Cloudflare Access 保护（/admin 和 /api/admin/*），能打开这页说明已经过了 Access 登录。
+  // sa 走阿里云 ESA 后不经过 Access（2026-11-14），后台只能从 sa-admin 进：旧地址直接跳过去
+  if (location.hostname === 'sa.lubeiluchen.com') location.replace('https://sa-admin.lubeiluchen.com/admin' + location.search)
+  let tab = $state<'dash' | 'reports' | 'posts' | 'comments' | 'users'>('dash')
 
   // 危险操作点两次：第一次按钮变红「确认…」，3 秒内再点才执行
   let armed = $state<string | null>(null)
@@ -150,6 +153,7 @@
   <div class="hd">
     <h1><Icon name="shield" size={22} />后台</h1>
     <div class="tabs">
+      <button class:on={tab === 'dash'} onclick={() => (tab = 'dash')}>看板</button>
       <button class:on={tab === 'reports'} onclick={() => (tab = 'reports')}>举报{#if openCount}<em class="badge">{openCount}</em>{/if}</button>
       <button class:on={tab === 'posts'} onclick={() => (tab = 'posts')}>阵容</button>
       <button class:on={tab === 'comments'} onclick={() => (tab = 'comments')}>评论</button>
@@ -157,7 +161,9 @@
     </div>
   </div>
 
-  {#if tab === 'reports'}
+  {#if tab === 'dash'}
+    <AdminDashboard onreports={() => (tab = 'reports')} />
+  {:else if tab === 'reports'}
     <div class="bar">
       <button class="chip" class:on={rStatus === 'open'} onclick={() => (rStatus = 'open')}>待处理</button>
       <button class="chip" class:on={rStatus === 'resolved'} onclick={() => (rStatus = 'resolved')}>已处理</button>

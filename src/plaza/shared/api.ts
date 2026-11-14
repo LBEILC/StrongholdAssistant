@@ -127,6 +127,10 @@ export interface Post {
  * q（v0.9.1，搜索）：去掉首尾空格后最多 40 字，按空格分成最多 3 个词，每个词都要命中下面任意一项（不分大小写）：
  * 阵容名、简介、作者昵称、任一阶段里的干员名、装备名、目标盟约名；空串当没传。可以和其他筛选、排序、收藏一起用。
  * favorite = '1'（v0.7.0）：只列当前账号收藏的（要登录，没登录 401），含旧赛季，按收藏时间新到旧，忽略 sort 和 season。
+ *
+ * GET /api/public/posts（v0.9.3）：同样的列表，但永远按没登录处理（不看凭据和 Cookie，liked、favorited 都是 false），
+ * 返回 Cache-Control: public, max-age=0, s-maxage=120，让 ESA 边缘缓存。参数同上，但不支持 favorite、author（传了返回 400）。
+ * 助手和网站在没登录时、看普通列表时用它；登录后照旧用 /api/posts（要显示自己点过的赞、收藏）
  */
 export interface PostList {
   posts: Post[]
@@ -214,6 +218,58 @@ export interface CreateCommentRequest {
 }
 
 /** DELETE /api/comments/:id：评论作者或帖子作者删除，无响应体（204）；别人删 403 */
+
+// ── 站内消息（v0.9.3）────────────────────────────────
+// 别人对「我」做了什么：评论我的阵容、回复我的评论、收藏、点赞，加上管理员的处理。自己对自己做的不发。
+// 收藏会让作者看到收藏者的昵称（隐私说明里写明）。只留最近 90 天。
+
+export type NoticeKind =
+  /** 有人评论了我的阵容（回复我的评论时只发 reply，不再重复发 comment） */
+  | 'comment'
+  /** 有人回复了我的评论 */
+  | 'reply'
+  /** 有人收藏了我的阵容；还没读就取消收藏的，这条消失 */
+  | 'favorite'
+  /** 我的阵容被点赞：同一个阵容在没读之前的赞合并成一条，读过以后再有人赞另起一条；还没读就取消的从合并里去掉 */
+  | 'like'
+  /** 我的阵容被设为精选 */
+  | 'featured'
+  /** 我的阵容被管理员下架（含处理举报时下架） */
+  | 'post_hidden'
+  /** 我的评论被管理员下架 */
+  | 'comment_hidden'
+
+export interface Notice {
+  id: string
+  kind: NoticeKind
+  /** 最近一次事件的时间（合并的点赞取最后一个赞的时间）；列表按它新到旧 */
+  createdAt: string
+  read: boolean
+  /** 相关的阵容；阵容被作者删除后，除了 post_hidden 的消息都不再出现 */
+  post: { id: string; name: string }
+  /** 做这件事的人，新到旧；点赞最多给 3 个，其他种类 1 个；管理员的消息为空数组。收藏不要求昵称，没起昵称的人 nickname 为空串（界面显示「一位玩家」） */
+  actors: { id: string; nickname: string }[]
+  /** 一共几个人（点赞合并时大于 actors 的长度；其他种类和 actors 一样） */
+  actorCount: number
+  /** comment、reply：新评论（前 100 字）；comment_hidden：被下架的评论（前 100 字）。评论被删或下架后 comment / reply 消息不再出现 */
+  comment?: { id: string; body: string }
+}
+
+/** GET /api/notices（要登录，不要求昵称）：新到旧，cursor、limit（默认 20，最多 50）。只读不改已读状态 */
+export interface NoticeList {
+  notices: Notice[]
+  cursor: string | null
+  /** 未读总数 */
+  unread: number
+}
+/** GET /api/notices/unread（要登录）：轻量轮询用，可以每几分钟调一次 */
+export interface NoticeUnread {
+  unread: number
+}
+/** POST /api/notices/read（要登录）：把 before 及更早的全部标成已读（打开消息列表时传列表第一条的 createdAt），无响应体（204） */
+export interface ReadNoticesRequest {
+  before: string
+}
 
 // ── 举报（第二期）────────────────────────────────────
 
@@ -408,4 +464,52 @@ export interface AdminReportList {
  */
 export interface AdminResolveReport {
   action: 'dismiss' | 'hide' | 'delete'
+}
+
+// ── 后台看板（v0.9.3）────────────────────────────────
+// 「今天」和每天的边界都按北京时间。只统计可见和下架的，作者删除的帖子、注销和封禁的账号不算。
+
+/** 一项每天的数，近 30 天，旧到新 */
+export interface DailyCount {
+  /** 北京时间日期，如 '2026-11-14' */
+  date: string
+  /** 这一项开始记时间之前的日子为 null（点赞、导入是 2026-11-14 加的时间列） */
+  count: number | null
+}
+
+export interface AdminRankItem {
+  post: { id: string; name: string; author: string }
+  count: number
+}
+
+/** GET /api/admin/stats：看板数据 */
+export interface AdminStats {
+  /** 累计 */
+  totals: {
+    users: number
+    posts: number
+    imports: number
+    likes: number
+    comments: number
+    favorites: number
+    /** 打开了云同步的账号数（云端有偏好或阵容的） */
+    cloudSync: number
+    /** 待处理举报（目标数，和举报标签的角标一样） */
+    openReports: number
+  }
+  /** 近 30 天每天的新增 */
+  daily: {
+    users: DailyCount[]
+    posts: DailyCount[]
+    imports: DailyCount[]
+    likes: DailyCount[]
+    comments: DailyCount[]
+    /** 资金表上报的局数（只统计打开了「帮大家补全资金表」的人；一局算一次） */
+    incomeGames: DailyCount[]
+  }
+  /** 近 7 天导入、点赞最多的阵容，各前 10；按记录时间算，开始记时间之前的不算 */
+  topImported: AdminRankItem[]
+  topLiked: AdminRankItem[]
+  /** 服务器生成这份数据的时间 */
+  at: string
 }

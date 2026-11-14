@@ -8,8 +8,9 @@
   import BondChip from '../components/BondChip.svelte'
   import PostCard from '../components/PostCard.svelte'
   import Icon from '../components/Icon.svelte'
+  import NoticeList from '../components/NoticeList.svelte'
 
-  // 我的：昵称、我的阵容（云同步，v0.7.0）/ 我发布的（含旧赛季）/ 收藏，退出登录、注销账号
+  // 我的：昵称、我的阵容（云同步，v0.7.0）/ 我发布的（含旧赛季）/ 收藏 / 消息（v0.9.3），退出登录、注销账号
   $effect(() => {
     if (session.ready && !session.me) router.go('/login?next=/me')
   })
@@ -20,7 +21,7 @@
   let posts = $state<Post[] | null>(null)
   let error = $state('')
 
-  type Tab = 'mine' | 'posts' | 'fav'
+  type Tab = 'mine' | 'posts' | 'fav' | 'notices'
   let tab = $state<Tab>((new URLSearchParams(location.search).get('tab') as Tab) || 'mine')
   let mine = $state<CloudLineup[] | null>(null)
   let favs = $state<Post[] | null>(null)
@@ -67,6 +68,7 @@
     { v: 'mine', label: '我的阵容', n: () => mine?.length ?? null },
     { v: 'posts', label: '我发布的', n: () => posts?.length ?? null },
     { v: 'fav', label: '收藏', n: () => favs?.length ?? null },
+    { v: 'notices', label: '消息', n: () => session.unread || null },
   ]
 
   async function saveName() {
@@ -226,6 +228,8 @@
           {/each}
         </div>
       {/if}
+    {:else if tab === 'notices'}
+      <NoticeList />
     {:else if tab === 'posts'}
       {#if !posts}
         <p class="muted">加载中…</p>
@@ -436,6 +440,20 @@
   @media (max-width: 560px) {
     .profile {
       flex-wrap: wrap;
+    }
+    /* 四个标签加「新建阵容」放不下：标签横向滚动，新建阵容另起一行靠右 */
+    .tabs {
+      flex-wrap: wrap;
+    }
+    .tabs button {
+      padding: 0 9px;
+      white-space: nowrap;
+    }
+    .tabs .sp {
+      display: none;
+    }
+    .tabs .btn {
+      margin: 0 0 6px auto;
     }
   }
 </style>

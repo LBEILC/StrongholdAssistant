@@ -1,8 +1,9 @@
 import { account, type Context } from './auth'
 import { admin } from './admin'
-import { posts } from './posts'
+import { posts, publicPosts } from './posts'
 import { comments } from './comments'
 import { report } from './reports'
+import { notices } from './notices'
 import { sync } from './sync'
 import { incomeTable, reportIncome } from './income'
 import { ApiFailure, empty, fail, json, type Env } from './common'
@@ -20,10 +21,12 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   else if (url.pathname.startsWith('/api/admin/')) response = await admin(ctx, url.pathname)
   else if (url.pathname === '/api/me' || url.pathname === '/api/me/password' || url.pathname.startsWith('/api/auth/')) response = await account(ctx, url.pathname)
   else if (/^\/api\/posts\/[^/]+\/comments$/.test(url.pathname) || /^\/api\/comments\/[^/]+$/.test(url.pathname)) response = await comments(ctx, url.pathname)
+  else if (url.pathname === '/api/notices' || url.pathname.startsWith('/api/notices/')) response = await notices(ctx, url.pathname)
   else if (url.pathname === '/api/reports' && request.method === 'POST') response = await report(ctx)
   else if (url.pathname === '/api/sync' && request.method === 'POST') response = await sync(ctx)
   else if (url.pathname === '/api/income' && request.method === 'POST') response = await reportIncome(ctx)
   else if (url.pathname === '/api/income-table' && request.method === 'GET') response = await incomeTable(ctx)
+  else if (url.pathname === '/api/public/posts' && request.method === 'GET') response = await publicPosts(ctx)
   else if (url.pathname === '/api/posts' || url.pathname.startsWith('/api/posts/')) response = await posts(ctx, url.pathname)
   else fail(404, 'not_found', '接口不存在。')
  } catch (error) {

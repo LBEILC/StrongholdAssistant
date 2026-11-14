@@ -2,9 +2,9 @@
 // 凭据由宿主加密保存：plazaLogin 弹登录小窗口，plazaToken 启动时取一次。
 import { api, type Lineup } from './api'
 import { encodeLineup } from './share'
-import type { Comment, CommentList, CreateReportRequest, Me, Post, PostList, ReportTarget, SyncRequest, SyncResponse } from '../../../plaza/shared/api'
+import type { Comment, CommentList, CreateReportRequest, Me, Notice, NoticeList, Post, PostList, ReportTarget, SyncRequest, SyncResponse } from '../../../plaza/shared/api'
 
-export type { Comment, Me, Post, ReportTarget }
+export type { Comment, Me, Notice, Post, ReportTarget }
 export { REPORT_REASONS, type ReportReason } from '../../../plaza/shared/api'
 export const PLAZA = 'https://sa.lubeiluchen.com'
 
@@ -40,6 +40,13 @@ class Plaza {
   viewing = $state<Post | null>(null)
   /** 详情面板里正在举报的帖子或评论（面板切成举报页） */
   reporting = $state<{ target: ReportTarget; what: string } | null>(null)
+  /** 站内消息（v0.9.3）：底部面板切成消息列表 */
+  noticesOpen = $state(false)
+  /** 未读数；新消息提醒关着或没登录时不问，保持 0 */
+  unread = $state(0)
+  /** 从消息点进帖子：详情面板底部给「返回消息」，评论区定位到这条评论 */
+  fromNotices = $state(false)
+  focusComment = $state<string | null>(null)
 
   private async req<T>(method: string, path: string, body?: unknown): Promise<T> {
     let r: Response
@@ -125,7 +132,8 @@ class Plaza {
     for (const c of q.covenant ?? []) p.append('covenant', c)
     if (q.strategy) p.set('strategy', q.strategy)
     if (q.cursor) p.set('cursor', q.cursor)
-    return this.req<PostList>('GET', '/posts?' + p)
+    // 没登录时走公开列表（v0.9.3，ESA 边缘缓存 2 分钟）；登录了要带上自己的点赞、收藏
+    return this.req<PostList>('GET', (!this.token && q.sort !== 'favorite' ? '/public/posts?' : '/posts?') + p)
   }
   post = (id: string) => this.req<Post>('GET', `/posts/${encodeURIComponent(id)}`)
   like = (id: string, on: boolean) => this.req<{ likes: number; liked: boolean }>(on ? 'POST' : 'DELETE', `/posts/${encodeURIComponent(id)}/like`)
@@ -138,6 +146,17 @@ class Plaza {
     this.req<Comment>('POST', `/posts/${encodeURIComponent(id)}/comments`, { body, ...(replyTo && { replyTo }) })
   deleteComment = (id: string) => this.req<void>('DELETE', `/comments/${encodeURIComponent(id)}`)
   report = (r: CreateReportRequest) => this.req<void>('POST', '/reports', r)
+  notices = (cursor: string | null) => this.req<NoticeList>('GET', '/notices' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''))
+  readNotices = (before: string) => this.req<void>('POST', '/notices/read', { before })
+  /** 问一次未读数：只在登录、开着新消息提醒时，失败就当没有 */
+  async pollUnread() {
+    if (!this.token) return
+    try {
+      this.unread = (await this.req<{ unread: number }>('GET', '/notices/unread')).unread
+    } catch {
+      /* 网络不通下次再问 */
+    }
+  }
   /** 云同步（v0.7.0），逻辑在 sync.svelte.ts */
   sync = (r: SyncRequest) => this.req<SyncResponse>('POST', '/sync', r)
 
@@ -148,6 +167,16 @@ class Plaza {
 }
 
 export const plaza = new Plaza()
+
+/** 「3 分钟前」「2 天前」，超过 30 天写日期 */
+export function ago(iso: string) {
+  const m = Math.floor((Date.now() - Date.parse(iso)) / 60000)
+  if (m < 1) return '刚刚'
+  if (m < 60) return `${m} 分钟前`
+  if (m < 1440) return `${Math.floor(m / 60)} 小时前`
+  if (m < 43200) return `${Math.floor(m / 1440)} 天前`
+  return iso.slice(0, 10)
+}
 
 /** 广场帖子转成本地阵容的样子（给阵容卡显示、导入用） */
 export const postToLineup = (p: Post): Lineup => ({

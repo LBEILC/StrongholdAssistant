@@ -509,7 +509,7 @@ public sealed partial class HostApi
                 };
                 core.WebResourceResponseReceived += async (_, args) =>
                 {
-                    if (closed) return;
+                    if (closed || args.Request.Method == "OPTIONS") return;
                     var uri = new Uri(args.Request.Uri);
                     var isHistory = IsSklandResponse(args.Request.Uri, "history-log") && args.Request.Method == "GET";
                     var isBinding = uri.Host == "zonai.skland.com" && uri.AbsolutePath == SklandBindingPath

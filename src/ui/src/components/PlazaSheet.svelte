@@ -3,21 +3,24 @@
   import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
   import { api } from '../lib/api'
-  import { plaza, postToLineup, PLAZA, REPORT_REASONS, type ReportReason } from '../lib/plaza.svelte'
+  import { ago, plaza, postToLineup, PLAZA, REPORT_REASONS, type Notice, type ReportReason } from '../lib/plaza.svelte'
   import PlazaComments from './PlazaComments.svelte'
   import LineupCard from './LineupCard.svelte'
   import LineupBreakdown from './LineupBreakdown.svelte'
   import Icon from './Icon.svelte'
 
-  // 广场的底部面板，两种用途：看广场里的一个阵容（导入、点赞、看简介），发布本地阵容（写简介）。
+  // 广场的底部面板，三种用途：看广场里的一个阵容（导入、点赞、看简介），发布本地阵容（写简介），站内消息（v0.9.3）。
   // 没登录时面板里直接给「登录」，没昵称时先起昵称
   const post = $derived(plaza.viewing)
   const pub = $derived(plaza.publishing)
-  const open = $derived(!!post || !!pub)
+  const msgs = $derived(plaza.noticesOpen)
+  const open = $derived(!!post || !!pub || msgs)
   const close = () => {
     plaza.viewing = null
     plaza.publishing = null
     plaza.reporting = null
+    plaza.noticesOpen = false
+    plaza.fromNotices = false
   }
 
   let desc = $state('')
@@ -76,7 +79,7 @@
     run(async () => {
       if (!plaza.me && !(await plaza.login())) return
       post!.favorited = (await plaza.favorite(post!.id, !post!.favorited)).favorited
-      app.showToast(post!.favorited ? '已收藏，在广场「收藏」里找得到' : '已取消收藏')
+      app.showToast(post!.favorited ? '已收藏，在广场「收藏」里找得到（作者会看到你的昵称）' : '已取消收藏')
     })
   const mine = $derived(!!post && plaza.me?.id === post.author.id)
   // 从别人的森空岛攻略导入的（简介开头「来自森空岛 · 作者」），发布前提醒征得原作者同意；自己的历史战绩不用
@@ -94,6 +97,66 @@
       plaza.check()
     }
   })
+  // 站内消息：打开就把列表里的都标成已读；这次打开时还没读的几条保持高亮
+  let notices = $state<Notice[]>([])
+  let nCursor = $state<string | null>(null)
+  let nLoading = $state(false)
+  let fresh = $state(new Set<string>())
+  async function loadNotices(more = false) {
+    nLoading = true
+    err = ''
+    try {
+      await plaza.check()
+      if (!plaza.me) return
+      const r = await plaza.notices(more ? nCursor : null)
+      notices = more ? [...notices, ...r.notices] : r.notices
+      nCursor = r.cursor
+      const unread = r.notices.filter((n) => !n.read)
+      if (unread.length) fresh = new Set([...fresh, ...unread.map((n) => n.id)])
+      if (!more && unread.length) plaza.readNotices(r.notices[0].createdAt).then(() => (plaza.unread = 0), () => {})
+      else if (!more) plaza.unread = 0
+    } catch (e) {
+      err = (e as Error).message
+    } finally {
+      nLoading = false
+    }
+  }
+  $effect(() => {
+    if (msgs) {
+      fresh = new Set()
+      loadNotices()
+    }
+  })
+  const backToNotices = () => {
+    plaza.viewing = null
+    plaza.fromNotices = false
+    plaza.noticesOpen = true
+  }
+  const openNotice = (n: Notice) =>
+    run(async () => {
+      const p = await plaza.post(n.post.id)
+      plaza.focusComment = (n.kind === 'comment' || n.kind === 'reply') && n.comment ? n.comment.id : null
+      plaza.noticesOpen = false
+      plaza.fromNotices = true
+      plaza.viewing = p
+    })
+  const NOTICE_ICON = { comment: 'chat', reply: 'reply', favorite: 'starFill', like: 'heartFill', featured: 'award', post_hidden: 'eyeOff', comment_hidden: 'eyeOff' } as const
+  function who(n: Notice) {
+    const names = n.actors.map((a) => a.nickname || '一位玩家')
+    return n.actorCount > names.length ? `${names.join('、')} 等 ${n.actorCount} 人` : names.join('、')
+  }
+  function says(n: Notice) {
+    switch (n.kind) {
+      case 'comment': return `${who(n)} 评论了你的阵容`
+      case 'reply': return `${who(n)} 回复了你的评论`
+      case 'favorite': return `${who(n)} 收藏了你的阵容`
+      case 'like': return `${who(n)} 赞了你的阵容`
+      case 'featured': return '你的阵容被设为精选'
+      case 'post_hidden': return '你的阵容被管理员下架了'
+      case 'comment_hidden': return '你的评论被管理员下架了'
+    }
+  }
+
   const reasons = $derived((Object.keys(REPORT_REASONS) as ReportReason[]).filter((r) => r !== 'broken' || rep?.target.kind === 'post'))
   const sendReport = () =>
     run(async () => {
@@ -154,7 +217,7 @@
           <Icon name={post.liked ? 'heartFill' : 'heart'} size={14} />{post.likes}
         </button>
         <span title="导入次数"><Icon name="download" size={14} />{post.imports}</span>
-        <button class="like" class:on={post.favorited} disabled={busy} onclick={fav} title={plaza.me ? '收藏后在广场「收藏」里找得到' : '登录后收藏'}>
+        <button class="like" class:on={post.favorited} disabled={busy} onclick={fav} title={plaza.me ? '收藏后在广场「收藏」里找得到；作者会看到你的昵称' : '登录后收藏'}>
           <Icon name={post.favorited ? 'starFill' : 'star'} size={14} />{post.favorited ? '已收藏' : '收藏'}
         </button>
         <span class="sp"></span>
@@ -165,10 +228,52 @@
       <PlazaComments {post} />
       </div>
       <footer>
-        <button class="ghost" onclick={close}>关闭</button>
+        {#if plaza.fromNotices}<button class="ghost" onclick={backToNotices}>返回消息</button>{:else}<button class="ghost" onclick={close}>关闭</button>{/if}
         <span class="sp"></span>
         <button class="secondary" disabled={!post.current || busy} onclick={() => doImport(false)}>导入</button>
         <button class="primary" disabled={!post.current || busy} onclick={() => doImport(true)}>导入并设为目标</button>
+      </footer>
+    {:else if msgs}
+      <header>
+        <span class="hi"><Icon name="bell" size={16} /></span>
+        <h3>消息</h3>
+        <span class="term en">Notice</span>
+        <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
+      </header>
+      <div class="scroll">
+      {#if !plaza.checked || (nLoading && !notices.length && !err)}
+        <p class="hint">加载中…</p>
+      {:else if !plaza.me}
+        <div class="acct">
+          <p>别人评论、回复、收藏、点赞你的阵容时会在这里提醒。先登录阵容广场。</p>
+          <button class="primary" disabled={plaza.loggingIn} onclick={login}>{plaza.loggingIn ? '等待登录…' : '登录'}</button>
+        </div>
+      {:else if !notices.length && !err}
+        <p class="hint">还没有消息。别人评论、回复、收藏、点赞你的阵容时会出现在这里。</p>
+      {:else}
+        <ul class="nl">
+          {#each notices as n (n.id)}
+            <li>
+              <button class="n k-{n.kind}" class:new={fresh.has(n.id)} disabled={busy} onclick={() => openNotice(n)}>
+                <span class="ni"><Icon name={NOTICE_ICON[n.kind]} size={14} /></span>
+                <span class="nb">
+                  <span class="ns">{says(n)}</span>
+                  <span class="np">「{n.post.name}」</span>
+                  {#if n.comment}<span class="nc">{n.comment.body}</span>{/if}
+                </span>
+                <span class="nt">{ago(n.createdAt)}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+        {#if nCursor}<button class="lnk more" disabled={nLoading} onclick={() => loadNotices(true)}>{nLoading ? '加载中…' : '更早的消息'}</button>{/if}
+      {/if}
+      {#if err}<p class="err">{err}</p>{/if}
+      </div>
+      <footer>
+        <span class="ftip">{app.settings.plazaNotices ? '只保留最近 90 天' : '新消息提醒关着，在设置里能打开'}</span>
+        <span class="sp"></span>
+        <button class="ghost" onclick={close}>关闭</button>
       </footer>
     {:else if pub}
       <header>
@@ -482,6 +587,95 @@
   }
   .sp {
     flex: 1;
+  }
+  .ftip {
+    font-size: var(--fs-sm);
+    color: var(--fg-4);
+  }
+  /* 站内消息 */
+  .nl {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .n {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .n:hover {
+    background: var(--bg-3);
+  }
+  .n.new {
+    background: color-mix(in srgb, var(--mint) 8%, transparent);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
+  .ni {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    flex: none;
+    color: var(--mint);
+    background: var(--bg-2);
+  }
+  .n.k-like .ni {
+    color: var(--like);
+  }
+  .n.k-favorite .ni,
+  .n.k-featured .ni {
+    color: var(--gold);
+  }
+  .n.k-post_hidden .ni,
+  .n.k-comment_hidden .ni {
+    color: var(--red-fg);
+  }
+  .nb {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .ns {
+    font-size: var(--fs-base);
+    color: var(--fg-1);
+  }
+  .np {
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .nc {
+    margin-top: 2px;
+    padding: 4px 8px;
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+    color: var(--fg-2);
+    background: var(--well);
+    box-shadow: inset 2px 0 0 var(--line);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-line;
+  }
+  .nt {
+    flex: none;
+    font-size: var(--fs-xs);
+    color: var(--fg-4);
+  }
+  .more {
+    align-self: center;
   }
   .ghost {
     font-size: var(--fs-base);

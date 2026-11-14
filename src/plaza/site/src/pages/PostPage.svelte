@@ -136,7 +136,7 @@
         <button class="btn ghost like" class:on={p.liked} disabled={liking} onclick={like} title={session.me ? '' : '登录后点赞'}>
           <Icon name={p.liked ? 'heartFill' : 'heart'} size={16} />{p.likes}
         </button>
-        <button class="btn ghost like" class:on={p.favorited} disabled={faving} onclick={fav} title={session.me ? '收藏后在「我的」和助手广场里都找得到' : '登录后收藏'}>
+        <button class="btn ghost like" class:on={p.favorited} disabled={faving} onclick={fav} title={session.me ? '收藏后在「我的」和助手广场里都找得到；作者会看到你的昵称' : '登录后收藏'}>
           <Icon name={p.favorited ? 'star' : 'starLine'} size={16} />{p.favorited ? '已收藏' : '收藏'}
         </button>
         <span class="imp" title="导入次数"><Icon name="download" size={15} />{p.imports}</span>

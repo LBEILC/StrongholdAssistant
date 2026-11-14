@@ -4,6 +4,7 @@
   import { session, toast } from '../session.svelte'
   import { ago } from '../data'
   import Icon from './Icon.svelte'
+  import { tick } from 'svelte'
 
   // 评论区：只有一层，回复也排在同一列表里，写「回复 某某」；新到旧
   let {
@@ -24,6 +25,17 @@
   let loading = $state(true)
   let error = $state('')
 
+  // 从站内消息点进来：地址带 #c-<评论 id>，滚到那条并闪一下（不在第一页就不管）
+  let flash = $state<string | null>(null)
+  async function focusHash() {
+    const id = location.hash.startsWith('#c-') ? location.hash.slice(3) : ''
+    if (!id || !list.some((c) => c.id === id)) return
+    flash = id
+    await tick()
+    document.getElementById('c-' + id)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setTimeout(() => flash === id && (flash = null), 2400)
+  }
+
   async function load(more = false) {
     loading = true
     error = ''
@@ -31,6 +43,7 @@
       const r = demo ? { comments: (await import('../demo')).demoComments.map((c) => ({ ...c, postId })), cursor: null } : await api.comments(postId, more ? cursor : null)
       list = more ? [...list, ...r.comments] : r.comments
       cursor = r.cursor
+      if (!more) focusHash()
     } catch (e) {
       error = (e as Error).message
     } finally {
@@ -121,7 +134,7 @@
   {:else}
     <ul>
       {#each list as c (c.id)}
-        <li>
+        <li id="c-{c.id}" class:flash={flash === c.id}>
           <div class="top">
             <b class:me={c.author.id === session.me?.id}>{c.author.nickname}</b>
             {#if c.replyTo}<span class="to"><Icon name="reply" size={12} />{c.replyTo.nickname}</span>{/if}
@@ -198,7 +211,12 @@
     padding: 0;
     list-style: none;
   }
+  li.flash {
+    background: color-mix(in srgb, var(--mint) 14%, transparent);
+    transition-duration: 0ms;
+  }
   li {
+    transition: background 600ms var(--ease-out);
     padding: 12px 2px;
     border-bottom: 1px solid var(--line-soft);
   }

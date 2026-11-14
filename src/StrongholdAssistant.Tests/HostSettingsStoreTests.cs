@@ -25,6 +25,20 @@ public sealed class HostSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void PlazaNoticesDefaultsAndSurvivesReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{}");
+        var store = new HostSettingsStore(path);
+        Assert.True(store.LoadSettings().PlazaNotices);
+        store.SaveSettings(store.LoadSettings() with { PlazaNotices = false });
+        Assert.False(new HostSettingsStore(path).LoadSettings().PlazaNotices);
+        store.SaveSettings(store.LoadSettings() with { PlazaNotices = true });
+        Assert.True(new HostSettingsStore(path).LoadSettings().PlazaNotices);
+    }
+
+    [Fact]
     public void UiSkinDefaultsAndSurvivesReload()
     {
         Directory.CreateDirectory(_directory);

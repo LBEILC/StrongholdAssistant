@@ -4,6 +4,8 @@ import { body, fail, iso, json, me, stmt, type UserRow } from './common'
 import { getPost, listPosts, toAdminPost } from './posts'
 import { listComments, updateComment } from './comments'
 import { listReports, resolveReport } from './reports'
+import { adminNotice } from './notices'
+import { stats } from './stats'
 
 // 公钥由库按缓存期限刷新；团队域名来自部署配置，不能由请求指定。
 const keys = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
@@ -24,6 +26,7 @@ async function authorize(ctx: Context) {
 export async function admin(ctx: Context, path: string) {
  await authorize(ctx)
  const { env, request } = ctx, method = request.method
+ if (path === '/api/admin/stats' && method === 'GET') return stats(ctx)
  if (path === '/api/admin/comments' && method === 'GET') return listComments(ctx, null, null, null)
  if (path === '/api/admin/reports' && method === 'GET') return listReports(ctx)
  const comment = path.match(/^\/api\/admin\/comments\/([^/]+)$/)
@@ -45,9 +48,13 @@ export async function admin(ctx: Context, path: string) {
   if (input.featured !== undefined && typeof input.featured !== 'boolean') fail(400, 'bad_request', '精选参数不正确。')
   const existing = await getPost(env, post[1], null)
   if (!existing) fail(404, 'not_found', '帖子不存在。')
-  await stmt(env, 'UPDATE posts SET status=?,featured=?,updated_at=? WHERE id=?',
+  const changes = []
+  if (input.featured === true) changes.push(adminNotice(env, 'featured', post[1]))
+  if (input.status === 'hidden') changes.push(adminNotice(env, 'post_hidden', post[1]))
+  changes.push(stmt(env, 'UPDATE posts SET status=?,featured=?,updated_at=? WHERE id=?',
    input.status === undefined ? existing.status : String(input.status),
-   input.featured === undefined ? existing.featured : Number(input.featured), iso(), post[1]).run()
+   input.featured === undefined ? existing.featured : Number(input.featured), iso(), post[1]))
+  await env.DB.batch(changes)
   return json(toAdminPost((await getPost(env, post[1], null))!))
  }
  const user = path.match(/^\/api\/admin\/users\/([^/]+)$/)

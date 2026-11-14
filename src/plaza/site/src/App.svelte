@@ -19,6 +19,12 @@
   const r = $derived(router.route)
   const REPO = 'https://github.com/LBEILC/StrongholdAssistant'
 
+  // 站内消息未读数：登录后、每次切页面问一次
+  $effect(() => {
+    void r
+    if (session.me && !inApp) session.pollUnread()
+  })
+
   // 标签页标题跟着页面走
   $effect(() => {
     const t = { home: '阵容广场', post: '阵容', login: '登录', me: '我的', new: '新建阵容', privacy: '隐私说明', admin: '后台', notfound: '找不到页面' }[r.page]
@@ -42,6 +48,9 @@
       <a href={REPO + '/releases/latest'} target="_blank" rel="noopener">下载助手<Icon name="external" size={12} /></a>
       {#if session.ready}
         {#if session.me}
+          <a href="/me?tab=notices" use:link class="bell" class:on={r.page === 'me' && location.search.includes('tab=notices')} data-tip={session.unread ? `${session.unread} 条新消息` : '消息'} aria-label={session.unread ? `${session.unread} 条新消息` : '消息'}
+            ><Icon name="bell" size={16} />{#if session.unread}<em class="term">{session.unread > 99 ? '99+' : session.unread}</em>{/if}</a
+          >
           <a href="/me" use:link class="who" class:on={r.page === 'me'}><Icon name="user" size={15} /><span class="nk">{session.me.nickname ?? '起个昵称'}</span></a>
         {:else}
           <a href="/login" use:link class="who" class:on={r.page === 'login'}>登录</a>
@@ -63,7 +72,7 @@
   {:else if r.page === 'login'}
     <Login next={r.next} />
   {:else if r.page === 'me'}
-    <MePage />
+    {#key location.search}<MePage />{/key}
   {:else if r.page === 'new'}
     {#key `${r.edit}|${r.post}`}<Editor edit={r.edit} post={r.post} />{/key}
   {:else if r.page === 'privacy'}
@@ -164,6 +173,25 @@
   nav .who {
     box-shadow: inset 0 0 0 1px var(--line);
   }
+  nav .bell {
+    position: relative;
+    padding: 0 8px;
+  }
+  .bell em {
+    position: absolute;
+    right: 0;
+    top: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-style: normal;
+    line-height: 16px;
+    text-align: center;
+    color: var(--mint-ink);
+    background: var(--mint);
+    border-radius: 8px;
+  }
   .nk {
     max-width: 10em;
     overflow: hidden;
@@ -236,7 +264,7 @@
     nav a {
       padding: 0 6px;
     }
-    nav a > :global(.ri:last-child) {
+    nav a:not(.bell) > :global(.ri:last-child) {
       display: none;
     }
     .nk {

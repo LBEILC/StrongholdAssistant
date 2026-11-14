@@ -3,6 +3,7 @@ import { authenticate, type Context } from './auth'
 import { body, dayStart, empty, fail, hasBlocked, iso, json, mask, needNickname, stmt, type Env } from './common'
 import { getPost } from './posts'
 import { pagination } from './pagination'
+import { adminNotice } from './notices'
 
 interface CommentRow {
  id: string; post_id: string; user_id: string; body: string; reply_to: string | null; reply_nickname: string | null
@@ -87,6 +88,9 @@ export async function updateComment(ctx: Context, id: string) {
  const input = await body(ctx.request)
  if (!['visible', 'hidden', 'deleted'].includes(String(input.status))) fail(400, 'bad_request', '状态参数不正确。')
  if (!await getComment(ctx.env, id)) fail(404, 'not_found', '评论不存在。')
- await stmt(ctx.env, 'UPDATE comments SET status=? WHERE id=?', String(input.status), id).run()
+ await ctx.env.DB.batch([
+  ...(input.status === 'hidden' ? [adminNotice(ctx.env, 'comment_hidden', id)] : []),
+  stmt(ctx.env, 'UPDATE comments SET status=? WHERE id=?', String(input.status), id),
+ ])
  return empty()
 }

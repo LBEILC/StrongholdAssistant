@@ -1,0 +1,9 @@
+# 顶层为 Vite 生成的哈希文件，命名占位符不匹配子目录。
+/assets/:file
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/data/*
+  Cache-Control: public, max-age=604800
+
+/assets/game/*
+  Cache-Control: public, max-age=604800

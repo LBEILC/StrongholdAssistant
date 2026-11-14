@@ -71,6 +71,17 @@
       <Icon name={cloud.status === 'error' || !plaza.token ? 'cloudOff' : cloud.status === 'syncing' ? 'refresh' : 'cloud'} size={15} />
     </button>
   {/if}
+  {#if plaza.token && app.settings.plazaNotices}
+    <button
+      class="wbtn bell"
+      title={plaza.unread ? `阵容广场有 ${plaza.unread} 条新消息` : '阵容广场消息'}
+      aria-label={plaza.unread ? `${plaza.unread} 条新消息` : '消息'}
+      onclick={() => (app.collapsed && app.setCollapsed(false), (plaza.viewing = null), (plaza.publishing = null), (plaza.noticesOpen = true))}
+    >
+      <Icon name="bell" size={15} />
+      {#if plaza.unread}<em class="badge term">{plaza.unread > 99 ? '99+' : plaza.unread}</em>{/if}
+    </button>
+  {/if}
   <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.collapsed && app.setCollapsed(false), (app.settingsOpen = true))}>
     <Icon name="settings" size={15} />
   </button>
@@ -195,6 +206,24 @@
   /* 有新版本时齿轮右上角的金色小点 */
   .set {
     position: relative;
+  }
+  .bell {
+    position: relative;
+  }
+  .bell .badge {
+    position: absolute;
+    right: 2px;
+    top: 4px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    font-size: 10px;
+    font-style: normal;
+    line-height: 14px;
+    text-align: center;
+    color: var(--mint-ink);
+    background: var(--mint);
+    pointer-events: none;
   }
   .dot-new::after {
     content: '';

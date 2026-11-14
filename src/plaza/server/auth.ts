@@ -170,7 +170,7 @@ export async function account(ctx: Context, path: string) {
   }
   if (method === 'DELETE') {
    await env.DB.batch([
-    ...['favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage'].map(table => stmt(env, 'DELETE FROM ' + table + ' WHERE user_id=?', u.id)),
+    ...['notices', 'favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage'].map(table => stmt(env, 'DELETE FROM ' + table + ' WHERE user_id=?', u.id)),
     stmt(env, 'DELETE FROM likes WHERE user_id=?', u.id),
     stmt(env, "UPDATE comments SET reply_nickname='已注销用户' WHERE reply_to IN (SELECT id FROM comments WHERE user_id=?)", u.id),
     stmt(env, 'DELETE FROM comments WHERE user_id=?', u.id),

@@ -4,6 +4,7 @@ import { body, dayStart, empty, fail, iso, json, stmt } from './common'
 import { getComment, toAdminComment } from './comments'
 import { getPost, toAdminPost } from './posts'
 import { pagination } from './pagination'
+import { adminNotice } from './notices'
 
 export async function report(ctx: Context) {
  const { env, request } = ctx
@@ -67,6 +68,7 @@ export async function resolveReport(ctx: Context, kind: string, id: string) {
  const changes = [stmt(env, 'UPDATE reports SET resolved_at=? WHERE target_kind=? AND target_id=?', iso(), kind, id)]
  if (input.action !== 'dismiss') {
   const status = input.action === 'hide' ? 'hidden' : 'deleted'
+  if (input.action === 'hide') changes.push(adminNotice(env, kind === 'post' ? 'post_hidden' : 'comment_hidden', id))
   changes.push(kind === 'post' ? stmt(env, 'UPDATE posts SET status=?,updated_at=? WHERE id=?', status, iso(), id) :
    stmt(env, 'UPDATE comments SET status=? WHERE id=?', status, id))
  }

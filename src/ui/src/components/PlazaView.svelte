@@ -55,6 +55,28 @@
     f.strategy = null
   }
 
+  // 先显示上次的列表（v0.9.3）：同样的排序和筛选，第一页存在本机，打开时先摆出来，后台再刷新
+  const CACHE = 'sa_plaza_lists'
+  type Cached = Record<string, { posts: Post[]; cursor: string | null; at: number }>
+  const readCache = (): Cached => {
+    try {
+      return JSON.parse(localStorage.getItem(CACHE) ?? '{}')
+    } catch {
+      return {}
+    }
+  }
+  function writeCache(key: string, posts: Post[], cursor: string | null) {
+    const all = readCache()
+    all[key] = { posts, cursor, at: Date.now() }
+    // 只留最近用过的 6 种
+    const keep = Object.entries(all).sort((a, b) => b[1].at - a[1].at).slice(0, 6)
+    try {
+      localStorage.setItem(CACHE, JSON.stringify(Object.fromEntries(keep)))
+    } catch {
+      /* 存不下就算了 */
+    }
+  }
+
   async function load(more = false) {
     const my = ++seq
     // 收藏要登录：没登录时不请求，列表里给登录按钮
@@ -63,6 +85,15 @@
       cursor = null
       return
     }
+    // 收藏跟账号走，换账号会串，不缓存
+    const key = sort === 'favorite' ? '' : JSON.stringify([sort === 'match' ? 'hot' : sort, f.q, [...f.covenants].sort(), f.strategy])
+    if (!more && key) {
+      const c = readCache()[key]
+      if (c) {
+        posts = c.posts
+        cursor = c.cursor
+      }
+    }
     loading = true
     error = ''
     try {
@@ -70,6 +101,7 @@
       if (my !== seq) return
       posts = more ? [...posts, ...r.posts] : r.posts
       cursor = r.cursor
+      if (!more && key) writeCache(key, r.posts, r.cursor)
     } catch (e) {
       if (my === seq) error = (e as Error).message
     } finally {
@@ -172,6 +204,7 @@
 <p class="acct">
   {#if plaza.me}
     已登录：<b>{plaza.me.nickname ?? '（还没起昵称）'}</b>。在「我的阵容」里右键阵容卡「发布到广场」。
+    <button class="msg" onclick={() => (plaza.noticesOpen = true)}><Icon name="bell" size={12} />消息{#if plaza.unread}<em>{plaza.unread > 99 ? '99+' : plaza.unread}</em>{/if}</button>
   {:else}
     浏览不用登录；发布、点赞要登录，在设置里或发布时登录。
   {/if}
@@ -179,11 +212,12 @@
 
 {#if sort === 'favorite' && !plaza.me}
   <div class="state"><p>收藏跟着广场账号走，登录后在这里看收藏的阵容。</p><button class="retry" disabled={plaza.loggingIn} onclick={() => plaza.login().catch((e) => app.showToast(e.message, true))}>{plaza.loggingIn ? '等待登录…' : '登录'}</button></div>
-{:else if error}
+{:else if error && !posts.length}
   <div class="state"><p>{error}</p><button class="retry" onclick={() => load()}>重试</button></div>
 {:else if !shown.length && !loading}
   <div class="state"><p>{f.q || count ? '没有符合条件的阵容，换个关键词或筛选试试。' : sort === 'favorite' ? '还没有收藏。打开广场里的阵容，点「收藏」就会出现在这里。' : sort === 'featured' ? '还没有精选阵容。' : '广场里还没有阵容。在「我的阵容」里右键阵容卡「发布到广场」，做第一个分享的人。'}</p></div>
 {:else}
+  {#if error}<p class="stale">{error} 下面是上次的结果。<button class="link" onclick={() => load()}>重试</button></p>{/if}
   <div class="list">
     {#each shown as p (p.id)}
       <LineupCard lineup={postToLineup(p)} menu={() => plazaPostMenu(p)} ontitle={() => (plaza.viewing = p)}>
@@ -480,6 +514,32 @@
   }
   .acct b {
     color: var(--fg-2);
+  }
+  .stale {
+    margin: 0 0 8px;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .msg {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 4px;
+    font-size: var(--fs-sm);
+    color: var(--mint);
+    vertical-align: middle;
+  }
+  .msg:hover {
+    color: var(--fg-1);
+  }
+  .msg em {
+    font-style: normal;
+    font-family: var(--font-term);
+    min-width: 16px;
+    padding: 0 3px;
+    text-align: center;
+    color: var(--mint-ink);
+    background: var(--mint);
   }
   .list {
     display: flex;

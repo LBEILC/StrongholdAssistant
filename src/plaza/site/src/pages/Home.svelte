@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, type Post } from '../api'
   import { link } from '../router.svelte'
+  import { session } from '../session.svelte'
   import { covenants, asset } from '../data'
   import PostCard from '../components/PostCard.svelte'
   import StrategyPicker from '../components/StrategyPicker.svelte'
@@ -40,7 +41,7 @@
     try {
       const r = demo
         ? { posts: (await import('../demo')).demoPosts.filter((p) => picked.every((c) => p.lineup.goals.some((g) => g.id === c)) && (!strat || p.lineup.strategyId === strat) && (!kw || JSON.stringify([p.lineup, p.author.nickname]).includes(kw))), cursor: null }
-        : await api.posts({ sort, q: kw, covenant: picked, strategy: strat, cursor: more ? cursor : null })
+        : await api.posts({ sort, q: kw, covenant: picked, strategy: strat, cursor: more ? cursor : null, anon: !session.me })
       if (my !== seq) return
       posts = more ? [...posts, ...r.posts] : r.posts
       cursor = r.cursor
@@ -60,6 +61,9 @@
     if (demo) p.set('demo', '')
     const qs = p.toString()
     history.replaceState(null, '', qs ? `/?${qs}` : '/')
+    // 等知道登没登录再拉：没登录走可缓存的公开列表，登录了要带上自己的点赞、收藏
+    if (!session.ready) return
+    void session.me
     load()
   })
 

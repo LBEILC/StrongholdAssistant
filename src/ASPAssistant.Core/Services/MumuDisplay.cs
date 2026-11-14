@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -20,31 +21,63 @@ public static class MumuDisplay
         return null;
     }
 
-    public static MumuDevice Inspect(MumuDevice device)
+    private static readonly ConcurrentDictionary<(string Serial, string Step, string Code, string Error), byte> LoggedFailures = new();
+
+    public static MumuDevice Inspect(MumuDevice device) => Inspect(device, RunAdb);
+
+    public static MumuDevice Inspect(MumuDevice device,
+        Func<MumuDevice, string[], (int ExitCode, byte[] Output, string Error)> runAdb)
     {
-        try
+        (int ExitCode, byte[] Output, string Error)? Probe(string step, params string[] arguments)
         {
-            var windows = Encoding.UTF8.GetString(RunAdb(device, "shell", "dumpsys", "window", "windows"));
-            return device with { DisplayId = FindGameDisplay(windows), ProbeFailed = false };
+            try
+            {
+                var result = runAdb(device, arguments);
+                if (result.ExitCode != 0)
+                    LogProbeFailure(device.Serial, step, result.ExitCode.ToString(), result.Error);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                // 启动失败或超时没有可用退出码，仍交给后续连接处理。
+                LogProbeFailure(device.Serial, step, "n/a", ex.Message);
+                return null;
+            }
         }
-        catch
+
+        if (Regex.IsMatch(device.Serial, @"^\S+:\d+$"))
+            Probe("connect", "connect", device.Serial);
+        var windows = Probe("dumpsys", "-s", device.Serial, "shell", "dumpsys", "window", "windows");
+        return device with
         {
-            return device with { DisplayId = null, ProbeFailed = true };
-        }
+            DisplayId = windows is { ExitCode: 0 } result
+                ? FindGameDisplay(Encoding.UTF8.GetString(result.Output)) : 0,
+            ProbeFailed = false
+        };
     }
 
-    public static byte[] Capture(MumuDevice device) => RunAdb(device, "exec-out", "screencap", "-p", "-d",
-        device.DisplayId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    private static void LogProbeFailure(string serial, string step, string code, string error)
+    {
+        var excerpt = error[..Math.Min(error.Length, 200)].Replace('\r', ' ').Replace('\n', ' ');
+        if (LoggedFailures.TryAdd((serial, step, code, excerpt), 0))
+            AppLogger.Warn("MuMu", $"serial={serial} step={step} exit={code} stderr={excerpt}");
+    }
 
-    private static byte[] RunAdb(MumuDevice device, params string[] arguments)
+    public static byte[] Capture(MumuDevice device)
+    {
+        var result = RunAdb(device, ["-s", device.Serial, "exec-out", "screencap", "-p", "-d",
+            device.DisplayId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        if (result.ExitCode != 0) throw new IOException(result.Error);
+        return result.Output;
+    }
+
+    private static (int ExitCode, byte[] Output, string Error) RunAdb(MumuDevice device, string[] arguments)
     {
         var start = new ProcessStartInfo(device.AdbPath)
         {
             UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true
         };
-        start.ArgumentList.Add("-s");
-        start.ArgumentList.Add(device.Serial);
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start)!;
         using var output = new MemoryStream();
@@ -58,7 +91,6 @@ public static class MumuDisplay
             throw new IOException("ADB 请求超时");
         }
         Task.WhenAll(copy, error).GetAwaiter().GetResult();
-        if (process.ExitCode != 0) throw new IOException(error.Result);
-        return output.ToArray();
+        return (process.ExitCode, output.ToArray(), error.Result);
     }
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { plaza, type Comment, type Post } from '../lib/plaza.svelte'
+  import { ago, plaza, type Comment, type Post } from '../lib/plaza.svelte'
+  import { tick } from 'svelte'
   import Icon from './Icon.svelte'
   import { api } from '../lib/api'
   import { app } from '../lib/state.svelte'
@@ -20,11 +21,22 @@
       const r = await plaza.comments(post.id, more ? cursor : null)
       list = more ? [...list, ...r.comments] : r.comments
       cursor = r.cursor
+      if (!more && plaza.focusComment) focus(plaza.focusComment)
     } catch (e) {
       err = (e as Error).message
     } finally {
       loading = false
     }
+  }
+  // 从消息点进来：滚到那条评论并闪一下（不在第一页就不管）
+  let flash = $state<string | null>(null)
+  async function focus(id: string) {
+    plaza.focusComment = null
+    if (!list.some((c) => c.id === id)) return
+    flash = id
+    await tick()
+    document.querySelector(`[data-cid="${id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setTimeout(() => flash === id && (flash = null), 2400)
   }
   $effect(() => {
     void post.id
@@ -92,14 +104,6 @@
     openMenu(ev, { title: c.author.nickname, sub: '评论', items })
   }
 
-  function ago(iso: string) {
-    const m = Math.floor((Date.now() - Date.parse(iso)) / 60000)
-    if (m < 1) return '刚刚'
-    if (m < 60) return `${m} 分钟前`
-    if (m < 1440) return `${Math.floor(m / 60)} 小时前`
-    if (m < 43200) return `${Math.floor(m / 1440)} 天前`
-    return iso.slice(0, 10)
-  }
 </script>
 
 <section class="cm">
@@ -138,7 +142,7 @@
   {#if list.length}
     <ul>
       {#each list as c (c.id)}
-        <li oncontextmenu={(ev) => commentMenu(ev, c)}>
+        <li data-cid={c.id} class:flash={flash === c.id} oncontextmenu={(ev) => commentMenu(ev, c)}>
           <div class="top">
             <b class:me={c.author.id === plaza.me?.id}>{c.author.nickname}</b>
             {#if c.replyTo}<span class="to"><Icon name="reply" size={11} />{c.replyTo.nickname}</span>{/if}
@@ -285,6 +289,11 @@
   li {
     padding: 7px 2px;
     border-bottom: 1px solid var(--line-soft);
+    transition: background var(--t-slow, 600ms) var(--ease-out);
+  }
+  li.flash {
+    background: color-mix(in srgb, var(--mint) 14%, transparent);
+    transition-duration: 0ms;
   }
   .top {
     display: flex;

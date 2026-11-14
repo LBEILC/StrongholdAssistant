@@ -583,6 +583,13 @@
           <button class="link" onclick={() => api.openUrl(PLAZA)}>打开阵容广场网站</button>
         </p>
       {/if}
+      <!-- 新消息提醒（v0.9.3）：怕吵可以关；关了也能在广场分段里点「消息」看 -->
+      <label class="row">
+        <span class="lbl"
+          ><b>新消息提醒</b><small>有人评论、回复、收藏、点赞你的阵容时，标题栏铃铛显示未读数（每 10 分钟查一次）。关掉也能在广场分段里点「消息」看</small></span
+        >
+        <input type="checkbox" class="sw" checked={app.settings.plazaNotices} onchange={(e) => set('plazaNotices', e.currentTarget.checked)} />
+      </label>
       <!-- 云同步（v0.7.0）：登录后才能打开 -->
       <label class="row sync">
         <span class="lbl"

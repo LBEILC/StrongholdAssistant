@@ -67,6 +67,18 @@
     prev = t
   })
 
+  // 广场新消息提醒（v0.9.3）：开着时启动就问一次未读数，之后每 10 分钟一次；关掉就不在后台联网
+  $effect(() => {
+    if (!app.settings.plazaNotices) return
+    plaza.check().then(() => plaza.pollUnread())
+    const id = setInterval(() => plaza.pollUnread(), 10 * 60 * 1000)
+    return () => clearInterval(id)
+  })
+  $effect(() => {
+    // 登录或换账号后马上问一次
+    if (plaza.me && app.settings.plazaNotices) plaza.pollUnread()
+  })
+
   // 网站上点「在助手里打开」：stronghold://import?post=<帖子 id> 打开广场详情，?code=<分享码> 打开导入面板
   $effect(() =>
     api.onDeepLink((url) => {

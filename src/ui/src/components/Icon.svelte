@@ -47,8 +47,10 @@
   import chart from 'remixicon/icons/Business/bar-chart-2-line.svg?raw'
   import eye from 'remixicon/icons/System/eye-line.svg?raw'
   import eyeOff from 'remixicon/icons/System/eye-off-line.svg?raw'
+  import bell from 'remixicon/icons/Media/notification-3-line.svg?raw'
+  import award from 'remixicon/icons/Business/award-line.svg?raw'
 
-  const icons = { settings, cloud, cloudOff, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll, chat, flag, reply, workbench, sidebar, history, chart, eye, eyeOff }
+  const icons = { settings, cloud, cloudOff, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll, chat, flag, reply, workbench, sidebar, history, chart, eye, eyeOff, bell, award }
   export type IconName = keyof typeof icons
 </script>
 

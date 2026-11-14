@@ -1,3 +1,5 @@
+@import './assets/fonts/misans/index.css';
+
 /* 网站在助手的设计令牌（app.css）之上：页面可滚动、可选中文字、字号略大 */
 html,
 body {
@@ -126,10 +128,3 @@ select:focus {
   color: var(--fg-3);
 }
 
-/* 网站上字体先用系统字体显示、MiSans 下载完再换（助手里是本地文件，用 block 没问题；网页上 2.6 MB 会让首屏空白） */
-@font-face {
-  font-family: 'MiSans';
-  src: url('../../../ui/src/assets/fonts/MiSans-VF.woff2') format('woff2');
-  font-weight: 150 700;
-  font-display: swap;
-}

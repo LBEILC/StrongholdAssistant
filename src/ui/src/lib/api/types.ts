@@ -552,6 +552,11 @@ export interface Settings {
    * 默认 { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] }
    */
   cloudSync: CloudSyncState
+  /**
+   * 广场新消息提醒（v0.9.3，默认 true）：登录广场后，标题栏显示消息铃铛和未读数，启动时和每 10 分钟问一次未读数。
+   * 关掉就不在后台联网问、标题栏不显示铃铛；消息仍能在广场分段里打开看。不进云同步
+   */
+  plazaNotices: boolean
 }
 
 /** 云同步在本机记的状态（v0.7.0），只有界面读写 */

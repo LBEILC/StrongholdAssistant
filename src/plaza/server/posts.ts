@@ -101,10 +101,24 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
  const cursor = more ? btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify({ key: queryKey, rank: last!.rank, time: last!.favorite_time, id: last!.id })))) : null
  return json({ posts: page.map(admin ? toAdminPost : toPost), cursor })
 }
+export async function publicPosts(ctx: Context) {
+ const q = new URL(ctx.request.url).searchParams
+ if (q.has('favorite') || q.has('author')) fail(400, 'bad_request', '公开列表不支持收藏或作者筛选。')
+ const response = await listPosts(ctx, null)
+ response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=120')
+ return response
+}
 export async function posts(ctx: Context, path: string) {
  const { env, request } = ctx, method = request.method
  const u = await authenticate(ctx, false)
- if (path === '/api/posts' && method === 'GET') return listPosts(ctx, u?.id ?? null)
+ if (path === '/api/posts' && method === 'GET') {
+  const response = await listPosts(ctx, u?.id ?? null)
+  const q = new URL(request.url).searchParams
+  const hasSession = /(?:^|;\s*)sa_session=/.test(request.headers.get('Cookie') ?? '')
+  if (!request.headers.has('Authorization') && !hasSession && !q.has('favorite') && !q.has('author'))
+   response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=120')
+  return response
+ }
  if (path === '/api/posts' && method === 'POST') {
   if (!u) fail(401, 'unauthorized', '请先登录。')
   needNickname(u)
@@ -135,7 +149,7 @@ export async function posts(ctx: Context, path: string) {
   if (p.fingerprint !== fingerprint) fail(400, 'season_mismatch', '这个帖子来自其他赛季，不能导入。')
   const device = string((await body(request)).device)
   if (!device.trim() || device.length > 256) fail(400, 'bad_device', '设备标识不正确。')
-  await stmt(env, 'INSERT OR IGNORE INTO imports(post_id,device,source) VALUES(?,?,?)', id, await hash(device), await ipSource(env, request, 'import')).run()
+  await stmt(env, 'INSERT OR IGNORE INTO imports(post_id,device,source,created_at) VALUES(?,?,?,?)', id, await hash(device), await ipSource(env, request, 'import'), iso()).run()
   return json({ imports: (await getPost(env, id, u?.id ?? null))!.imports })
  }
  if (!u) fail(401, 'unauthorized', '请先登录。')
@@ -149,7 +163,9 @@ export async function posts(ctx: Context, path: string) {
  }
  if (action === 'like' && ['POST', 'DELETE'].includes(method)) {
   needNickname(u)
-  await stmt(env, method === 'POST' ? 'INSERT OR IGNORE INTO likes VALUES(?,?)' : 'DELETE FROM likes WHERE post_id=? AND user_id=?', id, u.id).run()
+  await (method === 'POST'
+   ? stmt(env, 'INSERT OR IGNORE INTO likes(post_id,user_id,created_at) VALUES(?,?,?)', id, u.id, iso())
+   : stmt(env, 'DELETE FROM likes WHERE post_id=? AND user_id=?', id, u.id)).run()
   const updated = (await getPost(env, id, u.id))!
   return json({ likes: updated.likes, liked: !!updated.liked })
  }

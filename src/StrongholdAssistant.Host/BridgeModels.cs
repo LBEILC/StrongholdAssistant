@@ -44,6 +44,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public bool RunAsAdmin { get; init; }
     public RouteOverlaySettings Routes { get; init; } = new();
     public string UiSkin { get; init; } = "follow";
+    public bool PlazaNotices { get; init; } = true;
     public string ShopScanSpeed { get; init; } = "normal";
     public string UpdateSource { get; init; } = "github";
     public string UpdateProxy { get; init; } = "";

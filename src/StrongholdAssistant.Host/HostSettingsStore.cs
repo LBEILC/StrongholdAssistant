@@ -36,6 +36,7 @@ public sealed class HostSettingsStore(string path)
             GameThemeAuto = json["gameThemeAuto"]?.GetValue<bool>() ?? true,
             RunAsAdmin = json["runAsAdmin"]?.GetValue<bool>() ?? false,
             UiSkin = uiSkin,
+            PlazaNotices = json["plazaNotices"]?.GetValue<bool>() ?? true,
             Routes = RouteOverlaySettings.Load(json["routes"]),
             ShopScanSpeed = json["shopScanSpeed"] is JsonValue speedValue
                 && speedValue.TryGetValue<string>(out var speed) && speed is ("normal" or "fast") ? speed : "normal",

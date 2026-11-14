@@ -7,6 +7,7 @@ import type {
   AdminReport,
   AdminReportList,
   AdminResolveReport,
+  AdminStats,
   Comment,
   CommentList,
   CreateReportRequest,
@@ -18,13 +19,15 @@ import type {
   CloudLineup,
   LikeResponse,
   Me,
+  Notice,
+  NoticeList,
   Post,
   PostDetail,
   PostList,
   SendCodeResponse,
 } from '../../shared/api'
 
-export type { AdminComment, AdminPost, AdminReport, AdminUser, CloudLineup, Comment, Me, Post, PostDetail }
+export type { AdminComment, AdminPost, AdminReport, AdminStats, AdminUser, CloudLineup, Comment, Me, Notice, Post, PostDetail }
 export { REPORT_REASONS, type ReportReason, type ReportTarget } from '../../shared/api'
 
 export class ApiError extends Error {
@@ -85,6 +88,8 @@ export interface ListQuery {
   author?: string
   season?: 'current' | 'all'
   cursor?: string | null
+  /** 没登录时走公开列表（v0.9.3，ESA 边缘缓存 2 分钟）；favorite、author 不能用 */
+  anon?: boolean
 }
 
 export const api = {
@@ -98,7 +103,7 @@ export const api = {
     if (q.author) p.set('author', q.author)
     if (q.season) p.set('season', q.season)
     if (q.cursor) p.set('cursor', q.cursor)
-    return req<PostList>('GET', '/posts?' + p)
+    return req<PostList>('GET', (q.anon && !q.favorite && !q.author ? '/public/posts?' : '/posts?') + p)
   },
   post: (id: string) => req<PostDetail>('GET', `/posts/${encodeURIComponent(id)}`),
   /** 带 code 时连阵容一起换（v0.7.4），点赞、收藏、评论保留 */
@@ -116,6 +121,10 @@ export const api = {
   comment: (id: string, body: string, replyTo?: string) => req<Comment>('POST', `/posts/${encodeURIComponent(id)}/comments`, { body, ...(replyTo && { replyTo }) }),
   deleteComment: (id: string) => req<void>('DELETE', `/comments/${encodeURIComponent(id)}`),
   report: (r: CreateReportRequest) => req<void>('POST', '/reports', r),
+  /** 站内消息（v0.9.3） */
+  notices: (cursor: string | null) => req<NoticeList>('GET', '/notices' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : '')),
+  unread: () => req<{ unread: number }>('GET', '/notices/unread'),
+  readNotices: (before: string) => req<void>('POST', '/notices/read', { before }),
   imported: (id: string) => req<{ imports: number }>('POST', `/posts/${encodeURIComponent(id)}/import`, { device: deviceId() }),
 
   sendCode: (email: string, turnstileToken: string) => req<SendCodeResponse>('POST', '/auth/code', { email, turnstileToken }),
@@ -130,6 +139,8 @@ export const api = {
   deleteMe: () => req<void>('DELETE', '/me'),
 
   admin: {
+    /** 看板（v0.9.3） */
+    stats: () => req<AdminStats>('GET', '/admin/stats'),
     posts: (status: AdminPost['status'] | null, cursor: string | null) => {
       const p = new URLSearchParams()
       if (status) p.set('status', status)

@@ -19,7 +19,7 @@ let serial = 0
 before(async () => {
  mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response() } }', d1Databases: ['DB'], compatibilityDate: '2025-10-11' })
  db = await mf.getD1Database('DB')
- for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql', '0005_server_privacy.sql']) {
+ for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql', '0005_server_privacy.sql', '0006_notices.sql', '0007_admin_stats.sql']) {
   const sql = await readFile('migrations/' + file, 'utf8')
   // D1 exec 按行分语句；保留触发器整体，迁移一次执行。
   await db.exec(sql.replace(/\r?\n/g, ' '))
@@ -52,7 +52,7 @@ before(async () => {
  }
 })
 beforeEach(async () => {
- await db.batch(['favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage', 'income_reports', 'income_samples', 'income_summary', 'reports', 'report_usage', 'comments', 'likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
+ await db.batch(['notice_actors', 'notices', 'favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage', 'income_reports', 'income_samples', 'income_summary', 'reports', 'report_usage', 'comments', 'likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
  mails.clear()
 })
 after(async () => {
@@ -99,6 +99,34 @@ async function access(email) {
  return { 'Cf-Access-Jwt-Assertion': await new SignJWT({ email }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
   .setIssuer('https://' + env.ACCESS_TEAM_DOMAIN).setAudience(env.ACCESS_AUD).setIssuedAt().setExpirationTime('1h').sign(privateKey) }
 }
+
+test('109 公开列表忽略 Bearer 和 Cookie 凭据并允许边缘缓存', async () => {
+ const user = await login()
+ const post = await publish(user, '公开列表验收')
+ for (const action of ['like', 'favorite'])
+  await ok('/api/posts/' + post.id + '/' + action, { method: 'POST', token: user.token })
+ const personal = (await ok('/api/posts', { token: user.token })).posts[0]
+ assert.equal(personal.liked, true)
+ assert.equal(personal.favorited, true)
+ for (const options of [{ token: user.token }, { headers: { Cookie: 'sa_session=' + user.token } }]) {
+  const result = await request('/api/public/posts', options)
+  assert.equal(result.status, 200)
+  assert.equal(result.headers.get('Cache-Control'), 'public, max-age=0, s-maxage=120')
+  assert.equal(result.headers.get('Set-Cookie'), null)
+  assert.equal(result.data.posts.length, 1)
+  assert.equal(result.data.posts[0].id, post.id)
+  assert.equal(result.data.posts[0].liked, false)
+  assert.equal(result.data.posts[0].favorited, false)
+ }
+})
+
+test('109 公开列表拒绝 favorite 和 author 参数', async () => {
+ for (const query of ['favorite=1', 'author=player', 'favorite=', 'author=']) {
+  const result = await request('/api/public/posts?' + query)
+  assert.equal(result.status, 400)
+  assert.equal(result.data.error, 'bad_request')
+ }
+})
 
 test('102 签名匹配阿里云官方 POST 示例', async () => {
  // https://help.aliyun.com/zh/direct-mail/signature；固定示例含需按 RFC 3986 编码的特殊字符。
@@ -443,6 +471,144 @@ const reportTarget = (user, kind, id, reason = 'spam', detail) => request('/api/
 const moderateComment = (headers, id, status) => request('/api/admin/comments/' + id, { method: 'PATCH', headers, body: { status } })
 const resolve = (headers, kind, id, action) => request('/api/admin/reports/' + kind + '/' + id, { method: 'PATCH', headers, body: { action } })
 
+const inbox = user => ok('/api/notices', { token: user.token })
+const react = (user, post, action, method = 'POST') => ok('/api/posts/' + post.id + '/' + action, { token: user.token, method })
+
+test('105 只有无凭据且无个人筛选的列表允许共享缓存', async () => {
+ const user = await login()
+ const publicList = await request('/api/posts')
+ assert.equal(publicList.status, 200)
+ assert.equal(publicList.headers.get('Cache-Control'), 'public, max-age=0, s-maxage=120')
+ for (const [path, options, status] of [
+  ['/api/posts', { token: user.token }, 200],
+  ['/api/posts', { headers: { Cookie: 'other=1; sa_session=' + user.token } }, 200],
+  ['/api/posts', { headers: { Authorization: '' } }, 200],
+  ['/api/posts', { headers: { Cookie: 'sa_session=' } }, 200],
+  ['/api/posts?favorite=1', {}, 401],
+  ['/api/posts?author=' + user.me.id, {}, 200],
+ ]) {
+  const result = await request(path, options)
+  assert.equal(result.status, status)
+  assert.equal(result.headers.get('Cache-Control'), 'no-store')
+ }
+})
+
+test('105 注销删除收到的消息及关联署名，保留其他人的消息', async () => {
+ const a = await login(), b = await login(), post = await publish(a), headers = await access('admin@example.com')
+ await comment(b, post)
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { status: 'hidden' } })
+ const otherPost = await publish(b)
+ await ok('/api/admin/posts/' + otherPost.id, { method: 'PATCH', headers, body: { featured: true } })
+ const received = (await inbox(a)).notices
+ assert.equal(received.length, 2)
+ assert.equal((await request('/api/me', { method: 'DELETE', token: a.token })).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM notices WHERE user_id=?').bind(a.me.id).first()).n, 0)
+ for (const notice of received)
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM notice_actors WHERE notice_id=?').bind(notice.id).first()).n, 0)
+ assert.equal((await inbox(b)).notices.length, 1)
+})
+
+test('104 评论、回复去重、自评不通知与删除评论', async () => {
+ const a = await login(), b = await login(), c = await login(), post = await publish(a)
+ const first = await comment(b, post)
+ let page = await inbox(a)
+ assert.equal(page.notices.length, 1)
+ assert.equal(page.notices[0].kind, 'comment')
+ assert.equal(page.notices[0].comment.id, first.id)
+ assert.deepEqual(page.notices[0].actors, [{ id: b.me.id, nickname: b.me.nickname }])
+ const own = await comment(a, post)
+ assert.equal((await inbox(a)).notices.length, 1)
+ await comment(c, post, '回复作者', own.id)
+ page = await inbox(a)
+ assert.deepEqual(page.notices.map(n => n.kind), ['reply', 'comment'])
+ assert.equal((await request('/api/comments/' + first.id, { method: 'DELETE', token: b.token })).status, 204)
+ assert.deepEqual((await inbox(a)).notices.map(n => n.kind), ['reply'])
+ const elsewhere = await publish(b)
+ await db.prepare('UPDATE comments SET created_at=? WHERE user_id=?').bind(new Date(Date.now() - 11000).toISOString(), a.me.id).run()
+ const onOther = await comment(a, elsewhere)
+ await db.prepare('UPDATE comments SET created_at=? WHERE user_id=?').bind(new Date(Date.now() - 11000).toISOString(), b.me.id).run()
+ await comment(b, elsewhere, '回复', onOther.id)
+ assert.equal((await inbox(a)).notices.filter(n => n.kind === 'reply').length, 2)
+})
+
+test('104 无昵称收藏者与未读撤销', async () => {
+ const a = await login(), b = await login(null), post = await publish(a)
+ await react(b, post, 'favorite')
+ const page = await inbox(a)
+ assert.equal(page.notices[0].kind, 'favorite')
+ assert.deepEqual(page.notices[0].actors, [{ id: b.me.id, nickname: '' }])
+ assert.equal(page.notices[0].actorCount, 1)
+ await react(b, post, 'favorite', 'DELETE')
+ assert.deepEqual((await inbox(a)).notices, [])
+ assert.equal((await ok('/api/notices/unread', { token: a.token })).unread, 0)
+ assert.equal((await inbox(b)).unread, 0)
+})
+
+test('104 点赞合并、已读分组、时间边界及查询索引', async t => {
+ const a = await login(), b = await login(), c = await login(), d = await login(), post = await publish(a)
+ await react(b, post, 'like')
+ await react(c, post, 'like')
+ let page = await inbox(a)
+ assert.equal(page.notices.length, 1)
+ assert.equal(page.notices[0].kind, 'like')
+ assert.equal(page.notices[0].actorCount, 2)
+ assert.deepEqual(page.notices[0].actors.map(u => u.id), [c.me.id, b.me.id])
+ const before = page.notices[0].createdAt
+ assert.equal((await request('/api/notices/read', { token: a.token, method: 'POST', body: { before } })).status, 204)
+ assert.equal((await ok('/api/notices/unread', { token: a.token })).unread, 0)
+ await react(d, post, 'like')
+ assert.equal((await request('/api/notices/read', { token: a.token, method: 'POST', body: { before } })).status, 204)
+ const started = performance.now()
+ page = await inbox(a)
+ t.diagnostic('消息列表请求耗时 ' + (performance.now() - started).toFixed(1) + ' ms')
+ assert.equal(page.notices.length, 2)
+ assert.equal(page.unread, 1)
+ assert.equal(page.notices[0].read, false)
+ assert.deepEqual(page.notices[0].actors.map(u => u.id), [d.me.id])
+ assert.equal(page.notices[1].read, true)
+ const unreadStarted = performance.now()
+ assert.equal((await ok('/api/notices/unread', { token: a.token })).unread, 1)
+ t.diagnostic('未读数请求耗时 ' + (performance.now() - unreadStarted).toFixed(1) + ' ms')
+ for (const [sql, index] of [
+  ['SELECT * FROM notices WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 20', 'notices_user_time'],
+  ['SELECT COUNT(*) FROM notices WHERE user_id=? AND read=0', 'notices_user_read_time'],
+ ]) {
+  const plan = await db.prepare('EXPLAIN QUERY PLAN ' + sql).bind(a.me.id).all()
+  assert.match(JSON.stringify(plan.results), new RegExp(index))
+  t.diagnostic(JSON.stringify(plan.results))
+ }
+})
+
+test('104 管理精选和下架通知，含举报处理', async () => {
+ const a = await login(), b = await login(), post = await publish(a), headers = await access('admin@example.com')
+ const c = await comment(b, post)
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { featured: true } })
+ assert.equal((await inbox(a)).notices[0].kind, 'featured')
+ assert.deepEqual((await inbox(a)).notices[0].actors, [])
+ assert.equal((await moderateComment(headers, c.id, 'hidden')).status, 204)
+ assert.equal((await inbox(b)).notices[0].kind, 'comment_hidden')
+ assert.equal((await inbox(b)).notices[0].comment.id, c.id)
+ assert.equal((await inbox(a)).notices.some(n => n.kind === 'comment'), false)
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { status: 'hidden' } })
+ assert.equal((await inbox(a)).notices[0].kind, 'post_hidden')
+ await ok('/api/admin/posts/' + post.id, { method: 'PATCH', headers, body: { status: 'visible', featured: false } })
+ assert.equal((await inbox(a)).notices.length, 2)
+ await moderateComment(headers, c.id, 'visible')
+ await reportTarget(a, 'comment', c.id)
+ assert.equal((await resolve(headers, 'comment', c.id, 'hide')).status, 204)
+ assert.equal((await inbox(b)).notices.length, 2)
+ await reportTarget(b, 'post', post.id)
+ assert.equal((await resolve(headers, 'post', post.id, 'hide')).status, 204)
+ assert.equal((await inbox(a)).notices.filter(n => n.kind === 'post_hidden').length, 2)
+})
+
+test('104 三个消息接口均要求登录', async () => {
+ for (const [path, method, body] of [
+  ['/api/notices', 'GET'], ['/api/notices/unread', 'GET'],
+  ['/api/notices/read', 'POST', { before: new Date().toISOString() }],
+ ]) assert.equal((await request(path, { method, body })).status, 401)
+})
+
 test('评论发布、同时间分页、回复昵称快照、删除权限及可见计数', async () => {
  const owner = await login(), writer = await login(), other = await login(), headers = await access('admin@example.com')
  const post = await publish(owner), another = await publish(owner, '另一帖子')
@@ -626,7 +792,7 @@ test('046 收藏增删、跨赛季分页、可见性、500 上限和注销清理
  for (const method of ['POST', 'DELETE']) assert.equal((await request('/api/posts/' + b.id + '/favorite', { method, token: user.token })).status, 404)
  await db.prepare(`WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<499)
   INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,created_at,updated_at)
-  SELECT 'bulk-'||x,?,'bulk-'||x,0,'{}','','2020','2020' FROM n`).bind(author.me.id).run()
+  SELECT 'bulk-'||x,?,'bulk-'||x,0,'{"name":"批量测试阵容"}','','2020','2020' FROM n`).bind(author.me.id).run()
  await db.prepare("INSERT INTO favorites SELECT ?,id,'2020' FROM posts WHERE id LIKE 'bulk-%'").bind(user.me.id).run()
  assert.equal((await request('/api/posts/' + a.id + '/favorite', { method: 'POST', token: user.token })).status, 429)
  assert.equal((await request('/api/me', { method: 'DELETE', token: user.token })).status, 204)
@@ -897,4 +1063,106 @@ test('075 注销清除别人回复中的昵称', async () => {
  const original = await comment(a, post), reply = await comment(b, post, '回复', original.id)
  assert.equal((await request('/api/me', { method: 'DELETE', token: a.token })).status, 204)
  assert.equal((await db.prepare('SELECT reply_nickname FROM comments WHERE id=?').bind(reply.id).first()).reply_nickname, '已注销用户')
+})
+
+test('115 看板权限、累计、北京时间趋势与旧记录', async t => {
+ assert.equal((await request('/api/admin/stats')).status, 403)
+ const headers = await access('admin@example.com')
+ const empty = await ok('/api/admin/stats', { headers })
+ assert.ok(empty.daily.likes.every(d => d.count === null))
+ assert.ok(empty.daily.imports.every(d => d.count === null))
+ // 固定在 UTC 前一天、北京时间今天，覆盖跨日归属。
+ const time = Date.parse('2026-11-13T17:00:00.000Z'), now = new Date(time).toISOString()
+ t.mock.method(Date, 'now', () => time)
+ const user = await login(), post = await publish(user, '看板验收')
+ await ok(`/api/posts/${post.id}/like`, { method: 'POST', token: user.token })
+ await ok(`/api/posts/${post.id}/import`, { method: 'POST', body: { device: 'stats-device' } })
+ await ok(`/api/posts/${post.id}/favorite`, { method: 'POST', token: user.token })
+ await ok(`/api/posts/${post.id}/comments`, { method: 'POST', token: user.token, body: { body: '统计评论' } })
+ const modes = JSON.parse(await readFile('data/income-modes.json', 'utf8'))
+ assert.equal((await request('/api/income', { method: 'POST', body: { device: 'stats-device', mode: modes[0], solo: true,
+  strategyId: null, fingerprint, samples: [{ round: 1, startMoney: 10 }, { round: 2, startMoney: 20 }] } })).status, 204)
+ await db.batch([
+  db.prepare('INSERT INTO cloud_prefs VALUES(?,?,?,?)').bind(user.me.id, '{}', now, now),
+  db.prepare('INSERT INTO cloud_lineups VALUES(?,?,?,?,?,?)').bind(user.me.id, 'one', '{}', now, 0, now),
+  db.prepare('INSERT INTO imports(post_id,device) VALUES(?,?)').bind(post.id, 'legacy'),
+  db.prepare('INSERT INTO users(id,created_at) VALUES(?,?)').bind('legacy-user', '2026-10-01T00:00:00.000Z'),
+  db.prepare('INSERT INTO likes(post_id,user_id) VALUES(?,?)').bind(post.id, 'legacy-user'),
+ ])
+ // 下架仍计数；作者删除、作者注销或封禁、操作人注销或封禁均不计入内容统计。
+ for (const [id, status, banned, deleted] of [['hidden', 'hidden', 0, 0], ['deleted-post', 'deleted', 0, 0], ['banned', 'hidden', 1, 0], ['closed', 'visible', 0, 1]]) {
+  await db.prepare('INSERT INTO users(id,created_at,banned,deleted) VALUES(?,?,?,?)').bind(id, now, banned, deleted).run()
+  await db.prepare('INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
+   .bind(id, id, id, fingerprint, '{"name":"样本"}', '', status, now, now).run()
+  await db.batch([
+   db.prepare('INSERT INTO likes(post_id,user_id,created_at) VALUES(?,?,?)').bind(id, user.me.id, now),
+   db.prepare('INSERT INTO imports(post_id,device,created_at) VALUES(?,?,?)').bind(id, id, now),
+   db.prepare('INSERT INTO favorites VALUES(?,?,?)').bind(user.me.id, id, now),
+   db.prepare('INSERT INTO comments(id,post_id,user_id,body,status,created_at) VALUES(?,?,?,?,?,?)').bind(id, id, user.me.id, '样本', 'hidden', now),
+   db.prepare('INSERT INTO cloud_prefs VALUES(?,?,?,?)').bind(id, '{}', now, now),
+  ])
+  if (banned || deleted) await db.batch([
+   db.prepare('INSERT INTO likes(post_id,user_id,created_at) VALUES(?,?,?)').bind(post.id, id, now),
+   db.prepare('INSERT INTO favorites VALUES(?,?,?)').bind(id, post.id, now),
+   db.prepare('INSERT INTO comments(id,post_id,user_id,body,created_at) VALUES(?,?,?,?,?)').bind('actor-' + id, post.id, id, '样本', now),
+  ])
+ }
+ await db.batch([
+  db.prepare('INSERT INTO reports(target_kind,target_id,user_id,reason,created_at) VALUES(?,?,?,?,?)').bind('post', post.id, user.me.id, 'spam', now),
+  db.prepare('INSERT INTO reports(target_kind,target_id,user_id,reason,created_at) VALUES(?,?,?,?,?)').bind('post', post.id, 'legacy-user', 'spam', now),
+ ])
+ const started = performance.now()
+ const result = await ok('/api/admin/stats', { headers })
+ t.diagnostic(`看板请求耗时 ${(performance.now() - started).toFixed(1)} ms（本地 D1）`)
+ assert.deepEqual(result.totals, { users: 4, posts: 2, likes: 3, imports: 3, comments: 2, favorites: 2, cloudSync: 3, openReports: 1 })
+ assert.equal(result.totals.openReports, (await ok('/api/admin/reports', { headers })).openCount)
+ assert.equal(result.at, now)
+ for (const [key, today] of Object.entries({ users: 3, posts: 2, likes: 2, imports: 2, comments: 2, incomeGames: 1 })) {
+  const days = result.daily[key]
+  assert.equal(days.length, 30)
+  assert.equal(days[0].date, '2026-10-16')
+  assert.deepEqual(days.at(-1), { date: '2026-11-14', count: today })
+  for (let i = 1; i < days.length; i++) assert.equal(Date.parse(days[i].date) - Date.parse(days[i - 1].date), 86400000)
+ }
+ for (const key of ['likes', 'imports']) assert.ok(result.daily[key].slice(0, -1).every(d => d.count === null))
+ for (const key of ['users', 'posts', 'comments', 'incomeGames']) assert.ok(result.daily[key].slice(0, -1).every(d => d.count === 0))
+ assert.deepEqual(result.topLiked, [{ post: { id: post.id, name: '看板验收', author: user.me.nickname }, count: 1 }])
+ assert.deepEqual(result.topImported, result.topLiked)
+})
+
+test('115 排行只计近七天、最多十条且降序，开始记录后无数据补零', async t => {
+ const time = Date.parse('2026-11-13T17:00:00.000Z'), now = new Date(time).toISOString()
+ t.mock.method(Date, 'now', () => time)
+ const headers = await access('admin@example.com')
+ await db.prepare('INSERT INTO users(id,nickname,created_at) VALUES(?,?,?)').bind('rank-author', '当前昵称', now).run()
+ for (let i = 0; i < 12; i++) {
+  await db.prepare('INSERT INTO users(id,created_at) VALUES(?,?)').bind('voter-' + i, now).run()
+  await db.prepare('INSERT INTO posts(id,user_id,code,fingerprint,lineup,description,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)')
+   .bind('rank-' + i, 'rank-author', 'code-' + i, fingerprint, JSON.stringify({ name: '排行' + i }), '', now, now).run()
+ }
+ for (let i = 0; i < 12; i++) {
+  const writes = []
+  for (let j = 0; j <= i; j++) for (const table of ['likes', 'imports']) writes.push(db.prepare(
+   `INSERT INTO ${table}(post_id,${table === 'likes' ? 'user_id' : 'device'},created_at) VALUES(?,?,?)`)
+   .bind('rank-' + i, 'voter-' + j, '2026-11-07T16:00:00.000Z'))
+  await db.batch(writes)
+ }
+ // 窗口外的记录不能把最后一名推上榜，旧无时间记录也不能入榜。
+ for (const table of ['likes', 'imports']) await db.batch([
+  db.prepare(`UPDATE ${table} SET created_at=? WHERE post_id=?`).bind('2026-11-07T15:59:59.999Z', 'rank-11'),
+  db.prepare(`UPDATE ${table} SET created_at=NULL WHERE post_id=?`).bind('rank-10'),
+ ])
+ const result = await ok('/api/admin/stats', { headers })
+ for (const key of ['topImported', 'topLiked']) {
+  assert.equal(result[key].length, 10)
+  assert.deepEqual(result[key].map(r => r.count), [10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
+  assert.ok(result[key].every(r => r.post.author === '当前昵称'))
+ }
+ for (const key of ['likes', 'imports']) {
+  const days = result.daily[key]
+  assert.ok(days.filter(d => d.date < '2026-11-07').every(d => d.count === null))
+  assert.equal(days.find(d => d.date === '2026-11-07').count, 12)
+  assert.equal(days.find(d => d.date === '2026-11-08').count, 55)
+  assert.ok(days.filter(d => d.date > '2026-11-08').every(d => d.count === 0))
+ }
 })

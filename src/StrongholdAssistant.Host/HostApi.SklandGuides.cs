@@ -14,6 +14,7 @@ public sealed partial class HostApi
     private JsonElement _sklandGuidesResources;
     private bool _sklandGuidesLoggedIn;
     private string? _sklandGuidesFirstPage;
+    private string _sklandGuideStep = "validate";
     private readonly Dictionary<string, int> _sklandGuidePages = [];
     private SklandGuideQueue GuideQueue => _sklandGuidesQueue ??= new(CloseSklandGuides, TimeProvider.System, SynchronizationContext.Current);
 
@@ -24,12 +25,15 @@ public sealed partial class HostApi
         {
             var watch = Stopwatch.StartNew();
             SklandGuidePage? page = null;
+            string? failure = null;
+            _sklandGuideStep = "validate";
             var pageNumber = string.IsNullOrEmpty(query.PageToken) ? 1 : _sklandGuidePages.GetValueOrDefault(query.PageToken, 2);
             try
             {
                 if (generation != _sklandLogoutGeneration) throw new SklandException("森空岛已退出登录，请重新读取攻略列表。");
                 if (_sklandLoginActive) throw new SklandException("森空岛窗口已经开着");
                 if (_sklandGuidesController is null) await OpenSklandGuidesAsync();
+                _sklandGuideStep = "build-query";
                 var request = SklandParser.GuideQuery(query, _sklandGuidesResources, Catalog);
                 if (!_sklandGuidesLoggedIn && (query.Section != "all" || query.Sort == "latest" || !string.IsNullOrEmpty(query.PageToken)))
                     return page = new([], null, true);
@@ -37,6 +41,7 @@ public sealed partial class HostApi
                 // 首屏只在查询完全一致时复用；其他查询至多多一次页面自己的首屏请求。
                 var first = _sklandGuidesFirstPage;
                 _sklandGuidesFirstPage = null;
+                _sklandGuideStep = "parse-first-page";
                 if (first is not null && query.Section == "all" && query.Sort != "latest"
                     && string.IsNullOrEmpty(query.PageToken) && request.Parameters.Count == 4)
                     page = SklandParser.ParseGuidePage(first, query.PageToken, !_sklandGuidesLoggedIn, decoded: false);
@@ -45,7 +50,8 @@ public sealed partial class HostApi
                     var result = await GuideScriptAsync("""
                         const request = ARGUMENT;
                         return await window.__assistantGuideService[request.method](request.parameters);
-                        """, request);
+                        """, request, "query");
+                    _sklandGuideStep = "parse-page";
                     page = SklandParser.ParseGuidePage(result.GetRawText(), query.PageToken, !_sklandGuidesLoggedIn);
                 }
                 if (pageNumber == 1) _sklandGuidePages.Clear();
@@ -54,6 +60,7 @@ public sealed partial class HostApi
             }
             catch (Exception ex)
             {
+                failure = $" error={ex.GetType().Name} hresult=0x{ex.HResult:X8} step={ex.Data["SklandGuideStep"] ?? _sklandGuideStep}";
                 CloseSklandGuides();
                 if (ex is SklandException or ArgumentException) throw;
                 // 不记录网络错误原文，避免服务回显账号或凭据。
@@ -65,7 +72,7 @@ public sealed partial class HostApi
                 var sort = query.Sort == "latest" ? "latest" : "recommended";
                 AppLogger.Info("SklandGuides", $"section={section} sort={sort} keyword={!string.IsNullOrWhiteSpace(query.Keyword)} " +
                     $"filters={(query.Core is null ? 0 : 1) + (query.Extras?.Length ?? 0) + (query.StrategyId is null ? 0 : 1)} " +
-                    $"page={pageNumber} count={page?.Items.Length ?? 0} elapsedMs={watch.ElapsedMilliseconds} loginRequired={page?.LoginRequired.ToString() ?? "unknown"}");
+                    $"page={pageNumber} count={page?.Items.Length ?? 0} elapsedMs={watch.ElapsedMilliseconds} loginRequired={page?.LoginRequired.ToString() ?? "unknown"}{failure}");
             }
         });
     }
@@ -82,10 +89,14 @@ public sealed partial class HostApi
 
     private async Task OpenSklandGuidesAsync()
     {
+        _sklandGuideStep = "create-window";
         _sklandGuidesSource = new HwndSource(new HwndSourceParameters("SklandGuides")
         { Width = 480, Height = 800, WindowStyle = unchecked((int)0x80000000) });
+        _sklandGuideStep = "create-environment";
         var environment = await SklandEnvironmentAsync();
+        _sklandGuideStep = "create-controller";
         _sklandGuidesController = await environment.CreateCoreWebView2ControllerAsync(_sklandGuidesSource.Handle);
+        _sklandGuideStep = "configure-controller";
         _sklandGuidesController.Bounds = new System.Drawing.Rectangle(0, 0, 480, 800);
         _sklandGuidesController.IsVisible = true;
         var core = _sklandGuidesController.CoreWebView2;
@@ -99,29 +110,41 @@ public sealed partial class HostApi
         }
         async void Response(object? sender, CoreWebView2WebResourceResponseReceivedEventArgs args)
         {
-            if (firstPage.Task.IsCompleted || !IsSklandResponse(args.Request.Uri, "index")) return;
+            // 预检与实际请求使用同一 URL，预检没有可供读取的攻略响应体。
+            if (firstPage.Task.IsCompleted || args.Request.Method == "OPTIONS" || !IsSklandResponse(args.Request.Uri, "index")) return;
+            var step = "first-page-status";
             try
             {
                 if (args.Response.StatusCode != 200) throw new SklandException(
                     $"森空岛攻略列表读不出来，稍后再试。\nHTTP {args.Response.StatusCode}");
+                step = "first-page-read-content-" + args.Request.Method;
                 using var stream = await args.Response.GetContentAsync();
                 using var reader = new StreamReader(stream);
                 var json = await reader.ReadToEndAsync();
+                step = "first-page-parse-response";
                 using var document = JsonDocument.Parse(json);
                 var code = document.RootElement.GetProperty("code").GetInt32();
                 if (code != 0) throw new SklandException($"森空岛攻略列表读不出来，稍后再试。\nServiceCode: {code}");
                 firstPage.TrySetResult(json);
             }
-            catch (Exception ex) { firstPage.TrySetException(ex); }
+            catch (Exception ex)
+            {
+                ex.Data["SklandGuideStep"] = step;
+                firstPage.TrySetException(ex);
+            }
         }
         core.NavigationCompleted += Navigation;
         core.WebResourceResponseReceived += Response;
         try
         {
+            _sklandGuideStep = "navigate";
             core.Navigate("https://game.skland.com/arknights/stronghold-guide");
+            _sklandGuideStep = "wait-navigation";
             await navigated.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            _sklandGuideStep = "wait-first-page";
             _sklandGuidesFirstPage = await firstPage.Task.WaitAsync(TimeSpan.FromSeconds(30));
-            _sklandGuidesResources = await GuideScriptAsync(GuideInitializeScript, null);
+            _sklandGuidesResources = await GuideScriptAsync(GuideInitializeScript, null, "initialize");
+            _sklandGuideStep = "read-login-state";
             _sklandGuidesLoggedIn = _sklandGuidesResources.GetProperty("loggedIn").GetBoolean();
         }
         finally
@@ -151,7 +174,7 @@ public sealed partial class HostApi
                  strategyIds: resources.strategyIds, loggedIn: !!auth.isLogin };
         """;
 
-    private async Task<JsonElement> GuideScriptAsync(string body, object? argument)
+    private async Task<JsonElement> GuideScriptAsync(string body, object? argument, string operation)
     {
         var core = _sklandGuidesController!.CoreWebView2;
         var completion = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -174,7 +197,9 @@ public sealed partial class HostApi
                 "})(); chrome.webview.postMessage({assistantGuideRequest:'" + id + "',result}); } catch(e) {" +
                 "chrome.webview.postMessage({assistantGuideRequest:'" + id + "',error:Number.isSafeInteger(e?.code)?e.code:-1}); } })(" +
                 JsonSerializer.Serialize(argument, JsonOptions) + ");";
+            _sklandGuideStep = operation + "-execute-script";
             await core.ExecuteScriptAsync(script);
+            _sklandGuideStep = operation + "-wait-result";
             return await completion.Task.WaitAsync(TimeSpan.FromSeconds(30));
         }
         finally { core.WebMessageReceived -= Message; }

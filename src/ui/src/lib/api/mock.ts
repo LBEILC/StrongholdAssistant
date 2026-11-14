@@ -214,6 +214,7 @@ let settings: Settings = {
   startupMode: 'remember',
   shareIncome: false,
   cloudSync: { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] },
+  plazaNotices: true,
   operatorDefaults: {},
 }
 // 历史记录假数据：一局本地和森空岛对上了，一局只有本地（还在打）
