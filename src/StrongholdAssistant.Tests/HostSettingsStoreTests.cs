@@ -7,6 +7,63 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void MarkerStylesDefaultAndSurviveReload()
+    {
+        var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));
+        var defaults = store.LoadSettings().MarkerStyles;
+        Assert.Equal(new MarkerStyle(true, "#F3B322"), defaults.Key);
+        Assert.Equal(new MarkerStyle(true, "#3CF0C2"), defaults.Tracked);
+        Assert.Equal(new MarkerStyle(true, "#A98BFF"), defaults.Pickable);
+        Assert.True(defaults.Labels);
+        var custom = defaults with { Tracked = new(false, "#123456"), Labels = false };
+        store.SaveSettings(store.LoadSettings() with { MarkerStyles = custom });
+        Assert.Equal(custom, store.LoadSettings().MarkerStyles);
+    }
+
+    [Fact]
+    public void MarkerStylesRepairOnlyMissingOrInvalidFields()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        const string json = """{"markerStyles":{"key":{"show":false,"color":"red"},"tracked":{"color":"#123456"},"labels":false}}""";
+        File.WriteAllText(path, json);
+        var styles = new HostSettingsStore(path).LoadSettings().MarkerStyles;
+        Assert.Equal(new MarkerStyle(false, "#F3B322"), styles.Key);
+        Assert.Equal(new MarkerStyle(true, "#123456"), styles.Tracked);
+        Assert.Equal(new MarkerStyle(true, "#A98BFF"), styles.Pickable);
+        Assert.False(styles.Labels);
+        // 消息桥和备份反序列化也按同样规则补全。
+        Assert.Equal(styles, System.Text.Json.JsonSerializer.Deserialize<SettingsDto>(json, HostApi.JsonOptions)!.MarkerStyles);
+    }
+
+    [Fact]
+    public void UiFontsDefaultAndSurviveReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{}");
+        var store = new HostSettingsStore(path);
+        var settings = store.LoadSettings();
+        Assert.Equal("", settings.UiFont);
+        Assert.Equal("normal", settings.UiFontWeight);
+        store.SaveSettings(settings with { UiFont = "微软雅黑", UiFontWeight = "medium" });
+        var restored = new HostSettingsStore(path).LoadSettings();
+        Assert.Equal("微软雅黑", restored.UiFont);
+        Assert.Equal("medium", restored.UiFontWeight);
+    }
+
+    [Theory]
+    [InlineData("bold", "bold")]
+    [InlineData("invalid", "normal")]
+    public void UiFontWeightLoadsWithFallback(string weight, string expected)
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new { uiFontWeight = weight }));
+        Assert.Equal(expected, new HostSettingsStore(path).LoadSettings().UiFontWeight);
+    }
+
+    [Fact]
     public void MigratesLegacyEmulatorSerialAndSavesOnlyNewName()
     {
         Directory.CreateDirectory(_directory);

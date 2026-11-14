@@ -1,6 +1,6 @@
 <script lang="ts">
   import { asset } from '../lib/assets'
-  import { app, type LineupView, lineupEquipment } from '../lib/state.svelte'
+  import { app, type LineupView, lineupEquipment, otherBonds } from '../lib/state.svelte'
   import { allStages, stageLabel } from '../lib/stages'
   import { customSkill } from '../lib/opconfig'
   import SectionHeader from '../components/SectionHeader.svelte'
@@ -50,6 +50,7 @@
   let allPicks = $state(false)
   const picks = $derived(allPicks ? app.pickable : app.pickable.slice(0, 10))
   const targetEqs = $derived(a ? lineupEquipment(a) : [])
+  const others = $derived(a ? otherBonds(a.goals, a.members) : [])
 </script>
 
 <!-- 目标：目标盟约进度、想抓的干员、还能抓的干员 -->
@@ -117,6 +118,18 @@
           <p class="none">还没有目标盟约，点「编辑」选。</p>
         {/each}
       </div>
+
+      <!-- 名单顺带能凑出的其他盟约：亮的是已激活，数字是下一档 -->
+      {#if others.length}
+        <div class="sub">其他盟约<em>名单顺带凑出的，亮的已激活</em></div>
+        <div class="others">
+          {#each others as g (g.covenant.id)}
+            <button class="oc" class:active={g.active} class:done={g.done} onclick={() => (app.detail = { kind: 'covenant', id: g.covenant.id })} title="{g.covenant.name}：{g.have} 人，{g.done ? '已满档' : `${g.need} 人到${g.active ? '下一档' : '激活'}`}">
+              <BondIcon id={g.covenant.id} size={18} on={g.active} />{g.covenant.name}<span class="cnt"><em>{g.have}</em>/{g.need}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       <div class="sub">想抓的干员<em>{a!.members.length} 名 · 点头像切换追踪，暗的是没在追踪；左上角金色是关键</em></div>
       <div class="ops">
@@ -445,6 +458,36 @@
   .brow.done .cnt em {
     color: var(--mint);
   }
+  .others {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .oc {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px 3px 4px;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+    background: var(--bg-1);
+  }
+  .oc:hover {
+    background: var(--bg-2);
+  }
+  .oc.active {
+    color: var(--fg-1);
+  }
+  .oc .cnt {
+    margin-left: 2px;
+  }
+  .oc .cnt em {
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .oc.active .cnt em {
+    color: var(--mint);
+  }
   .lvl {
     font-size: var(--fs-2xs);
     padding: 1px 4px 0;
@@ -458,12 +501,12 @@
     gap: 2px 6px;
     margin: 14px 2px 6px;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .sub em {
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--fw-base);
     font-size: var(--fs-sm);
     color: var(--fg-4);
   }
@@ -532,7 +575,7 @@
     height: 32px;
     padding: 0 14px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .primary {
     color: var(--mint-ink);

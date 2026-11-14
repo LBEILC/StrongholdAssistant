@@ -22,6 +22,8 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
     public bool HasVisibleCards { get; private set; }
     public string? Failure { get; private set; }
     public double? UiScale { get; private set; }
+    public bool ReadUntracked { get; set; }
+    public IReadOnlyList<ShopItem> AllItems { get; private set; } = [];
 
     public async Task<IReadOnlyList<ShopItem>> ReadAsync(
         byte[] screenshot, int width, int height, IReadOnlyList<string> trackedNames)
@@ -29,7 +31,8 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         HasVisibleCards = false;
         Failure = null;
         UiScale = null;
-        if (trackedNames.Count == 0)
+        AllItems = [];
+        if (trackedNames.Count == 0 && !ReadUntracked)
             return [];
         var theme = Theme;
 
@@ -46,7 +49,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
             using var croppedBytes = new MemoryStream();
             cropped.Save(croppedBytes, ImageFormat.Png);
             var croppedItems = await ReadAsync(croppedBytes.ToArray(), contentWidth, height, trackedNames);
-            foreach (var item in croppedItems)
+            foreach (var item in AllItems.Concat(croppedItems).Distinct())
             {
                 var ocr = item.OcrRegion;
                 item.OcrRegion = ((padding + ocr.X * contentWidth) / width, ocr.Y, ocr.Width * contentWidth / width, ocr.Height);
@@ -190,7 +193,8 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         }
         if (HasVisibleCards && items.Count == 0) Failure = $"商店卡片的名字没读出来。\n{OcrSummary(texts)}";
         AppLogger.Info("Shop", $"UI 缩放={k:F3}; 可见卡片={HasVisibleCards}; 识别名称={string.Join('|', items.Select(i => i.Name))}");
-        return ShopLayout.Snap(items.Where(i => trackedNames.Contains(i.Name)), width, height, k, theme);
+        AllItems = ShopLayout.Snap(items, width, height, k, theme);
+        return AllItems.Where(i => trackedNames.Contains(i.Name)).ToArray();
     }
 
     private static string OcrSummary(IReadOnlyList<OcrTextResult> texts)

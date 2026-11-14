@@ -3,6 +3,7 @@
   import { allStages, stageLabel } from '../lib/stages'
   import Tabs from './Tabs.svelte'
   import BondTracker from './BondTracker.svelte'
+  import UpdateBar from './UpdateBar.svelte'
   import BondIcon from './BondIcon.svelte'
 
   // 工作台左边的常驻栏：导航、目标阵容（当前阶段、目标盟约进度）、追踪列表、更新提示。
@@ -14,7 +15,6 @@
     return s.final ? '成型阵容' : stageLabel(s)
   })
   const goTarget = () => (app.setTab('lineup'), (app.lineupView = 'target'))
-  const u = $derived(app.update)
 </script>
 
 <aside class="rail">
@@ -45,12 +45,7 @@
     <BondTracker rail />
   </div>
 
-  {#if u.state === 'available' || u.state === 'downloading' || u.state === 'ready'}
-    <button class="upd" onclick={() => (app.settingsOpen = true)}>
-      <b class="term">Update</b>
-      <span>{u.state === 'available' ? `新版本 v${u.version}，点这里更新` : u.state === 'downloading' ? `正在下载 v${u.version}…` : '下载完成，即将重启'}</span>
-    </button>
-  {/if}
+  <UpdateBar rail />
 </aside>
 
 <style>
@@ -79,7 +74,7 @@
   }
   .name {
     font-size: var(--fs-lg);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-align: left;
     white-space: nowrap;
     overflow: hidden;
@@ -143,25 +138,5 @@
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--line);
-  }
-  .upd {
-    flex: none;
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 8px 12px;
-    font-size: var(--fs-sm);
-    line-height: 1.4;
-    text-align: left;
-    color: var(--gold);
-    background: rgb(var(--gold-rgb) / 0.1);
-    border-top: 1px solid rgb(var(--gold-rgb) / 0.3);
-  }
-  .upd b {
-    flex: none;
-    font-size: var(--fs-2xs);
-    padding: 2px 4px 1px;
-    color: var(--gold-ink);
-    background: var(--gold);
   }
 </style>

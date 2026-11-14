@@ -52,7 +52,7 @@
   }
   .lb {
     font-size: var(--fs-lg);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     letter-spacing: 0.1em;
   }
   .en {
@@ -221,7 +221,7 @@
   }
   :global([data-skin='ursus']) .en {
     font-style: italic;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-4);
   }
   :global([data-skin='ursus']) button.on .en {

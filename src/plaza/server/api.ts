@@ -1,8 +1,10 @@
 import { account, type Context } from './auth'
 import { admin } from './admin'
+import { reportTraffic } from './traffic'
 import { posts, publicPosts } from './posts'
 import { comments } from './comments'
 import { report } from './reports'
+import { ratings } from './ratings'
 import { notices } from './notices'
 import { sync } from './sync'
 import { incomeTable, reportIncome } from './income'
@@ -18,10 +20,12 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   // Cookie 写请求也限制来源，避免其他站点借用户登录状态修改数据。
   if (origin && !allowed) fail(403, 'forbidden', '此来源无权访问。')
   if (request.method === 'OPTIONS') response = empty()
+  else if (url.pathname === '/api/edge/traffic' && request.method === 'POST') response = await reportTraffic(ctx)
   else if (url.pathname.startsWith('/api/admin/')) response = await admin(ctx, url.pathname)
   else if (url.pathname === '/api/me' || url.pathname === '/api/me/password' || url.pathname.startsWith('/api/auth/')) response = await account(ctx, url.pathname)
   else if (/^\/api\/posts\/[^/]+\/comments$/.test(url.pathname) || /^\/api\/comments\/[^/]+$/.test(url.pathname)) response = await comments(ctx, url.pathname)
   else if (url.pathname === '/api/notices' || url.pathname.startsWith('/api/notices/')) response = await notices(ctx, url.pathname)
+  else if (url.pathname === '/api/public/ratings' || url.pathname === '/api/ratings' || url.pathname.startsWith('/api/ratings/')) response = await ratings(ctx, url.pathname)
   else if (url.pathname === '/api/reports' && request.method === 'POST') response = await report(ctx)
   else if (url.pathname === '/api/sync' && request.method === 'POST') response = await sync(ctx)
   else if (url.pathname === '/api/income' && request.method === 'POST') response = await reportIncome(ctx)

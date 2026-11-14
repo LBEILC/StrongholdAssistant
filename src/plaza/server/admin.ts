@@ -6,6 +6,8 @@ import { listComments, updateComment } from './comments'
 import { listReports, resolveReport } from './reports'
 import { adminNotice } from './notices'
 import { stats } from './stats'
+import { mirrorStats } from './mirror'
+import { trafficStats } from './traffic'
 
 // 公钥由库按缓存期限刷新；团队域名来自部署配置，不能由请求指定。
 const keys = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
@@ -27,6 +29,8 @@ export async function admin(ctx: Context, path: string) {
  await authorize(ctx)
  const { env, request } = ctx, method = request.method
  if (path === '/api/admin/stats' && method === 'GET') return stats(ctx)
+ if (path === '/api/admin/traffic' && method === 'GET') return trafficStats(ctx)
+ if (path === '/api/admin/mirror' && method === 'GET') return mirrorStats(ctx)
  if (path === '/api/admin/comments' && method === 'GET') return listComments(ctx, null, null, null)
  if (path === '/api/admin/reports' && method === 'GET') return listReports(ctx)
  const comment = path.match(/^\/api\/admin\/comments\/([^/]+)$/)
@@ -66,6 +70,7 @@ export async function admin(ctx: Context, path: string) {
   if (input.banned) changes.push(
    stmt(env, "UPDATE posts SET status='hidden',updated_at=? WHERE user_id=?", iso(), user[1]),
    stmt(env, "UPDATE comments SET status='hidden' WHERE user_id=?", user[1]),
+   stmt(env, 'UPDATE ratings SET comment_hidden=1 WHERE user_id=?', user[1]),
    stmt(env, 'UPDATE sessions SET expires_at=? WHERE user_id=?', iso(), user[1]),
   )
   await env.DB.batch(changes)

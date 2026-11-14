@@ -40,11 +40,16 @@ public partial class MainWindow : Window
         _api.UpdateReady += () => Dispatcher.BeginInvoke(LaunchPreparedUpdate);
         InitializeWindow();
         var environment = await CoreWebView2Environment.CreateAsync(userDataFolder: Path.Combine(userDirectory, "WebView2"));
+        environment.BrowserProcessExited += (_, args) => ASPAssistant.Core.AppLogger.Info("WebView2",
+            $"BrowserProcessExited: BrowserProcessExitKind={args.BrowserProcessExitKind}; BrowserProcessId={args.BrowserProcessId}");
         // 页面加载前的底色和界面一致，避免白屏
         Browser.DefaultBackgroundColor = System.Drawing.Color.FromArgb(0x0b, 0x0c, 0x0d);
         await Browser.EnsureCoreWebView2Async(environment);
-        ApplyScale(null);
         var web = Browser.CoreWebView2;
+        web.ProcessFailed += (_, args) => ASPAssistant.Core.AppLogger.Error("WebView2",
+            $"ProcessFailed: ProcessFailedKind={args.ProcessFailedKind}; Reason={args.Reason}; " +
+            $"ExitCode={args.ExitCode}; ProcessDescription={args.ProcessDescription}");
+        ApplyScale(null);
         web.Settings.IsNonClientRegionSupportEnabled = true;
         // 缩放只走设置里的"界面大小"：关掉 Ctrl+滚轮 / Ctrl+加减号，否则页面放大而窗口不变，侧栏会挤坏
         web.Settings.IsZoomControlEnabled = false;

@@ -58,8 +58,10 @@ public sealed partial class HostApi
             await File.ReadAllTextAsync(Path.Combine(dataDirectory, "covenant_ids.json")), JsonOptions)!;
         using var bosses = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "bosses.json")));
         using var enemies = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "enemy_types.json")));
+        using var enemyDetails = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "enemies.json")));
         var catalog = JsonSerializer.SerializeToElement(new
         {
+            enemies = enemyDetails.RootElement,
             incomeSources = BuildIncomeSources(equipment, operators),
             covenants = covenants.Select(c => new
             {
@@ -329,6 +331,7 @@ public sealed partial class HostApi
         await _scanGate.WaitAsync();
         try
         {
+            ResetField();
             lock (_historyGate)
             {
                 _activeRecord = null;
@@ -385,6 +388,7 @@ public sealed partial class HostApi
             case "plazaLogout": await PlazaLogoutAsync(); return null;
             case "catalog": return Catalog;
             case "settings": return Settings;
+            case "listFonts": return ListFonts();
             case "saveSettings": SaveSettings(Read<SettingsDto>(0)); return null;
             case "appInfo": return AppInfo();
             case "openDataFolder": OpenDataFolder(); return null;
@@ -399,6 +403,8 @@ public sealed partial class HostApi
             case "emulatorInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverEmulatorDevices()
                 .Select(d => new EmulatorInstance(d.Kind, d.Serial, d.Name)).ToArray());
             case "match": return Match;
+            case "field": return Field;
+            case "setFieldOperator": return SetFieldOperator(Read<FieldCell>(0), Read<string?>(1));
             case "addIncome": return AddIncome(Read<string>(0), Read<bool>(1));
             case "removeIncome": return RemoveIncome(Read<string>(0));
             case "history": return History();

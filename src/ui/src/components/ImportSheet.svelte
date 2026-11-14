@@ -449,7 +449,7 @@
   .seg button.on {
     color: var(--mint-ink);
     background: var(--mint);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .warn {
     margin: 0;
@@ -485,7 +485,7 @@
     height: 28px;
     padding: 0 8px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     background: var(--bg-1);
     border: 0;
     outline: 0;
@@ -526,7 +526,7 @@
     height: 30px;
     padding: 0 12px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     white-space: nowrap;
   }
   .primary {

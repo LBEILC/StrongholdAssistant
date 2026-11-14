@@ -87,6 +87,49 @@ public sealed class BanScreenSamplesTests(ASPAssistant.Tests.Services.EnemyRecog
     private static Sample Expect(string file) => Samples.Single(s => s.File == file);
 
     [Theory]
+    [InlineData("ban-sample-1920x1080.png", 10, 16, true)]
+    [InlineData("ban-sample-2-1920x1080.png", 10, 16, true)]
+    [InlineData("ban-ui100-2000x1125.png", 1, 0, false)]
+    [InlineData("info-1610-bans-1600x1024.png", 1, 0, false)]
+    [InlineData("info-1610-top-1600x1024.png", 8, 10, true)]
+    [InlineData("info-ingame-1920x1080.png", 10, 16, true)]
+    [InlineData("info-scrolled-new-match-1920x1080.png", 0, 0, false)]
+    [InlineData("info-ui100-2000x1125.png", 8, 10, true)]
+    [InlineData("info-user-window-1648x933.png", 10, 16, true)]
+    [InlineData("mumu-solo-detail-bans-1763x992.png", 1, 0, false)]
+    [InlineData("mumu-solo-detail-top-1763x992.png", 10, 16, true)]
+    [InlineData("user-ban-1-1920x1080.png", 8, 10, true)]
+    [InlineData("user-ban-2-1920x1080.png", 8, 10, true)]
+    [InlineData("user-ban-2-532x300.png", 3, 4, false)]
+    [InlineData("user-ban-3-xianjing-1936x1119.png", 10, 16, true)]
+    [InlineData("user-ban-4-1920x1080.png", 1, 0, false)]
+    public async Task AllInformationSamplesKeepTheirNamesAndRejectIncompletePools(
+        string file, int core, int additional, bool accepted)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", file));
+        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(bytes));
+        var (png, width, height) = ScreenshotNormalizer.EnsureAnalysable(bytes, bitmap.Width, bitmap.Height);
+        var strategy = new GarrisonOcrStrategy();
+        var read = await BanCovenantReader.ReadAsync(_ocr, strategy, png, width, height, Names.Core, Names.Additional);
+        read.Core.Should().HaveCount(core);
+        read.Additional.Should().HaveCount(additional);
+
+        var analyzer = new BanScreenAnalyzer(() => Task.FromResult<byte[]?>(bytes), _ocr, strategy,
+            new EnemyRecognizer(_ocr, strategy, new BossDataService()), [], Names.Core, Names.Additional);
+        int results = 0;
+        int bans = 0;
+        string? failure = null;
+        analyzer.AnalysisCompleted += _ => results++;
+        analyzer.AutoBanListComputed += _ => bans++;
+        analyzer.AnalysisFailed += message => failure = message;
+        await analyzer.RunAnalysisAsync();
+        results.Should().Be(accepted ? 1 : 0);
+        bans.Should().Be(accepted ? 1 : 0);
+        if (accepted) failure.Should().BeNull();
+        else failure.Should().NotBeNullOrEmpty();
+    }
+
+    [Theory]
     [MemberData(nameof(SampleFiles))]
     public async Task ReadsEveryCoreCovenantAndShownAdditionalCovenant(string file)
     {

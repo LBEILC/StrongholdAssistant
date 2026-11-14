@@ -36,8 +36,12 @@ public sealed class HostSettingsStore(string path)
             GameThemeAuto = json["gameThemeAuto"]?.GetValue<bool>() ?? true,
             RunAsAdmin = json["runAsAdmin"]?.GetValue<bool>() ?? false,
             UiSkin = uiSkin,
+            UiFont = json["uiFont"]?.GetValue<string>() ?? "",
+            UiFontWeight = json["uiFontWeight"] is JsonValue weightValue
+                && weightValue.TryGetValue<string>(out var weight) && weight is ("normal" or "medium" or "bold") ? weight : "normal",
             PlazaNotices = json["plazaNotices"]?.GetValue<bool>() ?? true,
             Routes = RouteOverlaySettings.Load(json["routes"]),
+            MarkerStyles = MarkerStyles.Load(json["markerStyles"]),
             ShopScanSpeed = json["shopScanSpeed"] is JsonValue speedValue
                 && speedValue.TryGetValue<string>(out var speed) && speed is ("normal" or "fast") ? speed : "normal",
             UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",

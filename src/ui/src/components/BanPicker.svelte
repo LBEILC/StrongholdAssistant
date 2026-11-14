@@ -145,7 +145,7 @@
   }
   h3 em {
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--fw-base);
     margin-left: 4px;
     color: var(--fg-3);
   }
@@ -263,7 +263,7 @@
     height: 30px;
     padding: 0 18px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--mint-ink);
     background: var(--mint);
   }

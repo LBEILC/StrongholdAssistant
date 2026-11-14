@@ -1,0 +1,17 @@
+{
+  "name": "stronghold-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "shoot": "node scripts/shoot.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "remixicon": "4.9.1",
+    "svelte": "5.57.3",
+    "vite": "8.3.5"
+  }
+}

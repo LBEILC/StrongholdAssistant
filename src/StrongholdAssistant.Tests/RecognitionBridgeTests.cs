@@ -112,7 +112,7 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         Assert.Equal(new[] { "scan", "match", "scan" }, events.Select(e => e.Name));
         Assert.Equal(new ScanStatus(true), events[0].Value);
         Assert.Equal(new ScanStatus(false,
-            $"新识别到 {match.BannedOperators.Length} 名禁用干员，共 {match.BannedOperators.Length} 名。禁用列表没显示全时，点「持续识别」再往下滚动。", true), events[2].Value);
+            $"新识别到 {match.BannedOperators.Length} 名禁用干员，共 {match.BannedOperators.Length} 名。", true), events[2].Value);
         var covenant = match.Covenants[0];
         Assert.Equal(match.BannedOperators.Order(), api.SetCovenantIncomplete(covenant.Id, covenant.Incomplete).BannedOperators.Order());
     }

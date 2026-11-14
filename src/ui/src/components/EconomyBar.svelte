@@ -142,7 +142,7 @@
   .line b {
     margin: 0 1px;
     font-size: var(--fs-lg);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-1);
   }
   /* 回合数：游戏顶栏「回合」后面的数字底块（颜色随皮肤） */
@@ -350,7 +350,7 @@
   }
   .opt b {
     font-size: var(--fs-sm);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--gold);
   }
   .opt:hover {

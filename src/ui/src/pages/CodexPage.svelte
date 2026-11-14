@@ -42,6 +42,21 @@
   let hideBanned = $state(false)
   let cat = $state<string | null>(null)
 
+  // 效果时机：干员效果文字里的 <战斗中>、<休整期结束时> 这类标签，从数据里统计；少见的并成「其他时机」
+  const OTHER = '其他时机'
+  const timingsOf = (o: (typeof app.catalog.operators)[number]) =>
+    new Set([...o.normal, ...o.elite].flatMap((t) => [...t.text.matchAll(/<([^<>]*(?:时|战斗中))>/g)].map((m) => m[1])))
+  const opTimings = new Map(app.catalog.operators.map((o) => [o.name, timingsOf(o)]))
+  const timingCount = new Map<string, number>()
+  for (const s of opTimings.values()) for (const t of s) timingCount.set(t, (timingCount.get(t) ?? 0) + 1)
+  const mainTimings = [...timingCount].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]).map(([t]) => t)
+  const hasTiming = (name: string, t: string) => {
+    const s = opTimings.get(name)!
+    return t === OTHER ? [...s].some((x) => !mainTimings.includes(x)) : s.has(t)
+  }
+  const timingChips = [...mainTimings, ...([...timingCount.keys()].some((t) => !mainTimings.includes(t)) ? [OTHER] : [])]
+  let timings = $state<string[]>([])
+
   const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
   const ops = $derived(
@@ -50,6 +65,7 @@
         (!q || o.name.includes(q)) &&
         (!tiers.length || tiers.includes(o.tier)) &&
         (!bonds.length || bonds.every((b) => o.core.includes(b) || o.extra.includes(b))) &&
+        (!timings.length || timings.some((t) => hasTiming(o.name, t))) &&
         (!onlyTracked || app.tracked.has(o.name)) &&
         (!onlyFocus || app.focusOps.has(o.name)) &&
         (!hideBanned || !app.banned.has(o.name)),
@@ -76,7 +92,7 @@
       .filter((g) => (kind === 'operator' ? g.ops.length : g.eqs.length)),
   )
   const cur = $derived(app.detail)
-  const filtered = $derived(tiers.length + bonds.length + (onlyTracked ? 1 : 0) + (onlyFocus ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
+  const filtered = $derived(tiers.length + bonds.length + timings.length + (onlyTracked ? 1 : 0) + (onlyFocus ? 1 : 0) + (hideBanned ? 1 : 0) + (cat ? 1 : 0) + (q ? 1 : 0))
 </script>
 
 <div class="page">
@@ -87,7 +103,7 @@
       <span class="si"><Icon name="search" size={15} /></span>
       <input bind:value={q} placeholder={kind === 'operator' ? '搜索干员' : kind === 'equipment' ? '搜索装备' : kind === 'boss' ? '搜索首领' : '搜索策略、发起者或效果'} />
       {#if filtered}
-        <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; onlyTracked = false; onlyFocus = false; hideBanned = false; cat = null }}>清除筛选</button>
+        <button class="clear" onclick={() => { q = ''; tiers = []; bonds = []; timings = []; onlyTracked = false; onlyFocus = false; hideBanned = false; cat = null }}>清除筛选</button>
       {/if}
     </div>
   </div>
@@ -130,6 +146,13 @@
       {/if}
     </div>
     {#if kind === 'operator'}
+      <!-- 按效果时机：选几个就列出带其中任一个的干员 -->
+      <div class="chips timing">
+        <span class="clbl">时机</span>
+        {#each timingChips as t (t)}
+          <button class="chip" class:on={timings.includes(t)} onclick={() => (timings = toggle(timings, t))}>{t === OTHER ? t : `<${t}>`}</button>
+        {/each}
+      </div>
       <BondPick state={(id) => ({ on: bonds.includes(id) })} onpick={(id) => (bonds = toggle(bonds, id))} />
       {#if bonds.length}
         <div class="picked">盟约：{bonds.map((b) => app.cov(b).name).join(' + ')}</div>
@@ -274,7 +297,7 @@
   }
   .special {
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--gold);
   }
   .page {
@@ -353,7 +376,7 @@
   }
   .chip.tier {
     font-family: var(--font-term);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     min-width: 30px;
     color: var(--c);
   }
@@ -366,6 +389,14 @@
     height: 14px;
     background: var(--line);
     margin: 0 3px;
+  }
+  .clbl {
+    font-size: var(--fs-sm);
+    color: var(--fg-4);
+    margin-right: 2px;
+  }
+  .timing .chip {
+    font-size: var(--fs-sm);
   }
   .picked {
     font-size: var(--fs-sm);
@@ -430,7 +461,7 @@
     right: 0;
     top: 2px;
     font-size: var(--fs-xs);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     line-height: 1;
     padding: 3px 5px;
     color: var(--mint-ink);
@@ -449,7 +480,7 @@
   }
   .en {
     font-size: var(--fs-base);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     text-align: center;
     line-height: 1.25;
   }

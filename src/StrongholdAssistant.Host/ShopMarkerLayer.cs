@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -13,23 +13,27 @@ public sealed class ShopMarkerLayer : Canvas
 {
     private readonly Dictionary<string, FrameworkElement> _markers = [];
     private (double Width, double Height) _viewport;
+    private MarkerStyles _styles = new();
     public event Action? Emptied;
 
     public ShopMarkerLayer() => IsHitTestVisible = false;
 
-    public void Update(IReadOnlyList<ShopItem> items, double width, double height, bool animate = true)
+    public void Update(IReadOnlyList<ShopItem> items, double width, double height, bool animate = true, MarkerStyles? styles = null)
     {
         // 首次显示前 WPF 尚未给出客户区尺寸，SizeChanged 后再排版。
         if (width <= 0 || height <= 0) return;
+        styles ??= _styles;
+        bool styleChanged = styles != _styles;
+        _styles = styles;
         bool resized = _viewport != (width, height);
         _viewport = (width, height);
-        if (resized)
+        if (resized || styleChanged)
         {
             foreach (FrameworkElement child in Children) Stop(child);
             Children.Clear();
             _markers.Clear();
         }
-        var tracked = items.Where(i => i.IsTracked || i.IsSecondary).ToDictionary(i => i.Id);
+        var tracked = items.Where(i => (i.IsTracked || i.IsSecondary) && GetStyle(i.IsTracked ? (i.IsKey ? 2 : 1) : 0).Show).ToDictionary(i => i.Id);
         foreach (var id in _markers.Keys.Except(tracked.Keys).ToArray()) Retire(id, animate && !resized);
         foreach (var item in tracked.Values)
         {
@@ -41,7 +45,7 @@ public sealed class ShopMarkerLayer : Canvas
                 Retire(item.Id, animate && !resized);
             if (!_markers.TryGetValue(item.Id, out var marker))
             {
-                marker = Create(w, h, kind, animate && !resized);
+                marker = Create(w, h, kind, animate && !resized, GetStyle(kind), _styles.Labels);
                 _markers.Add(item.Id, marker);
                 Children.Add(marker);
                 if (animate && !resized) Appear(marker);
@@ -50,6 +54,8 @@ public sealed class ShopMarkerLayer : Canvas
             SetTop(marker, r.Y * height);
         }
     }
+
+    private MarkerStyle GetStyle(int kind) => kind == 2 ? _styles.Key : kind == 1 ? _styles.Tracked : _styles.Pickable;
 
     private void Retire(string id, bool animate)
     {
@@ -95,12 +101,16 @@ public sealed class ShopMarkerLayer : Canvas
     }
 
 
-    private static Canvas Create(double w, double h, int kind, bool animate)
+    private static Canvas Create(double w, double h, int kind, bool animate, MarkerStyle style, bool labels)
     {
         bool secondary = kind == 0, key = kind == 2;
-        var mint = new SolidColorBrush(Color.FromRgb(0x3C, 0xF0, 0xC2));
-        var gold = Color.FromRgb(0xF3, 0xB3, 0x22);
-        var dark = new SolidColorBrush(key ? Color.FromRgb(0x2A, 0x1D, 0x02) : Color.FromRgb(0x06, 0x23, 0x1B));
+        var color = (Color)ColorConverter.ConvertFromString(style.Color);
+        var main = new SolidColorBrush(color);
+        // TODO(design): 确认提亮按通道向白色混合 35%，字色按通道保留 14%。
+        byte Light(byte channel) => (byte)Math.Round(channel + (255 - channel) * .35);
+        byte Dark(byte channel) => (byte)Math.Round(channel * .14);
+
+        var dark = new SolidColorBrush(Color.FromRgb(Dark(color.R), Dark(color.G), Dark(color.B)));
         double offset = .012 * w, fw = w + 2 * offset, fh = h + 2 * offset;
         double thickness = (secondary ? .012 : .017) * w;
         var canvas = new Canvas
@@ -124,14 +134,14 @@ public sealed class ShopMarkerLayer : Canvas
         }, -offset + thickness, -offset + thickness);
         var frame = new Rectangle
         {
-            Width = fw, Height = fh, Stroke = mint, StrokeThickness = thickness,
+            Width = fw, Height = fh, Stroke = main, StrokeThickness = thickness,
             StrokeDashArray = secondary ? new DoubleCollection { 4, 3 } : null
         };
         if (!secondary)
         {
             var glow = new DropShadowEffect
             {
-                Color = Color.FromRgb(0x22, 0xE3, 0xB2), ShadowDepth = 0, BlurRadius = .075 * w, Opacity = .5
+                Color = color, ShadowDepth = 0, BlurRadius = .075 * w, Opacity = .5
             };
             frame.Effect = glow;
             // 入场结束后 1.1 秒闪两次，之后恢复基值；缩放重排和静态叠图不闪。
@@ -164,15 +174,16 @@ public sealed class ShopMarkerLayer : Canvas
             canvas.Children.Add(new System.Windows.Shapes.Path
             {
                 Data = corners, StrokeThickness = stroke,
-                Stroke = new SolidColorBrush(key ? Color.FromRgb(0xFF, 0xD3, 0x6A) : Color.FromRgb(0x7D, 0xFA, 0xDB))
+                Stroke = new SolidColorBrush(Color.FromRgb(Light(color.R), Light(color.G), Light(color.B)))
             });
         }
+        if (!labels) return canvas;
         var tag = new Border
         {
             Height = .13 * w, Padding = new Thickness(.05 * w, 0, .05 * w, 0),
             Background = secondary ? new SolidColorBrush(Color.FromArgb(235, 0x06, 0x14, 0x10))
-                : key ? new SolidColorBrush(gold) : mint,
-            BorderBrush = secondary ? mint : null, BorderThickness = new Thickness(secondary ? .008 * w : 0)
+                : main,
+            BorderBrush = secondary ? main : null, BorderThickness = new Thickness(secondary ? .008 * w : 0)
         };
         var content = new StackPanel { Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -186,7 +197,7 @@ public sealed class ShopMarkerLayer : Canvas
             });
         content.Children.Add(new TextBlock
         {
-            Text = secondary ? "可抓" : key ? "关键" : "追踪", Foreground = secondary ? mint : dark,
+            Text = secondary ? "可抓" : key ? "关键" : "追踪", Foreground = secondary ? main : dark,
             FontFamily = new FontFamily("Microsoft YaHei UI"), FontSize = .08 * w,
             FontWeight = secondary ? FontWeights.SemiBold : FontWeights.Bold
         });
@@ -196,7 +207,7 @@ public sealed class ShopMarkerLayer : Canvas
             Child = tag, BorderBrush = new SolidColorBrush(Color.FromArgb(191, 0, 0, 0)), BorderThickness = new Thickness(2),
             Effect = secondary ? null : new DropShadowEffect
             {
-                Color = key ? gold : Color.FromRgb(0x22, 0xE3, 0xB2), ShadowDepth = 0, BlurRadius = .05 * w, Opacity = .55
+                Color = color, ShadowDepth = 0, BlurRadius = .05 * w, Opacity = .55
             }
         };
         Add(label, -offset - 2, -offset - .159 * w - 4);

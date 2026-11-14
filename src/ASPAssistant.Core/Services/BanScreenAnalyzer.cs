@@ -156,17 +156,18 @@ public sealed class BanScreenAnalyzer
                     : "当前画面不是本局信息页，请打开开局信息页或对局详情后重试。");
                 return;
             }
-            // 两类盟约都可能只显示“本局阵容包含的条目”（标题会注明“部分盟约所含干员阵容
-            // 不完整”），所以不能要求与数据文件里的总数相等；真正的完整性判据是：
-            // 至少读到一项，且没有出现“有图标却没有名字”的槽位。
-            // 检测到图标网格时，完整性 = 每个槽都读到了名字；没检测到网格（异常画面）时，
-            // 退回数量下限，避免“只读到 1 个”也被当成完整结果发布出去。
-            var hasCore = read.CoreSlots > 0 ? read.Core.Count == read.CoreSlots : read.Core.Count >= 6;
-            var hasAdditional = read.AdditionalSlots > 0
-                ? read.Additional.Count == read.AdditionalSlots
-                : read.Additional.Count >= 4;
+            // 2026-11-14：网格本身也会漏掉整行，不能用检测到的槽数作为盟约总数。
+            // 全量池按数据总数核对；样图确认的标准模拟小池必须名称、槽数都完整对应。
+            var fullPool = read.Core.Count == _coreCovenantNames.Count
+                && read.Additional.Count == _additionalCovenantNames.Count;
+            var standardPool = read.CoreSlots == 8 && read.AdditionalSlots == 10
+                && read.Core.Count == 8 && read.Additional.Count == 10
+                && new HashSet<string>(read.Core.Select(c => c.Name)).SetEquals(
+                    ["炎", "萨尔贡", "维多利亚", "谢拉格", "叙拉古", "乌萨斯", "伊比利亚", "莱塔尼亚"])
+                && new HashSet<string>(read.Additional.Select(c => c.Name)).SetEquals(
+                    ["精准", "坚守", "助力", "远见", "调和", "协防干员", "聚合", "奥术", "迅捷", "不屈"]);
             var unnamed = read.UnnamedCore.Count + read.UnnamedAdditional.Count;
-            if (!hasCore || !hasAdditional || unnamed > 0)
+            if ((!fullPool && !standardPool) || unnamed > 0 || read.HasUnmatchedNames)
             {
                 AnalysisFailed?.Invoke($"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
                 return;

@@ -23,6 +23,8 @@ public sealed record BanCovenantReadResult(
     bool SawAdditionalHeader = false)
 {
     public static readonly BanCovenantReadResult Empty = new([], [], [], []);
+    // 网格漏行时，OCR 名称不能悄悄丢弃后再被判为完整。
+    internal bool HasUnmatchedNames { get; init; }
 }
 
 /// <summary>
@@ -86,12 +88,15 @@ public static class BanCovenantReader
 
         return new BanCovenantReadResult(
             core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
-            core.Slots, additional.Slots, core.SawHeader, additional.SawHeader);
+            core.Slots, additional.Slots, core.SawHeader, additional.SawHeader)
+        {
+            HasUnmatchedNames = core.HasUnmatchedNames || additional.HasUnmatchedNames
+        };
     }
 
     private sealed record SectionRead(
         IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed,
-        int Slots = 0, bool SawHeader = false);
+        int Slots = 0, bool SawHeader = false, bool HasUnmatchedNames = false);
 
     private static async Task<SectionRead> ReadSectionAsync(
         IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
@@ -292,6 +297,8 @@ public static class BanCovenantReader
             // belongs to (the label always sits below its own icon).
             var slot = slots
                 .Where(s => Math.Abs(s.CenterX - cx) <= tolerances[s.Row])
+                // 2026-11-14：名字在图标下方；漏掉第二行时不能绑定到第一行同列。
+                .Where(s => cy >= s.CenterY && cy <= s.Bottom + (s.Bottom - s.Top) * 0.8)
                 .OrderBy(s => Math.Abs(s.CenterY - cy))
                 .ThenBy(s => Math.Abs(s.CenterX - cx))
                 .FirstOrDefault();
@@ -337,7 +344,8 @@ public static class BanCovenantReader
                 $"[{string.Join(", ", unnamed.Select(p => $"x≈{p.X:F0}{(p.IsBanned ? "/禁用" : "/可用")}"))}]");
         }
 
-        return new SectionRead(states.OrderBy(s => s.X).ToList(), unnamed);
+        return new SectionRead(states.OrderBy(s => s.X).ToList(), unnamed,
+            HasUnmatchedNames: candidates.Any(c => !bound.Values.Any(b => b.Name == c.Name)));
     }
 
     /// <summary>

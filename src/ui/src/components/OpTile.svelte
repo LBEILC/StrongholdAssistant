@@ -24,14 +24,16 @@
     /** 自己的右键菜单（编辑器里已选的干员），优先于 menu */
     oncontext?: (e: MouseEvent) => void
     onclick?: (e: MouseEvent) => void
+    /** 被禁时变灰、描红；禁用列表里全是被禁的，关掉只留角标 */
+    banLook?: boolean
   }
-  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, elite = false, skill = null, menu = true, oncontext, onclick }: Props = $props()
+  let { name, size = 48, owned = false, dim = false, transform, showName = true, isKey = false, elite = false, skill = null, menu = true, oncontext, onclick, banLook = true }: Props = $props()
   const op = $derived(app.op(name))
   const banned = $derived(app.banned.has(name))
   const focus = $derived(app.focusOps.has(name))
 </script>
 
-<button class="tile" class:owned class:dim class:banned class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} oncontextmenu={oncontext ?? (menu ? (e) => openMenu(e, operatorMenu(name)) : undefined)} title="{name} · {ROMAN[op.tier]} 阶">
+<button class="tile" class:owned class:dim class:banned class:banlook={banned && banLook} class:focus style:--s="{size}px" style:--c="var(--tier-{op.tier})" {onclick} oncontextmenu={oncontext ?? (menu ? (e) => openMenu(e, operatorMenu(name)) : undefined)} title="{name} · {ROMAN[op.tier]} 阶{banned ? ' · 本局禁用' : ''}">
   <span class="pic">
     <img class="av" src={asset.operator(name)} alt="" loading="lazy" />
     {#if owned}<span class="check"><Icon name="check" size={11} /></span>{/if}
@@ -72,6 +74,20 @@
     transition:
       filter var(--t-mid),
       opacity var(--t-mid);
+  }
+  /* 本局禁用：头像压暗变灰、描红边，名字变红，在盟约详情、阵容里一眼能看出 */
+  .banlook .av {
+    filter: grayscale(1) brightness(0.42);
+  }
+  .banlook .pic,
+  .banlook:hover .pic {
+    box-shadow:
+      inset 0 0 0 1.5px var(--red),
+      inset 0 -2px 0 var(--c);
+  }
+  .banlook .nm {
+    color: var(--red);
+    text-decoration: line-through;
   }
   .tile:hover .pic {
     box-shadow:

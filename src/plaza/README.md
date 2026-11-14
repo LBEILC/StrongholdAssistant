@@ -61,6 +61,8 @@ npm run build
 
 3. 设置机密（命令交互输入，不写进命令行或文件提交）：
 
+   Mirror酱 看板还需设置 Pages 加密变量 `MIRROR_KEY`：`npx wrangler pages secret put MIRROR_KEY --project-name stronghold-plaza`；项目列表由 `wrangler.toml` 中的 `MIRROR_RIDS` 指定。
+
    ```powershell
    npx wrangler pages secret put TURNSTILE_SECRET --project-name stronghold-plaza
    npx wrangler pages secret put CODE_PEPPER --project-name stronghold-plaza
@@ -122,6 +124,8 @@ npm run build
 - 重发同一分享码只更新简介，不恢复可见状态，不增加发布次数。
 - 导入设备 id 存 SHA-256 哈希，同一设备或同一当天来源对同一帖子只计一次。资金及导入的来源存按用途、UTC 日期隔离的 IP HMAC；资金汇总要求至少三个编号及三个来源。验证码和密码登录记录在发码或密码登录时清理超过 30 天的行，资金限额记录在汇总时清理超过两天的行。数据库触发器维护点赞和导入计数。
 - 未指定的请求、权限、网络错误使用简短中文提示。上述待设计确认的产品约定已在代码标注 `TODO(design)`。
+
+`POST /api/edge/traffic` 接收香港反代的日流量汇总（需 `X-Plaza-Edge` 与 `EDGE_SECRET` 相同，先应用 `0008_traffic.sql`）；管理员通过 `GET /api/admin/traffic?month=YYYY-MM` 查询月统计。
 
 ## 依赖
 

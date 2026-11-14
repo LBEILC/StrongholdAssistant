@@ -2,7 +2,7 @@ namespace StrongholdAssistant.Host;
 
 public readonly record struct Hotkey(uint Modifiers, uint Key)
 {
-    public bool UsesHook => Modifiers == 0;
+    public bool UsesHook => Modifiers == 0 || Key is 0x05 or 0x06;
 }
 
 public static class HotkeyParser
@@ -32,6 +32,7 @@ public static class HotkeyParser
         {
             vk = key switch
             {
+                "MOUSE4" => 0x05, "MOUSE5" => 0x06,
                 "ALT" => 0x12, "CTRL" => 0x11, "SHIFT" => 0x10,
                 "TAB" => 9, "SPACE" or " " => 32, "ENTER" => 13,
                 "BACKSPACE" => 8, "DELETE" => 46, "INSERT" => 45,

@@ -40,7 +40,7 @@
 <div class="mask" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="dlg" role="dialog" aria-modal="true" aria-label="举报">
     <div class="hd">
-      <b><Icon name="flag" size={16} />举报{target.kind === 'post' ? '阵容' : '评论'}</b>
+      <b><Icon name="flag" size={16} />举报{target.kind === 'post' ? '阵容' : target.kind === 'rating' ? '短评' : '评论'}</b>
       <button class="x" onclick={onclose} title="关闭"><Icon name="close" size={16} /></button>
     </div>
     <p class="what">{what}</p>

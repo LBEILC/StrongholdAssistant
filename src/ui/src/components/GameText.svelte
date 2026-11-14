@@ -38,15 +38,15 @@
     white-space: pre-line;
   }
   .k {
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--mint);
   }
   .c {
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--gold);
   }
   .up {
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--tier-6);
   }
 </style>

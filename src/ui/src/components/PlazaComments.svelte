@@ -175,12 +175,12 @@
     gap: 5px;
     padding: 5px 8px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     background: linear-gradient(90deg, var(--bg-3), transparent);
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .hd b {
-    font-weight: 400;
+    font-weight: var(--fw-base);
     font-size: var(--fs-sm);
     color: var(--fg-4);
   }
@@ -211,7 +211,7 @@
     height: 26px;
     padding: 0 10px;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--mint-ink);
     background: var(--mint);
     white-space: nowrap;

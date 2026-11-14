@@ -2,6 +2,7 @@ import words from '../data/blocked-words.txt'
 
 export interface Env {
  DB: D1Database
+ RATING_SEASON: string
  RESEND_API_KEY: string
  MAIL_FROM: string
  ALIYUN_DM_ACCESS_KEY_ID?: string
@@ -14,6 +15,8 @@ export interface Env {
  ADMIN_EMAILS: string
  ACCESS_TEAM_DOMAIN: string
  ACCESS_AUD: string
+ MIRROR_KEY: string
+ MIRROR_RIDS: string
  ALLOWED_ORIGINS: string
 }
 // TODO(design): 请求参数、未登录、权限和网络失败等未定文案先用简短中文提示，待统一。

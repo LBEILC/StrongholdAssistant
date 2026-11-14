@@ -38,7 +38,7 @@
     flex: none;
     margin-top: 1px;
     font-size: var(--fs-xs);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     line-height: 1;
     padding: 3px 5px;
   }

@@ -5,6 +5,29 @@ namespace StrongholdAssistant.Tests;
 public class HotkeyParserTests
 {
     [Theory]
+    [InlineData("Mouse4", 0u, 0x05u)]
+    [InlineData("mouse5", 0u, 0x06u)]
+    [InlineData("Ctrl+Mouse4", 2u, 0x05u)]
+    public void MouseKeysUseRawInput(string combo, uint modifiers, uint key)
+    {
+        var hotkey = HotkeyParser.Parse(combo);
+        Assert.Equal(new Hotkey(modifiers, key), hotkey);
+        Assert.True(hotkey!.Value.UsesHook);
+    }
+
+    [Theory]
+    [InlineData("Mouse4", 0x05u, 0u)]
+    [InlineData("Ctrl+Mouse5", 0x06u, 2u)]
+    public void RoutesMouseKeysWithMatchingModifiers(string combo, uint key, uint modifiers)
+    {
+        var hotkey = HotkeyParser.Parse(combo);
+        var router = new KeyboardRouter();
+        Assert.Equal(new KeyboardActions(true, true), router.Observe(key, true, modifiers, 1, 1, 2, hotkey, hotkey));
+        router.Observe(key, false, modifiers, 1, 1, 2, hotkey, hotkey);
+        Assert.Equal(default, router.Observe(key, true, modifiers ^ 2u, 1, 1, 2, hotkey, hotkey));
+    }
+
+    [Theory]
     [InlineData("Ctrl+Shift+F2", 6u, 0x71u)]
     [InlineData("alt+q", 1u, 0x51u)]
     [InlineData("Alt+S", 1u, 0x53u)]

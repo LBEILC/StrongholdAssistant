@@ -295,7 +295,8 @@ export interface CreateReportRequest {
   detail?: string
 }
 export interface ReportTarget {
-  kind: 'post' | 'comment'
+  /** rating：举报评分的短评（任务 131），id 是 RatingComment.id；没写短评的评分不能举报 */
+  kind: 'post' | 'comment' | 'rating'
   id: string
 }
 
@@ -435,10 +436,12 @@ export interface AdminUpdateComment {
 /** 按目标归并的举报：同一个帖子或评论的所有举报算一条 */
 export interface AdminReport {
   target: ReportTarget
-  /** 被举报的帖子（kind 为 post 时）或评论所在的帖子 */
-  post: AdminPost
+  /** 被举报的帖子（kind 为 post 时）或评论所在的帖子；kind 为 rating 时为 null */
+  post: AdminPost | null
   /** kind 为 comment 时 */
   comment: AdminComment | null
+  /** kind 为 rating 时（任务 131）：短评原文、作者昵称、评的是什么；comment_hidden 为 1 表示短评已隐藏 */
+  rating?: { kind: RatingKind; name: string; nickname: string; comment: string; comment_hidden: number } | null
   /** 举报人数和各理由的人数 */
   count: number
   reasons: Partial<Record<ReportReason, number>>
@@ -513,3 +516,171 @@ export interface AdminStats {
   /** 服务器生成这份数据的时间 */
   at: string
 }
+
+// ── 后台看板：Mirror酱（v0.9.4 后）────────────────────────
+// 服务端拿 Pages 机密 MIRROR_KEY 调 Mirror酱 开发者面板的接口（同 mirrorchyan.com/zh/dashboard），浏览器拿不到 key。
+// 项目列表在变量 MIRROR_RIDS（逗号分隔，如 'StrongholdAssistant,NovelAIPromptStudio,Pane'）。
+
+export interface AdminMirrorProject {
+  /** Mirror酱 的资源 id */
+  rid: string
+  /** 这个月（不含退款）：销量（buy_count 之和）、销售额（元）、预计收益（元：扣支付平台费率后五五分成，同 Mirror酱 面板的估算） */
+  orders: number
+  amount: number
+  income: number
+  /** 这个月退款的销量和金额 */
+  refundedOrders: number
+  refundedAmount: number
+  /** 这个月每天（北京时间）的销量、销售额，1 号到今天（看往月时到月末），旧到新，没有销售的日子为 0 */
+  daily: { date: string; orders: number; amount: number }[]
+  /** 按方案（月卡、年卡……）和支付平台分的销量、销售额，销售额高的在前 */
+  byPlan: { name: string; orders: number; amount: number }[]
+  byPlatform: { name: string; orders: number; amount: number }[]
+  /** Mirror酱 统计的每天日活（按 IP 估算）和下载量，近 30 天，旧到新，没有数据为 0 */
+  usage: { date: string; users: number; downloads: number }[]
+  /** 这个项目查询失败时的提示（其他字段为 0 或空数组） */
+  error?: string
+}
+
+/** GET /api/admin/mirror?month=YYYY-MM（默认本月，北京时间）：Mirror酱 的销售和使用统计 */
+export interface AdminMirrorStats {
+  month: string
+  projects: AdminMirrorProject[]
+  at: string
+}
+
+// ── 后台看板：流量（任务 130）────────────────────────
+// 香港反代服务器（docs/internal.md「国内加速」）上的脚本每 15 分钟汇总 nginx 日志，按北京时间的天和网站（Host）上报。
+// 只有经香港服务器的流量（国内入口）；走 ESA 或 Cloudflare 的那部分不在这里。精品 EIP 按出方向流量计费，日志里的
+// bytes_sent 不含 TLS 和 TCP 开销，比账单略少。
+
+/** 一个网站一天的汇总（上报和后台看板共用） */
+export interface TrafficDay {
+  /** 北京时间日期，如 '2026-11-14' */
+  date: string
+  /** 请求的 Host，如 'sa.lubeiluchen.com' */
+  host: string
+  requests: number
+  /** 发给访客的字节数（nginx $bytes_sent 之和） */
+  bytes: number
+  /** 当天不同 IP 数（只上报个数，IP 不出服务器） */
+  visitors: number
+  /** 走了香港缓存的请求：命中（HIT、STALE、UPDATING、REVALIDATED）和没命中（MISS、EXPIRED）；不缓存的路径两个都不算 */
+  cacheHits: number
+  cacheMisses: number
+  status4xx: number
+  status5xx: number
+}
+
+/** 一个网站一天里流量最大的路径（去掉查询参数），按 bytes 前 20 */
+export interface TrafficPath {
+  date: string
+  host: string
+  path: string
+  requests: number
+  bytes: number
+}
+
+/** POST /api/edge/traffic：香港服务器上报（请求头 X-Plaza-Edge 必须等于 EDGE_SECRET，否则 403）。
+ *  每次带今天和昨天的完整数，同一天同一网站整行覆盖，重复上报无害 */
+export interface TrafficReport {
+  days: TrafficDay[]
+  paths: TrafficPath[]
+}
+
+export interface AdminTrafficHost {
+  host: string
+  /** 这个月合计 */
+  requests: number
+  bytes: number
+  /** 这个月每天，1 号到今天（看往月时到月末），旧到新，没有数据的日子各项为 0 */
+  daily: { date: string; requests: number; bytes: number; visitors: number }[]
+  /** 这个月的缓存命中率 0～1；这个网站没有走缓存的请求时为 null */
+  cacheHitRate: number | null
+  status4xx: number
+  status5xx: number
+  /** 这个月按路径合计，bytes 前 10 */
+  topPaths: { path: string; requests: number; bytes: number }[]
+}
+
+/** GET /api/admin/traffic?month=YYYY-MM（默认本月，北京时间）：经香港服务器的流量 */
+export interface AdminTrafficStats {
+  month: string
+  /** bytes 多的在前 */
+  hosts: AdminTrafficHost[]
+  /** 所有网站这个月合计 */
+  bytes: number
+  /** 精品流量单价（元/GB，1 GB = 1e9 字节），现在是 3 */
+  pricePerGB: number
+  /** 按这个月已过天数线性估算的全月字节数；看往月时等于 bytes */
+  forecastBytes: number
+  /** 最近一次收到上报的时间；从没收到过为 null（看板据此提示「香港服务器 N 分钟没上报了」） */
+  lastReportAt: string | null
+  at: string
+}
+
+// ── 干员和装备评分（任务 131）────────────────────────
+// 社区第一步：玩家给干员、装备打 1～5 星，可以附一句短评。按赛季统计（服务端变量 RATING_SEASON，环境大改时设计改它，
+// 旧赛季的评分保留但不再算进当前赛季）。目标用名字标识（和阵容里一样），服务端用 src/plaza/data/catalog.json 校验。
+
+export type RatingKind = 'operator' | 'equipment'
+
+export interface RatingSummary {
+  kind: RatingKind
+  name: string
+  /** 当前赛季的评分人数 */
+  count: number
+  /** 平均分（保留 1 位小数）；不满 5 人为 null，界面显示「评分人数不足」 */
+  avg: number | null
+  /** 1～5 星各多少人，下标 0 是 1 星 */
+  dist: [number, number, number, number, number]
+}
+
+/** GET /api/public/ratings?kind=operator|equipment：当前赛季所有有人评过的目标，不用登录、不带个人信息，
+ *  Cache-Control: public, max-age=0, s-maxage=120（香港入口会缓存）。kind 不对 400 */
+export interface RatingList {
+  season: string
+  kind: RatingKind
+  items: RatingSummary[]
+  at: string
+}
+
+export interface RatingComment {
+  id: string
+  author: { id: string; nickname: string }
+  score: 1 | 2 | 3 | 4 | 5
+  /** 1～100 字纯文本，不能换行 */
+  comment: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** GET /api/ratings/item?kind=&name=：一个目标的当前赛季详情。不用登录；登录了带 mine。
+ *  短评新到旧，cursor、limit（默认 20，最多 50），只列写了短评、没被隐藏的。名字不在图鉴里 404 */
+export interface RatingDetail {
+  season: string
+  summary: RatingSummary
+  comments: RatingComment[]
+  nextCursor: string | null
+  /** 当前账号这个赛季对它的评分；没登录或没评过为 null */
+  mine: { score: 1 | 2 | 3 | 4 | 5; comment: string; updatedAt: string } | null
+}
+
+/** GET /api/ratings/mine：当前账号这个赛季的全部评分（要登录），评分页用来在列表上标出「你给了几星」 */
+export interface MyRatings {
+  season: string
+  items: { kind: RatingKind; name: string; score: 1 | 2 | 3 | 4 | 5 }[]
+}
+
+/** PUT /api/ratings：打分或改分（要登录，要有昵称：403 `need_nickname`），返回这个目标最新的 RatingSummary。
+ *  一个账号对一个目标每赛季一条，再次提交覆盖分数和短评（短评传空串就是去掉）。
+ *  名字不在图鉴里 404；分数不是 1～5 的整数、短评超长或有换行 400；
+ *  同一 IP 每小时最多 60 次评分写入（rate_limited） */
+export interface PutRatingRequest {
+  kind: RatingKind
+  name: string
+  score: 1 | 2 | 3 | 4 | 5
+  comment?: string
+}
+// DELETE /api/ratings?kind=&name=：撤回自己这个赛季的评分（要登录），204；本来就没有也 204。
+// 后台：举报 kind 为 rating 的进举报列表（显示短评原文、作者、目标名字），处理时「隐藏」只隐藏短评，分数照算。

@@ -87,7 +87,7 @@
   async function logout() {
     await session.logout()
     toast.show('已退出登录。')
-    router.go('/')
+    router.go('/plaza')
   }
 
   // 登录密码：可选。已有密码时改 / 删要输当前密码；30 分钟内用验证码登录的可以不填（忘了密码的路径）
@@ -123,7 +123,7 @@
       await api.deleteMe()
       session.me = null
       toast.show('账号已注销，你的邮箱、昵称和发布的阵容都已删除。')
-      router.go('/')
+      router.go('/plaza')
     } catch (e) {
       toast.show((e as Error).message, true)
     } finally {

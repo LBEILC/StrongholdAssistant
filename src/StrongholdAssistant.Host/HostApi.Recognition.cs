@@ -103,7 +103,7 @@ public sealed partial class HostApi
             Changed?.Invoke("match", Match);
             if (!continuous)
                 Changed?.Invoke("scan", new ScanStatus(false, added > 0
-                    ? $"新识别到 {added} 名禁用干员，共 {Match.BannedOperators.Length} 名。禁用列表没显示全时，点「持续识别」再往下滚动。"
+                    ? $"新识别到 {added} 名禁用干员，共 {Match.BannedOperators.Length} 名。"
                     : $"没有新识别到禁用干员，共 {Match.BannedOperators.Length} 名。", true));
             return Match;
         }

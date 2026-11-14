@@ -1,7 +1,7 @@
 <script lang="ts" generics="T extends string">
   // 二级分段切换（阵容的目标 / 我的阵容，图鉴的干员 / 装备 / 策略）：底部亮条滑到选中项，和顶部标签同一种动效
   interface Props {
-    items: { id: T; label: string; count?: number }[]
+    items: { id: T; label: string; count?: number; dot?: boolean }[]
     value: T
     onchange: (v: T) => void
     height?: number
@@ -16,6 +16,7 @@
     <button class:on={it.id === value} onclick={() => onchange(it.id)}>
       {it.label}
       {#if it.count !== undefined}<em>{it.count}</em>{/if}
+      {#if it.dot}<i class="dot"></i>{/if}
     </button>
   {/each}
 </div>
@@ -44,7 +45,7 @@
     position: relative;
     height: var(--h);
     font-size: var(--fs-md);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--fg-3);
     transition: color var(--t-mid);
   }
@@ -53,6 +54,16 @@
   }
   button.on {
     color: var(--fg-1);
+  }
+  /* 小红点：有待处理的事（如有新版本） */
+  .dot {
+    position: absolute;
+    top: 4px;
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border-radius: 50%;
+    background: var(--red);
   }
   em {
     font-style: normal;

@@ -18,6 +18,7 @@ public partial class App : Application
     private string _logDirectory = null!;
     private int _failureDialogShown;
     private string? _webView2Version;
+    private Version _windowsVersion = Environment.OSVersion.Version;
     internal volatile bool UiReady;
     internal static readonly UpdateStartupNotification StartupResult = new(
         Environment.GetEnvironmentVariable(UpdateStartupNotification.ResultVariable));
@@ -68,6 +69,8 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) => ReportUnhandledException(args.Exception);
         var runtime = StartupDiagnostics.IsWebView2Available();
         _webView2Version = runtime.Version;
+        _windowsVersion = StartupDiagnostics.GetWindowsVersion();
+        StartupDiagnostics.LogStartupEnvironment(_windowsVersion, _webView2Version, Path.Combine(userDirectory, "WebView2"));
         if (runtime.Status == WebView2Availability.Missing)
         {
             const string message = "这台电脑缺少「Microsoft Edge WebView2 运行时」，助手的界面要靠它显示。";
@@ -103,6 +106,12 @@ public partial class App : Application
             return;
         }
         StartupResult.ReportFailure(exception.Message);
+        if (!UiReady && StartupDiagnostics.IsWebView2StartupFailure(exception))
+        {
+            ShowFailureAndExit(StartupDiagnostics.WebView2StartupFailureMessage(_windowsVersion),
+                "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+            return;
+        }
         if (!UiReady)
             ShowFailureAndExit($"助手启动失败：{exception.Message.Split(['\r', '\n'])[0]}\n\n" +
                 "点「是」打开日志文件夹，把 host.log 发到 QQ 群 1132134217 或 GitHub Issues，方便我们排查。", _logDirectory);

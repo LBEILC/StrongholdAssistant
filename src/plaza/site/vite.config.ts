@@ -22,6 +22,8 @@ export default defineConfig({
     generateBundle() {
       // publicDir 复用助手素材；网站独有的 Pages 规则另行加入产物。
       this.emitFile({ type: 'asset', fileName: '_headers', source: readFileSync(new URL('./public/_headers', import.meta.url), 'utf8') })
+      // 验证码邮件里的 logo，要固定地址（不带哈希）
+      this.emitFile({ type: 'asset', fileName: 'mail/logo.png', source: readFileSync(new URL('./public/mail/logo.png', import.meta.url)) })
     },
   }],
   publicDir: '../../ui/public',

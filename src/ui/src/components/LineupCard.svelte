@@ -128,7 +128,7 @@
   .h3 {
     display: block;
     font-size: var(--fs-lg);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     text-align: left;
     max-width: 100%;
     white-space: nowrap;

@@ -107,6 +107,37 @@ export interface EnemyType {
   secondHalf: EnemyVariant[]
 }
 
+/**
+ * 敌人的简单资料（v0.9.5），来自游戏数据表 enemy_handbook_table（图鉴）和 enemy_database（属性）。
+ * 属性取第 0 级的基础值；卫戍协议里还会按模式和回合加成，界面写明是基础属性
+ */
+export interface Enemy {
+  id: string // 如 enemy_1010_demon_2；图标 asset.enemy(id)
+  name: string
+  /** 普通 / 精英 / 领袖（handbook enemyLevel） */
+  level: 'NORMAL' | 'ELITE' | 'BOSS'
+  /** 攻击方式原文，如「近战」「远程」「不攻击」（handbook attackType） */
+  attackType: string
+  /** 伤害类型，中文：物理、法术、治疗、无（handbook damageType 逐项翻译） */
+  damage: string[]
+  /** 地面 / 空中（enemy_database motion：WALK / FLY） */
+  motion: 'WALK' | 'FLY'
+  hp: number
+  atk: number
+  def: number
+  res: number // 法术抗性
+  /** 攻击间隔，秒（baseAttackTime） */
+  attackTime: number
+  /** 移动速度（moveSpeed） */
+  speed: number
+  /** 重量等级（massLevel） */
+  weight: number
+  /** 能力说明，每条一句，去掉富文本标签（handbook abilityList[].text） */
+  abilities: string[]
+  /** 图鉴描述（handbook description），可能为空串 */
+  description: string
+}
+
 export interface EnemyVariant {
   id: string // 敌人 id，如 enemy_1041_lazerd；图标 asset.enemy(id)
   name: string
@@ -128,6 +159,8 @@ export interface Catalog {
   bosses: Boss[]
   enemyTypes: EnemyType[]
   strategies: Strategy[]
+  /** 敌人（v0.9.5）：特训敌人的全部变体和首领，按 id 查；详情里显示，另给按钮打开 PRTS 对应页面 */
+  enemies: Enemy[]
   /** 识别不了、要用户自己点上的收入来源（v0.7.0），见 IncomeSource */
   incomeSources: IncomeSource[]
 }
@@ -470,7 +503,16 @@ export interface Settings {
   gameThemeAuto: boolean
   /** 界面皮肤（v0.8.0，默认 'follow'）。只影响助手界面的样子，和商店识别无关 */
   uiSkin: UiSkin
+  /**
+   * 界面字体（v0.9.5）：本机装的字体族名（listFonts 返回的写法）；空串 = 默认（随界面打包的 MiSans）。
+   * 选的字体缺字时界面自己回落到 MiSans。宿主只存，不校验字体在不在
+   */
+  uiFont: string
+  /** 界面字重（v0.9.5）：'normal' 标准（默认）、'medium' 稍粗、'bold' 加粗。宿主只存 */
+  uiFontWeight: 'normal' | 'medium' | 'bold'
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
+  /** 三种商店标记各自的开关和颜色、框上的文字标签（v0.9.5）。shopMarkers 是总开关 */
+  markerStyles: MarkerStyles
   /**
    * 商店识别速度（v0.8.3）：'normal' 标准（默认，和以前差不多的占用）；'fast' 快速（识别得更勤，换商店后标记更快跟上，
    * 多占一些 CPU）。宿主按这个调识别节奏，改了马上生效
@@ -627,6 +669,26 @@ export interface ReleaseNotes {
   }[]
 }
 
+/** 一种商店标记的样式（v0.9.5） */
+export interface MarkerStyle {
+  /** 关掉就不标这一种 */
+  show: boolean
+  /** 主色 '#RRGGBB'：框、角标括号、发光、标签底色都从它来（括号提亮、标签字压暗，宿主算） */
+  color: string
+}
+
+/**
+ * 商店标记样式（v0.9.5）。三种标记互不影响：关掉「关键」后关键干员不标（想要不区分就把两种设成同色）。
+ * 默认：关键 { true, '#F3B322' }，追踪 { true, '#3CF0C2' }，可抓 { true, '#A98BFF' }（以前可抓和追踪同为薄荷绿、只差虚线，分不清），labels true
+ */
+export interface MarkerStyles {
+  key: MarkerStyle // 目标阵容里标了关键的、优先装备
+  tracked: MarkerStyle // 追踪表里的其他
+  pickable: MarkerStyle // 目标盟约里还能抓的（次级标记，虚线框）
+  /** 框上方的「★ 关键」「★ 追踪」「可抓」文字标签 */
+  labels: boolean
+}
+
 /** 自动更新的状态（检查、下载、校验都在宿主里做） */
 export interface UpdateStatus {
   state: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'ready' | 'failed'
@@ -781,10 +843,67 @@ export interface SklandRecord {
   versionId: string
 }
 
+/**
+ * 场上与整备区（任务 137，设计见 docs/design.md「站位推荐与场上干员识别」）：休整期识别出的每格占用和身份。
+ * 有没有人看角标；是谁靠买进时的商店槽位、拖动时详情面板的名字、或用户手动指定。认不出就是 null，不猜。
+ * 只在内存里，宿主重启后从空开始（之后看到的人都先是未知）；新局（开局识别）、清空本局时清空
+ */
+export interface FieldState {
+  /** 棋盘识别出的关卡地图 id（如 'm01'）；还没认出过棋盘为 null */
+  mapId: string | null
+  /** 读到这次状态时的回合；没读到为 null */
+  round: number | null
+  /** 最近一次变化的时间（ISO） */
+  updatedAt: string
+  /** 有人的格子，空格不列。顺序：整备区左到右，再棋盘按行、列 */
+  units: FieldUnit[]
+  /** 最近的事件，新的在前，最多 20 条 */
+  log: FieldEvent[]
+}
+
+/** 格子。整备区 zone='bench'，col 为 1～10（左到右），row 为 0；棋盘 zone='board'，col / row 与敌人路线用的格坐标相同 */
+export interface FieldCell {
+  zone: 'bench' | 'board'
+  col: number
+  row: number
+}
+
+export interface FieldUnit extends FieldCell {
+  /** 头上角标的阶数 1～6 */
+  tier: number
+  /** 干员名；不知道是谁为 null */
+  operator: string | null
+  /** 身份从哪来：purchase 买进时的商店卡、drag 拖动时的详情面板、manual 用户指定；operator 为 null 时也为 null */
+  source: 'purchase' | 'drag' | 'manual' | null
+}
+
+/**
+ * 场上发生的事。kind：
+ * - buy：商店卡被拿走，整备区多出一人（含免费挑选、打包速递，资金不一定变）；operator 为卡上名字
+ * - gain：整备区多出一人，但没有商店卡被拿走（策略或干员特质给的）；operator 一般为 null
+ * - move：拖动，from → to；operator 为详情面板上读到的名字
+ * - sell：拖进售出区后这人消失
+ * - lost：有人消失但没看到拖动或售出（漏看了，或同名合成之类）
+ */
+export interface FieldEvent {
+  at: string
+  kind: 'buy' | 'gain' | 'move' | 'sell' | 'lost'
+  operator: string | null
+  from: FieldCell | null
+  to: FieldCell | null
+}
+
 export interface Api {
   catalog(): Promise<Catalog>
   connection(): Promise<Connection>
   match(): Promise<MatchInfo>
+  /** 当前场上与整备区（任务 137）；还没识别过为 null */
+  field(): Promise<FieldState | null>
+  /**
+   * 手动指定某格是谁（operator 为 null = 改回未知），source 记为 manual。这格的人被拖走后身份跟着走；
+   * 这格变空后作废。返回更新后的状态，也会推送 field
+   */
+  setFieldOperator(cell: FieldCell, operator: string | null): Promise<FieldState>
   /** 立即识别当前画面的开局信息页；失败时以错误返回，错误文字直接给用户看 */
   rescan(): Promise<MatchInfo>
   /**
@@ -850,6 +969,11 @@ export interface Api {
   importData(token: string, mode: ImportMode): Promise<void>
   /** 用系统默认浏览器打开外部链接（界面里不跳转） */
   openUrl(url: string): Promise<void>
+  /**
+   * 本机装的字体族名（v0.9.5），设置里选界面字体用。去重、按名字排序；有中文本地化名的给中文名
+   * （如「微软雅黑」而不是 Microsoft YaHei），写法要能直接放进 CSS font-family。不含纵排用的「@」字体
+   */
+  listFonts(): Promise<string[]>
   /** 把文字写进系统剪贴板（分享码等）。由宿主写，不用网页的剪贴板接口，免得受 WebView2 焦点和权限影响 */
   copyText(text: string): Promise<void>
   /**
@@ -967,4 +1091,6 @@ export interface Api {
   onConnection(cb: (c: Connection) => void): () => void
   /** 后端推送：识别开始、结束 */
   onScan(cb: (s: ScanStatus) => void): () => void
+  /** 后端推送：场上与整备区有变化（任务 137）；同样的状态不重复推 */
+  onField(cb: (f: FieldState) => void): () => void
 }

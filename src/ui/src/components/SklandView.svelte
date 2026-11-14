@@ -295,7 +295,7 @@
   }
   .secs button[role='tab'].on {
     color: var(--fg-0);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     box-shadow: inset 0 -2px 0 var(--mint);
   }
   .web {
@@ -370,7 +370,7 @@
   .sorts button.on {
     color: var(--mint-ink);
     background: var(--mint);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .sorts button:disabled {
     color: var(--fg-4);
@@ -425,13 +425,13 @@
     justify-content: space-between;
     margin-top: 2px;
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .fh em {
     margin-left: 6px;
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
   }
   .bonds {

@@ -109,7 +109,7 @@
     white-space: nowrap;
     margin: 0;
     font-size: var(--fs-xl);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     letter-spacing: 0.04em;
   }
   .tag {

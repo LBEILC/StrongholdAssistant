@@ -40,10 +40,13 @@ public sealed record CloudSyncState(bool Enabled, string? Since, string? PushedA
 }
 public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCheckUpdate)
 {
+    public MarkerStyles MarkerStyles { get; init; } = new();
     public bool GameThemeAuto { get; init; } = true;
     public bool RunAsAdmin { get; init; }
     public RouteOverlaySettings Routes { get; init; } = new();
     public string UiSkin { get; init; } = "follow";
+    public string UiFont { get; init; } = "";
+    public string UiFontWeight { get; init; } = "normal";
     public bool PlazaNotices { get; init; } = true;
     public string ShopScanSpeed { get; init; } = "normal";
     public string UpdateSource { get; init; } = "github";

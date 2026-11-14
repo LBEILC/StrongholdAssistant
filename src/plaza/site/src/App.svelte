@@ -3,6 +3,7 @@
   import { session, toast } from './session.svelte'
   import Home from './pages/Home.svelte'
   import PostPage from './pages/PostPage.svelte'
+  import RatePage from './pages/RatePage.svelte'
   import Login from './pages/Login.svelte'
   import MePage from './pages/MePage.svelte'
   import Privacy from './pages/Privacy.svelte'
@@ -27,7 +28,7 @@
 
   // 标签页标题跟着页面走
   $effect(() => {
-    const t = { home: '阵容广场', post: '阵容', login: '登录', me: '我的', new: '新建阵容', privacy: '隐私说明', admin: '后台', notfound: '找不到页面' }[r.page]
+    const t = { home: '阵容广场', post: '阵容', login: '登录', me: '我的', new: '新建阵容', privacy: '隐私说明', admin: '后台', rate: r.page === 'rate' && r.name ? `${r.name} · 评分` : '评分', notfound: '找不到页面' }[r.page]
     document.title = `${t} · 卫戍协议助手`
   })
 </script>
@@ -35,7 +36,7 @@
 {#if !inApp}
 <header class="top">
   <div class="in">
-    <a class="brand" href="/" use:link>
+    <a class="brand" href="/plaza" use:link>
       <img class="logo" src={logo} alt="" />
       <span class="bt">
         <b>阵容广场</b>
@@ -43,9 +44,10 @@
       </span>
     </a>
     <nav>
-      <a href="/" use:link class:on={r.page === 'home' || r.page === 'post'}>广场</a>
+      <a href="/plaza" use:link class:on={r.page === 'home' || r.page === 'post'}>广场</a>
+      <a href="/rate" use:link class:on={r.page === 'rate'}>评分</a>
       <a href="/new" use:link class:on={r.page === 'new'}>新建阵容</a>
-      <a href={REPO + '/releases/latest'} target="_blank" rel="noopener">下载助手<Icon name="external" size={12} /></a>
+      <a href="/#download">下载助手</a>
       {#if session.ready}
         {#if session.me}
           <a href="/me?tab=notices" use:link class="bell" class:on={r.page === 'me' && location.search.includes('tab=notices')} data-tip={session.unread ? `${session.unread} 条新消息` : '消息'} aria-label={session.unread ? `${session.unread} 条新消息` : '消息'}
@@ -75,6 +77,8 @@
     {#key location.search}<MePage />{/key}
   {:else if r.page === 'new'}
     {#key `${r.edit}|${r.post}`}<Editor edit={r.edit} post={r.post} />{/key}
+  {:else if r.page === 'rate'}
+    <RatePage kind={r.kind} name={r.name} />
   {:else if r.page === 'privacy'}
     <Privacy />
   {:else if r.page === 'admin'}
@@ -83,7 +87,7 @@
     <div class="nf">
       <b class="term">404</b>
       <p>没有这个页面。</p>
-      <a class="btn ghost" href="/" use:link>回到广场</a>
+      <a class="btn ghost" href="/plaza" use:link>回到广场</a>
     </div>
   {/if}
 </main>
@@ -269,6 +273,13 @@
     }
     .nk {
       max-width: 5em;
+    }
+  }
+  /* 360 宽的小屏安卓：登录后顶栏还差几像素，再收一点 */
+  @media (max-width: 380px) {
+    nav a {
+      padding: 0 4px;
+      font-size: 13px;
     }
   }
 </style>

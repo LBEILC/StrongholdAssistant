@@ -135,7 +135,10 @@ public class OcrScannerService : IDisposable
     public Func<bool> BoardRoutesRequested { get; set; } = () => false;
     public event Action<byte[]?, EconomyReading?>? BoardFrameReady;
     public bool BoardMainScreenVisible { get; private set; }
+    private byte[]? _boardSurfacePixels;
+    private (int, int) _boardSurfaceSize;
     public bool BoardShopVisible => _shopReader.HasVisibleCards;
+    public Func<byte[], DateTimeOffset, EconomyReading?, bool, bool, IReadOnlyList<ShopItem>, Task>? ObserveFieldAsync { get; set; }
 
     public void Start() => _scanTimer.Start();
 
@@ -289,7 +292,7 @@ public class OcrScannerService : IDisposable
         // 静止画面不读资金；画面变化但资金稳定时隔轮读。刷新和名称变化立即恢复。
         bool economyChanged = _economyContext is null || !_economyContext.AsSpan().SequenceEqual(fingerprint.Context);
         EconomyReading? boardEconomy = _lastEconomy;
-        if ((EconomyRead is not null || BoardRoutesRequested()) && (changed || economyChanged))
+        if ((EconomyRead is not null || BoardRoutesRequested() || ObserveFieldAsync is not null) && (changed || economyChanged))
         {
             if (!_skipEconomy || changed)
             {
@@ -322,10 +325,14 @@ public class OcrScannerService : IDisposable
         }
         if (_pauseBanScreenDetection || _banScreenActive) PublishShopItems([], false, capturedAt);
         // 商店已先发布，棋盘识别不会推迟本轮商店结果。
-        if (BoardRoutesRequested())
+        if (BoardRoutesRequested() || ObserveFieldAsync is not null)
         {
-            BoardMainScreenVisible = await new BoardSurfaceReader(_ocrEngine).IsMainScreenAsync(screenshot, width, height);
+            await ReadBoardSurfaceAsync(screenshot, width, height);
             BoardFrameReady?.Invoke(_pauseBanScreenDetection || _banScreenActive ? null : screenshot, boardEconomy);
+            // 本帧就绪控件可见时，资金降频不应跳过占用变化；战斗/弹窗仍不得拿旧读数更新占用。
+            var fieldEconomy = boardEconomy ?? (BoardMainScreenVisible ? _lastEconomy : null);
+            if (!_pauseBanScreenDetection && !_banScreenActive && ObserveFieldAsync is { } observe && fieldEconomy is not null)
+                await observe(screenshot, capturedAt, fieldEconomy, BoardMainScreenVisible, BoardShopVisible, _shopReader.AllItems);
         }
         double total = captureMs + fingerprintMs + (shopMs ?? 0) + publishMs + (economyMs ?? 0) + (informationMs ?? 0);
         // 有卡片时至多每两秒一行；慢轮（超过 800 ms）始终记录。
@@ -339,6 +346,27 @@ public class OcrScannerService : IDisposable
 
     public DateTimeOffset ChangedShopCapturedAt { get; private set; }
     public bool RemovingChangedShopItems { get; private set; }
+
+    private async Task ReadBoardSurfaceAsync(byte[] frame, int width, int height)
+    {
+        using var stream = new MemoryStream(frame);
+        using var image = new System.Drawing.Bitmap(stream);
+        double scale = Math.Min(width / 1920d, height / 1080d);
+        var pixels = new byte[32 * 20 * 3];
+        int index = 0;
+        for (int row = 0; row < 20; row++) for (int col = 0; col < 32; col++)
+        {
+            var c = image.GetPixel((int)(width - (300 - (col + .5) * 300 / 32) * scale),
+                (int)((100 + (row + .5) * 160 / 20) * scale));
+            pixels[index++] = c.R; pixels[index++] = c.G; pixels[index++] = c.B;
+        }
+        // 只复用就绪控件这一小块画面；弹窗遮盖或明暗变化会重新 OCR，不能用整局状态代替当前画面。
+        bool same = _boardSurfaceSize == (width, height) && _boardSurfacePixels is { } old
+            && pixels.Zip(old, (a, b) => Math.Abs(a - b)).Average() < 2;
+        if (same) return;
+        BoardMainScreenVisible = await new BoardSurfaceReader(_ocrEngine).IsMainScreenAsync(frame, width, height);
+        _boardSurfacePixels = pixels; _boardSurfaceSize = (width, height);
+    }
 
     private void PublishShopItems(IReadOnlyList<ShopItem> items, bool shopVisible, DateTimeOffset capturedAt)
     {

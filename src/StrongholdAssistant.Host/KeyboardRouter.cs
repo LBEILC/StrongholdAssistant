@@ -13,7 +13,7 @@ public sealed class KeyboardRouter
         if (!_pressed.Add(key)) return default;
         bool inGame = game != 0 && foreground == game;
         bool inAssistant = assistant != 0 && foreground == assistant;
-        return new((inGame || inAssistant) && toggle is { UsesHook: true } t && t.Key == key && modifiers == 0,
+        return new((inGame || inAssistant) && toggle is { UsesHook: true } t && t.Key == key && t.Modifiers == modifiers,
             inGame && refresh is { } r && r.Key == key && r.Modifiers == modifiers);
     }
 }

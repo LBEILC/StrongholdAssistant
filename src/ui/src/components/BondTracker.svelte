@@ -127,7 +127,7 @@
   }
   .name {
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -138,7 +138,7 @@
   }
   .name.muted {
     color: var(--fg-3);
-    font-weight: 400;
+    font-weight: var(--fw-base);
   }
   .spacer {
     flex: 1;
@@ -208,6 +208,13 @@
     padding: 3px;
   }
   /* 悬停：盖一层暗底和叉，表示点了就取消 */
+  /* 本局禁用：头像压暗变灰、描红边 */
+  .av.banned {
+    box-shadow: inset 0 0 0 1.5px var(--red);
+  }
+  .av.banned img:not(.ban) {
+    filter: grayscale(1) brightness(0.42);
+  }
   /* 禁用角标：素材四周有留白，放大并往右上移，让红三角卡在角上 */
   .av .ban {
     position: absolute;
@@ -303,7 +310,7 @@
     margin-left: 6px;
     font-style: normal;
     font-size: var(--fs-sm);
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--mint);
   }
 </style>

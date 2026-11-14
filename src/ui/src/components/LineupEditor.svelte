@@ -6,7 +6,7 @@
   import type { CovenantGoal, LineupMember } from '../lib/api/types'
   import { stageLabel, MAX_ROUND } from '../lib/stages'
   import { defaultsFor, effective, customSkill, setChoice, setMyDefault } from '../lib/opconfig'
-  import { app, goalProgress, rankForGoals, lineupEquipment } from '../lib/state.svelte'
+  import { app, goalProgress, otherBonds, rankForGoals, lineupEquipment } from '../lib/state.svelte'
   import { asset } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
   import OpTile from './OpTile.svelte'
@@ -97,6 +97,7 @@
     return base.filter((o) => (!q || o.name.includes(q)) && (!bond || o.core.includes(bond) || o.extra.includes(bond)))
   })
   const progress = $derived(e ? goalProgress(e.goals, e.members, e.members.map((m) => m.name)) : [])
+  const others = $derived(e ? otherBonds(e.goals, e.members) : [])
   let confirmDelete = $state(false)
   // 名字可以不填：默认用前三个目标盟约起名，保存时补上
   const autoName = $derived(
@@ -292,6 +293,15 @@
           <span class="muted">还没有目标盟约</span>
         {/each}
       </div>
+      {#if others.length}
+        <!-- 名单顺带凑出的其他盟约，暗的是还没激活 -->
+        <div class="bonds others">
+          <span class="muted">其他</span>
+          {#each others as g (g.covenant.id)}
+            <span class="bc" class:off={!g.active}><BondIcon id={g.covenant.id} size={18} on={g.active} />{g.covenant.name}<b>{g.have}/{g.need}</b></span>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     <div class="sec">
@@ -534,7 +544,7 @@
   .kt.on {
     color: var(--gold-ink);
     background: var(--gold);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .x2 {
     width: 22px;
@@ -584,7 +594,7 @@
     color: var(--gold-ink);
     background: var(--gold);
     box-shadow: none;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .cx {
     width: 20px;
@@ -686,7 +696,7 @@
     height: 32px;
     padding: 0 8px;
     font-size: var(--fs-xl);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     background: var(--bg-1);
     border: 0;
     outline: 0;
@@ -697,7 +707,7 @@
   }
   .nm::placeholder {
     color: var(--fg-4);
-    font-weight: 400;
+    font-weight: var(--fw-base);
   }
   .x {
     width: 30px;
@@ -726,7 +736,7 @@
     align-items: baseline;
     gap: 2px 6px;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .lbl b {
@@ -734,7 +744,7 @@
   }
   .lbl em {
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--fw-base);
     font-size: var(--fs-sm);
     color: var(--fg-4);
   }
@@ -746,6 +756,15 @@
   }
   .bc.short b {
     color: var(--gold);
+  }
+  .others {
+    margin-top: 4px;
+  }
+  .bc.off {
+    color: var(--fg-4);
+  }
+  .bc.off b {
+    color: var(--fg-3);
   }
   /* 已选的不再单独滚动，跟着编辑器整体滚：避免滚轮落在这里时外层滚不动 */
   .chosen {
@@ -938,7 +957,7 @@
     height: 30px;
     padding: 0 18px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--mint-ink);
     background: var(--mint);
   }

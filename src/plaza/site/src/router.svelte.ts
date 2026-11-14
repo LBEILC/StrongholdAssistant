@@ -1,4 +1,5 @@
-// 极简路由：History API。Pages 没有 404.html 时会把未知路径都交给 index.html。
+// 极简路由：History API。官网占了根路径（2026-11-14），广场首页在 /plaza；
+// 广场的这些路径由 _redirects 交给 plaza.html（见 scripts/merge-site.mjs）。本地开发时 / 也当广场首页。
 export type Route =
   | { page: 'home' }
   | { page: 'post'; id: string }
@@ -7,12 +8,13 @@ export type Route =
   | { page: 'new'; edit: string | null; post: string | null }
   | { page: 'privacy' }
   | { page: 'admin' }
+  | { page: 'rate'; kind: 'operator' | 'equipment'; name: string | null }
   | { page: 'notfound' }
 
 function parse(): Route {
   const p = location.pathname.replace(/\/+$/, '') || '/'
   const q = new URLSearchParams(location.search)
-  if (p === '/') return { page: 'home' }
+  if (p === '/plaza' || p === '/') return { page: 'home' }
   const m = p.match(/^\/p\/([^/]+)$/)
   if (m) return { page: 'post', id: decodeURIComponent(m[1]) }
   if (p === '/login') return { page: 'login', next: q.get('next') ?? '/me' }
@@ -20,6 +22,7 @@ function parse(): Route {
   if (p === '/new') return { page: 'new', edit: q.get('edit'), post: q.get('post') }
   if (p === '/privacy') return { page: 'privacy' }
   if (p === '/admin') return { page: 'admin' }
+  if (p === '/rate') return { page: 'rate', kind: q.get('kind') === 'equipment' ? 'equipment' : 'operator', name: q.get('name') }
   return { page: 'notfound' }
 }
 

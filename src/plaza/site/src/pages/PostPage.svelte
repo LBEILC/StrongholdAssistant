@@ -115,7 +115,7 @@
 </script>
 
 <div class="in">
-  <a class="back" href="/" use:link><Icon name="arrowLeft" size={16} />回到广场</a>
+  <a class="back" href="/plaza" use:link><Icon name="arrowLeft" size={16} />回到广场</a>
 
   {#if error}
     <div class="state"><p>{error}</p></div>
@@ -318,6 +318,7 @@
   }
   .acts {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
   }

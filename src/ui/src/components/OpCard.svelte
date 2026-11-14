@@ -131,7 +131,7 @@
     right: 0;
     top: 2px;
     font-size: var(--fs-xs);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     line-height: 1;
     padding: 3px 5px;
     color: var(--mint-ink);
@@ -163,7 +163,7 @@
     margin: 0 -5px;
     padding: 1px 5px;
     font-size: var(--fs-base);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--card-name-fg);
     background: var(--card-name-bg);
     white-space: nowrap;

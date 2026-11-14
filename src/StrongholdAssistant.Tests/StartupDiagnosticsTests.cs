@@ -2,11 +2,29 @@ using ASPAssistant.Core;
 using FluentAssertions;
 using Microsoft.Web.WebView2.Core;
 using StrongholdAssistant.Host;
+using System.Runtime.InteropServices;
 
 namespace ASPAssistant.Tests;
 
 public class StartupDiagnosticsTests
 {
+    [Fact]
+    public void WebView2_StartupFailureRecognizesDisconnectedCom()
+    {
+        StartupDiagnostics.IsWebView2StartupFailure(new COMException("断开连接", unchecked((int)0x80010108))).Should().BeTrue();
+        StartupDiagnostics.IsWebView2StartupFailure(new InvalidOperationException("普通异常")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("10.0.17763.107", true)]
+    [InlineData("10.0.19045.5000", false)]
+    public void WindowsUpdate_RecognizesOldRevision(string version, bool needsUpdate)
+    {
+        StartupDiagnostics.IsWindowsUpdateNeeded(Version.Parse(version)).Should().Be(needsUpdate);
+        var message = StartupDiagnostics.WebView2StartupFailureMessage(Version.Parse(version));
+        message.Should().Contain(needsUpdate ? "1. 系统很久没更新" : "1. 右键助手的 exe");
+    }
+
     [Fact]
     public void LogCrash_WritesErrorWithStackAndInnerException()
     {

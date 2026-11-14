@@ -16,6 +16,7 @@ export type Detail =
   | { kind: 'equipment'; name: string }
   | { kind: 'covenant'; id: string }
   | { kind: 'boss'; id: string }
+  | { kind: 'enemy'; id: string }
   | null
 
 const [catalog, connection, match, lineups, session, settings, appInfo] = await Promise.all([
@@ -53,6 +54,8 @@ export const covenantsOf = (m: LineupMember) => {
   return m.transform ? [...o.core, ...o.extra, m.transform] : [...o.core, ...o.extra]
 }
 
+export type SettingsTab = 'game' | 'window' | 'keys' | 'account' | 'about'
+
 export class AppState {
   catalog: Catalog = catalog
   connection = $state<Connection>(connection)
@@ -87,6 +90,10 @@ export class AppState {
   }
   update = $state<UpdateStatus>({ state: 'idle' })
   settingsOpen = $state(false)
+  /** 设置分页；从更新横幅打开时直接到「关于」 */
+  settingsTab = $state<SettingsTab>('game')
+  /** 从横幅点过更新：失败时横幅继续显示原因 */
+  updateTried = $state(false)
   /** 「导入分享码」面板 */
   importOpen = $state(false)
   /** 打开导入面板时预先填进去的文字（从网站「在助手里打开」带过来的分享码） */
@@ -192,7 +199,12 @@ export class AppState {
     this.update = await api.checkUpdate()
   }
   applyUpdate() {
+    this.updateTried = true
     api.applyUpdate()
+  }
+  openSettings(tab?: SettingsTab) {
+    if (tab) this.settingsTab = tab
+    this.settingsOpen = true
   }
 
   /** 收起或展开。向上收起时窗口高度由 App 量好内容再发 collapseUp */
@@ -537,6 +549,26 @@ export function goalProgress(goals: CovenantGoal[], members: LineupMember[], nam
     const need = covenant.thresholds[g.level - 1]
     return { covenant, level: g.level, need, have, active: have >= covenant.thresholds[0], done: have >= need }
   })
+}
+
+/**
+ * 名单能凑出的非目标盟约：至少有一名干员带着的都列出（精锐盟约看精锐人数）。
+ * need 是下一个没达到的档位，全达到就是最高档；已激活的排前面，同样按人数从多到少
+ */
+export function otherBonds(goals: CovenantGoal[], members: LineupMember[]): GoalProgress[] {
+  const skip = new Set(goals.map((g) => g.id))
+  const ids = new Set(members.flatMap(covenantsOf))
+  if (members.some((m) => m.elite)) ids.add(ELITE_COVENANT)
+  return [...ids]
+    .filter((id) => !skip.has(id) && covenantById.has(id))
+    .map((id) => {
+      const c = covenantById.get(id)!
+      const have = id === ELITE_COVENANT ? members.filter((m) => m.elite).length : members.filter((m) => covenantsOf(m).includes(id)).length
+      const ix = c.thresholds.findIndex((n) => have < n)
+      const level = (ix < 0 ? c.thresholds.length : ix + 1) as 1 | 2
+      return { covenant: c, level, need: c.thresholds[level - 1], have, active: have >= c.thresholds[0], done: ix < 0 }
+    })
+    .sort((a, b) => +b.active - +a.active || b.have - a.have)
 }
 
 /** 按目标盟约挑干员：至少有一个目标盟约、可招募；覆盖目标越多越靠前，同样多按等阶从高到低 */

@@ -690,7 +690,7 @@
     height: 30px;
     padding: 0 12px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     white-space: nowrap;
   }
   .primary {

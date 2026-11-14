@@ -161,7 +161,7 @@
     gap: 8px;
     margin-top: 4px;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .gh i {

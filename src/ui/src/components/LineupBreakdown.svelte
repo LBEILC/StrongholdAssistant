@@ -76,7 +76,7 @@
   .tabs button.on {
     color: var(--mint-ink);
     background: var(--mint);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .goals {
     display: flex;

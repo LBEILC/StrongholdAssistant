@@ -53,7 +53,8 @@ public sealed class GameConnectionService : IDisposable
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase),
                 d.AdbPath, d.AdbSerial, d.Config,
                 "mumu")).ToArray();
-        return devices.Concat(LdPlayerWindows.DiscoverDevices()).ToArray();
+        return MuMuFallback.UseIfMissing(devices, MuMuFallback.DiscoverDevices)
+            .Concat(LdPlayerWindows.DiscoverDevices()).ToArray();
     }
 
     public static IReadOnlyList<EmulatorWindow> FindEmulatorWindows()

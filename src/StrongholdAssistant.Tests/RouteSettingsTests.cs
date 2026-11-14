@@ -66,6 +66,7 @@ public sealed class RouteSettingsTests : IDisposable
     [Theory]
     [InlineData("Alt", 0xA4u)]
     [InlineData("R", 0x52u)]
+    [InlineData("Mouse5", 0x06u)]
     public async Task HotkeyPublishesOnceOnPressAndRelease(string name, uint key)
     {
         var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);

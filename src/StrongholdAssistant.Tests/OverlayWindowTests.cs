@@ -9,6 +9,26 @@ namespace StrongholdAssistant.Tests;
 
 public class OverlayWindowTests
 {
+    [Fact]
+    public void MarkerSettingsHideKindsAndLabelsAndRecolorExistingItems() => OnSta(() =>
+    {
+        var layer = new ShopMarkerLayer();
+        var tracked = Item();
+        var pickable = new ShopItem { Id = "pickable", IsSecondary = true, CardRegion = (.2, .75, .11, .23) };
+        layer.Update([tracked, pickable], 1920, 1080, animate: false);
+        Assert.Equal(2, layer.Children.Count);
+        var styles = new MarkerStyles { Pickable = new(false, "#A98BFF"), Tracked = new(true, "#123456"), Labels = false };
+        layer.Update([tracked, pickable], 1920, 1080, animate: false, styles: styles);
+        var marker = Assert.IsType<System.Windows.Controls.Canvas>(Assert.Single(layer.Children.Cast<UIElement>()));
+        Assert.Empty(marker.Children.OfType<System.Windows.Controls.Border>());
+        var frame = marker.Children.OfType<System.Windows.Shapes.Rectangle>().Last();
+        Assert.Equal(System.Windows.Media.Color.FromRgb(0x12, 0x34, 0x56),
+            Assert.IsType<System.Windows.Media.SolidColorBrush>(frame.Stroke).Color);
+        layer.Update([tracked, pickable], 1920, 1080, animate: false,
+            styles: styles with { Tracked = styles.Tracked with { Show = false } });
+        Assert.Empty(layer.Children.Cast<UIElement>());
+    });
+
     [Theory]
     [InlineData(1.0, 1.25)]
     [InlineData(1.25, 1.0)]

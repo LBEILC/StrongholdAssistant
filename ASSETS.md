@@ -10,6 +10,9 @@
 
 | 位置 | 内容 | 来源 |
 |---|---|---|
+| `data/field/tier-1.png`、`tier-2.png`、`tier-3.png`、`tier-5.png` | 场上阶数识别模板，40×40 裁剪 | 用户提供的 `prep-ready-1920x1080.png` 游戏截图；游戏美术归上海鹰角网络所有 |
+| `data/field/tier-4.png`、`tier-6.png` | 场上 IV、VI 阶识别模板，原图补到 40×40 黑底画布 | [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) `cn` 分支 commit `774d93398fc56df29b4f55e406edda1a9df451e9`，`assets/dyn/ui/autochess/[uc]autochesscommon/chess/common_chess_level/img_chess_level_4.png`、`img_chess_level_6.png`；游戏美术归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/field-*.jpg` | 场上占用及拖动详情测试，5 张录屏帧，只用于测试 | 用户于 2026-11-13 提供的三主题录屏第 47、55.5、57、345、350 秒；游戏画面归上海鹰角网络所有 |
 | `src/ui/public/assets/game/bond/` | 盟约图标（文件名为游戏盟约 id 去掉 `Ship`） | [ArknightsAssets/ArknightsAssets2](https://github.com/ArknightsAssets/ArknightsAssets2) `cn` 分支，commit `774d93398fc56df29b4f55e406edda1a9df451e9`，`assets/dyn/ui/autochess/[uc]autochesscommon/arts/bondicon/` |
 | `src/ui/public/assets/game/card/` | 商店卡底、等阶框与等阶角标、冻结等 | 同上，`…/[uc]autochessbattle/shop/autochess_shop_card_item/` |
 | `src/ui/public/assets/game/card/icon_golden.png` | 精锐标记（图鉴里的精锐状态标签） | 同上，`…/[uc]autochessouter/handbook/act_auto_chess_handbook_state/` |
@@ -22,6 +25,7 @@
 | `src/ui/public/assets/game/skin/closure/` | 界面皮肤「『全能的』可露希尔」，同上几类；另有 6 阶「VI」字形遮罩、渐变和角标星星，以及闪光星（`sparkle`）、文件夹（`folder`） | 同上，`…/autochessvariantskin/[uc]ac_s_closur/` 的同名目录，以及 `arts/shop/notag/mask_text_vi.png`、`prefabs/shop/chess_level_6_obj/`、`prefabs/group_hud/round_num_back.png`、`prefabs/shop/panel_shop_main/img_fx_star_outline.png` |
 
 | `.github/readme/` | README 与发版页的图片（含上面的界面素材、盟约图标与界面截图） | 由本项目用上面的素材和界面截图渲染 |
+| `src/site/src/assets/shots/` | 官网用的界面截图（助手界面、阵容广场网站，示例数据）和一张游戏商店画面（由测试样图 `shop-terminal-ui100-2000x1125.png` 缩小转为 WebP） | 界面截图由本项目拍摄，画面里的游戏素材同上；游戏画面归上海鹰角网络所有 |
 | `branding/` | 应用图标、QQ 群头像（`icon.png`、`icon.ico`、`qq-avatar.png`），图案用了上面的「独行」盟约图标 | 由本项目渲染，生成页见 `docs/readme/panels.html` |
 
 ## 字体与通用图标
@@ -37,6 +41,8 @@
 `data/codex_extra.json` 的干员可选技能与模组取自[森空岛卫戍协议公开资源接口](https://zonai.skland.com/web/v1/game/garrison/guide/resource)（2026-11-12）；默认技能与模组取自下述 `activity_table.json` 的 `charShopChessDatas`。由 `scripts/generate-operator-options.mjs` 生成，技能顺序和中文名称保留资源接口原值。
 
 `data/codex_extra.json` 的装备关系、进阶效果与首领血量取自 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 国服 `gamedata/excel/activity_table.json`（2026-11-11 数据，`act3autochess/V3_1`），由 `scripts/GenerateCodexExtra` 生成；游戏数据归上海鹰角网络所有。
+
+`data/enemies.json` 的敌人资料（特训敌人各变体与首领的名字、等级、攻击方式、基础属性、能力、描述）取自 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 国服 `gamedata/excel/enemy_handbook_table.json` 和 `gamedata/levels/enemydata/enemy_database.json`（2026-11-14 数据）；游戏数据归上海鹰角网络所有。界面上的「在 PRTS 查看」只是打开 [PRTS](https://prts.wiki) 对应页面的链接，不收录 PRTS 的内容。
 
 | 位置 | 内容 | 来源 |
 |---|---|---|

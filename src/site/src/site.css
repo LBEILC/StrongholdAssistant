@@ -1,0 +1,289 @@
+/*
+ * 官网样式：颜色、圆角、动效全用助手的设计令牌（src/ui/src/app.css）。
+ * 助手的字号令牌是侧栏尺度（最大 20px），网站的大标题另用下面几档，只在本站用。
+ */
+:root {
+  --d-hero: clamp(44px, 6.4vw, 88px);
+  --d-1: clamp(30px, 3.6vw, 44px);
+  --d-2: clamp(22px, 2.2vw, 28px);
+  --d-num: clamp(40px, 5vw, 64px);
+  --t-body: 15px;
+  --t-small: 13px;
+  --wrap: 1200px;
+  --gutter: 32px;
+  --head-h: 60px;
+  scroll-padding-top: calc(var(--head-h) + 16px);
+}
+@media (max-width: 720px) {
+  :root {
+    --gutter: 16px;
+    --head-h: 54px;
+    --t-body: 14px;
+  }
+}
+
+html,
+body {
+  height: auto;
+  min-height: 100%;
+}
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: var(--bg-4) transparent;
+    scrollbar-width: thin;
+  }
+}
+body {
+  font-size: var(--t-body);
+  line-height: 1.7;
+  user-select: text;
+  overflow-x: hidden;
+  background:
+    var(--noise),
+    radial-gradient(1100px 620px at 82% -6%, rgb(var(--mint-rgb) / 0.09), transparent 70%),
+    var(--bg-0);
+}
+#app {
+  height: auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+img {
+  max-width: 100%;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+.wrap {
+  width: 100%;
+  max-width: calc(var(--wrap) + var(--gutter) * 2);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* 终端风格小字：英文标注、编号 */
+.lbl {
+  font-family: var(--font-term);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.num {
+  font-family: var(--font-term);
+  font-variant-numeric: tabular-nums;
+}
+.mint {
+  color: var(--mint);
+}
+.gold {
+  color: var(--gold);
+}
+.dim {
+  color: var(--fg-3);
+}
+
+/* 招牌三段条：薄荷长条 + 金色短条 + 灰色小块（同 README 头图） */
+.bars {
+  display: flex;
+  gap: 8px;
+  height: 5px;
+}
+.bars i {
+  display: block;
+  background: var(--mint);
+  width: 120px;
+  box-shadow: var(--mint-glow);
+}
+.bars i:nth-child(2) {
+  width: 40px;
+  background: var(--gold);
+  box-shadow: none;
+}
+.bars i:nth-child(3) {
+  width: 16px;
+  background: var(--fg-4);
+  box-shadow: none;
+}
+
+/* 按钮：方正矩形，主按钮薄荷绿 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-1);
+  white-space: nowrap;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    box-shadow var(--t-fast),
+    transform var(--t-fast);
+}
+.btn:hover {
+  background: var(--bg-4);
+  border-color: var(--line-hi);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn.primary {
+  color: var(--mint-ink);
+  background: var(--mint);
+  border-color: var(--mint);
+  box-shadow: 0 0 24px rgb(var(--mint-rgb) / 0.25);
+}
+.btn.primary:hover {
+  background: var(--mint-hi);
+  border-color: var(--mint-hi);
+  box-shadow: 0 0 32px rgb(var(--mint-rgb) / 0.4);
+}
+.btn.ghost {
+  background: transparent;
+}
+.btn.ghost:hover {
+  background: rgb(var(--hl-rgb) / 0.05);
+}
+.btn.sm {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.btn .sub {
+  font-family: var(--font-term);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+}
+
+/* 区块 */
+.section {
+  position: relative;
+  padding: 120px 0;
+}
+@media (max-width: 720px) {
+  .section {
+    padding: 72px 0;
+  }
+}
+.section.alt {
+  background:
+    var(--hatch),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* HUD 取景框：四角括号 */
+.hud {
+  position: relative;
+}
+.hud::before,
+.hud::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 0 solid var(--mint);
+  pointer-events: none;
+  z-index: 2;
+}
+.hud::before {
+  left: -8px;
+  top: -8px;
+  border-left-width: 2px;
+  border-top-width: 2px;
+}
+.hud::after {
+  right: -8px;
+  bottom: -8px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+/* 截图外框：助手窗口本来就有薄荷描边，这里只加投影 */
+.shot {
+  display: block;
+  border-radius: var(--r-1);
+  box-shadow:
+    0 0 0 1px rgb(var(--hl-rgb) / 0.06),
+    0 24px 60px rgb(var(--shade-rgb) / 0.55);
+}
+
+/* 进入视口时淡入上移（Reveal 组件加 .in） */
+.rv {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 600ms var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+.rv.in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rv {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+.kbd {
+  display: inline-block;
+  padding: 0 6px;
+  font-family: var(--font-term);
+  font-size: 0.86em;
+  line-height: 1.6;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--r-1);
+}
+code {
+  font-family: Consolas, 'MiSans', monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  color: var(--fg-1);
+  background: var(--bg-3);
+  border-radius: var(--r-1);
+}
+.prose a,
+a.link {
+  color: var(--mint);
+  border-bottom: 1px solid rgb(var(--mint-rgb) / 0.35);
+  transition: border-color var(--t-fast);
+}
+.prose a:hover,
+a.link:hover {
+  border-color: var(--mint);
+}

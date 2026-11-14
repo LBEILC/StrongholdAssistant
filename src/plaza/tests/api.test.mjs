@@ -19,7 +19,7 @@ let serial = 0
 before(async () => {
  mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response() } }', d1Databases: ['DB'], compatibilityDate: '2025-10-11' })
  db = await mf.getD1Database('DB')
- for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql', '0005_server_privacy.sql', '0006_notices.sql', '0007_admin_stats.sql']) {
+ for (const file of ['0001_init.sql', '0002_password.sql', '0003_comments_reports.sql', '0004_sync_favorites_income.sql', '0005_server_privacy.sql', '0006_notices.sql', '0007_admin_stats.sql', '0008_traffic.sql', '0009_ratings.sql']) {
   const sql = await readFile('migrations/' + file, 'utf8')
   // D1 exec 按行分语句；保留触发器整体，迁移一次执行。
   await db.exec(sql.replace(/\r?\n/g, ' '))
@@ -28,7 +28,7 @@ before(async () => {
  privateKey = pair.privateKey
  jwk = { ...await exportJWK(pair.publicKey), kid: 'test-key', alg: 'RS256', use: 'sig' }
  env = {
-  DB: db, IP_SECRET: 'test-only-ip-secret', CODE_PEPPER: 'test-only-pepper', RESEND_API_KEY: 'test-only-key', MAIL_FROM: 'test@example.com',
+  DB: db, RATING_SEASON: '2026-S1', IP_SECRET: 'test-only-ip-secret', CODE_PEPPER: 'test-only-pepper', RESEND_API_KEY: 'test-only-key', MAIL_FROM: 'test@example.com',
   TURNSTILE_SECRET: 'test-only-secret', ADMIN_EMAILS: 'admin@example.com',
   ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com', ACCESS_AUD: 'test-audience',
   ALLOWED_ORIGINS: 'https://app.local,http://localhost:5178',
@@ -52,12 +52,157 @@ before(async () => {
  }
 })
 beforeEach(async () => {
- await db.batch(['notice_actors', 'notices', 'favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage', 'income_reports', 'income_samples', 'income_summary', 'reports', 'report_usage', 'comments', 'likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
+ await db.batch(['ratings', 'rating_usage', 'notice_actors', 'notices', 'favorites', 'cloud_lineups', 'cloud_prefs', 'sync_usage', 'income_reports', 'income_samples', 'income_summary', 'reports', 'report_usage', 'comments', 'likes', 'imports', 'posts', 'sessions', 'login_codes', 'password_attempts', 'users'].map(t => db.prepare('DELETE FROM ' + t)))
  mails.clear()
 })
 after(async () => {
  globalThis.fetch = originalFetch
  await mf?.dispose()
+})
+
+test('130 流量鉴权、校验、覆盖和月统计', async t => {
+ t.mock.method(Date, 'now', () => Date.parse('2026-03-02T04:00:00Z'))
+ const headers = await access('admin@example.com'), trafficEnv = { ...env, EDGE_SECRET: 'test-edge' }
+ const post = (data, secret = 'test-edge', bindings = trafficEnv) => handleRequest(new Request('https://plaza.example/api/edge/traffic', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', ...(secret && { 'X-Plaza-Edge': secret }) }, body: JSON.stringify(data),
+ }), bindings)
+ const get = (query = '', auth = headers) => handleRequest(new Request('https://plaza.example/api/admin/traffic' + query, { headers: auth }), trafficEnv)
+ const day = { date: '2026-03-01', host: 'a.example', requests: 20, bytes: 1000, visitors: 4, cacheHits: 3, cacheMisses: 1, status4xx: 2, status5xx: 1 }
+ const paths = Array.from({ length: 12 }, (_, i) => ({ date: day.date, host: day.host, path: '/p' + i, requests: 1, bytes: i + 1 }))
+ const report = { days: [day], paths }
+ for (const secret of [null, 'wrong']) assert.equal((await post(report, secret)).status, 403)
+ assert.equal((await post(report, 'test-edge', env)).status, 403)
+ for (const invalid of [null, {}, { days: Array(201).fill(day), paths: [] }, { days: [day], paths: Array(4001).fill(paths[0]) },
+  ...[{ bytes: -1 }, { visitors: '4' }, { date: '2026-02-30' }].map(change => ({ days: [{ ...day, ...change }], paths: [] }))]) {
+  assert.equal((await post(invalid)).status, 400)
+ }
+ assert.equal((await get('', {})).status, 403)
+ for (const month of ['2026-3', '2026-13', '']) assert.equal((await get('?month=' + month)).status, 400)
+ assert.equal((await (await get()).json()).lastReportAt, null)
+ assert.equal((await post(report)).status, 204)
+ assert.equal((await post({ days: [{ ...day, bytes: 2000 }], paths: paths.slice(1) })).status, 204)
+ assert.equal((await post({ days: [{ ...day, bytes: 2000 }], paths: paths.slice(1) })).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM traffic_paths').first()).n, 11)
+ assert.equal(await db.prepare("SELECT * FROM traffic_paths WHERE path='/p0'").first(), null)
+ const second = { ...day, date: '2026-03-02', bytes: 1000 }
+ const noCache = { ...day, host: 'b.example', bytes: 100, cacheHits: 0, cacheMisses: 0 }
+ assert.equal((await post({ days: [second, noCache], paths: [{ ...paths[11], date: second.date, bytes: 100 }] })).status, 204)
+ const result = await (await get()).json()
+ assert.equal(result.month, '2026-03')
+ assert.equal(result.bytes, 3100)
+ assert.equal(result.pricePerGB, 3)
+ assert.equal(result.forecastBytes, 3100 / 1.5 * 31)
+ assert.equal(result.lastReportAt, '2026-03-02T04:00:00.000Z')
+ assert.equal(result.at, result.lastReportAt)
+ assert.deepEqual(result.hosts.map(h => h.host), ['a.example', 'b.example'])
+ const host = result.hosts[0]
+ assert.equal(host.requests, 40)
+ assert.equal(host.bytes, 3000)
+ assert.equal(host.cacheHitRate, 0.75)
+ assert.equal(host.status4xx, 4)
+ assert.equal(host.status5xx, 2)
+ assert.equal(host.topPaths.length, 10)
+ assert.deepEqual(host.topPaths[0], { path: '/p11', requests: 2, bytes: 112 })
+ assert.equal(result.hosts[1].cacheHitRate, null)
+ assert.deepEqual(result.hosts[1].daily, [
+  { date: '2026-03-01', requests: 20, bytes: 100, visitors: 4 },
+  { date: '2026-03-02', requests: 0, bytes: 0, visitors: 0 },
+ ])
+ assert.equal((await post({ days: [{ ...day, date: '2026-02-01' }], paths: [] })).status, 204)
+ const past = await (await get('?month=2026-02')).json()
+ assert.equal(past.hosts[0].daily.length, 28)
+ assert.equal(past.forecastBytes, past.bytes)
+ assert.equal((await post({ days: [second], paths: [] })).status, 204)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM traffic_paths WHERE date=?').bind(second.date).first()).n, 0)
+})
+
+test('124 Mirror 汇总、日期补零、Access 权限与月份校验', async t => {
+ t.mock.method(Date, 'now', () => Date.parse('2026-03-01T16:30:00Z'))
+ const headers = await access('admin@example.com')
+ const fallbackFetch = globalThis.fetch
+ const cache = new Map(), calls = []
+ const originalCaches = globalThis.caches
+ t.after(() => { globalThis.caches = originalCaches })
+ globalThis.caches = { open: async () => ({
+  match: async key => cache.get(key)?.clone(),
+  put: async (key, value) => { assert.equal(value.headers.get('Cache-Control'), 'max-age=300'); cache.set(key, value.clone()) },
+ }) }
+ const mirrorEnv = { ...env, MIRROR_KEY: 'test-only-mirror', MIRROR_RIDS: 'StrongholdAssistant,NovelAIPromptStudio,Pane' }
+ const get = (query = '', authorized = true) => handleRequest(new Request('https://plaza.example/api/admin/mirror' + query,
+  { headers: authorized ? headers : {} }), mirrorEnv)
+ t.mock.method(globalThis, 'fetch', async (url, options) => {
+  const u = new URL(url)
+  if (u.hostname !== 'mirrorchyan.com') return fallbackFetch(url, options)
+  calls.push(u)
+  assert.equal(options.headers.Authorization, 'test-only-mirror')
+  const rid = u.searchParams.get('rid')
+  if (u.pathname.endsWith('/revenue')) {
+   assert.equal(u.searchParams.get('is_ua'), '0')
+   const date = u.searchParams.get('date')
+   assert.match(date, /^2026(02|03)$/)
+   const activated_at = `${date.slice(0, 4)}-${date.slice(4)}-01T23:30:00`
+   return Response.json({ ec: 200, data: [
+    { activated_at, plan: '月卡', buy_count: 2, amount: '20', platform: 'weixin', blocked: false },
+    { activated_at, plan: '年卡', buy_count: 1, amount: '100', platform: 'alipay', blocked: false },
+    { activated_at, plan: '月卡', buy_count: 1, amount: '10', platform: 'afdian', blocked: false },
+    { activated_at, plan: '月卡', buy_count: 1, amount: '10', platform: 'yimapay', blocked: false },
+    { activated_at, plan: '月卡', buy_count: 1, amount: '10', platform: 'other', blocked: false },
+    { activated_at, plan: '年卡', buy_count: 3, amount: '300', platform: 'weixin', blocked: true },
+   ] })
+  }
+  return Response.json({ ec: 200, data: { [rid]: { '2026-03-02': { count: 87, request: 100 }, '2026-01-01': { count: 1, request: 2 } } } })
+ })
+ assert.equal((await get('', false)).status, 403)
+ for (const month of ['2026-3', '2026-13', '']) assert.equal((await get('?month=' + month)).status, 400)
+ assert.equal(calls.length, 0)
+ const response = await get(), result = await response.json()
+ assert.equal(response.status, 200)
+ assert.equal(result.month, '2026-03')
+ assert.equal(result.at, '2026-03-01T16:30:00.000Z')
+ assert.equal(result.projects.length, 3)
+ for (const project of result.projects) {
+  assert.equal(project.orders, 6)
+  assert.equal(project.amount, 150)
+  assert.ok(Math.abs(project.income - 74.2) < 1e-10)
+  assert.equal(project.refundedOrders, 3)
+  assert.equal(project.refundedAmount, 300)
+  assert.deepEqual(project.daily, [{ date: '2026-03-01', orders: 6, amount: 150 }, { date: '2026-03-02', orders: 0, amount: 0 }])
+  assert.deepEqual(project.byPlan, [{ name: '年卡', orders: 1, amount: 100 }, { name: '月卡', orders: 5, amount: 50 }])
+  assert.deepEqual(project.byPlatform, [
+   { name: 'alipay', orders: 1, amount: 100 }, { name: 'weixin', orders: 2, amount: 20 },
+   { name: 'afdian', orders: 1, amount: 10 }, { name: 'yimapay', orders: 1, amount: 10 }, { name: 'other', orders: 1, amount: 10 },
+  ])
+  assert.equal(project.usage.length, 30)
+  assert.deepEqual(project.usage[0], { date: '2026-02-01', users: 0, downloads: 0 })
+  assert.deepEqual(project.usage[29], { date: '2026-03-02', users: 100, downloads: 87 })
+ }
+ assert.equal(calls.length, 6)
+ assert.deepEqual(await (await get('?month=2026-03')).json(), result)
+ assert.equal(calls.length, 6)
+ assert.equal((await get('', false)).status, 403)
+ const past = await (await get('?month=2026-02')).json()
+ assert.equal(past.projects[0].daily.length, 28)
+ assert.deepEqual(past.projects[0].daily[27], { date: '2026-02-28', orders: 0, amount: 0 })
+})
+
+test('124 Mirror 单项目 ec 错误不影响其他项目', async t => {
+ const headers = await access('admin@example.com'), fallbackFetch = globalThis.fetch
+ const originalCaches = globalThis.caches
+ t.after(() => { globalThis.caches = originalCaches })
+ globalThis.caches = { open: async () => ({ match: async () => undefined, put: async () => {} }) }
+ t.mock.method(globalThis, 'fetch', async (url, options) => {
+  const u = new URL(url)
+  if (u.hostname !== 'mirrorchyan.com') return fallbackFetch(url, options)
+  if (u.searchParams.get('rid') === 'Pane') return Response.json({ ec: 400, msg: 'sample failure' })
+  return Response.json({ ec: 200, data: u.pathname.endsWith('/revenue') ? [] : {} })
+ })
+ const response = await handleRequest(new Request('https://plaza.example/api/admin/mirror', { headers }),
+  { ...env, MIRROR_KEY: 'test-only-mirror', MIRROR_RIDS: 'StrongholdAssistant,NovelAIPromptStudio,Pane' })
+ assert.equal(response.status, 200)
+ const { projects } = await response.json()
+ assert.deepEqual(projects.filter(p => p.error).map(p => p.rid), ['Pane'])
+ assert.deepEqual(projects[2], { rid: 'Pane', orders: 0, amount: 0, income: 0, refundedOrders: 0, refundedAmount: 0,
+  daily: [], byPlan: [], byPlatform: [], usage: [], error: 'Mirror酱 数据查询失败。' })
 })
 
 async function request(path, { method = 'GET', body, token, headers = {} } = {}) {
@@ -163,7 +308,8 @@ for (const configured of [false, true]) test('102 配置切换发信服务：' +
   })) assert.equal(params[key], value)
   assert.match(params.Subject, /^卫戍协议助手验证码：\d{6}$/)
   const code = params.Subject.slice(-6)
-  assert.equal(params.TextBody, `你的验证码是 ${code}，10 分钟内有效。\n如果不是你本人在登录卫戍协议助手的阵容广场，请忽略这封邮件。`)
+  assert.equal(params.TextBody, undefined)
+  assert.ok(params.HtmlBody.includes(`>${code}</div>`))
   assert.match(params.Timestamp, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
   assert.match(params.SignatureNonce, /^[\da-f-]{36}$/)
   const { Signature, ...unsigned } = params
@@ -1165,4 +1311,98 @@ test('115 排行只计近七天、最多十条且降序，开始记录后无数�
   assert.equal(days.find(d => d.date === '2026-11-08').count, 55)
   assert.ok(days.filter(d => d.date > '2026-11-08').every(d => d.count === 0))
  }
+})
+
+test('131 评分鉴权、校验、覆盖、统计、赛季、mine 和撤回', async () => {
+ const target = { kind: 'operator', name: catalog.operators[0].name }, query = new URLSearchParams(target)
+ const put = (token, change = {}) => request('/api/ratings', { method: 'PUT', token, body: { ...target, score: 4, ...change } })
+ assert.equal((await put()).status, 401)
+ const unnamed = await login(null)
+ assert.equal((await put(unnamed.token)).data.error, 'need_nickname')
+ assert.equal((await put(unnamed.token)).status, 403)
+ const user = await login()
+ assert.equal((await put(user.token, { name: '不存在' })).status, 404)
+ for (const change of [{ score: 0 }, { score: 2.5 }, { comment: '字'.repeat(101) }, { comment: '换\n行' }])
+  assert.equal((await put(user.token, change)).status, 400)
+ assert.equal((await put(user.token, { comment: '  好用  ' })).status, 200)
+ assert.equal((await put(user.token, { score: 5, comment: '😀'.repeat(100) })).data.count, 1)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM ratings').first()).n, 1)
+ let detail = await ok('/api/ratings/item?' + query, { token: user.token })
+ assert.equal(detail.mine.score, 5)
+ assert.equal(detail.summary.avg, null)
+ for (const score of [1,2,3,5]) {
+  const next = await login()
+  assert.equal((await put(next.token, { score })).status, 200)
+ }
+ const list = await request('/api/public/ratings?kind=operator', { token: 'ignored' })
+ assert.equal(list.headers.get('Cache-Control'), 'public, max-age=0, s-maxage=120')
+ assert.deepEqual(list.data.items[0], { ...target, count: 5, avg: 3.2, dist: [1,1,1,0,2] })
+ assert.equal((await request('/api/public/ratings?kind=bad')).status, 400)
+ assert.deepEqual((await ok('/api/ratings/mine', { token: user.token })).items, [{ ...target, score: 5 }])
+ const nextSeason = await handleRequest(new Request('https://plaza.example/api/public/ratings?kind=operator'), { ...env, RATING_SEASON: '2026-S2' })
+ assert.deepEqual((await nextSeason.json()).items, [])
+ const equipment = { kind: 'equipment', name: catalog.equipment[0].name }
+ assert.equal((await put(user.token, equipment)).status, 200)
+ for (let i = 0; i < 2; i++) assert.equal((await request('/api/ratings?' + query, { method: 'DELETE', token: user.token })).status, 204)
+ assert.equal((await ok('/api/ratings/item?' + query, { token: user.token })).mine, null)
+ assert.deepEqual((await ok('/api/ratings/mine', { token: user.token })).items, [{ ...equipment, score: 4 }])
+})
+
+test('131 短评分页、举报、隐藏、改评和删除', async t => {
+ t.mock.method(Date, 'now', () => Date.parse('2026-11-14T12:00:00Z'))
+ const target = { kind: 'operator', name: catalog.operators[0].name }, query = new URLSearchParams(target)
+ const users = []
+ for (let i = 0; i < 4; i++) {
+  const u = await login(); users.push(u)
+  await ok('/api/ratings', { method: 'PUT', token: u.token, body: { ...target, score: 5, comment: i === 3 ? '' : '短评' + i } })
+ }
+ const admin = await access('admin@example.com')
+ let page = await ok('/api/ratings/item?' + query + '&limit=1')
+ const id = page.comments[0].id, owner = users.find(u => u.me.id === page.comments[0].author.id)
+ const report = (reason = 'spam', ratingId = id) => request('/api/reports', { method: 'POST', token: users[3].token, body: { target: { kind: 'rating', id: ratingId }, reason } })
+ const emptyId = (await db.prepare("SELECT id FROM ratings WHERE comment='' LIMIT 1").first()).id
+ assert.equal((await report('spam', emptyId)).status, 404)
+ assert.equal((await report('broken')).status, 400)
+ assert.equal((await report()).status, 204)
+ const reports = await ok('/api/admin/reports', { headers: admin })
+ assert.equal(reports.reports[0].rating.name, target.name)
+ assert.equal(reports.reports[0].rating.kind, target.kind)
+ assert.equal(reports.reports[0].rating.nickname, owner.me.nickname)
+ assert.equal(reports.reports[0].rating.comment, page.comments[0].comment)
+ const ids = [id]
+ while (page.nextCursor) {
+  page = await ok('/api/ratings/item?' + query + '&limit=1&cursor=' + encodeURIComponent(page.nextCursor))
+  ids.push(...page.comments.map(c => c.id))
+ }
+ assert.equal(new Set(ids).size, 3)
+ const resolve = action => request('/api/admin/reports/rating/' + id, { method: 'PATCH', headers: admin, body: { action } })
+ assert.equal((await resolve('hide')).status, 204)
+ let detail = await ok('/api/ratings/item?' + query)
+ assert.equal(detail.summary.count, 4)
+ assert.equal(detail.summary.dist[4], 4)
+ assert.equal(detail.comments.length, 2)
+ assert.equal((await report()).status, 404)
+ const original = (await db.prepare('SELECT * FROM ratings WHERE id=?').bind(id).first()).comment
+ await ok('/api/ratings', { method: 'PUT', token: owner.token, body: { ...target, score: 4, comment: original } })
+ assert.equal((await ok('/api/ratings/item?' + query)).comments.length, 2)
+ await ok('/api/ratings', { method: 'PUT', token: owner.token, body: { ...target, score: 4, comment: '修改短评' } })
+ assert.equal((await ok('/api/ratings/item?' + query)).comments.length, 3)
+ assert.equal((await report()).status, 204)
+ assert.equal((await resolve('delete')).status, 204)
+ assert.equal((await ok('/api/ratings/item?' + query)).summary.count, 3)
+ assert.equal(await db.prepare('SELECT id FROM ratings WHERE id=?').bind(id).first(), null)
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM notices').first()).n, 0)
+})
+
+test('131 同 IP 每小时限流', async t => {
+ let now = Date.parse('2026-11-14T12:00:00Z')
+ t.mock.method(Date, 'now', () => now)
+ const u = await login(), other = await login()
+ const put = token => request('/api/ratings', { method: 'PUT', token, body: { kind: 'equipment', name: catalog.equipment[0].name, score: 3 } })
+ for (let i = 0; i < 60; i++) assert.equal((await put(u.token)).status, 200)
+ const blocked = await put(other.token)
+ assert.equal(blocked.status, 429)
+ assert.equal(blocked.data.error, 'rate_limited')
+ now += 3600000
+ assert.equal((await put(other.token)).status, 200)
 })

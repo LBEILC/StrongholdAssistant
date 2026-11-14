@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 // 2026-11-11：整卡标记改用共享绘制层，按固定卡位定位。
 // 2026-11-13：加敌人路线绘制层（RouteLayer），画在商店标记下面。
 using System.Windows;
@@ -16,6 +16,7 @@ public sealed class OverlayWindow : Window
     private BoardRoutes? _boardRoutes;
     private RouteOverlaySettings _routeSettings = new();
     private IReadOnlyList<ShopItem> _items = [];
+    private MarkerStyles _markerStyles = new();
     private RECT? _client;
     public bool HasMarkers => _canvas.Children.Count > 0;
     public bool HasRoutes => _routes.HasRoutes;
@@ -64,10 +65,11 @@ public sealed class OverlayWindow : Window
         });
     }
 
-    public void UpdateShopItems(IReadOnlyList<ShopItem> items, bool animate = true)
+    public void UpdateShopItems(IReadOnlyList<ShopItem> items, bool animate = true, MarkerStyles? styles = null)
     {
         _items = items;
-        _canvas.Update(items, ActualWidth, ActualHeight, animate);
+        if (styles is not null) _markerStyles = styles;
+        _canvas.Update(items, ActualWidth, ActualHeight, animate, _markerStyles);
     }
 
     public void UpdateRoutes(BoardRoutes? routes, RouteOverlaySettings settings)

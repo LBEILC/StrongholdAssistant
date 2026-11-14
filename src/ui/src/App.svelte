@@ -29,6 +29,8 @@
   import { asset } from './lib/assets'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
+  import UpdateBar from './components/UpdateBar.svelte'
+  import { FONT_WEIGHTS, fontStack } from './lib/fonts'
 
   let upH = $state(0)
   $effect(() => {
@@ -49,6 +51,15 @@
     const root = document.documentElement
     root.dataset.skin = skin.id
     for (const f of SKIN_IMAGES) root.style.setProperty(`--skin-${f.replace('_', '-')}`, `url(${asset.skin(f)})`)
+  })
+  // 界面字体和字重（v0.9.5）：选的字体缺字时回落到 MiSans
+  $effect(() => {
+    const s = document.documentElement.style
+    s.setProperty('--font-cn', fontStack(app.settings.uiFont))
+    const [base, semi, bold] = FONT_WEIGHTS[app.settings.uiFontWeight]
+    s.setProperty('--fw-base', String(base))
+    s.setProperty('--fw-semi', String(semi))
+    s.setProperty('--fw-bold', String(bold))
   })
 
   let scroller: HTMLElement | undefined = $state()
@@ -133,12 +144,7 @@
 {/if}
 
 {#snippet body()}
-  {#if !app.workbench && (app.update.state === 'available' || app.update.state === 'downloading' || app.update.state === 'ready')}
-    <button class="updbar" onclick={() => (app.settingsOpen = true)}>
-      <b class="term">Update</b>
-      {app.update.state === 'available' ? `发现新版本 v${app.update.version}，点这里更新` : app.update.state === 'downloading' ? `正在下载 v${app.update.version}…` : '下载完成，即将重启'}
-    </button>
-  {/if}
+  {#if !app.workbench}<UpdateBar />{/if}
   <div class="content" class:wb={app.workbench} class:lineup={app.tab === 'lineup'} class:docked={app.workbench && (!!app.detail || !!plaza.viewing || app.tab === 'codex')}>
     <main bind:this={scroller}>
       {#key app.tab}
@@ -231,25 +237,6 @@
   .shell.up {
     height: auto;
     border-bottom: 1px solid var(--mint-lo);
-  }
-  .updbar {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 28px;
-    padding: 0 10px;
-    font-size: var(--fs-base);
-    text-align: left;
-    color: var(--gold);
-    background: rgb(var(--gold-rgb) / 0.1);
-    border-bottom: 1px solid rgb(var(--gold-rgb) / 0.3);
-  }
-  .updbar b {
-    font-size: var(--fs-2xs);
-    padding: 2px 4px 1px;
-    color: var(--gold-ink);
-    background: var(--gold);
   }
   .content {
     position: relative;

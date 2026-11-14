@@ -242,15 +242,23 @@
 {#if loading && !posts.length}<p class="state muted">加载中…</p>{/if}
 
 <style>
+  /* 侧栏窄时排不下一行：按钮不压扁（以前字会被挤成竖排），「筛选」「网站」换到下一行 */
   .bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px 8px;
     margin: 10px 0 6px;
   }
   .sorts {
     display: flex;
     gap: 2px;
+  }
+  .sorts button,
+  .fbtn,
+  .web {
+    flex: none;
+    white-space: nowrap;
   }
   .search {
     display: flex;
@@ -340,13 +348,13 @@
     justify-content: space-between;
     margin-top: 2px;
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .fh em {
     margin-left: 6px;
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
   }
   .bonds {
@@ -493,7 +501,7 @@
   .sorts button.on {
     color: var(--mint-ink);
     background: var(--mint);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .sorts button:disabled {
     color: var(--fg-4);

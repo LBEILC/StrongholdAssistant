@@ -60,7 +60,7 @@
     if (strat) p.set('strategy', strat)
     if (demo) p.set('demo', '')
     const qs = p.toString()
-    history.replaceState(null, '', qs ? `/?${qs}` : '/')
+    history.replaceState(null, '', qs ? `/plaza?${qs}` : '/plaza')
     // 等知道登没登录再拉：没登录走可缓存的公开列表，登录了要带上自己的点赞、收藏
     if (!session.ready) return
     void session.me

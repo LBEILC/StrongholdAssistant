@@ -8,6 +8,8 @@ import type {
   AdminReportList,
   AdminResolveReport,
   AdminStats,
+  AdminMirrorStats,
+  AdminTrafficStats,
   Comment,
   CommentList,
   CreateReportRequest,
@@ -25,10 +27,17 @@ import type {
   PostDetail,
   PostList,
   SendCodeResponse,
+  MyRatings,
+  PutRatingRequest,
+  RatingDetail,
+  RatingKind,
+  RatingList,
+  RatingSummary,
 } from '../../shared/api'
 
-export type { AdminComment, AdminPost, AdminReport, AdminStats, AdminUser, CloudLineup, Comment, Me, Notice, Post, PostDetail }
+export type { AdminComment, AdminMirrorStats, AdminTrafficStats, AdminPost, AdminReport, AdminStats, AdminUser, CloudLineup, Comment, Me, Notice, Post, PostDetail }
 export { REPORT_REASONS, type ReportReason, type ReportTarget } from '../../shared/api'
+export type { RatingComment, RatingDetail, RatingKind, RatingList, RatingSummary } from '../../shared/api'
 
 export class ApiError extends Error {
   constructor(
@@ -121,6 +130,13 @@ export const api = {
   comment: (id: string, body: string, replyTo?: string) => req<Comment>('POST', `/posts/${encodeURIComponent(id)}/comments`, { body, ...(replyTo && { replyTo }) }),
   deleteComment: (id: string) => req<void>('DELETE', `/comments/${encodeURIComponent(id)}`),
   report: (r: CreateReportRequest) => req<void>('POST', '/reports', r),
+  /** 干员和装备评分（任务 131） */
+  ratings: (kind: RatingKind) => req<RatingList>('GET', '/public/ratings?kind=' + kind),
+  rating: (kind: RatingKind, name: string, cursor: string | null) =>
+    req<RatingDetail>('GET', `/ratings/item?kind=${kind}&name=${encodeURIComponent(name)}` + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')),
+  myRatings: () => req<MyRatings>('GET', '/ratings/mine'),
+  rate: (r: PutRatingRequest) => req<RatingSummary>('PUT', '/ratings', r),
+  unrate: (kind: RatingKind, name: string) => req<void>('DELETE', `/ratings?kind=${kind}&name=${encodeURIComponent(name)}`),
   /** 站内消息（v0.9.3） */
   notices: (cursor: string | null) => req<NoticeList>('GET', '/notices' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : '')),
   unread: () => req<{ unread: number }>('GET', '/notices/unread'),
@@ -141,6 +157,9 @@ export const api = {
   admin: {
     /** 看板（v0.9.3） */
     stats: () => req<AdminStats>('GET', '/admin/stats'),
+    /** Mirror酱 销售和使用统计；month 为 'YYYY-MM'，不传是本月 */
+    mirror: (month?: string) => req<AdminMirrorStats>('GET', '/admin/mirror' + (month ? '?month=' + month : '')),
+    traffic: (month?: string) => req<AdminTrafficStats>('GET', '/admin/traffic' + (month ? '?month=' + month : '')),
     posts: (status: AdminPost['status'] | null, cursor: string | null) => {
       const p = new URLSearchParams()
       if (status) p.set('status', status)

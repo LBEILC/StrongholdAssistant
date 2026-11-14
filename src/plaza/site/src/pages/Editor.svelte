@@ -265,7 +265,7 @@
 
 <div class="in">
   <div class="top">
-    <a class="back" href="/" use:link><Icon name="arrowLeft" size={16} />回到广场</a>
+    <a class="back" href="/plaza" use:link><Icon name="arrowLeft" size={16} />回到广场</a>
     <h1>{post ? '修改已发布的阵容' : edit ? '编辑我的阵容' : '新建阵容'}<span class="term">{post || edit ? 'Edit lineup' : 'New lineup'}</span></h1>
     <div class="paste">
       <input bind:value={paste} placeholder="从分享码开始：粘贴助手里复制的分享码" onkeydown={(e) => e.key === 'Enter' && paste.trim() && fromCode()} />

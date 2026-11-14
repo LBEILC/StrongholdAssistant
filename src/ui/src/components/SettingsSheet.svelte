@@ -1,8 +1,10 @@
 <script lang="ts">
   import { sheet } from '../lib/sheet'
   import { fade } from 'svelte/transition'
-  import { app } from '../lib/state.svelte'
-  import { api, type BackupSummary, type GameTheme, type ImportMode, type EmulatorInstance, type Settings, type UiSkin } from '../lib/api'
+  import { app, type SettingsTab } from '../lib/state.svelte'
+  import Seg from './Seg.svelte'
+  import { fontStack } from '../lib/fonts'
+  import { api, type BackupSummary, type GameTheme, type ImportMode, type EmulatorInstance, type Settings, type UiSkin, type MarkerStyle } from '../lib/api'
   import Icon from './Icon.svelte'
   import NotesList from './NotesList.svelte'
   import { plaza, PLAZA } from '../lib/plaza.svelte'
@@ -161,6 +163,41 @@
     loadInstances()
   }
 
+  // 界面字体：第一次展开列表时向宿主要本机字体；每个名字用它自己的字体预览
+  let fontOpen = $state(false)
+  let fontQ = $state('')
+  let fonts = $state<string[] | null>(null)
+  const shownFonts = $derived((fonts ?? []).filter((f) => !fontQ || f.toLowerCase().includes(fontQ.trim().toLowerCase())))
+  function toggleFonts() {
+    fontOpen = !fontOpen
+    fontQ = ''
+    if (fontOpen && !fonts) api.listFonts().then((l) => (fonts = l))
+  }
+  function pickFont(f: string) {
+    set('uiFont', f)
+    fontOpen = false
+  }
+
+  // 商店标记样式（v0.9.5）：默认关键金、追踪薄荷绿、可抓淡紫；色块之外可以自选
+  const MARKER_KINDS = [
+    { id: 'key', label: '关键', note: '目标里标了关键的干员、优先装备' },
+    { id: 'tracked', label: '追踪', note: '追踪列表里的其他干员和装备' },
+    { id: 'pickable', label: '可抓', note: '目标盟约里还能抓的，虚线框' },
+  ] as const
+  const MARKER_COLORS = ['#3CF0C2', '#F3B322', '#A98BFF', '#4FB8FF', '#FF6FB1', '#FF8A3D', '#FF5A5A', '#F2F2F2']
+  const ms = $derived(app.settings.markerStyles)
+  const setMarker = (k: 'key' | 'tracked' | 'pickable', patch: Partial<MarkerStyle>) => set('markerStyles', { ...ms, [k]: { ...ms[k], ...patch } })
+
+  const tab = $derived(app.settingsTab)
+  let scroller = $state<HTMLDivElement>()
+  const tabs = $derived<{ id: SettingsTab; label: string; dot?: boolean }[]>([
+    { id: 'game', label: '游戏' },
+    { id: 'window', label: '界面' },
+    { id: 'keys', label: '按键' },
+    { id: 'account', label: '账号' },
+    { id: 'about', label: '关于', dot: app.update.state === 'available' },
+  ])
+
   // 按键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）。
   // v0.7.2 起允许单键：单键只在游戏或助手在前台时生效、不拦截按键（宿主实现）
   let recording = $state<'toggle' | 'refresh' | 'route' | null>(null)
@@ -171,6 +208,7 @@
     e.key === ' ' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
   // 单键要收得到（v0.9.1）：游戏是管理员身份、助手不是时，单独按的键收不到，只收组合键
   const SINGLE_BLOCKED = '游戏是以管理员身份运行的，单独一个键收不到：换成组合键（如 Alt+R），或者打开下面的「以管理员身份运行」。'
+  const MOUSE_BLOCKED = '游戏是以管理员身份运行的，鼠标侧键收不到：换成组合键（如 Alt+R），或者打开下面的「以管理员身份运行」。'
   const MODS = ['Control', 'Alt', 'Shift', 'Meta']
   // 路线快捷键可以单独按 Alt、Ctrl、Shift：按下修饰键先记着，松开时中间没按别的键才算单按
   let loneMod = $state<string | null>(null)
@@ -182,8 +220,10 @@
     if (MODS.includes(e.key)) return void (loneMod = e.key)
     loneMod = null
     const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
-    const combo = [...mods, keyName(e)].join('+')
-    if (app.keysBlocked && single(combo)) return void ((hkMsg = SINGLE_BLOCKED), (hkFor = recording), (recording = null))
+    finishRecord([...mods, keyName(e)].join('+'))
+  }
+  function finishRecord(combo: string) {
+    if (app.keysBlocked && rawOnly(combo)) return void ((hkMsg = mouse(combo) ? MOUSE_BLOCKED : SINGLE_BLOCKED), (hkFor = recording), (recording = null))
     const target = recording
     recording = null
     if (target === 'toggle') applyHotkey(combo)
@@ -199,6 +239,20 @@
     setRoutes({ hotkey: e.key === 'Control' ? 'Ctrl' : e.key === 'Meta' ? 'Win' : e.key })
   }
   const single = (combo: string) => !!combo && !/(Ctrl|Alt|Shift|Win)\+/.test(combo)
+  // 鼠标侧键（v0.9.5）：写作 Mouse4（后退）/ Mouse5（前进），可以带修饰键；和单键一样靠原始输入，管理员身份的游戏里收不到
+  const mouse = (combo: string) => /Mouse[45]$/.test(combo)
+  const rawOnly = (combo: string) => single(combo) || mouse(combo)
+  const keyLabel = (combo: string) => combo.replace('Mouse4', '鼠标后退键').replace('Mouse5', '鼠标前进键')
+  const blockedWhat = (combo: string) => (mouse(combo) ? '是鼠标侧键' : '是单独一个键')
+  // 录制时按鼠标侧键（e.button 3 后退、4 前进）；按下就算，松开时拦掉浏览器的后退 / 前进
+  function recordMouse(e: MouseEvent) {
+    if (!recording || (e.button !== 3 && e.button !== 4)) return
+    e.preventDefault()
+    loneMod = null
+    const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Win'].filter(Boolean)
+    finishRecord([...mods, e.button === 3 ? 'Mouse4' : 'Mouse5'].join('+'))
+  }
+  const blockSideNav = (e: MouseEvent) => (e.button === 3 || e.button === 4) && e.preventDefault()
 
   // 以管理员身份运行（v0.9.1）：打开会以管理员身份重启，用户不同意时提示原因
   let adminBusy = $state(false)
@@ -282,7 +336,7 @@
     })
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && close()} onmousedown={recordMouse} onmouseup={blockSideNav} />
 
 {#if app.settingsOpen}
   <div class="scrim" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
@@ -292,8 +346,11 @@
       <span class="term">Settings</span>
       <button class="x" onclick={close} aria-label="关闭"><Icon name="close" size={16} /></button>
     </header>
-    <div class="scroll">
+    <!-- 分页（v0.9.5）：原来一长条要翻很久，按用途分五页；切页时回到顶部 -->
+    <div class="tabs"><Seg items={tabs} value={tab} onchange={(v) => ((app.settingsTab = v), scroller && (scroller.scrollTop = 0))} height={26} /></div>
+    <div class="scroll" bind:this={scroller}>
 
+    {#if tab === 'game'}
     <section>
       <h4>游戏来源 <small>PC 客户端或安卓模拟器</small></h4>
       <div class="scales four">
@@ -336,31 +393,6 @@
     </section>
 
     <section>
-      <h4>界面主题 <small>助手界面的样子，和游戏里用哪套无关</small></h4>
-      <div class="themes">
-        {#each skins as t (t.id)}
-          <button class:on={app.settings.uiSkin === t.id} onclick={() => set('uiSkin', t.id)}>
-            <span class="radio"></span>
-            <b>{t.name}</b>
-            {#if t.note}<em>{t.note}</em>{/if}
-          </button>
-        {/each}
-      </div>
-    </section>
-
-    <section>
-      <h4>界面大小 <small>自动：和游戏界面一样大</small></h4>
-      <div class="scales four">
-        {#each scales as s (s.v)}
-          <button class:on={app.settings.uiScale === s.v} onclick={() => set('uiScale', s.v)}>{s.label}</button>
-        {/each}
-      </div>
-      {#if typeof app.settings.uiScale === 'number' && app.settings.uiScale < 1}
-        <p class="note">比 100% 小的档适合系统缩放开到 150% 以上的屏幕；系统缩放是 100% 时字会很小。</p>
-      {/if}
-    </section>
-
-    <section>
       <label class="row">
         <span class="lbl"><b>商店标记</b><small>在游戏商店里给追踪的干员打标记</small></span>
         <input type="checkbox" class="sw" checked={app.settings.shopMarkers} onchange={(e) => set('shopMarkers', e.currentTarget.checked)} />
@@ -373,6 +405,37 @@
         </div>
       </div>
       <p class="note">{app.settings.shopScanSpeed === 'fast' ? '识别得更勤，换商店后标记跟得更快，会多占一些 CPU；电脑吃力时换回标准。' : '占用低，换商店后标记稍慢一点跟上。'}</p>
+      <!-- 标记样式（v0.9.5）：三种标记各自开关、换颜色；左边小卡是缩小的标记预览，跟着设置变 -->
+      {#if app.settings.shopMarkers}
+        <div class="mks">
+          {#each MARKER_KINDS as k (k.id)}
+            {@const st = ms[k.id]}
+            <div class="mk" class:off={!st.show}>
+              <span class="mprev" class:dash={k.id === 'pickable'} style:--mc={st.color}>
+                {#if ms.labels}<i class="mtag">{k.id === 'pickable' ? '' : '★ '}{k.label}</i>{/if}
+              </span>
+              <span class="lbl"><b>{k.label}</b><small>{k.note}</small></span>
+              <input type="checkbox" class="sw" checked={st.show} onchange={(e) => setMarker(k.id, { show: e.currentTarget.checked })} aria-label="显示{k.label}标记" />
+            </div>
+            {#if st.show}
+              <div class="swatches">
+                {#each MARKER_COLORS as c (c)}
+                  <button class:on={st.color.toLowerCase() === c.toLowerCase()} style:--c={c} onclick={() => setMarker(k.id, { color: c })} aria-label="换成 {c}"></button>
+                {/each}
+                <!-- 自选颜色：系统取色器 -->
+                <label class="custom" class:on={!MARKER_COLORS.some((c) => c.toLowerCase() === st.color.toLowerCase())} style:--c={st.color} title="自选颜色">
+                  <input type="color" value={st.color} onchange={(e) => setMarker(k.id, { color: e.currentTarget.value })} />
+                  <Icon name="pencil" size={11} />
+                </label>
+              </div>
+            {/if}
+          {/each}
+          <label class="row">
+            <span class="lbl"><b>文字标签</b><small>框上方的「★ 追踪」这类字；嫌挡就关掉</small></span>
+            <input type="checkbox" class="sw" checked={ms.labels} onchange={(e) => set('markerStyles', { ...ms, labels: e.currentTarget.checked })} />
+          </label>
+        </div>
+      {/if}
     </section>
 
     <!-- 敌人路线（v0.9.0）：休整期在棋盘上画本回合路线；本局页「敌方情报」里的快速开关就是这里的总开关 -->
@@ -399,25 +462,25 @@
       <div class="hk">
         <span class="hkl">快捷键</span>
         <button class="hkb" class:rec={recording === 'route'} onclick={() => ((recording = recording === 'route' ? null : 'route'), (hkMsg = ''))} onkeydown={recordKey} onkeyup={recordKeyUp}>
-          {recording === 'route' ? '按下想用的键…' : rt.hotkey}
+          {recording === 'route' ? '按下想用的键…' : keyLabel(rt.hotkey)}
         </button>
       </div>
       {#if hkMsg && recording === null && hkFor === 'route'}
         <p class="note bad">{hkMsg}</p>
       {:else if recording === 'route'}
-        <p class="note">{app.keysBlocked ? '按一个组合键，如 Alt+R；Esc 取消。' : '单按一个键（Alt、Ctrl、Shift 单独按也算）或组合键，如 Alt+R；Esc 取消。'}</p>
-      {:else if app.keysBlocked && single(rt.hotkey)}
-        <p class="note bad">「{rt.hotkey}」是单独一个键，游戏是以管理员身份运行的，现在收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
+        <p class="note">{app.keysBlocked ? '按一个组合键，如 Alt+R；Esc 取消。' : '单按一个键（Alt、Ctrl、Shift 单独按也算）、组合键（如 Alt+R）或鼠标侧键；Esc 取消。'}</p>
+      {:else if app.keysBlocked && rawOnly(rt.hotkey)}
+        <p class="note bad">「{keyLabel(rt.hotkey)}」{blockedWhat(rt.hotkey)}，游戏是以管理员身份运行的，现在收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
       {:else}
         <p class="note">
           {#if app.keysBlocked && rt.display === 'hold'}
-            现在收不到「按住」和「松开」，先按一直显示处理；按 {rt.hotkey} 临时隐藏，再按一次显示。
+            现在收不到「按住」和「松开」，先按一直显示处理；按 {keyLabel(rt.hotkey)} 临时隐藏，再按一次显示。
           {:else if rt.display === 'always'}
-            休整期一直显示，进入战斗、离开棋盘时自动隐藏；按 {rt.hotkey} 临时隐藏，再按一次显示。
+            休整期一直显示，进入战斗、离开棋盘时自动隐藏；按 {keyLabel(rt.hotkey)} 临时隐藏，再按一次显示。
           {:else if rt.display === 'hold'}
-            平时不显示，按住 {rt.hotkey} 时显示，松开就隐藏。
+            平时不显示，按住 {keyLabel(rt.hotkey)} 时显示，松开就隐藏。
           {:else}
-            每个新回合进休整期时显示 {rt.peekSeconds} 秒再淡出，之后{app.keysBlocked ? '按一下' : '按住'} {rt.hotkey} 还能再看。
+            每个新回合进休整期时显示 {rt.peekSeconds} 秒再淡出，之后{app.keysBlocked ? '按一下' : '按住'} {keyLabel(rt.hotkey)} 还能再看。
           {/if}
           {app.keysBlocked ? '这个组合键由助手占用，游戏里收不到。' : '按键照样会传给游戏，别选游戏里有用的键。'}
         </p>
@@ -453,6 +516,67 @@
         </div>
       </div>
       <p class="note">联机的首领回合，会移动的首领左右各一只、路线不一样，只画你这一侧；自动认不出时两边都画。</p>
+    </section>
+    {/if}
+    {#if tab === 'window'}
+    <section>
+      <h4>界面主题 <small>助手界面的样子，和游戏里用哪套无关</small></h4>
+      <div class="themes">
+        {#each skins as t (t.id)}
+          <button class:on={app.settings.uiSkin === t.id} onclick={() => set('uiSkin', t.id)}>
+            <span class="radio"></span>
+            <b>{t.name}</b>
+            {#if t.note}<em>{t.note}</em>{/if}
+          </button>
+        {/each}
+      </div>
+    </section>
+
+    <section>
+      <h4>界面大小 <small>自动：和游戏界面一样大</small></h4>
+      <div class="scales four">
+        {#each scales as s (s.v)}
+          <button class:on={app.settings.uiScale === s.v} onclick={() => set('uiScale', s.v)}>{s.label}</button>
+        {/each}
+      </div>
+      {#if typeof app.settings.uiScale === 'number' && app.settings.uiScale < 1}
+        <p class="note">比 100% 小的档适合系统缩放开到 150% 以上的屏幕；系统缩放是 100% 时字会很小。</p>
+      {/if}
+    </section>
+
+    <!-- 界面字体（v0.9.5）：本机字体列表由宿主给，每个名字用它自己的字体显示；选了马上生效 -->
+    <section>
+      <h4>界面字体 <small>选了马上生效；缺字时用默认字体补上</small></h4>
+      <button class="fpick" class:open={fontOpen} onclick={toggleFonts} style:font-family={fontStack(app.settings.uiFont)}>
+        <span>{app.settings.uiFont || '默认（MiSans）'}</span>
+        <Icon name="arrowDown" size={14} />
+      </button>
+      {#if fontOpen}
+        <div class="flist">
+          <div class="cdk">
+            <input bind:value={fontQ} placeholder="搜索字体" spellcheck="false" autocomplete="off" />
+          </div>
+          <div class="fscroll">
+            {#if !fontQ}
+              <button class:on={!app.settings.uiFont} style:font-family={fontStack('')} onclick={() => pickFont('')}>默认（MiSans）</button>
+            {/if}
+            {#each shownFonts as f (f)}
+              <button class:on={app.settings.uiFont === f} style:font-family={fontStack(f)} onclick={() => pickFont(f)}>{f}</button>
+            {:else}
+              {#if fonts}<p class="note">没有叫这个的字体。</p>{:else}<p class="note">正在读取本机字体…</p>{/if}
+            {/each}
+          </div>
+        </div>
+      {/if}
+      <div class="hk">
+        <span class="hkl">粗细</span>
+        <div class="scales three grow">
+          {#each [['normal', '标准'], ['medium', '稍粗'], ['bold', '加粗']] as const as [v, label] (v)}
+            <button class:on={app.settings.uiFontWeight === v} onclick={() => set('uiFontWeight', v)}>{label}</button>
+          {/each}
+        </div>
+      </div>
+      <p class="note">有的字体只有常规和粗体两档（如微软雅黑），「稍粗」可能看不出变化。</p>
     </section>
 
     <section>
@@ -500,24 +624,38 @@
         <button class:on={app.settings.collapseMode === 'up'} onclick={() => set('collapseMode', 'up')}>向上收起</button>
       </div>
       <p class="note">{app.settings.collapseMode === 'strip' ? '收成左边一根竖条，追踪的头像竖着排。' : '宽度不变，只留标题栏和追踪列表，打商店时还能点掉追踪。'}</p>
+    </section>
+
+    <section>
+      <h4>启动时打开 <small>侧栏贴着游戏，工作台是宽窗口</small></h4>
+      <div class="scales three">
+        <button class:on={app.settings.startupMode === 'remember'} onclick={() => set('startupMode', 'remember')}>记住上次</button>
+        <button class:on={app.settings.startupMode === 'sidebar'} onclick={() => set('startupMode', 'sidebar')}>侧栏</button>
+        <button class:on={app.settings.startupMode === 'workbench'} onclick={() => set('startupMode', 'workbench')}>工作台</button>
+      </div>
+    </section>
+    {/if}
+    {#if tab === 'keys'}
+    <section>
+      <h4>快捷键 <small>游戏在前台时也能按</small></h4>
       <!-- 全局快捷键：游戏在前台也能按；点按钮后按下新组合 -->
       <div class="hk">
         <span class="hkl">快捷键收起 / 展开</span>
         <button class="hkb" class:rec={recording === 'toggle'} onclick={() => ((recording = recording === 'toggle' ? null : 'toggle'), (hkMsg = ''))} onkeydown={recordKey}>
-          {recording === 'toggle' ? '按下新的按键…' : app.settings.toggleHotkey || '未设置'}
+          {recording === 'toggle' ? '按下新的按键…' : keyLabel(app.settings.toggleHotkey) || '未设置'}
         </button>
         {#if app.settings.toggleHotkey && recording !== 'toggle'}<button class="link" onclick={() => applyHotkey('')}>关闭</button>{/if}
       </div>
       {#if hkMsg && hkFor === 'toggle'}
         <p class="note bad">{hkMsg}</p>
       {:else if recording === 'toggle'}
-        <p class="note">{app.keysBlocked ? 'Ctrl / Alt / Shift 加一个键；Esc 取消。' : '单按一个键（如 Tab、`）或 Ctrl / Alt / Shift 加一个键；Esc 取消。'}</p>
-      {:else if app.keysBlocked && single(app.settings.toggleHotkey)}
-        <p class="note bad">「{app.settings.toggleHotkey}」是单独一个键，游戏是以管理员身份运行的，在游戏里按收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
+        <p class="note">{app.keysBlocked ? 'Ctrl / Alt / Shift 加一个键；Esc 取消。' : '单按一个键（如 Tab、`）、Ctrl / Alt / Shift 加一个键，或按鼠标侧键；Esc 取消。'}</p>
+      {:else if app.keysBlocked && rawOnly(app.settings.toggleHotkey)}
+        <p class="note bad">「{keyLabel(app.settings.toggleHotkey)}」{blockedWhat(app.settings.toggleHotkey)}，游戏是以管理员身份运行的，在游戏里按收不到。换成组合键，或者打开下面的「以管理员身份运行」。</p>
       {:else if app.appInfo.hotkeyFailed && app.settings.toggleHotkey}
-        <p class="note bad">「{app.settings.toggleHotkey}」被别的软件占用了，没生效，换一个试试。</p>
-      {:else if single(app.settings.toggleHotkey)}
-        <p class="note">单键只在游戏或助手在前台时生效，按键照样会传给游戏，别选游戏里有用的键。</p>
+        <p class="note bad">「{keyLabel(app.settings.toggleHotkey)}」被别的软件占用了，没生效，换一个试试。</p>
+      {:else if rawOnly(app.settings.toggleHotkey)}
+        <p class="note">{mouse(app.settings.toggleHotkey) ? '鼠标侧键' : '单键'}只在游戏或助手在前台时生效，按键照样会传给游戏，别选游戏里有用的键。</p>
       {:else}
         <p class="note">游戏在前台时也能按：侧栏里收起、展开；工作台里最小化、恢复。</p>
       {/if}
@@ -525,18 +663,20 @@
       <div class="hk">
         <span class="hkl">商店刷新键</span>
         <button class="hkb" class:rec={recording === 'refresh'} onclick={() => ((recording = recording === 'refresh' ? null : 'refresh'), (hkMsg = ''))} onkeydown={recordKey}>
-          {recording === 'refresh' ? '按下游戏里的刷新键…' : app.settings.refreshKey || '未设置'}
+          {recording === 'refresh' ? '按下游戏里的刷新键…' : keyLabel(app.settings.refreshKey) || '未设置'}
         </button>
         {#if app.settings.refreshKey && recording !== 'refresh'}<button class="link" onclick={() => set('refreshKey', '')}>关闭</button>{/if}
       </div>
       {#if hkMsg && hkFor === 'refresh'}
         <p class="note bad">{hkMsg}</p>
       {:else if app.keysBlocked && app.settings.refreshKey}
-        <p class="note bad">游戏是以管理员身份运行的，在游戏里按 {app.settings.refreshKey} 收不到。要用的话打开下面的「以管理员身份运行」；不用也行，换商店后标记会自己跟上。</p>
+        <p class="note bad">游戏是以管理员身份运行的，在游戏里按 {keyLabel(app.settings.refreshKey)} 收不到。要用的话打开下面的「以管理员身份运行」；不用也行，换商店后标记会自己跟上。</p>
       {:else}
         <p class="note">游戏里按这个键刷新商店时，旧的商店标记马上消失，认到新的商店再标；游戏默认是 D。</p>
       {/if}
     </section>
+
+    <p class="note keysnote">敌人路线的快捷键在「游戏」页的敌人路线里设。</p>
 
     <!-- 以管理员身份运行（v0.9.1）：游戏是管理员身份时，单独按的键要助手也是管理员才收得到 -->
     <section>
@@ -558,26 +698,8 @@
         <p class="note">不打开也行：快捷键用组合键（如 Alt+R），按一下切换显示；只是用不了单键和「按住才显示」。</p>
       {/if}
     </section>
-
-    <section>
-      <h4>启动时打开 <small>侧栏贴着游戏，工作台是宽窗口</small></h4>
-      <div class="scales three">
-        <button class:on={app.settings.startupMode === 'remember'} onclick={() => set('startupMode', 'remember')}>记住上次</button>
-        <button class:on={app.settings.startupMode === 'sidebar'} onclick={() => set('startupMode', 'sidebar')}>侧栏</button>
-        <button class:on={app.settings.startupMode === 'workbench'} onclick={() => set('startupMode', 'workbench')}>工作台</button>
-      </div>
-    </section>
-
-    <section>
-      <label class="row">
-        <span class="lbl"><b>帮大家补全资金表</b><small>每局结束匿名上报各回合的起始资金（模式、回合、资金、策略），不带账号；资金表让没打过的模式也能预计下回合资金</small></span>
-        <input type="checkbox" class="sw" checked={app.settings.shareIncome} onchange={(e) => set('shareIncome', e.currentTarget.checked)} />
-      </label>
-      {#if app.settings.shareIncome}
-        <p class="note">只带一个本机随机编号，防止一个人刷数据。<button class="link" onclick={() => api.resetShareId().then(() => app.showToast('已换了一个新编号'))}>重置编号</button></p>
-      {/if}
-    </section>
-
+    {/if}
+    {#if tab === 'account'}
     <section>
       <h4>阵容广场账号 <small>发布阵容、点赞要登录；浏览不用</small></h4>
       {#if plaza.me}
@@ -629,50 +751,16 @@
     </section>
 
     <section>
-      <h4>数据 <small>阵容、特别关注和偏好设置；换电脑、重装时用备份迁移</small></h4>
-      <p class="path">
-        <span>保存在 <code>{app.appInfo.dataDir}</code>，同一台电脑换新包不用导入。</span>
-        <button class="link" onclick={() => api.openDataFolder()}><Icon name="folder" size={13} />打开</button>
-      </p>
-      {#if picked}
-        {@const s = picked.summary}
-        <div class="imp">
-          <p>
-            备份来自 v{s.appVersion} · {new Date(s.exportedAt).toLocaleDateString()}：<b>{s.lineups}</b> 套阵容，关注
-            <b>{s.focusCovenants}</b> 个盟约、<b>{s.focusOperators}</b> 名干员
-          </p>
-          <div class="modes">
-            {#each modes as m (m.id)}
-              <button class:on={mode === m.id} onclick={() => (mode = m.id)}>
-                <span class="radio"></span>
-                <span class="mt"><b>{m.name}</b><small>{m.note}</small></span>
-              </button>
-            {/each}
-          </div>
-          <div class="impact">
-            <small>导入前会把当前数据备份到数据文件夹的 backups 里</small>
-            <button class="btn" disabled={busy} onclick={() => (picked = null)}>取消</button>
-            <button class="btn main" disabled={busy} onclick={doImport}>{busy ? '导入中…' : '导入'}</button>
-          </div>
-        </div>
-      {:else}
-        <div class="dataops">
-          <button class="btn" disabled={busy} onclick={doExport}><Icon name="download" size={14} />导出备份</button>
-          <button class="btn" disabled={busy} onclick={doPick}><Icon name="upload" size={14} />导入备份</button>
-        </div>
+      <label class="row">
+        <span class="lbl"><b>帮大家补全资金表</b><small>每局结束匿名上报各回合的起始资金（模式、回合、资金、策略），不带账号；资金表让没打过的模式也能预计下回合资金</small></span>
+        <input type="checkbox" class="sw" checked={app.settings.shareIncome} onchange={(e) => set('shareIncome', e.currentTarget.checked)} />
+      </label>
+      {#if app.settings.shareIncome}
+        <p class="note">只带一个本机随机编号，防止一个人刷数据。<button class="link" onclick={() => api.resetShareId().then(() => app.showToast('已换了一个新编号'))}>重置编号</button></p>
       {/if}
-      {#if dataMsg}<p class="dmsg" class:bad={dataMsg.bad}>{dataMsg.text}</p>{/if}
     </section>
-
-    <section>
-      <h4>反馈问题 <small>识别不了、没反应时用</small></h4>
-      <div class="dataops">
-        <button class="btn" disabled={diagBusy} onclick={exportDiag}><Icon name="download" size={14} />{diagBusy ? '正在打包…' : '导出诊断包'}</button>
-      </div>
-      <p class="note">把日志、最近几次识别失败的截图和原因打成一个 zip，发到 QQ 群或 GitHub Issues。截图是识别失败时的游戏画面，联机时可能带着队友昵称；不含账号、登录凭据和 CDK。</p>
-      {#if diagMsg}<p class="dmsg" class:bad={diagMsg.bad}>{diagMsg.text}</p>{/if}
-    </section>
-
+    {/if}
+    {#if tab === 'about'}
     <section>
       <h4>版本 <small class="term">v{app.appInfo.version}</small></h4>
       <div class="upd">
@@ -772,11 +860,57 @@
       </label>
     </section>
 
+    <section>
+      <h4>数据 <small>阵容、特别关注和偏好设置；换电脑、重装时用备份迁移</small></h4>
+      <p class="path">
+        <span>保存在 <code>{app.appInfo.dataDir}</code>，同一台电脑换新包不用导入。</span>
+        <button class="link" onclick={() => api.openDataFolder()}><Icon name="folder" size={13} />打开</button>
+      </p>
+      {#if picked}
+        {@const s = picked.summary}
+        <div class="imp">
+          <p>
+            备份来自 v{s.appVersion} · {new Date(s.exportedAt).toLocaleDateString()}：<b>{s.lineups}</b> 套阵容，关注
+            <b>{s.focusCovenants}</b> 个盟约、<b>{s.focusOperators}</b> 名干员
+          </p>
+          <div class="modes">
+            {#each modes as m (m.id)}
+              <button class:on={mode === m.id} onclick={() => (mode = m.id)}>
+                <span class="radio"></span>
+                <span class="mt"><b>{m.name}</b><small>{m.note}</small></span>
+              </button>
+            {/each}
+          </div>
+          <div class="impact">
+            <small>导入前会把当前数据备份到数据文件夹的 backups 里</small>
+            <button class="btn" disabled={busy} onclick={() => (picked = null)}>取消</button>
+            <button class="btn main" disabled={busy} onclick={doImport}>{busy ? '导入中…' : '导入'}</button>
+          </div>
+        </div>
+      {:else}
+        <div class="dataops">
+          <button class="btn" disabled={busy} onclick={doExport}><Icon name="download" size={14} />导出备份</button>
+          <button class="btn" disabled={busy} onclick={doPick}><Icon name="upload" size={14} />导入备份</button>
+        </div>
+      {/if}
+      {#if dataMsg}<p class="dmsg" class:bad={dataMsg.bad}>{dataMsg.text}</p>{/if}
+    </section>
+
+    <section>
+      <h4>反馈问题 <small>识别不了、没反应时用</small></h4>
+      <div class="dataops">
+        <button class="btn" disabled={diagBusy} onclick={exportDiag}><Icon name="download" size={14} />{diagBusy ? '正在打包…' : '导出诊断包'}</button>
+      </div>
+      <p class="note">把日志、最近几次识别失败的截图和原因打成一个 zip，发到 QQ 群或 GitHub Issues。截图是识别失败时的游戏画面，联机时可能带着队友昵称；不含账号、登录凭据和 CDK。</p>
+      {#if diagMsg}<p class="dmsg" class:bad={diagMsg.bad}>{diagMsg.text}</p>{/if}
+    </section>
+
     <section class="about">
       <button class="link" onclick={() => api.openUrl(REPO)}>GitHub 开源地址</button>
       <button class="link" onclick={() => api.openUrl(QQ)}>QQ 交流群 1132134217</button>
       <p>非官方玩家自制工具，与鹰角网络无关。游戏美术与数据归上海鹰角网络所有。</p>
     </section>
+    {/if}
     </div>
   </aside>
 {/if}
@@ -813,7 +947,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: 86%;
+    /* 固定高度：切页时面板不跳 */
+    height: 86%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -866,6 +1001,16 @@
     padding: 10px 0;
     border-top: 1px solid var(--line-soft);
   }
+  .scroll > section:first-child {
+    border-top: none;
+  }
+  .tabs {
+    flex: none;
+    margin-bottom: 4px;
+  }
+  .keysnote {
+    margin-top: 0;
+  }
   h4 {
     margin: 0 0 8px;
     font-size: var(--fs-md);
@@ -880,7 +1025,7 @@
   }
   h4 small {
     font-size: var(--fs-sm);
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
   }
   .themes {
@@ -951,7 +1096,7 @@
   }
   .scales button.on {
     color: var(--mint-ink);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     background: var(--mint);
   }
   /* 用不了的选项（如收不到单键时的「按住才显示」）：字压暗、划掉 */
@@ -999,11 +1144,11 @@
   .nh {
     margin: 0;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
   }
   .nh span {
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
     margin-left: 4px;
   }
@@ -1109,6 +1254,164 @@
     gap: 6px;
     margin-top: 8px;
   }
+  .mks {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line-soft);
+  }
+  .mk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .mk .lbl {
+    flex: 1;
+  }
+  .mk.off .mprev {
+    opacity: 0.3;
+  }
+  /* 缩小的商店标记：深色卡身 + 外框（黑缝、主色框、发光）+ 左上和右下的提亮括号 + 框顶左对齐的标签 */
+  .mprev {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 44px;
+    margin-top: 8px;
+    background: linear-gradient(180deg, #3a3f48, #1c1f25);
+    outline: 2px solid var(--mc);
+    outline-offset: 2px;
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 6px rgb(0 0 0 / 0.7),
+      0 0 10px 2px color-mix(in srgb, var(--mc) 55%, transparent);
+  }
+  .mprev:not(.dash)::before,
+  .mprev:not(.dash)::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border: 0 solid color-mix(in srgb, var(--mc) 65%, white);
+  }
+  .mprev::before {
+    left: -4px;
+    top: -4px;
+    border-left-width: 2px;
+    border-top-width: 2px;
+  }
+  .mprev::after {
+    right: -4px;
+    bottom: -4px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+  }
+  .mprev.dash {
+    outline: 1.5px dashed var(--mc);
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 5px rgb(0 0 0 / 0.65);
+  }
+  .mtag {
+    position: absolute;
+    left: -5px;
+    top: -14px;
+    padding: 0 3px;
+    font-style: normal;
+    font-size: 8px;
+    font-weight: var(--fw-bold);
+    line-height: 11px;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--mc) 12%, black);
+    background: var(--mc);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.75);
+  }
+  .dash .mtag {
+    color: var(--mc);
+    background: #061410;
+    box-shadow:
+      inset 0 0 0 1px var(--mc),
+      0 0 0 1px rgb(0 0 0 / 0.75);
+  }
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 6px 0 2px 44px;
+  }
+  .swatches button,
+  .custom {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    background: var(--c);
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+  }
+  .swatches .on {
+    box-shadow:
+      0 0 0 2px var(--bg-0),
+      0 0 0 3px var(--fg-1);
+  }
+  .custom {
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    color: color-mix(in srgb, var(--c) 15%, black);
+  }
+  .custom input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .fpick {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 32px;
+    padding: 0 10px;
+    font-size: var(--fs-md);
+    color: var(--fg-1);
+    background: var(--bg-1);
+  }
+  .fpick:hover {
+    background: var(--bg-2);
+  }
+  .fpick :global(svg) {
+    color: var(--fg-3);
+    transition: transform var(--t-fast);
+  }
+  .fpick.open :global(svg) {
+    transform: rotate(180deg);
+  }
+  .flist {
+    margin-top: 2px;
+    padding: 6px;
+    background: var(--bg-1);
+  }
+  .fscroll {
+    display: flex;
+    flex-direction: column;
+    max-height: 240px;
+    margin-top: 6px;
+    overflow-y: auto;
+  }
+  .fscroll button {
+    flex: none;
+    padding: 6px 8px;
+    text-align: left;
+    font-size: var(--fs-md);
+    color: var(--fg-2);
+  }
+  .fscroll button:hover {
+    color: var(--fg-1);
+    background: var(--bg-2);
+  }
+  .fscroll button.on {
+    color: var(--mint);
+    box-shadow: inset 2px 0 0 var(--mint);
+  }
   .cdk input {
     flex: 1;
     min-width: 0;
@@ -1157,7 +1460,7 @@
     height: 28px;
     padding: 0 12px;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-1);
     background: var(--bg-4);
   }

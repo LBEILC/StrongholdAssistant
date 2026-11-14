@@ -82,7 +82,7 @@
       {#if plaza.unread}<em class="badge term">{plaza.unread > 99 ? '99+' : plaza.unread}</em>{/if}
     </button>
   {/if}
-  <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.collapsed && app.setCollapsed(false), (app.settingsOpen = true))}>
+  <button class="wbtn set" class:dot-new={app.update.state === 'available'} title="设置" aria-label="设置" onclick={() => (app.collapsed && app.setCollapsed(false), app.openSettings(app.update.state === 'available' ? 'about' : undefined))}>
     <Icon name="settings" size={15} />
   </button>
   <button class="wbtn" title="最小化" aria-label="最小化" onclick={() => api.windowCommand('minimize')}><Icon name="subtract" size={15} /></button>
@@ -122,7 +122,7 @@
     overflow: hidden;
     flex-shrink: 50;
     white-space: nowrap;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     font-size: var(--fs-md);
     letter-spacing: 0.06em;
   }
@@ -328,7 +328,7 @@
     font-family: var(--font-term);
     font-size: var(--fs-lg);
     font-style: italic;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     letter-spacing: 0.04em;
     color: var(--rust-hi);
     text-shadow: 1px 1px 0 rgb(var(--shade-rgb) / 0.6);

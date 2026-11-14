@@ -167,8 +167,6 @@
   })
   type Cell = { kind: 'op'; name: string; inferred: boolean; i: number } | { kind: 'unknown'; i: number; tier: number; n: number }
   const nth = (xs: number[]) => `第 ${xs.join('、')} 格`
-  // 只做过入场那一次自动识别：禁用名单主要靠规则推算
-  const ruleOnly = $derived(m.source !== 'none' && !m.bansScanned && !app.continuous)
 </script>
 
 {#snippet bInfo()}
@@ -180,14 +178,14 @@
       <ol>
         <li>选好盟约，点「准备就绪」进入对局</li>
         <li>点顶部回合数左边的 <span class="key"><Icon name="search" size={11} /></span> 打开对局详情</li>
-        <li>会自动开始识别，慢慢往下滚动禁用列表</li>
+        <li>会自动识别，禁用干员按盟约算全，不用往下翻</li>
       </ol>
-      <p class="sg-f">每局只自动识别这一次，之后再打开详情不会自动开始，要补读点「持续识别」。</p>
+      <p class="sg-f">每局只自动识别这一次，之后再打开详情不会自动开始，要补读点「重新识别」。</p>
     </div>
   {/if}
   {#if app.continuous}
     <div class="note">
-      <span>持续识别中，已识别 <b>{m.bannedOperators.length}</b> 名禁用干员。在游戏里慢慢往下滚动禁用列表，看全后点「停止」。</span>
+      <span>正在识别对局详情，已识别 <b>{m.bannedOperators.length}</b> 名禁用干员。离开详情页会自动结束，也可以点「停止」。</span>
     </div>
   {:else if app.scanNote?.message && !app.scanNote.ok}
     <!-- 识别失败（v0.7.2）：醒目的提示，详情里是技术细节；识别不了的问题很常见，直接给导出诊断包 -->
@@ -222,7 +220,7 @@
             </button>
           {/each}
           {#each focusOpsHit as n (n)}
-            <OpTile name={n} size={32} showName={false} onclick={() => (app.detail = { kind: 'operator', name: n })} />
+            <OpTile name={n} size={32} showName={false} banLook={false} onclick={() => (app.detail = { kind: 'operator', name: n })} />
           {/each}
         </div>
       </div>
@@ -306,7 +304,7 @@
   <section>
     <SectionHeader
       title="本局禁用干员"
-      tag="{listedBans} 名{ruleOnly ? ' · 推算' : ''}"
+      tag="{listedBans} 名"
       tagTone="warn"
       ontoggle={edit ? undefined : fold('banned')}
       folded={!open('banned', edit)}
@@ -317,9 +315,6 @@
     </SectionHeader>
     {#if open('banned', edit)}
       <div class="banned" class:editing={edit} transition:slide={sl}>
-        {#if ruleOnly}
-          <p class="rule">按盟约规则推算的名单。入场自动识别只看得到禁用列表的开头，要核对真实名单：打开对局详情往下翻，点「持续识别」。</p>
-        {/if}
         {#each bannedGroups as g (g.id ?? '')}
           <div class="bg">
             <div class="bgh">
@@ -333,7 +328,7 @@
               <!-- 识别的格位：第几格没认出、哪格是推测、这组还没看到结尾 -->
               {#if g.missing.length}<em class="miss">{nth(g.missing)}没认出</em>{/if}
               {#if g.guessed.length}<em class="guess">{nth(g.guessed)}是推测</em>{/if}
-              {#if g.more}<em class="more" title="游戏里这一组还没滚到底，持续识别时往下滚动就能补上">往下还有</em>{/if}
+              {#if g.more}<em class="more" title="游戏里这一组没看到结尾；其余的按盟约规则算出来，接在后面">往下还有</em>{/if}
             </div>
             <div class="tiles">
               <!-- 格位按位置做 key：合并多屏识别时同组两格可能认成同一个干员，按名字做 key 会重复、整页渲染失败 -->
@@ -355,7 +350,7 @@
                     <em>推测</em>
                   </span>
                 {:else}
-                  <OpTile name={c.name} size={42} onclick={() => (edit ? app.toggleBanned(c.name) : (app.detail = { kind: 'operator', name: c.name }))} />
+                  <OpTile name={c.name} size={42} banLook={false} onclick={() => (edit ? app.toggleBanned(c.name) : (app.detail = { kind: 'operator', name: c.name }))} />
                 {/if}
               {/each}
               {#if g.id || !g.count}
@@ -418,11 +413,11 @@
                 <span class="vlabel">{half.label}<small>随机一种</small></span>
                 <div class="vgrid">
                   {#each half.list as v (v.id)}
-                    <div class="vitem" title={v.name}>
+                    <button class="vitem" title="{v.name}：点开看资料" onclick={() => (app.detail = { kind: 'enemy', id: v.id })}>
                       <span class="vimg"><img src={asset.enemy(v.id)} alt="" onerror={(e) => e.currentTarget.classList.add('miss')} /><b>{v.name.slice(0, 1)}</b></span>
                       <span class="vname">{v.name}</span>
                       <span class="vp">{Math.round((v.weight / total) * 100)}%</span>
-                    </div>
+                    </button>
                   {/each}
                 </div>
               </div>
@@ -477,15 +472,10 @@
         <span class="spin"><Icon name="refresh" size={13} /></span>
         {app.scanning && !app.continuous ? '识别中…' : '重新识别'}
       </button>
-      <button
-        class="tool"
-        class:live={app.continuous}
-        onclick={() => app.toggleContinuous()}
-        disabled={app.scanning && !app.continuous}
-        title="点一次后在游戏里往下滚动禁用列表，会自动逐屏识别"
-      >
-        {#if app.continuous}<span class="live-dot"></span>停止{:else}<Icon name="scan" size={13} />持续识别{/if}
-      </button>
+      <!-- 持续识别（v0.9.5 起不再给入口）：禁用名单按盟约规则就能算全，识别一次就够。功能留着，单人对局详情自动识别时还会跑，跑的时候给「停止」 -->
+      {#if app.continuous}
+        <button class="tool live" onclick={() => app.toggleContinuous()}><span class="live-dot"></span>停止</button>
+      {/if}
       {#if m.source !== 'none'}
         <button
           class="tool"
@@ -552,7 +542,7 @@
   }
   .st .solo {
     font-size: var(--fs-xs);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     padding: 1px 5px;
     color: var(--gold);
     box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.5);
@@ -566,7 +556,7 @@
     box-shadow: inset 2px 0 0 var(--gold);
   }
   .sg-h {
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--gold);
     margin-bottom: 2px;
   }
@@ -580,7 +570,7 @@
   }
   .solo-guide li::marker {
     color: var(--gold);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .key {
     display: inline-grid;
@@ -687,7 +677,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .fh .nx {
     margin: -2px -4px -2px auto;
@@ -853,15 +843,6 @@
     flex-direction: column;
     gap: 10px;
     padding: 10px 4px 4px;
-  }
-  .rule {
-    margin: 0;
-    font-size: var(--fs-sm);
-    line-height: 1.5;
-    color: var(--gold);
-    padding: 5px 8px;
-    background: rgb(var(--gold-rgb) / 0.07);
-    box-shadow: inset 2px 0 0 var(--gold);
   }
   .bg {
     display: flex;
@@ -1035,7 +1016,7 @@
   }
   .leader {
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     padding: 1px 8px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -1065,7 +1046,7 @@
     gap: 0;
     background: var(--bg-2);
     font-size: var(--fs-md);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
     color: var(--fg-1);
   }
   .etype > .en {
@@ -1119,12 +1100,12 @@
     align-items: baseline;
     gap: 6px;
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-2);
     margin-bottom: 4px;
   }
   .vlabel small {
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
   }
   .vgrid {
@@ -1139,6 +1120,10 @@
     padding: 3px 6px 3px 3px;
     background: var(--bg-2);
     min-width: 0;
+    text-align: left;
+  }
+  .vitem:hover {
+    background: var(--bg-3);
   }
   .vimg {
     position: relative;

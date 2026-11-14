@@ -56,8 +56,8 @@ export function simplify(points) {
 }
 
 export function actions(level) {
-  return [...level.waves.flatMap(w => w.fragments.flatMap(f => f.actions)).map(a => ({ ...a, side: 'left' })),
-    ...(level.branches?.boss_battle_multi_player?.phases ?? []).flatMap(p => p.actions).map(a => ({ ...a, side: 'right' }))]
+  return [...level.waves.flatMap(w => w.fragments.flatMap(f => f.actions)).map(a => ({ ...a, side: 'left', source: 'routes' })),
+    ...(level.branches?.boss_battle_multi_player?.phases ?? []).flatMap(p => p.actions).map(a => ({ ...a, side: 'right', source: 'extraRoutes' }))]
     .filter(a => a.actionType === 'SPAWN');
 }
 
@@ -96,7 +96,7 @@ export function generate(directory, activityFile, bossFile = 'data/bosses.json')
       const point = ([r,c]) => ({ col: (bossLevel && c > 8 ? 16-c : c)-.5, row: r-.5 });
       const merged = new Map(), spots = new Map();
       for (const action of actions(level)) {
-        const route = level.routes[action.routeIndex];
+        const route = level[action.source][action.routeIndex];
         if (!route) throw new Error(`${id}: 路线 ${action.routeIndex} 不存在`);
         const boss = !!bossKey(action.key);
         if (boss && JSON.stringify(route.startPosition) === JSON.stringify(route.endPosition)
@@ -109,7 +109,7 @@ export function generate(directory, activityFile, bossFile = 'data/bosses.json')
           if (target[0] !== original[0] || target[1] !== original[1]) {
             approx = true;
             // 按被引用路线与检查点坐标去重，不按出生动作或敌人数重复累计。
-            output.snaps[map.id + '/' + id + '/' + action.routeIndex + '/' + original.join(',')] = target;
+            output.snaps[map.id + '/' + id + '/' + action.source + '/' + action.routeIndex + '/' + original.join(',')] = target;
           }
           return target;
         };
@@ -127,10 +127,12 @@ export function generate(directory, activityFile, bossFile = 'data/bosses.json')
             current = resolve(cp.position); segment = [current];
           } else if (!cp.type.startsWith('WAIT')) throw new Error(`未知检查点 ${cp.type}`);
         }
-        move(resolve(route.endPosition));
+        const firstPatrol = route.checkpoints.find(cp => cp.type === 'PATROL_MOVE');
+        // 巡逻在检查点之间循环，不走向关卡出口。
+        move(resolve(firstPatrol ? firstPatrol.position : route.endPosition));
         if (segment.length) segments.push(segment);
         const side = boss && !id.endsWith('_s') ? action.side : null;
-        const patrol = route.checkpoints.some(cp => cp.type === 'PATROL_MOVE');
+        const patrol = !!firstPatrol;
         const result = { motion: route.motionMode.toLowerCase(), boss, approx, side, patrol,
           segments: segments.map(s => route.motionMode === 'WALK' ? simplify(s.map(point)) : s.map(point)) };
         const key = JSON.stringify({ motion: result.motion, boss, side, patrol, segments: result.segments });

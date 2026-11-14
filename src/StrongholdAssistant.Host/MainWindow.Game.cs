@@ -110,7 +110,7 @@ public partial class MainWindow
         var scanOcr = new DiagnosticOcrEngine(_ocr);
         _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(scanOcr),
             scanOcr, new ASPAssistant.Core.GameState.GameState(),
-            () => _api.TrackedNames.Concat(_api.SecondaryNames).Distinct().ToArray(), iconMatcher: _iconMatcher,
+            () => _api.TrackedNames.Concat(_api.Settings.MarkerStyles.Pickable.Show ? _api.SecondaryNames : []).Distinct().ToArray(), iconMatcher: _iconMatcher,
             intervalMs: 800);
         _scanner.RecognitionFailed += (shot, reason, scale, steps) =>
         {
@@ -142,6 +142,14 @@ public partial class MainWindow
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
         _scanner.ThemeDetected += reading => Dispatcher.Invoke(() => _api.ObserveTheme(reading));
         _api.InitializeBoardRoutes(data);
+        _api.InitializeField(data, scanOcr);
+        _api.FieldCursorRegion = () =>
+        {
+            if (_tracker.CurrentViewport is not { } viewport || !User32.GetCursorPos(out var point)) return null;
+            return new System.Drawing.RectangleF((point.X - viewport.Left - 8f) / viewport.Width,
+                (point.Y - viewport.Top - 8f) / viewport.Height, 48f / viewport.Width, 64f / viewport.Height);
+        };
+        _scanner.ObserveFieldAsync = _api.ObserveFieldAsync;
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
         _scanner.BoardFrameReady += (frame, reading) => _api.ObserveBoardFrame(frame, reading, _scanner.BoardShopVisible, _scanner.BoardMainScreenVisible);
         // 敌人路线：识别结果在扫描线程上来，交给界面线程画
@@ -513,7 +521,7 @@ public partial class MainWindow
     {
         _api.UpdateShopTracking(_shopItems);
         var items = _api.Settings.ShopMarkers ? _shopItems : [];
-        _overlay.UpdateShopItems(items, animate);
+        _overlay.UpdateShopItems(items, animate, _api.Settings.MarkerStyles);
         if (!_connectGame || _closing || _capturingInformation || _lastGameRect is null
             || (!items.Any(i => i.IsTracked || i.IsSecondary) && !_overlay.HasMarkers && !_overlay.HasRoutes))
         {

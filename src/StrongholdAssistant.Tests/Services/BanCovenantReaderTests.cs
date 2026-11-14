@@ -161,6 +161,92 @@ public class BanCovenantReaderTests
         read.UnnamedAdditional.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(9, 16, true, false)]
+    [InlineData(10, 10, true, false)]
+    [InlineData(10, 16, false, true)]
+    [InlineData(9, 16, false, false)]
+    public async Task CovenantPoolCompletenessControlsReplacement(
+        int coreCount, int additionalCount, bool eraseGrid, bool accepted)
+    {
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        var core = Sample1Core();
+        core.Add(new("核心盟约", (100, 200, 160, 30)));
+        var additional = Sample1Additional();
+        additional.Add(new("附加盟约", (100, 470, 160, 30)));
+        var ocr = new StubOcrEngine(core, additional);
+        var shot = LoadSample("ban-sample-1920x1080.png");
+        var strategy = new GarrisonOcrStrategy();
+        var analyzer = new BanScreenAnalyzer(() => Task.FromResult<byte[]?>(shot), ocr, strategy,
+            new EnemyRecognizer(ocr, strategy, new BossDataService()), [], coreNames, additionalNames);
+        BanScreenResult? current = null;
+        string? failure = null;
+        int banUpdates = 0;
+        analyzer.AnalysisCompleted += result => current = result;
+        analyzer.AnalysisFailed += message => failure = message;
+        analyzer.AutoBanListComputed += _ => banUpdates++;
+        await analyzer.RunAnalysisAsync();
+        current.Should().NotBeNull();
+        var previous = current;
+        banUpdates = 0;
+
+        // 先成功录入，再重放漏读；改一个像素，确保不会命中相同截图缓存。
+        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(shot));
+        bitmap.SetPixel(0, 0, System.Drawing.Color.Magenta);
+        if (coreCount == 9) core.RemoveAt(2);
+        if (additionalCount == 10) additional.RemoveRange(10, 6);
+        if (eraseGrid)
+        {
+            using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+            graphics.FillRectangle(System.Drawing.Brushes.Black, coreCount == 9
+                ? new System.Drawing.Rectangle(0, 270, 1344, 160)
+                : new System.Drawing.Rectangle(0, 720, 1344, 200));
+        }
+        using var buffer = new MemoryStream();
+        bitmap.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+        shot = buffer.ToArray();
+
+        var read = await BanCovenantReader.ReadAsync(ocr, strategy, shot, Width, Height, coreNames, additionalNames);
+        read.Core.Should().HaveCount(coreCount);
+        read.Additional.Should().HaveCount(additionalCount);
+        if (eraseGrid)
+        {
+            if (coreCount == 9) read.CoreSlots.Should().Be(0);
+            else read.AdditionalSlots.Should().Be(10);
+        }
+        await analyzer.RunAnalysisAsync();
+        banUpdates.Should().Be(accepted ? 1 : 0);
+        if (accepted)
+        {
+            failure.Should().BeNull();
+            current.Should().NotBeSameAs(previous);
+        }
+        else
+        {
+            failure.Should().Contain("未完整读出").And.Contain("未替换现有结果");
+            current.Should().BeSameAs(previous);
+        }
+    }
+
+    [Fact]
+    public async Task MissingIconRowDoesNotBindItsNamesToTheAvailableRow()
+    {
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        using var bitmap = new System.Drawing.Bitmap(SamplePath("ban-sample-1920x1080.png"));
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            graphics.FillRectangle(System.Drawing.Brushes.Black, 0, 720, 1344, 200);
+        using var buffer = new MemoryStream();
+        bitmap.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+        // 第一行漏一个名字时，第二行同列的名字也不能顶替它。
+        var names = Sample1Additional();
+        var ocr = new StubOcrEngine(Sample1Core(), names.Skip(1).ToList());
+        var read = await BanCovenantReader.ReadAsync(ocr, new GarrisonOcrStrategy(), buffer.ToArray(),
+            Width, Height, coreNames, additionalNames);
+        read.AdditionalSlots.Should().Be(10);
+        read.Additional.Select(c => c.Name).Should().BeEquivalentTo(names.Skip(1).Take(9).Select(n => n.Text));
+        read.UnnamedAdditional.Should().HaveCount(1);
+    }
+
     [Fact]
     public async Task Sample2_SplitsMergedLabelsAndReadsTheLowerRow()
     {

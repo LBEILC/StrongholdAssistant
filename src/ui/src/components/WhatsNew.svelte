@@ -137,7 +137,7 @@
     height: 30px;
     padding: 0 18px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--mint-ink);
     background: var(--mint);
   }

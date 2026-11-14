@@ -15,7 +15,7 @@
   <span class="grip" aria-hidden="true"><i></i></span>
   <button class="open" title="展开侧栏" aria-label="展开侧栏" onclick={expand}><Icon name={atRight ? 'contractLeft' : 'expandRight'} size={18} /></button>
   {#if app.continuous}
-    <button class="stopscan" title="持续识别中，点这里停止" aria-label="停止持续识别" onclick={() => app.toggleContinuous()}>
+    <button class="stopscan" title="正在识别对局详情，点这里停止" aria-label="停止识别" onclick={() => app.toggleContinuous()}>
       <span class="live-dot"></span>
       <Icon name="stop" size={14} />
     </button>
@@ -141,6 +141,13 @@
   .av.eq img {
     object-fit: contain;
     padding: 3px;
+  }
+  /* 本局禁用：头像压暗变灰、描红边 */
+  .av.banned {
+    box-shadow: inset 0 0 0 1.5px var(--red);
+  }
+  .av.banned img:not(.ban) {
+    filter: grayscale(1) brightness(0.42);
   }
   /* 禁用角标：素材四周有留白，放大并往右上移，让红三角卡在角上 */
   .av .ban {

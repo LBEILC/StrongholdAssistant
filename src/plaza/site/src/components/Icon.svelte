@@ -24,8 +24,9 @@
   import reply from 'remixicon/icons/Business/reply-line.svg?raw'
   import bell from 'remixicon/icons/Media/notification-3-line.svg?raw'
   import award from 'remixicon/icons/Business/award-line.svg?raw'
+  import search from 'remixicon/icons/System/search-line.svg?raw'
 
-  const icons = { heart, heartFill, download, copy, check, close, user, star, starLine, arrowLeft, mail, shield, trash, pencil, eyeOff, eye, forbid, github, external, chat, flag, reply, bell, award }
+  const icons = { heart, heartFill, download, copy, check, close, user, star, starLine, arrowLeft, mail, shield, trash, pencil, eyeOff, eye, forbid, github, external, chat, flag, reply, bell, award, search }
   export type IconName = keyof typeof icons
 </script>
 

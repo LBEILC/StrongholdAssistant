@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm --prefix site run build && wrangler pages functions build --outdir=dist/functions",
+    "build": "npm --prefix ../ui run build && npm --prefix ../site run build && npm --prefix site run build && node scripts/merge-site.mjs && wrangler pages functions build --outdir=dist/functions",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/api.test.mjs",
     "dev": "wrangler pages dev site/dist",

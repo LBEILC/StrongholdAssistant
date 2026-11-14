@@ -73,6 +73,7 @@ public sealed partial class HostApi
 
     private void RecordRecognizedMatch(bool newMatch, bool opening)
     {
+        if (newMatch || opening && !_openingObserved) ResetField();
         lock (_historyGate)
         {
             if (newMatch || _activeRecord is null) BeginHistory();

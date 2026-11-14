@@ -426,7 +426,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
   }
   .res {
     grid-area: res;
@@ -600,7 +600,7 @@
     gap: 6px;
     margin: 6px 0 0;
     font-size: var(--fs-base);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-1);
     text-align: left;
   }
@@ -616,7 +616,7 @@
     color: var(--fg-2);
   }
   .h5 small {
-    font-weight: 400;
+    font-weight: var(--fw-base);
     color: var(--fg-4);
     margin-left: 6px;
   }

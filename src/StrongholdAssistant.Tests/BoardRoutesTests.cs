@@ -24,7 +24,7 @@ public sealed class BoardRoutesTests
                     var segments = route.GetProperty("segments").Deserialize<RoutePoint[][]>(HostApi.JsonOptions)!;
                     foreach (var segment in segments)
                     {
-                        foreach (var point in segment) Check(point);
+                        foreach (var point in segment) Check(point, route);
                         // 共线合并后，每段必须是横线或竖线，中间的格子仍必须可走。
                         for (int i = 1; i < segment.Length; i++)
                         {
@@ -34,7 +34,7 @@ public sealed class BoardRoutesTests
                             int steps = (int)Math.Max(Math.Abs(b.Col - a.Col), Math.Abs(b.Row - a.Row));
                             for (int n = 1; n <= steps; n++)
                             {
-                                Check(new(a.Col + dc * n, a.Row + dr * n));
+                                Check(new(a.Col + dc * n, a.Row + dr * n), route);
                             }
                         }
                     }
@@ -44,10 +44,12 @@ public sealed class BoardRoutesTests
                         Assert.Equal(new RoutePoint(-.5, 3.5), segments[^1][^1]);
                     }
                 }
-                void Check(RoutePoint p)
+                void Check(RoutePoint p, JsonElement route)
                 {
                     int row = boss ? (int)(p.Row + .5) : (int)Math.Floor(p.Row);
                     int col = boss ? (int)(p.Col + .5) : (int)Math.Floor(p.Col) + 2;
+                    // 右侧路线存储时镜像到左侧；校验时还原到真实棋盘格。
+                    if (boss && route.GetProperty("side").GetString() == "right") col = 16 - col;
                     Assert.True(grid[row][col].GetBoolean(), $"{map.Name}/{level.Name}: {p}");
                 }
             }
@@ -67,6 +69,49 @@ public sealed class BoardRoutesTests
             ? [new(7.5, 3.5), new(5.5, 3.5), new(5.5, .5), new(1.5, .5), new(1.5, 3.5), new(-.5, 3.5)]
             : [new(7.5, .5), new(.5, .5), new(.5, 3.5), new(-.5, 3.5)];
         Assert.Equal(expected, Assert.Single(route.Segments));
+    }
+
+    [Fact]
+    public void MultiplayerBossPatrolsAndAllPatrolClosuresMatchCheckpointsOnEveryMap()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(Data, "garrison_routes.json")));
+        foreach (var map in doc.RootElement.GetProperty("maps").EnumerateObject())
+        {
+            var levels = map.Value.GetProperty("levels");
+            foreach (string id in new[] { "h07_02", "h07_10", "h07_11", "h08_02", "h08_06" })
+            {
+                var routes = levels.GetProperty(id).GetProperty("routes").Deserialize<EnemyRoute[]>(HostApi.JsonOptions)!;
+                var right = Assert.Single(routes, r => r.Boss && r.Side == "right");
+                Assert.Equal("walk", right.Motion);
+                Assert.True(right.Patrol);
+            }
+            foreach (var level in levels.EnumerateObject())
+            {
+                var patrols = level.Value.GetProperty("routes").Deserialize<EnemyRoute[]>(HostApi.JsonOptions)!
+                    .Where(r => r.Patrol).ToArray();
+                foreach (var route in patrols)
+                {
+                    var points = route.Segments.SelectMany(s => s).ToArray();
+                    Assert.DoesNotContain(new RoutePoint(-.5, 3.5), points);
+                    if (route.Boss)
+                    {
+                        // 模板的首个巡逻点：左侧 (7,4)，右侧铳/鳍 (9,2)、矩兽 (9,4)。
+                        var first = new RoutePoint(6.5, route.Side == "right" && level.Name != "h07_11" ? 2.5 : .5);
+                        Assert.Equal(first, points[^1]);
+                    }
+                }
+                // 铳的三个随从也有巡逻路线，按模板出生动作顺序核对首个巡逻点。
+                var escorts = patrols.Where(r => !r.Boss).ToArray();
+                if (escorts.Length > 0)
+                {
+                    Assert.Contains(level.Name, new[] { "h08_02", "h08_02_s" });
+                    RoutePoint[] first = level.Name.EndsWith("_s")
+                        ? [new(6.5, 3.5), new(6.5, .5), new(.5, 3.5)]
+                        : [new(.5, 3.5), new(7.5, 2.5), new(.5, 3.5)];
+                    Assert.Equal(first, escorts.Select(r => r.Segments.Last().Last()).ToArray());
+                }
+            }
+        }
     }
 
     [Fact]
@@ -100,7 +145,7 @@ public sealed class BoardRoutesTests
         Assert.Equal(2, multi.Routes.Count(r => r.Boss));
         Assert.True(Assert.Single(multi.Routes, r => r.Boss && r.Side == "left").Patrol);
         Assert.Single(multi.Routes, r => r.Boss && r.Side == "right");
-        Assert.Contains(multi.Routes, r => r.Boss && r.Segments.Count == 2);
+        Assert.All(multi.Routes.Where(r => r.Boss), r => Assert.True(r.Patrol));
         Assert.Single(store.Find(board, 14, true, "enemy_9017_achunt", null)!.Routes, r => r.Boss);
         var stationary = store.Find(board, 14, false, "enemy_9013_acstmk", null)!;
         Assert.NotEmpty(stationary.BossSpots);

@@ -9,7 +9,7 @@
   import GameText from './GameText.svelte'
   import Icon from './Icon.svelte'
   import { effective, defaultsFor, setMyDefault } from '../lib/opconfig'
-  import type { Operator } from '../lib/api'
+  import { api, type Operator } from '../lib/api'
 
   // 底部详情面板：点击打开，固定不随鼠标消失；Esc 或点遮罩关闭
   const d = $derived(app.detail)
@@ -22,6 +22,9 @@
     app.settings.operatorDefaults = setMyDefault(my, o, patch)
     app.saveSettings()
   }
+  // 敌人资料（v0.9.5）：特训敌人变体和首领；更细的去 PRTS 看（页面名就是敌人名）
+  const enemyById = (id: string) => app.catalog.enemies.find((e) => e.id === id)!
+  const openPrts = (name: string) => api.openUrl(`https://prts.wiki/w/${encodeURIComponent(name)}`)
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
@@ -92,6 +95,22 @@
           <span class="leader">敌方领袖</span>
           <h3>{b.name}</h3>
           {#if b.hidingCore}<span class="obtain">有隐秘核心</span>{/if}
+          <button class="favbtn" onclick={() => openPrts(b.name)}>在 PRTS 查看<Icon name="arrowRight" size={12} /></button>
+        </div>
+      </div>
+    {:else if d.kind === 'enemy'}
+      {@const en = enemyById(d.id)}
+      <div class="hero">
+        <span class="pic enp" style:--c={en.level === 'BOSS' ? 'var(--gold)' : en.level === 'ELITE' ? 'var(--red)' : 'var(--fg-4)'}><img src={asset.enemy(en.id)} alt="" /></span>
+        <div class="meta">
+          <span class="lvtag" class:boss={en.level === 'BOSS'} class:elite={en.level === 'ELITE'}>{en.level === 'BOSS' ? '领袖' : en.level === 'ELITE' ? '精英' : '普通'}</span>
+          <h3>{en.name}</h3>
+          <span class="etags">
+            <em>{en.motion === 'FLY' ? '空中' : '地面'}</em>
+            {#if en.attackType}<em>{en.attackType}</em>{/if}
+            {#each en.damage as dm (dm)}<em class:mag={dm === '法术'}>{dm}</em>{/each}
+          </span>
+          <button class="favbtn" onclick={() => openPrts(en.name)}>在 PRTS 查看<Icon name="arrowRight" size={12} /></button>
         </div>
       </div>
     {/if}
@@ -222,16 +241,40 @@
       {@const c = app.cov(d.id)}
       {@const mc = app.matchCovenant(c.id)}
       {@const members = app.catalog.operators.filter((o) => o.core.includes(c.id) || o.extra.includes(c.id)).sort((a, b) => a.tier - b.tier)}
+      {@const out = members.filter((o) => app.banned.has(o.name))}
       <div class="body">
         {#each c.effects as e, i (i)}
           <div class="trait"><span class="tt">{e.condition ? '条件' : '基础'}</span><span>{#if e.condition}<b class="cond">&lt;{e.condition}&gt;</b> {/if}<GameText text={e.text} /></span></div>
         {/each}
-        <div class="members">
-          {#each members as o (o.name)}
-            <OpTile name={o.name} size={40} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+        <!-- 有干员被禁时分两组：能用的在前，被禁的单独放后面 -->
+        {#each out.length ? [{ label: '本局可用', list: members.filter((o) => !app.banned.has(o.name)), bad: false }, { label: '本局禁用', list: out, bad: true }] : [{ label: '', list: members, bad: false }] as grp (grp.label)}
+          {#if grp.label}<div class="mgh" class:bad={grp.bad}>{grp.label}<b class="term">{grp.list.length}</b></div>{/if}
+          <div class="members">
+            {#each grp.list as o (o.name)}
+              <OpTile name={o.name} size={40} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+            {:else}
+              <span class="mnone">全被禁用了</span>
+            {/each}
+          </div>
+        {/each}
+      </div>
+    {:else if d.kind === 'enemy'}
+      {@const en = enemyById(d.id)}
+      <!-- 简单资料：基础属性一行排开，能力逐条；更细的（各级数值、关卡出现位置）去 PRTS 看 -->
+      <div class="hph"><b>基础属性</b><em>卫戍协议里还会按模式和回合加成</em></div>
+      <div class="stats">
+        {#each [['生命', en.hp], ['攻击', en.atk], ['防御', en.def], ['法抗', en.res], ['攻击间隔', `${en.attackTime} 秒`], ['移速', en.speed], ['重量', en.weight]] as [k, v] (k)}
+          <div class="st"><span>{k}</span><b class="term">{v}</b></div>
+        {/each}
+      </div>
+      {#if en.abilities.length}
+        <div class="body">
+          {#each en.abilities as a, i (i)}
+            <div class="trait"><span class="tt term">{String(i + 1).padStart(2, '0')}</span><GameText text={a} /></div>
           {/each}
         </div>
-      </div>
+      {/if}
+      {#if en.description}<p class="note">{en.description}</p>{/if}
     {:else if d.kind === 'boss'}
       {@const b = app.catalog.bosses.find((x) => x.id === d.id)!}
       <div class="body">
@@ -406,7 +449,7 @@
   }
   .leader {
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     padding: 1px 8px;
     color: var(--gold-ink);
     background: var(--gold);
@@ -452,13 +495,13 @@
     flex: none;
     min-width: 4.2em;
     font-size: var(--fs-sm);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     color: var(--fg-1);
     padding-top: 1px;
   }
   .cond {
     color: var(--gold);
-    font-weight: 600;
+    font-weight: var(--fw-semi);
   }
   .none {
     color: var(--fg-4);
@@ -552,6 +595,25 @@
     font-size: var(--fs-xs);
     color: var(--gold);
   }
+  .mgh {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    margin-top: 12px;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .mgh b {
+    color: var(--mint);
+  }
+  .mgh.bad,
+  .mgh.bad b {
+    color: var(--red);
+  }
+  .mnone {
+    font-size: var(--fs-sm);
+    color: var(--fg-4);
+  }
   .members {
     display: flex;
     flex-wrap: wrap;
@@ -570,7 +632,7 @@
     align-items: center;
     gap: 4px;
     font-size: var(--fs-md);
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     padding: 6px 11px;
     color: var(--fg-1);
     background: var(--bg-4);
@@ -600,6 +662,62 @@
     color: var(--fg-1);
   }
   .minor button.fav,
+  .enp img {
+    object-fit: contain;
+    padding: 4px;
+  }
+  .lvtag {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    padding: 1px 8px;
+    color: var(--fg-2);
+    background: var(--bg-4);
+  }
+  .lvtag.elite {
+    color: var(--fg-0);
+    background: var(--red);
+  }
+  .lvtag.boss {
+    color: var(--gold-ink);
+    background: var(--gold);
+  }
+  .etags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .etags em {
+    font-style: normal;
+    font-size: var(--fs-sm);
+    padding: 0 6px;
+    color: var(--fg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .etags em.mag {
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+  .st {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 8px;
+    background: var(--bg-1);
+  }
+  .st span {
+    font-size: var(--fs-2xs);
+    color: var(--fg-4);
+  }
+  .st b {
+    font-size: var(--fs-md);
+    color: var(--fg-1);
+  }
   .favbtn.fav {
     color: var(--gold);
   }

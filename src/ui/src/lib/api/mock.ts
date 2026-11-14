@@ -1,6 +1,6 @@
 // 原型用的假后端：数据取自参考项目的当期数据表，本局信息仿照 TestData/info-ingame-1920x1080.png。
 // 禁用推算是粗略的假实现，只为让界面能走通；真实逻辑在参考项目的 BanScreenAnalyzer。
-import type { Api, BanGroup, Catalog, CovenantGoal, Economy, EmulatorInstance, Income, Lineup, MatchInfo, MatchRecord, ScanStatus, Session, Settings, UpdateStatus } from './types'
+import type { Api, BanGroup, Catalog, CovenantGoal, Economy, EmulatorInstance, FieldState, Income, Lineup, MatchInfo, MatchRecord, ScanStatus, Session, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 
 // 目录数据重新生成前先用这份收入来源（生成后以数据为准）
@@ -190,11 +190,15 @@ let session: Session = {
 let settings: Settings = {
   gameTheme: 'terminal',
   gameThemeAuto: true,
-  uiSkin: 'follow',
+  markerStyles: { key: { show: true, color: '#F3B322' }, tracked: { show: true, color: '#3CF0C2' }, pickable: { show: true, color: '#A98BFF' }, labels: true },
+  uiFont: '',
+  uiFontWeight: 'normal',
+  uiSkin: (new URLSearchParams(location.search).get('skin') as Settings['uiSkin'] | null) ?? 'follow', // ?skin=ursus：官网截图用
   shopMarkers: true,
   shopScanSpeed: 'normal',
   routes: { enabled: false, display: 'always', peekSeconds: 6, hotkey: 'Alt+R', overlap: 'cycle', cycleSeconds: 2.2, fly: 'main', side: 'auto' },
-  autoCheckUpdate: true,
+  // 官网上的侧栏演示（/demo/?demo）不弹「发现新版本」
+  autoCheckUpdate: !location.search.includes('demo'),
   updateSource: 'github',
   mirrorChyanCdk: '',
   updateProxy: '',
@@ -276,6 +280,26 @@ function stopContinuous(message: string) {
 
 const wait = <T>(v: T, ms = 120) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), ms))
 
+// 假数据：仿录屏第一局第 1 回合摆好后，再加一个策略给的、还不知道是谁的 II 阶
+const fieldListeners = new Set<(f: FieldState) => void>()
+let field: FieldState = {
+  mapId: 'm01',
+  round: 1,
+  updatedAt: '2026-11-14T10:00:57Z',
+  units: [
+    { zone: 'bench', col: 9, row: 0, tier: 2, operator: null, source: null },
+    { zone: 'board', col: 4, row: 2, tier: 1, operator: '灰喉', source: 'drag' },
+    { zone: 'board', col: 5, row: 3, tier: 1, operator: '慕斯', source: 'drag' },
+  ],
+  log: [
+    { at: '2026-11-14T10:00:57Z', kind: 'gain', operator: null, from: null, to: { zone: 'bench', col: 9, row: 0 } },
+    { at: '2026-11-14T10:00:56Z', kind: 'move', operator: '慕斯', from: { zone: 'bench', col: 9, row: 0 }, to: { zone: 'board', col: 5, row: 3 } },
+    { at: '2026-11-14T10:00:49Z', kind: 'move', operator: '灰喉', from: { zone: 'bench', col: 10, row: 0 }, to: { zone: 'board', col: 4, row: 2 } },
+    { at: '2026-11-14T10:00:47Z', kind: 'buy', operator: '慕斯', from: null, to: { zone: 'bench', col: 9, row: 0 } },
+    { at: '2026-11-14T10:00:45Z', kind: 'buy', operator: '灰喉', from: null, to: { zone: 'bench', col: 10, row: 0 } },
+  ],
+}
+
 export const mockApi: Api = {
   catalog: () => wait(catalog, 0),
   // 地址带 ?overlay 时模拟覆盖模式，方便看收起竖条
@@ -288,6 +312,16 @@ export const mockApi: Api = {
     return wait({ state: 'connected', resolution: '1920×1080', side, theme: 'closure' as const, gameElevated: !q.includes('gameNormal'), ...(overlay && { fullscreen: true, overlay: true }) })
   },
   match: () => wait(match),
+  field: () => wait(field),
+  setFieldOperator: (cell, operator) => {
+    field = {
+      ...field,
+      updatedAt: new Date().toISOString(),
+      units: field.units.map((u) => (u.zone === cell.zone && u.col === cell.col && u.row === cell.row ? { ...u, operator, source: operator ? 'manual' : null } : u)),
+    }
+    fieldListeners.forEach((cb) => cb(structuredClone(field)))
+    return wait(field, 0)
+  },
   rescan: () => {
     incomplete.clear()
     ;['victoria', 'kjerag', 'egir', 'kazimierz', 'ursus', 'preci', 'skillful', 'stead', 'visi', 'mira'].forEach((c) => incomplete.add(c))
@@ -480,6 +514,8 @@ export const mockApi: Api = {
     pushUpdate({ state: 'ready', version: '0.4.3' })
   },
   openUrl: async (url) => void window.open(url, '_blank'),
+  // 原型里拿不到本机字体列表，给几种 Windows 常见的
+  listFonts: () => wait(['Arial', 'Bahnschrift', 'Consolas', 'Segoe UI', '等线', '仿宋', '黑体', '楷体', '宋体', '微软雅黑', '微软雅黑 Light', '新宋体', '幼圆', '华文中宋', '思源黑体', '霞鹜文楷'].sort((a, b) => a.localeCompare(b, 'zh-CN'))),
   copyText: (text) => navigator.clipboard.writeText(text),
   // 原型里没有宿主窗口：登录用 prompt 填一个真实凭据（从网站 Cookie 里拿）方便联调，取消就是没登录
   plazaLogin: async () => {
@@ -610,5 +646,9 @@ export const mockApi: Api = {
   onScan: (cb) => {
     scanListeners.add(cb)
     return () => scanListeners.delete(cb)
+  },
+  onField: (cb) => {
+    fieldListeners.add(cb)
+    return () => fieldListeners.delete(cb)
   },
 }

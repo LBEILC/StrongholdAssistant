@@ -175,12 +175,17 @@
         {#each reports as r (rKey(r))}
           <article class="rp">
             <div class="rh">
-              <span class="kind">{r.target.kind === 'post' ? '阵容' : '评论'}</span>
+              <span class="kind">{r.target.kind === 'post' ? '阵容' : r.target.kind === 'rating' ? '评分' : '评论'}</span>
               <b class="cnt">{r.count} 人举报</b>
               <span class="sub">最近 {ago(r.lastAt)}{#if r.firstAt !== r.lastAt} · 最早 {ago(r.firstAt)}{/if}</span>
             </div>
             <div class="rbody">
-              {#if r.comment}
+              {#if r.rating}
+                <div class="quote">
+                  <div class="sub">{r.rating.nickname} · {r.rating.kind === 'operator' ? '干员' : '装备'} · {r.rating.name}{#if r.rating.comment_hidden} · {statusName.hidden}{/if}</div>
+                  <p>{r.rating.comment}</p>
+                </div>
+              {:else if r.comment}
                 <div class="quote">
                   <div class="sub">{r.comment.author.nickname} · {r.comment.authorEmailMasked}{#if r.comment.status !== 'visible'} · {statusName[r.comment.status]}{/if}</div>
                   <p>{r.comment.body}</p>
@@ -335,8 +340,9 @@
   }
   .hd {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 20px;
+    gap: 12px 20px;
     margin-bottom: 16px;
   }
   h1 {
@@ -345,11 +351,20 @@
     gap: 8px;
     margin: 0;
     font-size: 22px;
+    white-space: nowrap;
     color: var(--gold);
   }
+  /* 窄屏时标签排不下就横向滚动，不把字挤成竖排 */
   .tabs {
     display: flex;
     gap: 2px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs button {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .tabs button,
   .chip {

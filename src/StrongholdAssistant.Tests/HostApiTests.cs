@@ -12,6 +12,33 @@ public sealed class HostApiTests : IDisposable
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
 
     [Fact]
+    public async Task ListFontsReturnsDistinctNonVerticalFamilies()
+    {
+        var api = await CreateApi();
+        var fonts = Assert.IsType<string[]>(await api.InvokeAsync("listFonts", []));
+        Assert.NotEmpty(fonts);
+        Assert.DoesNotContain(fonts, font => font.StartsWith('@'));
+        Assert.Equal(fonts.Length, fonts.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task EnemyDetailsCoverAllVariantsAndBosses()
+    {
+        var catalog = (await CreateApi()).Catalog;
+        var enemies = catalog.GetProperty("enemies").EnumerateArray().ToDictionary(e => e.GetProperty("id").GetString()!);
+        var required = catalog.GetProperty("enemyTypes").EnumerateArray()
+            .SelectMany(t => t.GetProperty("firstHalf").EnumerateArray().Concat(t.GetProperty("secondHalf").EnumerateArray()))
+            .Concat(catalog.GetProperty("bosses").EnumerateArray())
+            .Select(e => e.GetProperty("id").GetString()!).ToHashSet();
+        Assert.True(required.SetEquals(enemies.Keys));
+        // 国服 2026-11-14 master：图鉴名字与属性表第 0 级原值。
+        var sample = enemies["enemy_1010_demon_2"];
+        Assert.Equal("萨卡兹大剑组长", sample.GetProperty("name").GetString());
+        Assert.Equal(15000, sample.GetProperty("hp").GetInt32());
+        Assert.Equal(750, sample.GetProperty("atk").GetInt32());
+    }
+
+    [Fact]
     public async Task SpecialOperatorAppearsInCatalogButIsNotAPlanningCandidate()
     {
         var api = await CreateApi();

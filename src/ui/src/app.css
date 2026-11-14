@@ -125,9 +125,15 @@
   --boss-line: #3b3a33;
   --boss-ring: #4a4a44;
 
-  --font-ui: 'MiSans', 'Microsoft YaHei UI', sans-serif;
+  /* 中文字体：默认随包的 MiSans；设置里选了别的字体时由 App 改成「选的字体, MiSans」（v0.9.5） */
+  --font-cn: 'MiSans';
+  --font-ui: var(--font-cn), 'Microsoft YaHei UI', sans-serif;
+  /* 字重只用这三档；设置里的「稍粗 / 加粗」整体抬高这三档（v0.9.5） */
+  --fw-base: 400;
+  --fw-semi: 600;
+  --fw-bold: 700;
   /* 终端风格英文小字：Windows 自带 Bahnschrift；夹带的中文落到 MiSans，不能落到 monospace（会变宋体） */
-  --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', 'MiSans', 'Microsoft YaHei UI', sans-serif;
+  --font-term: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed', 'Consolas', var(--font-cn), 'Microsoft YaHei UI', sans-serif;
 
   /* 字号：只用这 10 档，不用半号 */
   --fs-3xs: 8px; /* 装饰英文、角标 */
@@ -220,7 +226,7 @@
   --tier-h: 0.72;
 
   /* 构成主义宣传画：斜切、铁锈红标语条、米白纸、粗斜体。英文装饰字是粗斜体压缩字 */
-  --font-term: 'Bahnschrift', 'Arial Narrow', 'MiSans', sans-serif;
+  --font-term: 'Bahnschrift', 'Arial Narrow', var(--font-cn), sans-serif;
   --rust-rgb: 214 72 40;
   --rust: rgb(var(--rust-rgb));
   --rust-hi: #ed5528;
@@ -280,7 +286,7 @@
   --boss-ring: #6a5ad0;
 
   /* 千禧年电脑桌面：一切都是窗口。英文装饰字用像素字，圆角更圆 */
-  --font-term: 'Fusion Pixel', 'Consolas', 'MiSans', monospace;
+  --font-term: 'Fusion Pixel', 'Consolas', var(--font-cn), monospace;
   --r-1: 3px;
   --r-2: 6px;
   /* 窗口标题栏（游戏 rest_window_back 的蓝）和窗口右上角的小方块按钮 */
@@ -665,7 +671,7 @@ aside.sheet > .scroll {
 /* 英文装饰字都是粗斜体 */
 :root[data-skin='ursus'] .term {
   font-style: italic;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 *,
@@ -681,10 +687,23 @@ body {
   background: var(--bg-0);
   color: var(--fg-1);
   font-family: var(--font-ui);
+  font-weight: var(--fw-base);
   font-size: var(--fs-md);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   user-select: none;
+}
+
+/* 浏览器默认的粗体是相对父级的 bolder，统一成令牌，跟着字重设置走 */
+b,
+strong,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--fw-bold);
 }
 
 #app {
