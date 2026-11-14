@@ -2,6 +2,7 @@ using System.Windows;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using System.Diagnostics;
+using System.ComponentModel;
 using ASPAssistant.Core;
 using ASPAssistant.Core.Services;
 
@@ -11,6 +12,7 @@ public partial class App : Application
 {
     private Mutex? _instance;
     private EventWaitHandle? _activation;
+    private EventWaitHandle? _activated;
     private RegisteredWaitHandle? _wait;
     private bool _ownsInstance;
     private readonly DeepLinkChannel _deepLinks = new("StrongholdAssistant.DeepLink");
@@ -38,16 +40,31 @@ public partial class App : Application
         var deepLink = e.Args.FirstOrDefault(DeepLinkChannel.IsValid);
         _instance = new Mutex(true, @"Local\StrongholdAssistant", out _ownsInstance);
         _activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activate");
+        _activated = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activated");
         if (_ownsInstance)
         {
             ProcessElevation.AllowSameUser(_instance.SafeWaitHandle);
             ProcessElevation.AllowSameUser(_activation.SafeWaitHandle);
+            ProcessElevation.AllowSameUser(_activated.SafeWaitHandle);
         }
         if (!_ownsInstance)
         {
             AllowSetForegroundWindow(-1);
-            if (DeepLinkChannel.IsValid(deepLink)) await _deepLinks.SendAsync(deepLink!);
-            else _activation.Set();
+            _activated.Reset();
+            var sent = true;
+            try
+            {
+                if (DeepLinkChannel.IsValid(deepLink)) await _deepLinks.SendAsync(deepLink!);
+                else _activation.Set();
+            }
+            catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException)
+            {
+                // 管道连接失败也按旧实例无回应处理。
+                sent = false;
+            }
+            if (!sent || !await InstanceRecovery.WaitForResponseAsync(
+                    timeout => Task.Run(() => _activated.WaitOne(timeout))))
+                RecoverInstance(e.Args, noGame, settingsPath);
             Shutdown();
             return;
         }
@@ -90,11 +107,43 @@ public partial class App : Application
         _deepLinkListener = _deepLinks.ListenAsync(url => Dispatcher.BeginInvoke(() =>
         {
             ActivateMainWindow();
-            ((MainWindow)MainWindow).ReceiveDeepLink(url);
+            (MainWindow as MainWindow)?.ReceiveDeepLink(url);
+            if (InstanceRecovery.ShouldAcknowledgeActivation(UiReady, MainWindow?.IsVisible == true))
+                _activated.Set();
         }));
         MainWindow.Show();
         _wait = ThreadPool.RegisterWaitForSingleObject(_activation,
-            (_, _) => Dispatcher.BeginInvoke(ActivateMainWindow), null, Timeout.Infinite, false);
+            (_, _) => Dispatcher.BeginInvoke(() =>
+            {
+                ActivateMainWindow();
+                if (InstanceRecovery.ShouldAcknowledgeActivation(UiReady, MainWindow?.IsVisible == true))
+                    _activated.Set();
+            }), null, Timeout.Infinite, false);
+    }
+
+    private void RecoverInstance(string[] args, bool noGame, string settingsPath)
+    {
+        if (MessageBox.Show("卫戍协议助手已经在运行，但没有响应，可能卡住了。\n要结束它并重新打开吗？",
+                "卫戍协议助手", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+        AppLogger.Initialize(noGame
+            ? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"), "logs")
+            : Path.Combine(Path.GetDirectoryName(settingsPath)!, "logs"));
+        try
+        {
+            InstanceRecovery.StopOtherInstances();
+            // 新进程创建前关闭本进程持有的命名对象，避免它再次被判断为第二个实例。
+            _instance!.Dispose();
+            _activation!.Dispose();
+            _activated!.Dispose();
+            var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+            foreach (var arg in args) start.ArgumentList.Add(arg);
+            using var restarted = Process.Start(start);
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or TimeoutException or UnauthorizedAccessException)
+        {
+            MessageBox.Show("结束不了，可能是以管理员身份运行的。请在任务管理器里结束 StrongholdAssistant 后再打开",
+                "卫戍协议助手", MessageBoxButton.OK);
+        }
     }
 
     private void ReportUnhandledException(Exception exception)
@@ -144,6 +193,7 @@ public partial class App : Application
 
     private void ActivateMainWindow()
     {
+        if (MainWindow is null) return;
         if (MainWindow.WindowState == WindowState.Minimized) MainWindow.WindowState = WindowState.Normal;
         MainWindow.Activate();
         SetForegroundWindow(new WindowInteropHelper(MainWindow).Handle);
@@ -154,6 +204,7 @@ public partial class App : Application
         _deepLinks.Dispose();
         _wait?.Unregister(null);
         _activation?.Dispose();
+        _activated?.Dispose();
         if (_ownsInstance) _instance!.ReleaseMutex();
         _instance?.Dispose();
         base.OnExit(e);

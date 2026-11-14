@@ -16,11 +16,11 @@ export function snap(grid, p) {
 
 export function shortest(grid, start, end) {
   const key = p => p.join(',');
-  const directions = [[0, -1], [-1, 0], [1, 0], [0, 1]];
+  const directions = [[0, 1], [-1, 0], [0, -1], [1, 0]];
   const open = [end], costs = new Map([[key(end), 0]]);
   const can = (r, c) => grid[r]?.[c] === true;
   if (!can(...start) || !can(...end)) throw new Error(`不可走的路线端点 ${start} → ${end}`);
-  // 从目标格计算四向距离，再按左、上、下、右选择等长最短路。
+  // 从目标格计算四向距离，再按视频核对的右、上、左、下选择等长最短路。
   for (let i = 0; i < open.length; i++) {
     const p = open[i];
     for (const [dr, dc] of directions) {
@@ -66,7 +66,7 @@ export function generate(directory, activityFile, bossFile = 'data/bosses.json')
   const bosses = read(bossFile).bosses.map(b => b.enemyId);
   const bossKey = key => bosses.find(id => key === id || key.startsWith(id + '_')); 
   const maps = Object.keys(activity.stageDatasDict).sort().map(id => ({
-    id: id.replace('act3autochess_', ''), data: read(path.join(directory, `level_${id}.json`)).mapData
+    id: id.replace('act3autochess_', ''), level: read(path.join(directory, `level_${id}.json`))
   }));
   const levels = Object.fromEntries(fs.readdirSync(directory).sort()
     .filter(f => /^level_act3autochess_(\d+|h\d+(?:_\d+)?(?:_s)?)\.json$/i.test(f))
@@ -82,16 +82,24 @@ export function generate(directory, activityFile, bossFile = 'data/bosses.json')
   }
   const output = { source: 'Kengxxiao/ArknightsGameData zh_CN act3autochess V3_1', battles, bossIds, snaps: {}, maps: {} };
   for (const map of maps) {
-    const tile = (r, c) => map.data.tiles[map.data.map[r][c]];
+    const data = map.level.mapData;
+    // 阻隔工事与射击台改变所在格的地面通行；其他预置机关不作为静态路障。
+    // 预置坐标从下往上计行，先换成整张地图的数组下标，再裁出各棋盘。
+    const blocked = new Set([map.level.predefines, map.level.hardPredefines]
+      .flatMap(p => p.tokenInsts)
+      // hidden 是待激活的预置对象；m02 视频中这些格子仍可通行。
+      .filter(t => !t.hidden && ['trap_1105_accrate', 'trap_1106_achplat'].includes(t.inst.characterKey))
+      .map(t => [data.map.length - 1 - t.position.row, t.position.col].join(',')));
+    const canWalk = (r, c) => data.tiles[data.map[r][c]].passableMask === 'ALL' && !blocked.has([r,c].join(','));
     const board = {
-      walkable: Array.from({length: 5}, (_,r) => Array.from({length: 12}, (_,c) => tile(r+30,c+1).passableMask === 'ALL')),
-      bossWalkable: Array.from({length: 6}, (_,r) => Array.from({length: 17}, (_,c) => tile(r+14,c+2).passableMask === 'ALL')),
+      walkable: Array.from({length: 5}, (_,r) => Array.from({length: 12}, (_,c) => canWalk(r+30,c+1))),
+      bossWalkable: Array.from({length: 6}, (_,r) => Array.from({length: 17}, (_,c) => canWalk(r+14,c+2))),
       levels: {}
     };
     for (const [id, level] of Object.entries(levels)) {
       const bossLevel = /^h0[78]_/.test(id), offset = bossLevel ? 14 : 29;
       const height = level.mapData.map.length, width = level.mapData.map[0].length;
-      const grid = Array.from({length: height}, (_,r) => Array.from({length: width}, (_,c) => tile(offset+r,2+c).passableMask === 'ALL'));
+      const grid = Array.from({length: height}, (_,r) => Array.from({length: width}, (_,c) => canWalk(offset+r,2+c)));
       const index = p => [height-1-p.row, p.col];
       const point = ([r,c]) => ({ col: (bossLevel && c > 8 ? 16-c : c)-.5, row: r-.5 });
       const merged = new Map(), spots = new Map();
