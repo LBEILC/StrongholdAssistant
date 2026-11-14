@@ -47,6 +47,40 @@ public sealed class FieldReader
 
     public void Reset() { _boards.Clear(); _round = null; _shopCards.Clear(); }
 
+    // 就绪控件可能露在外部窗口旁；棋盘中大面积连续的中性纯色不是地形纹理。
+    internal static (bool Obscured, bool Detail, bool ConfirmationCandidate) InspectSurface(byte[] frame)
+    {
+        using var stream = new MemoryStream(frame);
+        using var bitmap = new Bitmap(stream);
+        var low = new int[75, 150]; var high = new int[75, 150];
+        for (int row = 0; row < 75; row++) for (int col = 0; col < 150; col++)
+        {
+            var c = bitmap.GetPixel((400 + col * 8) * bitmap.Width / 1920, (200 + row * 8) * bitmap.Height / 1080);
+            low[row, col] = Math.Min(c.R, Math.Min(c.G, c.B));
+            high[row, col] = Math.Max(c.R, Math.Max(c.G, c.B));
+        }
+        int flat = 0;
+        for (int row = 2; row < 73; row++) for (int col = 2; col < 148; col++)
+        {
+            int min = 255, max = 0;
+            for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++)
+            {
+                min = Math.Min(min, low[row + dy, col + dx]);
+                max = Math.Max(max, high[row + dy, col + dx]);
+            }
+            if (min > 15 && max - min < 12) flat++;
+        }
+        int red = 0;
+        for (int y = 680; y < 740; y += 8) for (int x = 1000; x < 1600; x += 8)
+        {
+            var c = bitmap.GetPixel(x * bitmap.Width / 1920, y * bitmap.Height / 1080);
+            if (c.R > 60 && c.R > c.G * 1.2 && c.R > c.B * 1.2) red++;
+        }
+        // 就绪确认弹窗的横向红色确认区也会遮暗角标，露出的就绪文字不能代表无弹窗。
+        return (flat > 71 * 146 * .025,
+            HasDetailPanel(bitmap, Math.Min(bitmap.Width / 1920d, bitmap.Height / 1080d)), red > 600 * .75);
+    }
+
     public async Task<FieldObservation> ReadAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
         bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop, RectangleF? cursorRegion = null)
     {
@@ -95,14 +129,19 @@ public sealed class FieldReader
 
     private static bool HasDetailPanel(Bitmap bitmap, double scale)
     {
-        int blue = 0, step = Math.Max(1, (int)(4 * scale));
+        int step = Math.Max(1, (int)(4 * scale));
         for (int y = (int)(440 * scale); y < 640 * scale; y += step)
+        {
+            int blue = 0;
             for (int x = 0; x < 632 * scale; x += step)
             {
                 var c = bitmap.GetPixel(x, y);
-                if (c.B > 150 && c.G > 95 && c.R < 90) blue++;
+                if (c.B > 120 && c.G > 65 && c.R < 90) blue++;
             }
-        return blue > 50;
+            // 生命条横贯面板；城区的蓝色装饰仅占局部，不能累加整片区域当生命条。
+            if (blue * step > 360 * scale) return true;
+        }
+        return false;
     }
 
     private static bool HasDragPreview(Bitmap bitmap, double scale)

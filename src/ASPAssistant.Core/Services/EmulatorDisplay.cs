@@ -8,15 +8,23 @@ namespace ASPAssistant.Core.Services;
 public static class EmulatorDisplay
 {
     // 按 WindowState 分块，避免把其他窗口的 display 或已退出的 Activity 关联到游戏。
-    public static int? FindGameDisplay(string windows)
+    public static int? FindGameDisplay(string windows) => FindGameDisplay(windows, out _);
+
+    public static int? FindGameDisplay(string windows, out string? gamePackage)
     {
+        gamePackage = null;
         foreach (var block in Regex.Split(windows, @"(?m)^\s*Window #\d+ "))
         {
             var header = block.Split('\n')[0];
-            if (!Regex.IsMatch(header, @"\bu\d+ com\.hypergryph\.arknights(?:\.bilibili)?/")) continue;
+            var package = Regex.Match(header, @"\bu\d+ (com\.hypergryph\.arknights(?:\.bilibili)?)/");
+            if (!package.Success) continue;
             if (!Regex.IsMatch(block, @"\bmHasSurface=true\b")) continue;
             var display = Regex.Match(block, @"\bmDisplayId=(\d+)\b");
-            if (display.Success && int.TryParse(display.Groups[1].Value, out var id)) return id;
+            if (display.Success && int.TryParse(display.Groups[1].Value, out var id))
+            {
+                gamePackage = package.Groups[1].Value;
+                return id;
+            }
         }
         return null;
     }
@@ -48,10 +56,12 @@ public static class EmulatorDisplay
         if (Regex.IsMatch(device.Serial, @"^\S+:\d+$"))
             Probe("connect", "connect", device.Serial);
         var windows = Probe("dumpsys", "-s", device.Serial, "shell", "dumpsys", "window", "windows");
+        string? gamePackage = null;
         return device with
         {
             DisplayId = windows is { ExitCode: 0 } result
-                ? FindGameDisplay(Encoding.UTF8.GetString(result.Output)) : 0,
+                ? FindGameDisplay(Encoding.UTF8.GetString(result.Output), out gamePackage) : 0,
+            GamePackage = gamePackage,
             ProbeFailed = false
         };
     }
@@ -63,15 +73,22 @@ public static class EmulatorDisplay
             AppLogger.Warn("Emulator", $"serial={serial} step={step} exit={code} stderr={excerpt}");
     }
 
-    public static byte[] Capture(EmulatorDevice device)
+    // Android 12 LogicalDisplay.dumpLocked 的 mBaseDisplayInfo.uniqueId 来自设备；
+    // LocalDisplayAdapter 的 local: 后缀是 SurfaceFlinger 的物理 display ID。
+    public static string? FindPhysicalDisplayId(string displays, int logicalId)
     {
-        var result = RunAdb(device, ["-s", device.Serial, "exec-out", "screencap", "-p", "-d",
-            device.DisplayId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
-        if (result.ExitCode != 0) throw new IOException(result.Error);
-        return result.Output;
+        foreach (var block in Regex.Split(displays, @"(?m)^\s*(?=mDisplayId=)"))
+        {
+            var id = Regex.Match(block, @"\AmDisplayId=(\d+)\b");
+            if (!id.Success || !int.TryParse(id.Groups[1].Value, out var value) || value != logicalId) continue;
+            var physical = Regex.Match(block, "mBaseDisplayInfo=DisplayInfo\\{[^\\r\\n]*?uniqueId \"local:(\\d+)\"");
+            if (physical.Success && ulong.TryParse(physical.Groups[1].Value, out var number))
+                return number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        return null;
     }
 
-    private static (int ExitCode, byte[] Output, string Error) RunAdb(EmulatorDevice device, string[] arguments)
+    internal static (int ExitCode, byte[] Output, string Error) RunAdb(EmulatorDevice device, string[] arguments)
     {
         var start = new ProcessStartInfo(device.AdbPath)
         {

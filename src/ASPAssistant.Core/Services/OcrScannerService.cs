@@ -42,9 +42,17 @@ public class OcrScannerService : IDisposable
     private byte[]? _informationContext;
     private long _lastTimingLog;
     public void InvalidateShop() => Interlocked.Increment(ref _cacheVersion);
+    private double _configuredInterval;
+    private bool _visibleRest;
     public void SetShopScanSpeed(string speed)
     {
-        double interval = speed == "fast" ? 250 : 800;
+        _configuredInterval = speed == "fast" ? 250 : 800;
+        UpdateScanInterval(_visibleRest);
+    }
+    private void UpdateScanInterval(bool visibleRest)
+    {
+        _visibleRest = visibleRest;
+        double interval = visibleRest ? Math.Min(_configuredInterval, 400) : _configuredInterval;
         if (_scanTimer.Interval != interval) _scanTimer.Interval = interval;
     }
     public int ShopGeneration { get { lock (_shopGate) return _refreshWindow.Generation; } }
@@ -125,6 +133,7 @@ public class OcrScannerService : IDisposable
         _getAllOperators = getAllOperators;
         _iconMatcher = iconMatcher;
         _scanTimer = new Timer(intervalMs);
+        _configuredInterval = intervalMs;
         _scanTimer.Elapsed += OnScanTick;
 
         // Start the background consumer for button-triggered manual scans.
@@ -158,6 +167,7 @@ public class OcrScannerService : IDisposable
         _pauseBanScreenDetection = paused;
         if (paused)
         {
+            UpdateScanInterval(false);
             _themeTracker.Observe(null);
             BoardFrameReady?.Invoke(null, null);
             // Freeze state transitions while overlays cover the game window.
@@ -194,6 +204,7 @@ public class OcrScannerService : IDisposable
             double captureMs = clock.Elapsed.TotalMilliseconds - fingerprintMs;
             if (screenshot == null)
             {
+                UpdateScanInterval(false);
                 _themeTracker.Observe(null);
                 BoardFrameReady?.Invoke(null, null);
                 InvalidateShop();
@@ -232,6 +243,23 @@ public class OcrScannerService : IDisposable
     {
         lock (_shopGate)
             if (!_refreshWindow.Accept(capturedAt)) return;
+        var fieldSurface = ObserveFieldAsync is not null ? FieldReader.InspectSurface(screenshot) : default;
+        bool confirmation = false;
+        if (!fieldSurface.Obscured && fieldSurface.ConfirmationCandidate)
+        {
+            double scale = Math.Min(width / 1920d, height / 1080d);
+            var text = await _ocrEngine.RecognizeRegionAsync(screenshot, (int)(650 * scale), (int)(400 * scale),
+                (int)(620 * scale), (int)(150 * scale));
+            confirmation = text.Any(t => t.Text.Replace(" ", "").Contains("确认准备", StringComparison.Ordinal));
+        }
+        if (fieldSurface.Obscured || confirmation)
+        {
+            BoardMainScreenVisible = false;
+            _boardSurfacePixels = null;
+            UpdateScanInterval(false);
+            BoardFrameReady?.Invoke(null, null);
+            return;
+        }
         int version = Volatile.Read(ref _cacheVersion);
         var theme = _shopReader.Theme;
         var tracked = _getTrackedNames().ToArray();
@@ -331,6 +359,8 @@ public class OcrScannerService : IDisposable
             BoardFrameReady?.Invoke(_pauseBanScreenDetection || _banScreenActive ? null : screenshot, boardEconomy);
             // 本帧就绪控件可见时，资金降频不应跳过占用变化；战斗/弹窗仍不得拿旧读数更新占用。
             var fieldEconomy = boardEconomy ?? (BoardMainScreenVisible ? _lastEconomy : null);
+            UpdateScanInterval(!_pauseBanScreenDetection && !_banScreenActive && !fieldSurface.Detail
+                && BoardMainScreenVisible && fieldEconomy is { IsRest: true });
             if (!_pauseBanScreenDetection && !_banScreenActive && ObserveFieldAsync is { } observe && fieldEconomy is not null)
                 await observe(screenshot, capturedAt, fieldEconomy, BoardMainScreenVisible, BoardShopVisible, _shopReader.AllItems);
         }

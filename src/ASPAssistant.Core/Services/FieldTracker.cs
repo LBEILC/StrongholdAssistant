@@ -108,7 +108,6 @@ public sealed class FieldTracker
         _drag = null; _beforeDrag = null;
         if (!_battle)
         {
-            foreach (var c in removed) Add(o.At, "lost", before[c].Operator, c, null);
             foreach (var c in added.Where(c => c.Zone == "bench")) _gains.Add((o.At, c));
             if (o.Shop is { } shop && _shop is { } previous)
                 foreach (var (slot, cardName) in previous)
@@ -124,10 +123,21 @@ public sealed class FieldTracker
                     var c = _gains[i].Cell;
                     _units[c] = _units[c] with { Operator = buy.Name, Source = "purchase" };
                     Add(buy.At, "buy", buy.Name, null, c); _gains.RemoveAt(i); _buys.Remove(buy);
+                    added.Remove(c);
                 }
                 else if ((o.At - buy.At).TotalSeconds > 1.6)
                 { Add(buy.At, "buy", buy.Name, null, null); _buys.Remove(buy); }
             }
+            // 购买先占用新增格；剩下唯一的同阶空出与新增才推断为漏面板移动。
+            if (removed.Count == 1 && added.Count == 1 && before[removed[0]].Tier == _units[added[0]].Tier)
+            {
+                var from = removed[0]; var to = added[0]; var unit = before[from];
+                _units[to] = _units[to] with { Operator = unit.Operator, Source = unit.Source };
+                Add(o.At, "move", unit.Operator, from, to);
+                _gains.RemoveAll(g => g.Cell == from || g.Cell == to);
+                removed.Clear();
+            }
+            foreach (var c in removed) Add(o.At, "lost", before[c].Operator, c, null);
             foreach (var gain in _gains.Where(g => (o.At - g.At).TotalSeconds > 1.6).ToArray())
             { Add(gain.At, "gain", null, null, gain.Cell); _gains.Remove(gain); }
         }

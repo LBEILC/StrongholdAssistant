@@ -60,6 +60,21 @@ public sealed class ShopScanTests(ShopReaderFixture fixture, EnemyRecognitionFix
         Assert.Equal(800, timer.Interval);
     }
 
+    [Fact]
+    public void VisibleRestCapsIntervalAndLeavingItRestoresUserSpeed()
+    {
+        using var scanner = new OcrScannerService(new ScreenCaptureService(), new GarrisonOcrStrategy(),
+            fixture.Reader, recognition.Engine, new ASPAssistant.Core.GameState.GameState(), () => fixture.Names);
+        var timer = (System.Timers.Timer)typeof(OcrScannerService).GetField("_scanTimer", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(scanner)!;
+        var update = typeof(OcrScannerService).GetMethod("UpdateScanInterval", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        update.Invoke(scanner, [true]); Assert.Equal(400, timer.Interval);
+        scanner.SetShopScanSpeed("fast"); Assert.Equal(250, timer.Interval);
+        update.Invoke(scanner, [false]); Assert.Equal(250, timer.Interval);
+        scanner.SetShopScanSpeed("normal"); Assert.Equal(800, timer.Interval);
+        update.Invoke(scanner, [true]); Assert.Equal(400, timer.Interval);
+        scanner.SetBanScreenDetectionPaused(true); Assert.Equal(800, timer.Interval);
+    }
+
     internal static async Task Frame(OcrScannerService scanner, string path, DateTimeOffset? capturedAt = null)
     {
         var bytes = await File.ReadAllBytesAsync(path);

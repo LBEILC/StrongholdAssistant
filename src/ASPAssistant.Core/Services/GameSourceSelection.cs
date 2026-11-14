@@ -3,6 +3,7 @@
 public sealed record EmulatorDevice(string Name, string AdbPath, string Serial, string Config, string Kind = "mumu")
 {
     public int? DisplayId { get; init; }
+    public string? GamePackage { get; init; }
     public bool ProbeFailed { get; init; }
     public IntPtr Window { get; init; }
     public IntPtr RenderWindow { get; init; }

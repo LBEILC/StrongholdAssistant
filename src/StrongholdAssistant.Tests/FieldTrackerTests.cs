@@ -12,6 +12,43 @@ public sealed class FieldTrackerTests
         => new(Start.AddSeconds(seconds), rest, "m01", 1, new Dictionary<FieldCell, int> { [Bench] = bench, [Board] = board }, shop, money, drag);
 
     [Fact]
+    public void MissingPanelMovePreservesIdentityAndSourceAcrossZones()
+    {
+        var t = new FieldTracker(); t.Observe(O(0, board: 2));
+        t.SetOperator(Board, "砾", Start);
+        t.Observe(O(.8, bench: 2)); t.Observe(O(2.5, bench: 2));
+        var unit = Assert.Single(t.State!.Units);
+        Assert.Equal("砾", unit.Operator); Assert.Equal("manual", unit.Source);
+        var e = Assert.Single(t.State.Log);
+        Assert.Equal("move", e.Kind); Assert.Equal("砾", e.Operator);
+        Assert.Equal(Board, e.From); Assert.Equal(Bench, e.To);
+    }
+
+    [Fact]
+    public void MissingPanelDifferentTiersDoNotInferMove()
+    {
+        var t = new FieldTracker(); t.Observe(O(0, board: 1));
+        t.SetOperator(Board, "慕斯", Start);
+        t.Observe(O(.8, bench: 2)); t.Observe(O(2.5, bench: 2));
+        Assert.Null(Assert.Single(t.State!.Units).Operator);
+        Assert.Contains(t.State.Log, e => e.Kind == "lost");
+        Assert.Contains(t.State.Log, e => e.Kind == "gain");
+        Assert.DoesNotContain(t.State.Log, e => e.Kind == "move");
+    }
+
+    [Fact]
+    public void PurchaseTakesPriorityOverSameTierMove()
+    {
+        var t = new FieldTracker(); t.Observe(O(0, board: 1, shop: new() { [2] = "灰喉" }));
+        t.SetOperator(Board, "慕斯", Start);
+        t.Observe(O(.8, bench: 1, shop: new()));
+        Assert.Equal("灰喉", Assert.Single(t.State!.Units).Operator);
+        Assert.Equal("purchase", t.State.Units[0].Source);
+        Assert.Contains(t.State.Log, e => e.Kind == "buy");
+        Assert.DoesNotContain(t.State.Log, e => e.Kind == "move");
+    }
+
+    [Fact]
     public void BuyUsesDisappearingSlotAmongDuplicateNames()
     {
         var t = new FieldTracker();

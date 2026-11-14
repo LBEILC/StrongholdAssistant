@@ -14,6 +14,7 @@ public sealed record GameConnectionState(string? Source = null, IntPtr Window = 
 public sealed class GameConnectionService : IDisposable
 {
     private readonly object _gate = new();
+    private readonly EmulatorCapture _capture = new();
     private (string Serial, int Display)? _loggedCapture;
     private MaaAdbController? _controller;
     private EmulatorDevice? _device;
@@ -125,6 +126,7 @@ public sealed class GameConnectionService : IDisposable
         lock (_gate)
         {
             if (_disposed || _device is null || !IsAdb || DateTime.UtcNow < _retryAfter) return null;
+            var method = _device.DisplayId == 0 ? "MaaFramework ADB auto" : "ADB non-primary display";
             try
             {
                 using var image = new MaaImageBuffer();
@@ -140,6 +142,7 @@ public sealed class GameConnectionService : IDisposable
                             agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
                         if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded)
                         {
+                            _capture.LogFailure(_device, method, "n/a", "LinkStart failed");
                             _controller.Dispose();
                             _controller = null;
                             _retryAfter = DateTime.UtcNow.AddSeconds(5);
@@ -149,15 +152,25 @@ public sealed class GameConnectionService : IDisposable
                         }
                         _controller.SetOption_ScreenshotUseRawSize(true);
                     }
-                    if (_controller.Screencap().Wait() != MaaJobStatus.Succeeded
-                        || !_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException();
+                    var status = _controller.Screencap().Wait();
+                    if (status != MaaJobStatus.Succeeded) throw new IOException($"Screencap status={status}");
+                    if (!_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException("Cached image is empty");
                 }
-                else if (!image.TrySetEncodedData(EmulatorDisplay.Capture(_device)) || image.IsEmpty)
-                    throw new IOException();
+                else
+                {
+                    var bytes = _capture.Capture(_device, EmulatorDisplay.RunAdb,
+                        png => image.TrySetEncodedData(png) && !image.IsEmpty
+                        && WindowGeometry.IsSupportedGameAspectRatio(image.Width, image.Height), out method, CaptureExtras);
+                    if (bytes is null)
+                    {
+                        // 各候选方式已记录具体错误，不再追加一条笼统的失败日志。
+                        CaptureFailed();
+                        return null;
+                    }
+                }
                 var capture = (Serial: _device.Serial, Display: _device.DisplayId!.Value);
                 if (_loggedCapture != capture)
                 {
-                    var method = capture.Display == 0 ? "MaaFramework ADB auto" : "adb exec-out screencap -p -d";
                     AppLogger.Info(_device.DisplayName, $"serial={capture.Serial} display={capture.Display} capture={method}");
                     _loggedCapture = capture;
                 }
@@ -173,18 +186,58 @@ public sealed class GameConnectionService : IDisposable
                 }
                 if (width > maxWidth)
                     image.TryResize(maxWidth, (int)Math.Round(height * (double)maxWidth / width));
-                if (!image.TryGetEncodedData(out byte[]? png) || png is null) throw new IOException();
+                if (!image.TryGetEncodedData(out byte[]? png) || png is null || png.Length == 0)
+                    throw new IOException("Encoded image is empty");
                 SetState(State with { Width = width, Height = height, Problem = null });
                 return png;
             }
-            catch
+            catch (Exception ex)
+            {
+                _capture.LogFailure(_device, method, "n/a", ex.Message);
+                CaptureFailed();
+                return null;
+            }
+            void CaptureFailed()
             {
                 _controller?.Dispose();
                 _controller = null;
                 _retryAfter = DateTime.UtcNow.AddSeconds(5);
                 SetState(State with { Problem = $"{_device.DisplayName}游戏画面截图失败，请在设置里导出诊断包反馈。", Width = 0, Height = 0 });
-                return null;
             }
+        }
+    }
+
+    private byte[]? CaptureExtras()
+    {
+        try
+        {
+            if (_controller is null)
+            {
+                var settings = MuMuExtras.Resolve(_device!);
+                if (settings is null) throw new IOException("未找到 MuMu SDK 安装目录、实例或游戏包名");
+                var config = MuMuExtras.Prepare(_device!, settings);
+                _controller = new MaaAdbController(_device!.AdbPath, _device.Serial,
+                    AdbScreencapMethods.EmulatorExtras, AdbInputMethods.AdbShell, config: config,
+                    agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
+                if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded)
+                    throw new IOException("LinkStart failed");
+                _controller.SetOption_ScreenshotUseRawSize(true);
+            }
+            var status = _controller.Screencap().Wait();
+            if (status != MaaJobStatus.Succeeded) throw new IOException($"Screencap status={status}");
+            using var image = new MaaImageBuffer();
+            if (!_controller.GetCachedImage(image) || image.IsEmpty
+                || !WindowGeometry.IsSupportedGameAspectRatio(image.Width, image.Height))
+                throw new IOException("图像为空、无效或不是横屏 16:9");
+            if (!image.TryGetEncodedData(out byte[]? png) || png is null || png.Length == 0)
+                throw new IOException("Encoded image is empty");
+            return png;
+        }
+        catch
+        {
+            _controller?.Dispose();
+            _controller = null;
+            throw;
         }
     }
 
