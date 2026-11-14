@@ -33,7 +33,7 @@ public sealed class DiagnosticsTests : IDisposable
         var settings = new SettingsDto("terminal", true, true)
         {
             CloudSync = new(true, "private-cloud", null, null, []),
-            MumuSerial = "private-device", ShareIncome = true,
+            EmulatorSerial = "private-device", ShareIncome = true,
             UpdateSource = "mirrorchyan", MirrorChyanCdk = "private-cdk", ShopScanSpeed = "fast"
         };
         var path = Path.Combine(_directory, "diagnostics.zip");
@@ -56,7 +56,7 @@ public sealed class DiagnosticsTests : IDisposable
         using var json = JsonDocument.Parse(settingsReader.ReadToEnd());
         Assert.False(json.RootElement.TryGetProperty("cloudSync", out _));
         Assert.False(json.RootElement.TryGetProperty("shareIncome", out _));
-        Assert.False(json.RootElement.TryGetProperty("mumuSerial", out _));
+        Assert.False(json.RootElement.TryGetProperty("emulatorSerial", out _));
         Assert.False(json.RootElement.TryGetProperty("mirrorChyanCdk", out _));
         Assert.Equal("mirrorchyan", json.RootElement.GetProperty("updateSource").GetString());
         Assert.Equal("fast", json.RootElement.GetProperty("shopScanSpeed").GetString());

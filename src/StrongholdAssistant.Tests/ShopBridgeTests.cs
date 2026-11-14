@@ -75,9 +75,9 @@ public sealed class ShopBridgeTests(ASPAssistant.Tests.Services.EnemyRecognition
         Assert.Equal(JsonSerializer.Serialize(new SettingsDto("terminal", true, true)),
             JsonSerializer.Serialize(await api.InvokeAsync("settings", [])));
         Assert.Equal("auto", api.Settings.GameSource);
-        Assert.Equal("", api.Settings.MumuSerial);
+        Assert.Equal("", api.Settings.EmulatorSerial);
         var settings = new SettingsDto("ursus", false, false)
-            { UiScale = JsonSerializer.SerializeToElement(1.5), GameSource = "mumu", MumuSerial = "127.0.0.1:16384" };
+            { UiScale = JsonSerializer.SerializeToElement(1.5), GameSource = "mumu", EmulatorSerial = "127.0.0.1:16384" };
         await Call(api, "saveSettings", settings);
         Assert.Equal(new DockSettings(421, new(-32, 71)), api.SettingsStore.LoadDock());
         Assert.Equal(JsonSerializer.Serialize(settings), JsonSerializer.Serialize((await CreateApi()).Settings));

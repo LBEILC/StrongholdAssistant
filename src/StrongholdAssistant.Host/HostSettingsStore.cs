@@ -46,7 +46,7 @@ public sealed class HostSettingsStore(string path)
             UiScale = JsonSerializer.SerializeToElement(json["uiScale"] ?? JsonValue.Create("auto")),
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
             GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
-            MumuSerial = json["mumuSerial"]?.GetValue<string>() ?? "",
+            EmulatorSerial = json["emulatorSerial"]?.GetValue<string>() ?? json["mumuSerial"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
             DockSide = json["dockSide"]?.GetValue<string>() ?? "auto",
             OverlaySide = json["overlaySide"]?.GetValue<string>() ?? "left",
@@ -109,6 +109,9 @@ public sealed class HostSettingsStore(string path)
 
     private void Write(JsonObject json)
     {
+        if (!json.ContainsKey("emulatorSerial") && json["mumuSerial"] is { } legacySerial)
+            json["emulatorSerial"] = legacySerial.DeepClone();
+        json.Remove("mumuSerial");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path + ".tmp", json.ToJsonString(HostApi.JsonOptions));
         File.Move(path + ".tmp", path, true);

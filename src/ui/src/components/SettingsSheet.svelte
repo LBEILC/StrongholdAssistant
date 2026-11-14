@@ -2,7 +2,7 @@
   import { sheet } from '../lib/sheet'
   import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
-  import { api, type BackupSummary, type GameTheme, type ImportMode, type MumuInstance, type Settings, type UiSkin } from '../lib/api'
+  import { api, type BackupSummary, type GameTheme, type ImportMode, type EmulatorInstance, type Settings, type UiSkin } from '../lib/api'
   import Icon from './Icon.svelte'
   import NotesList from './NotesList.svelte'
   import { plaza, PLAZA } from '../lib/plaza.svelte'
@@ -105,14 +105,19 @@
     return { date: d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replaceAll('/', '-'), soon: days <= 7, days }
   })
 
-  // 游戏来源：多开 MuMu 时才列出实例让用户选
+  // 游戏来源：多开模拟器时才列出实例让用户选（v0.9.4 加雷电，MuMu 和雷电共用一个实例列表）
   const sources: { v: Settings['gameSource']; label: string; note: string }[] = [
-    { v: 'auto', label: '自动', note: '先找 PC 客户端，没开再找 MuMu 模拟器。' },
+    { v: 'auto', label: '自动', note: '先找 PC 客户端，没开再找 MuMu、雷电模拟器里正在运行的明日方舟。' },
     { v: 'pc', label: 'PC 客户端', note: '只连明日方舟 PC 版。' },
-    { v: 'mumu', label: 'MuMu 模拟器', note: 'MuMu 画面要横屏 16:9（如 1920×1080）。窗口被挡住也能识别。' },
+    { v: 'mumu', label: 'MuMu', note: 'MuMu 画面要横屏 16:9（如 1920×1080）。窗口被挡住也能识别。' },
+    { v: 'ldplayer', label: '雷电', note: '雷电画面要横屏 16:9（如 1920×1080），并在雷电设置里打开 ADB 调试。窗口被挡住也能识别。' },
   ]
-  let instances = $state<MumuInstance[]>([])
-  const loadInstances = async () => (instances = app.settings.gameSource === 'pc' ? [] : await api.mumuInstances())
+  const kindName = { mumu: 'MuMu', ldplayer: '雷电' }
+  let allInstances = $state<EmulatorInstance[]>([])
+  const instances = $derived(
+    app.settings.gameSource === 'pc' ? [] : allInstances.filter((i) => app.settings.gameSource === 'auto' || i.kind === app.settings.gameSource),
+  )
+  const loadInstances = async () => (allInstances = app.settings.gameSource === 'pc' ? [] : await api.emulatorInstances())
   // 贴边选项：点哪个（包括当前选中的）都顺便清掉拖动记下的位置，侧栏贴回去（v0.8.2）
   const dock = <K extends 'dockSide' | 'overlaySide'>(k: K, v: (typeof app.settings)[K]) => {
     if (app.settings[k] !== v) set(k, v)
@@ -150,6 +155,9 @@
   })
   const setSource = (v: Settings['gameSource']) => {
     set('gameSource', v)
+    // 选了另一种模拟器时，原来选的实例不再适用，回到自动
+    const picked = allInstances.find((i) => i.serial === app.settings.emulatorSerial)
+    if (picked && v !== 'auto' && picked.kind !== v) set('emulatorSerial', '')
     loadInstances()
   }
 
@@ -287,8 +295,8 @@
     <div class="scroll">
 
     <section>
-      <h4>游戏来源 <small>PC 客户端或 MuMu 模拟器</small></h4>
-      <div class="scales three">
+      <h4>游戏来源 <small>PC 客户端或安卓模拟器</small></h4>
+      <div class="scales four">
         {#each sources as s (s.v)}
           <button class:on={app.settings.gameSource === s.v} onclick={() => setSource(s.v)}>{s.label}</button>
         {/each}
@@ -296,12 +304,12 @@
       <p class="note">{sources.find((s) => s.v === app.settings.gameSource)!.note}</p>
       {#if app.settings.gameSource !== 'pc' && instances.length > 1}
         <div class="themes inst">
-          <button class:on={!app.settings.mumuSerial} onclick={() => set('mumuSerial', '')}>
-            <span class="radio"></span><b>自动</b><em>只开一个实例时用它</em>
+          <button class:on={!app.settings.emulatorSerial} onclick={() => set('emulatorSerial', '')}>
+            <span class="radio"></span><b>自动</b><em>只有一个实例在运行明日方舟时用它</em>
           </button>
           {#each instances as i (i.serial)}
-            <button class:on={app.settings.mumuSerial === i.serial} onclick={() => set('mumuSerial', i.serial)}>
-              <span class="radio"></span><b>{i.name}</b><em>{i.serial}</em>
+            <button class:on={app.settings.emulatorSerial === i.serial} onclick={() => set('emulatorSerial', i.serial)}>
+              <span class="radio"></span><b>{i.name}</b><em>{kindName[i.kind]} · {i.serial}</em>
             </button>
           {/each}
         </div>

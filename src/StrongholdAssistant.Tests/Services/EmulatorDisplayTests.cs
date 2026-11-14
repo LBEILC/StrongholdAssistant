@@ -2,12 +2,23 @@ using ASPAssistant.Core.Services;
 
 namespace StrongholdAssistant.Tests.Services;
 
-public class MumuDisplayTests
+public class EmulatorDisplayTests
 {
+    [Fact]
+    public void FindsLdPlayer14GameOnMainDisplay()
+    {
+        // 调研报告第一节记录的雷电 14 WindowState 片段。
+        Assert.Equal(0, EmulatorDisplay.FindGameDisplay("""
+            Window #7 Window{111 u0 com.hypergryph.arknights/com.u8.sdk.U8UnityContext}:
+              mDisplayId=0
+              mHasSurface=true
+            """));
+    }
+
     [Fact]
     public void FailedDumpsysFallsBackToMainDisplayAndRemainsSelectable()
     {
-        var device = MumuDisplay.Inspect(new("MuMu", "adb", "127.0.0.1:16384", ""),
+        var device = EmulatorDisplay.Inspect(new("MuMu", "adb", "127.0.0.1:16384", ""),
             (_, _) => (1, [], "device not found"));
 
         Assert.Equal(0, device.DisplayId);
@@ -24,7 +35,7 @@ public class MumuDisplayTests
     public void ConnectsNetworkSerialBeforeDumpsys(string serial, bool network)
     {
         var calls = new List<string>();
-        var device = MumuDisplay.Inspect(new("MuMu", "adb", serial, ""), (_, arguments) =>
+        var device = EmulatorDisplay.Inspect(new("MuMu", "adb", serial, ""), (_, arguments) =>
         {
             calls.Add(string.Join(" ", arguments));
             // connect 的结果不阻止 dumpsys。
@@ -62,13 +73,13 @@ public class MumuDisplayTests
                 mDisplayId={{display}} rootTaskId=3 mSession=Session{333}
                 mHasSurface=true isReadyForDisplay()=true
             """;
-        Assert.Equal(display, MumuDisplay.FindGameDisplay(dump));
+        Assert.Equal(display, EmulatorDisplay.FindGameDisplay(dump));
     }
 
     [Fact]
     public void DoesNotUseDesktopWhenGameHasNoWindow()
     {
-        Assert.Null(MumuDisplay.FindGameDisplay("""
+        Assert.Null(EmulatorDisplay.FindGameDisplay("""
               Window #0 Window{1111111 u0 com.mumu.launcher/.Launcher}:
                 mDisplayId=0 rootTaskId=1 mSession=Session{111}
                 mHasSurface=true isReadyForDisplay()=true

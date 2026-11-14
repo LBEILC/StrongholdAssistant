@@ -396,8 +396,8 @@ public sealed partial class HostApi
             case "checkUpdate": return await CheckUpdateAsync();
             case "applyUpdate": await ApplyUpdateAsync(); return null;
             case "connection": return Connection;
-            case "mumuInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverMumuDevices()
-                .Select(d => new MumuInstance(d.Serial, d.Name)).ToArray());
+            case "emulatorInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverEmulatorDevices()
+                .Select(d => new EmulatorInstance(d.Kind, d.Serial, d.Name)).ToArray());
             case "match": return Match;
             case "addIncome": return AddIncome(Read<string>(0), Read<bool>(1));
             case "removeIncome": return RemoveIncome(Read<string>(0));

@@ -90,7 +90,7 @@ export const bridgeApi: Api = {
   saveSklandRecords: call('saveSklandRecords'),
   resetShareId: call('resetShareId'),
   openDataFolder: call('openDataFolder'),
-  mumuInstances: call('mumuInstances'),
+  emulatorInstances: call('emulatorInstances'),
   exportData: call('exportData'),
   pickBackup: call('pickBackup'),
   importData: call('importData'),

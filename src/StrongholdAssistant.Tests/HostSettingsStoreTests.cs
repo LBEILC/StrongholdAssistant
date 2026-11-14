@@ -7,6 +7,22 @@ public sealed class HostSettingsStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void MigratesLegacyEmulatorSerialAndSavesOnlyNewName()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, """{"mumuSerial":"127.0.0.1:16384"}""");
+        var store = new HostSettingsStore(path);
+        var settings = store.LoadSettings();
+        Assert.Equal("127.0.0.1:16384", settings.EmulatorSerial);
+        store.SaveSettings(settings);
+        Assert.DoesNotContain("mumuSerial", File.ReadAllText(path));
+        Assert.Equal(settings.EmulatorSerial, store.LoadSettings().EmulatorSerial);
+        File.WriteAllText(path, """{"mumuSerial":"old","emulatorSerial":""}""");
+        Assert.Equal("", store.LoadSettings().EmulatorSerial);
+    }
+
+    [Fact]
     public void ShopScanSpeedDefaultsAndSurvivesReload()
     {
         Directory.CreateDirectory(_directory);

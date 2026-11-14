@@ -147,17 +147,17 @@ export interface Connection {
    * 收起竖条贴着游戏窗口那条边：贴右侧、盖左侧时竖条在侧栏左边缘；贴左侧、盖右侧时在右边缘。界面据此决定展开箭头朝向
    */
   side?: 'left' | 'right'
-  /** 连上的是哪种游戏（v0.5.0）：PC 客户端，或 MuMu 模拟器里的安卓版。connected 时才有 */
-  source?: 'pc' | 'mumu'
+  /** 连上的是哪种游戏（v0.5.0）：PC 客户端，或 MuMu / 雷电模拟器（v0.9.4）里的安卓版。connected 时才有 */
+  source?: 'pc' | EmulatorKind
   /**
-   * 游戏是不是以管理员身份运行（v0.9.1），connected 时才有；MuMu 为 false。
+   * 游戏是不是以管理员身份运行（v0.9.1），connected 时才有；模拟器为 false。
    * 游戏是管理员、助手不是时，Windows 不把游戏前台时的按键交给助手：单独一个键（Alt、D、Tab 这类）收不到，
    * 只有系统注册的组合键（Alt+S 这类）能用。界面据此限制单键和「按住才显示」，见 AppInfo.elevated
    */
   gameElevated?: boolean
   /**
    * 找到游戏但用不了时给用户看的原因和办法（v0.5.0），state 为 searching 时才有，例如
-   * 「MuMu 画面不是横屏 16:9，请在模拟器设置里改成 1920×1080 之类的分辨率」「找到 2 个 MuMu 实例，请在设置里选一个」
+   * 「MuMu 画面不是横屏 16:9，请在模拟器设置里改成 1920×1080 之类的分辨率」「找到 2 个模拟器实例，请在设置里选一个」
    */
   problem?: string
   /**
@@ -167,11 +167,16 @@ export interface Connection {
   theme?: GameTheme
 }
 
-/** 正在运行的一个 MuMu 实例（v0.5.0） */
-export interface MumuInstance {
-  /** ADB 地址，如 "127.0.0.1:16384"，存进 Settings.mumuSerial */
+/** 支持的安卓模拟器（v0.9.4 加雷电） */
+export type EmulatorKind = 'mumu' | 'ldplayer'
+
+/** 正在运行的一个模拟器实例（v0.5.0 只有 MuMu，v0.9.4 起含雷电，原名 MumuInstance） */
+export interface EmulatorInstance {
+  /** 哪种模拟器 */
+  kind: EmulatorKind
+  /** ADB 地址，如 MuMu "127.0.0.1:16384"、雷电 "emulator-5554"，存进 Settings.emulatorSerial */
   serial: string
-  /** 给用户看的名字：MuMu 窗口标题或实例名 */
+  /** 给用户看的名字：模拟器里的实例名，如「MuMu安卓设备」「雷电模拟器-1」（不带「-LDPlayer」这类后缀） */
   name: string
 }
 
@@ -512,12 +517,15 @@ export interface Settings {
    */
   collapseMode: 'strip' | 'up'
   /**
-   * 游戏来源（v0.5.0，默认 'auto'）。auto：先找 PC 客户端，没有再找 MuMu；pc / mumu：只找这一种。
-   * MuMu 用 ADB 截图（窗口被挡住也能识别），商店标记对准 MuMu 窗口里的游戏画面
+   * 游戏来源（v0.5.0，默认 'auto'；v0.9.4 加 'ldplayer'）。auto：先找 PC 客户端，没有再找 MuMu 和雷电里正在运行明日方舟的实例；
+   * pc / mumu / ldplayer：只找这一种。模拟器用 ADB 截图（窗口被挡住也能识别），商店标记对准模拟器窗口里的游戏画面
    */
-  gameSource: 'auto' | 'pc' | 'mumu'
-  /** 多开 MuMu 时用哪个实例（MumuInstance.serial）；'' = 自动，只有一个实例时用它 */
-  mumuSerial: string
+  gameSource: 'auto' | 'pc' | EmulatorKind
+  /**
+   * 多开模拟器时用哪个实例（EmulatorInstance.serial）；'' = 自动，只有一个实例在运行明日方舟时用它。
+   * v0.9.4 前叫 mumuSerial，旧设置文件里的 mumuSerial 读进这里
+   */
+  emulatorSerial: string
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
@@ -826,8 +834,8 @@ export interface Api {
   applyUpdate(): Promise<void>
   /** 用资源管理器打开数据文件夹 */
   openDataFolder(): Promise<void>
-  /** 列出正在运行的 MuMu 实例（v0.5.0），设置里多开时让用户选；没有就是空数组 */
-  mumuInstances(): Promise<MumuInstance[]>
+  /** 列出正在运行的模拟器实例（MuMu 和雷电，v0.9.4 前叫 mumuInstances），设置里多开时让用户选；没有就是空数组 */
+  emulatorInstances(): Promise<EmulatorInstance[]>
   /**
    * 弹出系统保存对话框导出备份（.json：我的阵容、特别关注、偏好设置；不含本局状态、窗口位置）。
    * 默认文件名「卫戍协议助手-备份-YYYY-MM-DD.json」。用户取消返回 null，否则返回保存的完整路径。

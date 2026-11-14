@@ -20,6 +20,16 @@ public struct RECT
 
 public static class User32
 {
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, StringBuilder text, int count);
+
+    public static string GetWindowClass(IntPtr hwnd)
+    {
+        var text = new StringBuilder(256);
+        GetClassName(hwnd, text, text.Capacity);
+        return text.ToString();
+    }
+
     [DllImport("dwmapi.dll")]
     public static extern int DwmFlush();
 

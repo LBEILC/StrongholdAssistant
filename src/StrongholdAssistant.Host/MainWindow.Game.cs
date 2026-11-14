@@ -168,7 +168,7 @@ public partial class MainWindow
     // 跟随定位不等待 OCR 预热；首次发现和后续移动共用 UpdateGame。
     private void InitializeGameTracking()
     {
-        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial);
+        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial);
         _capture.Connection.Changed += _ =>
         {
             _scanner?.InvalidateShop();
@@ -443,7 +443,7 @@ public partial class MainWindow
         {
             await Task.Run(() =>
             {
-                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.MumuSerial))
+                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial))
                     _capture.Connection.FindGameWindow();
             });
         }
@@ -463,8 +463,8 @@ public partial class MainWindow
         var state = _capture.Connection.State;
         var viewport = _capture.Connection.GetViewport(state.Window);
         bool connected = state.Source == "pc" ? viewport is not null
-            : state.Source == "mumu" && state.Width > 0 && state.Problem is null;
-        string? resolution = !connected ? null : state.Source == "mumu"
+            : _capture.Connection.IsAdb && state.Width > 0 && state.Problem is null;
+        string? resolution = !connected ? null : _capture.Connection.IsAdb
             ? $"{state.Width}×{state.Height}" : $"{viewport!.Value.Width}×{viewport.Value.Height}";
         bool? gameElevated = connected ? state.Source == "pc" && ProcessElevation.ForWindow(state.Window) : null;
         RefreshRouteHotkey(gameElevated == true);

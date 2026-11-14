@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace ASPAssistant.Core.Services;
 
-public static class MumuDisplay
+public static class EmulatorDisplay
 {
     // 按 WindowState 分块，避免把其他窗口的 display 或已退出的 Activity 关联到游戏。
     public static int? FindGameDisplay(string windows)
@@ -23,10 +23,10 @@ public static class MumuDisplay
 
     private static readonly ConcurrentDictionary<(string Serial, string Step, string Code, string Error), byte> LoggedFailures = new();
 
-    public static MumuDevice Inspect(MumuDevice device) => Inspect(device, RunAdb);
+    public static EmulatorDevice Inspect(EmulatorDevice device) => Inspect(device, RunAdb);
 
-    public static MumuDevice Inspect(MumuDevice device,
-        Func<MumuDevice, string[], (int ExitCode, byte[] Output, string Error)> runAdb)
+    public static EmulatorDevice Inspect(EmulatorDevice device,
+        Func<EmulatorDevice, string[], (int ExitCode, byte[] Output, string Error)> runAdb)
     {
         (int ExitCode, byte[] Output, string Error)? Probe(string step, params string[] arguments)
         {
@@ -60,10 +60,10 @@ public static class MumuDisplay
     {
         var excerpt = error[..Math.Min(error.Length, 200)].Replace('\r', ' ').Replace('\n', ' ');
         if (LoggedFailures.TryAdd((serial, step, code, excerpt), 0))
-            AppLogger.Warn("MuMu", $"serial={serial} step={step} exit={code} stderr={excerpt}");
+            AppLogger.Warn("Emulator", $"serial={serial} step={step} exit={code} stderr={excerpt}");
     }
 
-    public static byte[] Capture(MumuDevice device)
+    public static byte[] Capture(EmulatorDevice device)
     {
         var result = RunAdb(device, ["-s", device.Serial, "exec-out", "screencap", "-p", "-d",
             device.DisplayId!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
@@ -71,7 +71,7 @@ public static class MumuDisplay
         return result.Output;
     }
 
-    private static (int ExitCode, byte[] Output, string Error) RunAdb(MumuDevice device, string[] arguments)
+    private static (int ExitCode, byte[] Output, string Error) RunAdb(EmulatorDevice device, string[] arguments)
     {
         var start = new ProcessStartInfo(device.AdbPath)
         {

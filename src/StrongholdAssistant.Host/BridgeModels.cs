@@ -51,7 +51,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public string MirrorChyanCdk { get; init; } = "";
     public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
     public string GameSource { get; init; } = "auto";
-    public string MumuSerial { get; init; } = "";
+    public string EmulatorSerial { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
     public string DockSide { get; init; } = "auto";
@@ -98,7 +98,7 @@ public sealed record Connection(string State,
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Theme { get; init; }
 }
-public sealed record MumuInstance(string Serial, string Name);
+public sealed record EmulatorInstance(string Kind, string Serial, string Name);
 public sealed record ScanStatus(bool Busy,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Message = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? Ok = null,

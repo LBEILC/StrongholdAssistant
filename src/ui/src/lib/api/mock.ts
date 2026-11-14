@@ -1,6 +1,6 @@
 // 原型用的假后端：数据取自参考项目的当期数据表，本局信息仿照 TestData/info-ingame-1920x1080.png。
 // 禁用推算是粗略的假实现，只为让界面能走通；真实逻辑在参考项目的 BanScreenAnalyzer。
-import type { Api, BanGroup, Catalog, CovenantGoal, Economy, Income, Lineup, MatchInfo, MatchRecord, ScanStatus, Session, Settings, UpdateStatus } from './types'
+import type { Api, BanGroup, Catalog, CovenantGoal, Economy, EmulatorInstance, Income, Lineup, MatchInfo, MatchRecord, ScanStatus, Session, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 
 // 目录数据重新生成前先用这份收入来源（生成后以数据为准）
@@ -205,7 +205,7 @@ let settings: Settings = {
   overlaySide: 'left',
   collapseMode: 'strip',
   gameSource: 'auto',
-  mumuSerial: '',
+  emulatorSerial: '',
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
   toggleHotkey: 'Alt+S',
@@ -427,9 +427,16 @@ export const mockApi: Api = {
   },
   appInfo: () => wait({ version: '0.4.2', dataDir: String.raw`C:\Users\你\AppData\Roaming\StrongholdAssistant`, hotkeyFailed: false, workbench: location.search.includes('wb'), elevated: location.search.includes('admin') && !location.search.includes('adminDeny') }, 0),
   openDataFolder: async () => {},
-  // ?mumu2：模拟多开两个实例
-  mumuInstances: () =>
-    wait(location.search.includes('mumu2') ? [{ serial: '127.0.0.1:16384', name: 'MuMu安卓设备' }, { serial: '127.0.0.1:16416', name: 'MuMu安卓设备-1' }] : []),
+  // ?mumu2：模拟多开两个 MuMu 实例；?ld2：再加两个雷电实例
+  emulatorInstances: () =>
+    wait<EmulatorInstance[]>([
+      ...(location.search.includes('mumu2')
+        ? [{ kind: 'mumu' as const, serial: '127.0.0.1:16384', name: 'MuMu安卓设备' }, { kind: 'mumu' as const, serial: '127.0.0.1:16416', name: 'MuMu安卓设备-1' }]
+        : []),
+      ...(location.search.includes('ld2')
+        ? [{ kind: 'ldplayer' as const, serial: 'emulator-5554', name: '雷电模拟器' }, { kind: 'ldplayer' as const, serial: 'emulator-5556', name: '雷电模拟器-1' }]
+        : []),
+    ]),
   exportData: () => wait(String.raw`C:\Users\你\Desktop\卫戍协议助手-备份-2026-11-11.json`, 300),
   pickBackup: () =>
     wait({ token: 'mock', summary: { appVersion: '0.2.0', exportedAt: new Date(Date.now() - 3 * 86400_000).toISOString(), lineups: 6, focusCovenants: 2, focusOperators: 4 } }, 300),

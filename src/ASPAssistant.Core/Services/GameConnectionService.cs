@@ -16,14 +16,14 @@ public sealed class GameConnectionService : IDisposable
     private readonly object _gate = new();
     private (string Serial, int Display)? _loggedCapture;
     private MaaAdbController? _controller;
-    private MumuDevice? _device;
-    private IReadOnlyList<MumuDevice> _devices = [];
+    private EmulatorDevice? _device;
+    private IReadOnlyList<EmulatorDevice> _devices = [];
     private DateTime _discoverAfter, _retryAfter;
     private string _source = "auto", _serial = "";
     private bool _disposed;
     private GameConnectionState _state = new();
     public GameConnectionState State => Volatile.Read(ref _state);
-    public bool IsAdb => State.Source == "mumu";
+    public bool IsAdb => State.Source is "mumu" or "ldplayer";
     public event Action<GameConnectionState>? Changed;
 
     public bool Configure(string source, string serial)
@@ -43,22 +43,28 @@ public sealed class GameConnectionService : IDisposable
         }
     }
 
-    public static IReadOnlyList<MumuDevice> DiscoverMumuDevices()
+    public static IReadOnlyList<EmulatorDevice> DiscoverEmulatorDevices()
     {
         using var found = MaaToolkit.Shared.AdbDevice.Find();
-        return found.Where(d => d.Name.Contains("mumu", StringComparison.OrdinalIgnoreCase))
-            .Select(d => new MumuDevice(d.Name, d.AdbPath, d.AdbSerial, d.Config)).ToArray();
+        var devices = found.Where(d => !d.Name.EndsWith("-LDPlayer", StringComparison.OrdinalIgnoreCase)
+                && d.Name.Contains("mumu", StringComparison.OrdinalIgnoreCase))
+            .Select(d => new EmulatorDevice(
+                System.Text.RegularExpressions.Regex.Replace(d.Name, @"-MuMuPlayer\d*$", "",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+                d.AdbPath, d.AdbSerial, d.Config,
+                "mumu")).ToArray();
+        return devices.Concat(LdPlayerWindows.DiscoverDevices()).ToArray();
     }
 
-    public static IReadOnlyList<MumuWindow> FindMumuWindows()
+    public static IReadOnlyList<EmulatorWindow> FindEmulatorWindows()
     {
         using var windows = MaaToolkit.Shared.Desktop.Window.Find();
         return windows.Where(w => User32.IsWindowVisible(w.Handle)
-                && IsMumuGameWindow(w.Handle))
-            .Select(w => new MumuWindow(w.Handle, w.Name)).ToArray();
+                && IsEmbeddedGameWindow(w.Handle))
+            .Select(w => new EmulatorWindow(w.Handle, w.Name)).ToArray();
     }
 
-    private static bool IsMumuGameWindow(IntPtr window)
+    private static bool IsEmbeddedGameWindow(IntPtr window)
     {
         var display = User32.FindChildWindow(window, "nemudisplay");
         return display != IntPtr.Zero && User32.GetAncestor(display, 2) == window;
@@ -70,16 +76,18 @@ public sealed class GameConnectionService : IDisposable
         {
             if (_disposed) return IntPtr.Zero;
             var selected = GameSourceSelection.Find(_source, _serial, User32.FindArknightsWindow,
-                FindMumuWindows, () =>
+                FindEmulatorWindows, () =>
                 {
                     // 设备发现会调用 ADB；窗口轮询不必每 100 毫秒重新发现。
                     if (DateTime.UtcNow >= _discoverAfter)
                     {
                         _discoverAfter = DateTime.UtcNow.AddSeconds(5);
-                        try { _devices = DiscoverMumuDevices().Select(MumuDisplay.Inspect).ToArray(); }
+                        try { _devices = DiscoverEmulatorDevices().Select(EmulatorDisplay.Inspect).ToArray(); }
                         catch { _devices = []; }
                     }
-                    return _devices;
+                    return _devices.Select(d => d.Kind == "ldplayer"
+                        && !LdPlayerWindows.IsValid(d.Window, d.RenderWindow)
+                        ? d with { Window = IntPtr.Zero, RenderWindow = IntPtr.Zero } : d).ToArray();
                 });
             var previous = State;
             if (_device != selected.Device || previous.Source != selected.Source || previous.Window != selected.Window)
@@ -101,7 +109,9 @@ public sealed class GameConnectionService : IDisposable
     {
         if (window == IntPtr.Zero || User32.IsIconic(window)) return null;
         if (!IsAdb) return User32.GetClientRectScreen(window);
-        var display = User32.FindChildWindow(window, "nemudisplay");
+        var display = State.Source == "ldplayer" ? _device?.RenderWindow ?? IntPtr.Zero
+            : User32.FindChildWindow(window, "nemudisplay");
+        if (State.Source == "ldplayer" && !LdPlayerWindows.IsValid(window, display)) return null;
         var bounds = display == IntPtr.Zero ? null : User32.GetClientRectScreen(display);
         var state = State;
         return bounds is { Width: > 0, Height: > 0 } rect
@@ -127,19 +137,27 @@ public sealed class GameConnectionService : IDisposable
                                 | AdbScreencapMethods.RawWithGzip | AdbScreencapMethods.RawByNetcat,
                             AdbInputMethods.AdbShell, config: _device.Config,
                             agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
-                        if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded) throw new IOException();
+                        if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded)
+                        {
+                            _controller.Dispose();
+                            _controller = null;
+                            _retryAfter = DateTime.UtcNow.AddSeconds(5);
+                            SetState(State with { Problem = _device.Kind == "ldplayer"
+                                ? GameSourceSelection.LdAdbProblem : GameSourceSelection.AdbProblem, Width = 0, Height = 0 });
+                            return null;
+                        }
                         _controller.SetOption_ScreenshotUseRawSize(true);
                     }
                     if (_controller.Screencap().Wait() != MaaJobStatus.Succeeded
                         || !_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException();
                 }
-                else if (!image.TrySetEncodedData(MumuDisplay.Capture(_device)) || image.IsEmpty)
+                else if (!image.TrySetEncodedData(EmulatorDisplay.Capture(_device)) || image.IsEmpty)
                     throw new IOException();
                 var capture = (Serial: _device.Serial, Display: _device.DisplayId!.Value);
                 if (_loggedCapture != capture)
                 {
                     var method = capture.Display == 0 ? "MaaFramework ADB auto" : "adb exec-out screencap -p -d";
-                    AppLogger.Info("MuMu", $"serial={capture.Serial} display={capture.Display} capture={method}");
+                    AppLogger.Info(_device.DisplayName, $"serial={capture.Serial} display={capture.Display} capture={method}");
                     _loggedCapture = capture;
                 }
                 var width = image.Width;
@@ -147,7 +165,9 @@ public sealed class GameConnectionService : IDisposable
                 if (!WindowGeometry.IsSupportedGameAspectRatio(width, height))
                 {
                     SetState(State with { Width = width, Height = height,
-                        Problem = $"MuMu 画面是 {width}×{height}，请在模拟器设置里改成横屏 16:9（如 1920×1080）。" });
+                        Problem = _device.Kind == "ldplayer"
+                            ? $"雷电画面是 {width}×{height}，请在雷电设置 → 性能设置里把分辨率改成横屏 16:9（如 1920×1080）。"
+                            : $"MuMu 画面是 {width}×{height}，请在模拟器设置里改成横屏 16:9（如 1920×1080）。" });
                     return null;
                 }
                 if (width > maxWidth)
@@ -161,8 +181,7 @@ public sealed class GameConnectionService : IDisposable
                 _controller?.Dispose();
                 _controller = null;
                 _retryAfter = DateTime.UtcNow.AddSeconds(5);
-                // TODO(design): 审阅 display 截图失败时的提示文案。
-                SetState(State with { Problem = "MuMu 游戏画面截图失败，请提供诊断包以排查显示屏兼容性。", Width = 0, Height = 0 });
+                SetState(State with { Problem = $"{_device.DisplayName}游戏画面截图失败，请在设置里导出诊断包反馈。", Width = 0, Height = 0 });
                 return null;
             }
         }
