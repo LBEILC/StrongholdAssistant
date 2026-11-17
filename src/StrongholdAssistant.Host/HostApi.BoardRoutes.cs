@@ -24,7 +24,7 @@ public sealed partial class HostApi
     private string? _boardMode;
     private int _nonRestReadings;
     private byte[]? _latestBoardFrame;
-    private string? _recognitionLogState, _queryLogState;
+    private string? _recognitionLogState, _queryLogState, _filterLogState;
     private bool? _boardMainScreen;
     private DateTimeOffset? _lastFailedBoardLog;
     internal Action<string> BoardLog { get; set; } = message => AppLogger.Info("Board", message);
@@ -142,8 +142,44 @@ public sealed partial class HostApi
                 routes = _boardRouteStore.Find(board, round.Value, Match.Solo, Match.BossId, Match.Mode?.Id, out var reason);
                 var query = $"查询 map={board.MapId} mode={Match.Mode?.Id ?? (Match.Solo ? "mode_single_20" : "mode_multi_normal")} round={round} solo={Match.Solo} boss={Match.BossId ?? "null"} routes={routes?.Routes.Count ?? 0} reason={reason ?? "成功"}";
                 if (query != _queryLogState) { BoardLog(query); _queryLogState = query; }
+                if (routes is not null) routes = FilterBoardRoutes(routes);
             }
             PublishBoardRoutes(routes);
+        }
+    }
+
+    internal BoardRoutes FilterBoardRoutes(BoardRoutes routes)
+    {
+        var match = Match;
+        var possible = _placementAdapter.RoundStreams(routes.Round, match.Mode?.Id, match.Solo, match.EnemyTypes, match.BossId);
+        var selected = possible;
+        string reason = possible.Count == 0 ? "缺怪组数据，不过滤" : "本局可能怪组";
+        if (possible.Count > 0 && match.RoundEnemies is { } known && known.Round == routes.Round && known.Enemies.Length > 0)
+        {
+            var matching = possible.Where(s => known.Enemies.All(e => s.Spawns.Any(p => p.Profile.Name == e.Name))).ToArray();
+            if (matching.Length > 0) { selected = matching; reason = "本回合名单匹配"; }
+            else reason = "名单未匹配，回到全部可能怪组";
+        }
+        // SimSpawn.Flying 来自现有敌人资料的 motion == FLY，不能用怪组的 Flying 代替逐只判断。
+        bool fly = selected.SelectMany(s => s.Spawns).Any(e => e.Flying);
+        bool walk = selected.SelectMany(s => s.Spawns).Any(e => !e.Flying);
+        var kept = possible.Count == 0 ? routes.Routes : routes.Routes.Where(r => r.Boss || (r.Motion == "fly" ? fly : walk)).ToArray();
+        var removed = routes.Routes.Except(kept).Select(r => r.Motion).Distinct().ToArray();
+        string log = $"过滤 round={routes.Round} possible={possible.Count} kept={selected.Count} removed={(removed.Length == 0 ? "无" : string.Join(",", removed))} reason={reason}";
+        if (log != _filterLogState) { BoardLog(log); _filterLogState = log; }
+        return removed.Length == 0 ? routes : routes with { Routes = kept };
+    }
+
+    private void RefreshBoardRoutes()
+    {
+        lock (_boardGate)
+        {
+            if (!_boardRoutesEnabled || _boardRoutes is not { } previous) return;
+            // 已确认的回合可能先由经济扫描更新；沿用当前投影立即推送，下一帧仍按原流程校准棋盘。
+            int round = Match.Economy?.Round == previous.Round + 1 ? previous.Round + 1 : previous.Round;
+            var board = new BoardMatch(previous.MapId, previous.Camera, previous.Projection, 0, previous.PlayerSide);
+            var routes = _boardRouteStore.Find(board, round, Match.Solo, Match.BossId, Match.Mode?.Id);
+            PublishBoardRoutes(routes is null ? null : FilterBoardRoutes(routes));
         }
     }
 
@@ -202,6 +238,7 @@ public sealed partial class HostApi
         if (next is not null && _boardRoutes is { } previous)
             same = next.MapId == previous.MapId && next.Camera == previous.Camera && next.Round == previous.Round
                 && next.PlayerSide == previous.PlayerSide && next.Solo == previous.Solo && next.BossId == previous.BossId && _boardMode == Match.Mode?.Id
+                && next.Routes.SequenceEqual(previous.Routes) && next.BossSpots.SequenceEqual(previous.BossSpots)
                 && new[] { (0d, 0d), (6d, 4d) }.All(p =>
                 {
                     var a = next.Projection.Project(p.Item1, p.Item2);

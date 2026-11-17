@@ -91,6 +91,9 @@ public sealed class PlacementAdapter
                 continue;
             }
             var equipment = unit.Equipment ?? [];
+            // TODO(design): 现有模拟器没有元素损伤累计、爆发和对应选敌，按既有假设列表说明。
+            if (name == PithIdentity.Gift && !assumptions.Any(a => a.StartsWith(PithIdentity.Gift, StringComparison.Ordinal)))
+                assumptions.Add("Pith（优等生）的神经、灼燃、凋亡损伤及优先攻击未爆发目标没算");
             var equipmentNames = equipment.Select(e => e.Name).ToArray();
             var transforms = equipmentNames.Contains("变形同构体")
                 ? equipmentNames.Where(_transforms.ContainsKey).Select(e => _transforms[e]).Distinct().ToArray() : [];
@@ -110,6 +113,14 @@ public sealed class PlacementAdapter
                 module = null;
             }
             var effects = new List<CombatEffect>();
+            if (name == PithIdentity.Gift)
+            {
+                var variant = unit.Elite == true ? _operators[name].Elite : _operators[name].Normal;
+                var trait = string.Join(" ", variant.Traits.Select(t => t.TraitDescription));
+                var bonus = System.Text.RegularExpressions.Regex.Match(trait, @"攻击力和生命上限\+(\d+)%");
+                double amount = double.Parse(bonus.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) / 100;
+                effects.Add(new() { Status = "simulated", Atk = amount, Hp = amount });
+            }
             foreach (var item in equipment)
             {
                 var effect = SelectEquipmentEffect(item);

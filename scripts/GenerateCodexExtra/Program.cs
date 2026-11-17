@@ -23,6 +23,7 @@ foreach (var directory in Directory.GetDirectories("data/operator_avatars"))
         skins[Path.GetFileName(file)] = Path.GetFileName(directory);
 // 策略赠送棋子没有头像模板，使用数据表中的角色编号。
 skins["char_618_acrbot.png"] = "暴躁铁皮";
+skins["char_616_pithst.png"] = "Pith（优等生）";
 var traps = data["trapChessDataDict"]!.AsObject();
 var effects = data["effectInfoDataDict"]!;
 string EquipmentName(string id) => Text(effects[Text(traps[id]!["effectId"])]!["effectName"]);

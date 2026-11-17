@@ -25,6 +25,9 @@ UninstallDisplayIcon={app}\StrongholdAssistant.exe
 [Languages]
 Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
+[Messages]
+SetupAppRunningError=高效雅雅还开着（可能是以管理员身份运行的），请先在托盘或任务管理器里退出它，再点重试。
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
@@ -63,6 +66,13 @@ Name: "{autodesktop}\高效雅雅·卫戍协议助手"; Filename: "{app}\Strongh
 Filename: "{app}\StrongholdAssistant.exe"; Description: "运行高效雅雅·卫戍协议助手"; Flags: nowait postinstall skipifsilent
 
 [Code]
+#include "InstallGuard.iss"
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := CheckAssistantFiles(ExpandConstant('{app}'));
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then

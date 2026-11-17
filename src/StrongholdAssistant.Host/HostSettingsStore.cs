@@ -70,6 +70,7 @@ public sealed class HostSettingsStore(string path)
                 && speedValue.TryGetValue<string>(out var speed) && speed is ("normal" or "fast") ? speed : "normal",
             UpdateSource = json["updateSource"]?.GetValue<string>() ?? "github",
             UpdateProxy = json["updateProxy"]?.GetValue<string>() ?? "",
+            AutoDownloadUpdate = json["autoDownloadUpdate"]?.GetValue<bool>() ?? true,
             MirrorChyanCdk = json["mirrorChyanCdk"]?.GetValue<string>() ?? "",
             GitHubToken = UnprotectSecret(json["githubToken"]?.GetValue<string>()),
             GitHubTokenExpiresAt = json["githubTokenExpiresAt"]?.GetValue<string>() ?? "",
@@ -77,6 +78,7 @@ public sealed class HostSettingsStore(string path)
             AlwaysOnTop = json["alwaysOnTop"]?.GetValue<bool>() ?? false,
             GameSource = json["gameSource"]?.GetValue<string>() ?? "auto",
             EmulatorSerial = json["emulatorSerial"]?.GetValue<string>() ?? json["mumuSerial"]?.GetValue<string>() ?? "",
+            AdbAddress = json["adbAddress"]?.GetValue<string>() ?? "",
             FollowGame = json["followGame"]?.GetValue<bool>() ?? true,
             DockSide = json["dockSide"]?.GetValue<string>() ?? "auto",
             OverlaySide = json["overlaySide"]?.GetValue<string>() ?? "left",
@@ -115,6 +117,12 @@ public sealed class HostSettingsStore(string path)
             throw new ArgumentException("站位目标无效。");
         ValidateSides(settings);
         if (settings.Routes is null) throw new ArgumentException("敌人路线设置无效。");
+        var address = settings.AdbAddress;
+        if (address != "" && (address is null ||
+            !(System.Text.RegularExpressions.Regex.IsMatch(address, @"\Aemulator-[0-9]+\z") ||
+              System.Text.RegularExpressions.Regex.IsMatch(address, @"\A[\w.-]+:[0-9]{1,5}\z")
+              && int.TryParse(address[(address.LastIndexOf(':') + 1)..], out var port) && port is >= 1 and <= 65535)))
+            throw new ArgumentException("ADB 地址格式不对。");
         settings.Routes.Validate();
         if (settings.OverlayLayers is null) throw new ArgumentException("覆盖层设置无效。");
         if (settings.ShopScanSpeed is not ("normal" or "fast"))

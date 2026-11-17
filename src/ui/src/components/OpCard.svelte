@@ -32,7 +32,7 @@
   <span class="foot">
     <span class="bonds">
       {#each [...op.core, ...op.extra] as c (c)}
-        <span class="glyph b" class:core={app.cov(c).kind === 'core'} style:--src="url({asset.bond(c)})" title={app.cov(c).name}></span>
+        <span class="bd" title={app.cov(c).name}><span class="glyph b" class:core={app.cov(c).kind === 'core'} style:--src="url({asset.bond(c)})"></span></span>
       {/each}
     </span>
     <span class="nm">{name}</span>
@@ -138,7 +138,7 @@
     background: var(--mint);
   }
   .foot {
-    margin-top: -16px;
+    margin-top: -18px;
     position: relative;
     padding: 0 5px 5px;
     display: flex;
@@ -147,16 +147,26 @@
   }
   .bonds {
     display: flex;
-    gap: 3px;
-    height: 13px;
+    gap: 2px;
+    height: 15px;
+  }
+  /* 盟约图标垫深色圆底、图标用亮色：直接压在立绘上时浅色皮肤和亮立绘都看不清（v1.2.8 群友反馈） */
+  .bd {
+    width: 15px;
+    height: 15px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgb(12 14 18 / 0.72);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.16);
   }
   .b {
-    width: 13px;
-    height: 13px;
-    color: var(--card-bond-fg);
+    width: 11px;
+    height: 11px;
+    color: #b9c0cc;
   }
   .b.core {
-    color: var(--card-bond-core-fg);
+    color: #fff;
   }
   /* 名字条随皮肤：终端直接压在卡框的青绿条上，乌萨斯是深青灰斜条，可露希尔是白条 */
   .nm {

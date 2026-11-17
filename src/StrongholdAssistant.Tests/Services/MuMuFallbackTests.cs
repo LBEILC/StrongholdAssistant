@@ -41,6 +41,15 @@ public class MuMuFallbackTests
     }
 
     [Theory]
+    [InlineData("127.0.0.1:16384", true)]
+    [InlineData("emulator-5554", true)]
+    [InlineData("localhost:5555", true)]
+    [InlineData("192.168.8.125:5555", false)]
+    [InlineData("my-phone.lan:5555", false)]
+    public void TellsLoopbackFromNetworkSerials(string serial, bool loopback) =>
+        Assert.Equal(loopback, MuMuFallback.IsLoopback(serial));
+
+    [Theory]
     [InlineData("192.168.8.125:16384", "192.168.8.125:5555")]
     [InlineData("127.0.0.1:16416", "127.0.0.1:16416")]
     [InlineData("emulator-5554", "emulator-5554")]

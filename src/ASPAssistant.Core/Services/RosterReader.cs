@@ -23,6 +23,7 @@ public sealed partial class RosterReader
     private readonly Dictionary<string, Dictionary<string, double[]>> _templates;
     private readonly PrototypeCatalog _prototypes;
     private readonly Dictionary<string, byte[]> _prototypeBonds;
+    public bool? HasPithStrategy { get; set; }
     public RosterReader(IOcrEngine ocr, string data)
     {
         _ocr = ocr;
@@ -74,16 +75,32 @@ public sealed partial class RosterReader
             if (!_operators.ContainsKey(text) && !_prototypes.IsPrototype(text))
                 text = string.Concat((await _ocr.RecognizeLineAsync(cardBytes, x - 35, y + 249, 160, 30)).Select(l => l.Text.Replace(" ", "")));
             text = text.Replace("タ", "夕").Replace("傑", "杰");
-            if (_prototypes.IsPrototype(text))
+            if (!_operators.ContainsKey(text) && !_prototypes.IsPrototype(text))
+            {
+                var suffixes = _operators.Keys.Where(n => n.Length >= 2 && text.EndsWith(n, StringComparison.Ordinal)).OrderByDescending(n => n.Length).ToArray();
+                if (suffixes.Length > 0) text = suffixes[0];
+            }
+            bool realPith = false;
+            if (text == "Pith")
+            {
+                var tier = await ReadPrototypeTier(cardBytes);
+                var bonds = ReadPrototypeBonds(cardImage);
+                // 原型的盟约仍属于被替代的棋子；协防／调和是两名真实 Pith 的盟约。
+                if (bonds.Length > 0 && !bonds.Contains("emptyShip") && !bonds.Contains("maniShip"))
+                {
+                    pending.Add(new(text, sourceX, sourceY, Array.FindIndex(grid, g => g.X == sourceX && g.Y == sourceY), tier, bonds));
+                    continue;
+                }
+                var identity = PithIdentity.Resolve(tier, HasPithStrategy);
+                if (identity is null) { unknown.Add($"Pith ({sourceX},{sourceY})：阶数与策略不足以区分身份"); continue; }
+                text = identity;
+                realPith = true;
+            }
+            if (!realPith && _prototypes.IsPrototype(text))
             {
                 pending.Add(new(text, sourceX, sourceY, Array.FindIndex(grid, g => g.X == sourceX && g.Y == sourceY),
                     await ReadPrototypeTier(cardBytes), ReadPrototypeBonds(cardImage)));
                 continue;
-            }
-            if (!_operators.ContainsKey(text))
-            {
-                var suffixes = _operators.Keys.Where(n => n.Length >= 2 && text.EndsWith(n, StringComparison.Ordinal)).OrderByDescending(n => n.Length).ToArray();
-                if (suffixes.Length > 0) text = suffixes[0];
             }
             if (!_operators.TryGetValue(text, out var op))
             {

@@ -77,6 +77,38 @@ public static class BanCovenantReader
         coreRegion = GameUiScale.InformationRegion(coreRegion, k, imgWidth, imgHeight);
         additionalRegion = GameUiScale.InformationRegion(additionalRegion, k, imgWidth, imgHeight);
 
+        // 详情页轻微上滚时标题仍完整可见，但会落在固定区域的上缘之外。
+        // 只向上扩展标题余量，保留原来的下边界，避免读入后续禁用干员区。
+        if ((double)imgWidth / imgHeight >= 1.7)
+        {
+            double margin = 40 * k * GameUiScale.InformationBaseScale(imgWidth, imgHeight) / imgHeight;
+            coreRegion = coreRegion with { YPercent = coreRegion.YPercent - margin,
+                HeightPercent = coreRegion.HeightPercent + margin };
+            additionalRegion = additionalRegion with { YPercent = additionalRegion.YPercent - margin,
+                HeightPercent = additionalRegion.HeightPercent + margin };
+        }
+
+        // 高画面的开局页可将核心盟约分成两行，对局详情仍是一行；按标题分段。
+        if ((double)imgWidth / imgHeight < 1.7)
+        {
+            var headings = await ocr.RecognizeRegionAsync(screenshot,
+                (int)(imgWidth * .07), (int)(imgHeight * .1),
+                (int)(imgWidth * .18), (int)(imgHeight * .9));
+            double? HeaderY(string title) => headings
+                .Where(t => NormalizeHeader(t.Text).Contains(title))
+                .Select(t => (double?)(t.Box.Y - 16 * GameUiScale.InformationBaseScale(imgWidth, imgHeight)))
+                .FirstOrDefault();
+            var coreTop = HeaderY(CoreHeaderText);
+            var additionalTop = HeaderY(AdditionalHeaderText);
+            var bansTop = HeaderY("本局禁用");
+            if (coreTop is not null && additionalTop > coreTop)
+                coreRegion = coreRegion with { YPercent = coreTop.Value / imgHeight,
+                    HeightPercent = (additionalTop.Value - coreTop.Value) / imgHeight };
+            if (additionalTop is not null)
+                additionalRegion = additionalRegion with { YPercent = additionalTop.Value / imgHeight,
+                    HeightPercent = ((bansTop ?? imgHeight) - additionalTop.Value) / imgHeight };
+        }
+
         var coreTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, coreRegion,
             CoreHeaderText, coreCovenantNames, "Core", greenThreshold);
         var additionalTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, additionalRegion,
@@ -171,7 +203,9 @@ public static class BanCovenantReader
         var pending = new List<(BanIconSlot Slot, int X, int Y, int W, int H)>();
         foreach (var slot in slots)
         {
-            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35))
+            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35
+                && CenterY(c.Ocr) >= slot.CenterY
+                && CenterY(c.Ocr) <= slot.Bottom + (slot.Bottom - slot.Top) * .8))
                 continue;
 
             int iconHeight = Math.Max(24, slot.Bottom - slot.Top);
@@ -296,6 +330,7 @@ public static class BanCovenantReader
             // Rows share X positions, so the vertical distance decides which row a name
             // belongs to (the label always sits below its own icon).
             var slot = slots
+                .Where(s => s.StateKnown)
                 .Where(s => Math.Abs(s.CenterX - cx) <= tolerances[s.Row])
                 // 2026-11-14：名字在图标下方；漏掉第二行时不能绑定到第一行同列。
                 .Where(s => cy >= s.CenterY && cy <= s.Bottom + (s.Bottom - s.Top) * 0.8)

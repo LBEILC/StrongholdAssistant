@@ -11,12 +11,13 @@ public sealed record FieldOverlayGeometry(BoardProjection Projection,
     IReadOnlyDictionary<FieldCell, (double X, double Y)> Anchors,
     IReadOnlyDictionary<FieldCell, FieldBadge> Badges);
 
-/// <summary>角标决定占用；名字只读拖动详情。模板匹配不使用小人身份特征。</summary>
+/// <summary>按格读取角标与身体证据；低矮干员通过既有小人模板补证占用。</summary>
 public sealed partial class FieldReader : IDisposable
 {
     private readonly IOcrEngine _ocr;
     private readonly FieldEquipmentReader _equipment;
     private readonly string[] _names;
+    public bool? HasPithStrategy { get; set; }
     private readonly List<(int Tier, int Size, double[] Values, double[] Fine, double[] Lower, double[] LowerFine)> _templates = [];
     private readonly BoardRecognizer _board;
     private readonly GarrisonBoardData _maps;
@@ -133,6 +134,12 @@ public sealed partial class FieldReader : IDisposable
             var texts = await _ocr.RecognizeRegionAsync(frame, 0, (int)(285 * scale), (int)(230 * scale), (int)(65 * scale));
             string text = string.Join("", texts.Select(t => t.Text.Replace(" ", "")));
             drag = _names.FirstOrDefault(n => text.Contains(n, StringComparison.Ordinal));
+            if (drag == "Pith")
+            {
+                var tiers = await _ocr.RecognizeRegionAsync(frame, (int)(12 * scale), (int)(340 * scale), (int)(48 * scale), (int)(48 * scale));
+                var values = tiers.Select(t => PithIdentity.ReadTier(t.Text)).OfType<int>().Distinct().ToArray();
+                drag = PithIdentity.Resolve(values.Length == 1 ? values[0] : null, HasPithStrategy);
+            }
         }
         // 商店预览也有同款详情；只有拖动或已选中己方单位的“出售”控件才读取装备。
         bool selected = dragging;
@@ -331,7 +338,8 @@ public sealed partial class FieldReader : IDisposable
             if (badge.X + 90 * width / 1920 < width && badge.Y + 150 * width / 1920 < height && (cell.Zone == "bench" ? HasSummonCount(px, badge, width / 1920)
                 : HasSummonTriangle(px, badge, width / 1920))) { _summonHints.Add(cell); continue; }
             // 全片仍有无法凭令牌分类的过渡/遮挡候选，保留原人体证据门槛。
-            if (!HasUnitEvidence(px, badge, width, height, cell.Zone == "board")) continue;
+            if (!HasUnitEvidence(px, badge, width, height, cell.Zone == "board")
+                && !HasShortUnitEvidence(bitmap, cell, badge)) continue;
             cells[cell] = badge.Tier;
             _spriteFeet[cell] = (badge.X * 1920 / width + 35,
                 badge.Y * 1080 / height + (cell.Zone == "bench" ? 132 : 112));

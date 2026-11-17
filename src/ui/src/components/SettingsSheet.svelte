@@ -169,6 +169,28 @@
     proxyDraft = v
     if (v === '' || validProxy(v)) saveProxy(v)
   }
+  // 自定义 ADB 地址（v1.2.8）：'' = 自动找；填了就只连这个地址。和代理一样失焦或回车才保存
+  const validAdb = (v: string) => /^emulator-\d+$/.test(v) || (/^[\w.-]+:(\d{1,5})$/.test(v) && +v.split(':')[1] >= 1 && +v.split(':')[1] <= 65535)
+  let adbManual = $state(false)
+  let adbDraft = $state('')
+  $effect(() => {
+    adbDraft = app.settings.adbAddress
+    adbManual = app.settings.adbAddress !== ''
+  })
+  const adbBad = $derived(adbDraft.trim() !== '' && !validAdb(adbDraft.trim()))
+  const saveAdb = (v: string) => v !== app.settings.adbAddress && set('adbAddress', v)
+  const setAdbManual = (on: boolean) => {
+    adbManual = on
+    if (!on) {
+      adbDraft = ''
+      saveAdb('')
+    }
+  }
+  const commitAdb = () => {
+    const v = adbDraft.trim()
+    adbDraft = v
+    if (v === '' || validAdb(v)) saveAdb(v)
+  }
   const expiry = $derived.by(() => {
     if (!u.cdkExpiresAt) return null
     const d = new Date(u.cdkExpiresAt)
@@ -473,6 +495,32 @@
             </button>
           {/each}
         </div>
+      {/if}
+      {#if app.settings.gameSource !== 'pc'}
+        <!-- 自动找不到或连错地址时（如 MuMu 桥接网络、远程设备），手动填 ADB 地址 -->
+        <div class="usrc">
+          <span class="hkl">ADB 地址</span>
+          <div class="scales two">
+            <button class:on={!adbManual} onclick={() => setAdbManual(false)}>自动</button>
+            <button class:on={adbManual} onclick={() => setAdbManual(true)}>手动填</button>
+          </div>
+        </div>
+        {#if adbManual}
+          <div class="cdk">
+            <input
+              class:bad={adbBad}
+              bind:value={adbDraft}
+              placeholder="127.0.0.1:16384"
+              spellcheck="false"
+              autocomplete="off"
+              onblur={commitAdb}
+              onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+          </div>
+          <p class="note" class:bad={adbBad}>
+            {adbBad ? '格式是 地址:端口，如 127.0.0.1:16384、192.168.1.5:5555，或 emulator-5554' : '只连这个地址，不再自动找。在模拟器的 ADB 设置里能看到地址，用 adb devices 能连上的就行。'}
+          </p>
+        {/if}
       {/if}
     </section>
 
@@ -1068,9 +1116,15 @@
         <Icon name="arrowRight" size={16} />
       </button>
       <label class="row">
-        <span class="lbl"><b>自动检查更新</b><small>启动时和开着时每两小时查一次，从{mirror ? ' Mirror酱 ' : ' GitHub '}获取；有新版就在后台下好，点一下安装</small></span>
+        <span class="lbl"><b>自动检查更新</b><small>启动时和开着时每两小时查一次，从{mirror ? ' Mirror酱 ' : ' GitHub '}获取</small></span>
         <input type="checkbox" class="sw" checked={app.settings.autoCheckUpdate} onchange={(e) => set('autoCheckUpdate', e.currentTarget.checked)} />
       </label>
+      {#if app.settings.autoCheckUpdate}
+        <label class="row">
+          <span class="lbl"><b>发现新版自动下载</b><small>关掉后只在顶上提示有新版，点了才开始下载</small></span>
+          <input type="checkbox" class="sw" checked={app.settings.autoDownloadUpdate} onchange={(e) => set('autoDownloadUpdate', e.currentTarget.checked)} />
+        </label>
+      {/if}
     </section>
 
     <section>

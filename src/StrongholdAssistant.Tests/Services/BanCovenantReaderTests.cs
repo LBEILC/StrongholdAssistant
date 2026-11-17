@@ -386,6 +386,32 @@ public class BanCovenantReaderTests
         fractions.Skip(5).Should().OnlyContain(f => f < 0.05);
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task FullyCoveredIcons_KeepSlotsButDoNotGuessBanState(int covered)
+    {
+        var sample = LoadSample("ban-sample-1920x1080.png");
+        var slots = BanIconGrid.Detect(sample, Width, Height, .16, .40);
+        using var stream = new MemoryStream(sample);
+        using var bitmap = new System.Drawing.Bitmap(stream);
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+        {
+            // 将一至两枚激活图标完全遮白；文字保留，不能据文字或白色亮区猜禁用。
+            foreach (var slot in slots.Skip(2).Take(covered))
+                graphics.FillRectangle(System.Drawing.Brushes.White,
+                    (int)slot.CenterX - 45, slot.Top - 2, 90, slot.Bottom - slot.Top + 4);
+        }
+        using var buffer = new MemoryStream();
+        bitmap.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        var read = await BanCovenantReader.ReadAsync(new StubOcrEngine(Sample1Core(), Sample1Additional()),
+            new GarrisonOcrStrategy(), buffer.ToArray(), Width, Height, coreNames, additionalNames);
+        read.CoreSlots.Should().Be(10);
+        read.Core.Should().HaveCount(10 - covered);
+        read.UnnamedCore.Should().HaveCount(covered);
+    }
+
     /// <summary>
     /// Feeds pre-recorded OCR boxes. The two section bands are distinguished by their Y
     /// origin: the core band starts near the top, the additional band below the middle.

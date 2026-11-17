@@ -8,7 +8,7 @@ public sealed partial class SpriteMatcher
 
     private static string AppearanceName(string name, IReadOnlyDictionary<string, string?>? skins) =>
         skins?.GetValueOrDefault(name) is { } value && value.StartsWith(PrototypePrefix, StringComparison.Ordinal)
-            ? value[PrototypePrefix.Length..] : name;
+            ? value[PrototypePrefix.Length..] : name == "Pith" ? "char_509_acast" : name;
 
     private static bool AllowsSkin(string template, string? skin) => skin is null
         || (skin.StartsWith(PrototypePrefix, StringComparison.Ordinal) ? template == "default" : template == "default" || template == skin);

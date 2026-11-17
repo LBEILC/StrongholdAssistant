@@ -5,6 +5,71 @@ namespace StrongholdAssistant.Tests.Services;
 public class GameSourceSelectionTests
 {
     [Theory]
+    [InlineData("mumu")]
+    [InlineData("ldplayer")]
+    [InlineData("auto")]
+    public void ManualAddressUsesOnlyRequestedDeviceWithoutReusingInstanceConfig(string source)
+    {
+        var inspected = new List<string>();
+        var result = GameSourceSelection.FindManual(source, "android.local:5555", [],
+            [new("MuMu", "mumu-adb", "old-mumu", "old-config"),
+             new("雷电", "ld-adb", "emulator-5554", "old-config", "ldplayer")
+                 { Window = (IntPtr)3, RenderWindow = (IntPtr)4 }],
+            _ => throw new Exception("已有 adb，不应使用进程回退"), device =>
+            {
+                inspected.Add(device.Serial);
+                Assert.Equal("{}", device.Config);
+                return device with { DisplayId = 3 };
+            });
+        Assert.Equal(new[] { "android.local:5555" }, inspected);
+        Assert.Equal("android.local:5555", result.Device!.Serial);
+        Assert.Equal(source == "mumu" ? "mumu-adb" : "ld-adb", result.Device.AdbPath);
+        Assert.Equal(source == "mumu" ? IntPtr.Zero : (IntPtr)3, result.Window);
+        Assert.Null(result.Problem);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ManualAddressUsesProcessAdbAndReportsConnectionFailure(bool fail)
+    {
+        const string address = "127.0.0.1:16384";
+        var calls = new List<string>();
+        var result = GameSourceSelection.FindManual("auto", address, [], [],
+            _ => new("MuMu", "adb", "", "{}"), device => EmulatorDisplay.Inspect(device, (_, args) =>
+            {
+                calls.Add(string.Join(" ", args));
+                return fail ? (1, [], "device offline") : (0, System.Text.Encoding.UTF8.GetBytes("""
+                    Window #0 Window{111 u0 com.hypergryph.arknights/.Main}:
+                      mDisplayId=0 mHasSurface=true
+                    """), "");
+            }, requireConnection: true));
+        Assert.Equal(new[] { $"connect {address}", $"-s {address} shell dumpsys window windows" }, calls);
+        Assert.Equal("mumu", result.Source);
+        Assert.Equal(IntPtr.Zero, result.Window);
+        if (fail)
+        {
+            Assert.Null(result.Device);
+            Assert.Equal("连不上你填的 ADB 地址 127.0.0.1:16384，请确认模拟器开着、地址和端口对，用 adb devices 能看到它", result.Problem);
+        }
+        else
+        {
+            Assert.Equal(address, result.Device!.Serial);
+            Assert.Null(result.Problem);
+        }
+    }
+
+    [Fact]
+    public void ManualAddressWithoutBundledAdbReportsMissingAdb()
+    {
+        var result = GameSourceSelection.FindManual("ldplayer", "emulator-5554", [],
+            [new("MuMu", "adb", "old", "{}")], _ => null,
+            _ => throw new Exception("没有 adb 时不应探测"));
+        Assert.Equal("没找到模拟器自带的 adb，请先打开模拟器", result.Problem);
+        Assert.Null(result.Device);
+    }
+
+    [Theory]
     [InlineData("auto", false, "ldplayer", null)]
     [InlineData("ldplayer", true, "ldplayer", null)]
     [InlineData("auto", true, null, "找到 2 个模拟器实例，请在设置里选一个")]

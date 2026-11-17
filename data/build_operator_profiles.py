@@ -18,7 +18,8 @@ status.skillLevel（普通 / 精锐各一份）。自选干员按 operators.json
   consumes —— 作战能力随【盟约】层数成长的干员（吃层核心）
 
 用法：python build_operator_profiles.py [--gamedata DIR] [--extra-gamedata DIR ...]
-  按顺序从目录中读取 TABLES 中的七张表；不给目录则从 GitHub 下载。
+  按顺序从目录中读取 TABLES 中的八张表；不给目录则从 GitHub 下载。
+  同时按原表同步两名 Pith 的目录、技能、模组和皮肤选项；产品名以显式 charId 区分。
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ from talent_effects import Groups, apply_override, merge, parse_talent  # noqa: 
 GAMEDATA_URL = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/{}.json"
 SEASON = ("act3autochess", "V3_1")
 TABLES = ["activity_table", "character_table", "skill_table", "uniequip_table", "range_table", "battle_equip_table",
-          "handbook_team_table"]
+          "handbook_team_table", "skin_table"]
 
 PROFESSION = {"PIONEER": "先锋", "WARRIOR": "近卫", "SNIPER": "狙击", "SUPPORT": "辅助",
               "CASTER": "术师", "SPECIAL": "特种", "MEDIC": "医疗", "TANK": "重装"}
@@ -171,17 +172,17 @@ def build_groups(chars: dict, teams: dict, season: dict, data_dir: Path) -> Grou
             members.setdefault(c, set()).add(o["name"])
     names = {o["name"] for o in operators}
     power = {k: v["powerName"] for k, v in teams.items()}
-    for c in chars.values():
-        if c.get("name") not in names:
-            continue
+    identities = json.loads((data_dir / "codex_extra.json").read_text(encoding="utf-8-sig"))["operators"]
+    for name in names:
+        c = chars[identities[name]["charId"]]
         for key in ("nationId", "groupId", "teamId"):
             if pid := c.get(key):
                 full = power.get(pid, "")
                 for n in {full, full.split("-")[-1]} - {""}:
-                    members.setdefault(n, set()).add(c["name"])
+                    members.setdefault(n, set()).add(name)
         prof = PROFESSION.get(c["profession"])
         if prof:
-            members.setdefault(prof, set()).add(c["name"])
+            members.setdefault(prof, set()).add(name)
     return Groups(members)
 
 
@@ -545,6 +546,44 @@ def stack_info(traits: list[dict], own: list[str], covenant_names: set[str]) -> 
     return stack, consumes
 
 
+def sync_pith_catalog(tables: dict, season: dict) -> None:
+    """同名角色显式绑定 ID；特殊棋子的阶数、盟约与特质从赛季原表生成。"""
+    path = DATA_DIR / "operators.json"
+    catalog = json.loads(path.read_text(encoding="utf-8-sig"))
+    extra_path = DATA_DIR / "codex_extra.json"
+    extra = json.loads(extra_path.read_text(encoding="utf-8-sig"))
+    bonds = tables["activity_table"]["autoChessData"]["bondInfoDict"]
+    for name, cid in {"Pith": "char_509_acast", "Pith（优等生）": "char_616_pithst"}.items():
+        char = tables["character_table"][cid]
+        shop = next((v for v in season["charShopChessDatas"].values() if v.get("charId") == cid), None)
+        if shop:
+            states = {k: season["charChessDataDict"][shop[field]]
+                      for k, field in (("normal", "chessId"), ("elite", "goldenChessId"))}
+            op = {"name": name, "iconPath": f"icons/operators/{name}.png", "tier": shop["chessLevel"],
+                  "coreCovenants": [bonds[b]["name"] for b in states["normal"]["bondIds"] if bonds[b]["isPower"]],
+                  "additionalCovenants": [bonds[b]["name"] for b in states["normal"]["bondIds"] if not bonds[b]["isPower"]]}
+            for kind, state in states.items():
+                op[kind] = {"traits": [{"traitType": season["garrisonDataDict"][g]["eventTypeDesc"],
+                    "traitDescription": re.sub(r"<[@$][^>]*>|</>", "", season["garrisonDataDict"][g]["description"])}
+                    for g in state["garrisonIds"]]}
+            op["obtain"] = "策略「优等生」第 1 回合赠送"
+            catalog["operators"] = [o for o in catalog["operators"] if o["name"] != name]
+            catalog["operators"].append(op)
+        skills = [{"id": s["skillId"], "name": tables["skill_table"][s["skillId"]]["levels"][0]["name"]}
+                  for s in char["skills"]]
+        modules = [{"id": key, "name": m["uniEquipName"]} for key, m in tables["uniequip_table"]["equipDict"].items()
+                   if m.get("charId") == cid and m["type"] != "INITIAL"]
+        skins = [{"id": s["skinId"], "name": s["displaySkin"]["skinName"] or
+                  ("精英化二" if s["skinId"].endswith("#2") else "默认服装")}
+                 for s in tables["skin_table"]["charSkins"].values() if s["charId"] == cid]
+        extra["operators"][name] = {"equipSlots": {k: s["equipSlotNum"] for k, s in states.items()} if shop else {"normal": 2, "elite": 2},
+            "charId": cid, "skills": skills, "modules": modules,
+            "defaultSkill": skills[shop["defaultSkillIndex"] if shop else 0]["id"],
+            "defaultModule": shop["defaultUniEquipId"] if shop else (modules[0]["id"] if modules else None), "skins": skins}
+    path.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    extra_path.write_text(json.dumps(extra, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gamedata", type=Path)
@@ -554,6 +593,7 @@ def main() -> None:
               if p and (p / f"{name}.json").exists()), args.gamedata)) for name in TABLES}
 
     season = tables["activity_table"]["activity"]["AUTOCHESS"][SEASON[0]][SEASON[1]]
+    sync_pith_catalog(tables, season)
     chars, skills = tables["character_table"], tables["skill_table"]
     subprof = {k: v["subProfessionName"] for k, v in tables["uniequip_table"]["subProfDict"].items()}
     chess_dict, shop = season["charChessDataDict"], season["charShopChessDatas"]
@@ -571,7 +611,9 @@ def main() -> None:
     used_ranges: set[str] = set()
     # 自选槽没有 charId；按产品目录的阶数绑定对应赛季模板。
     entries = [(key, entry) for key, entry in shop.items() if entry["chessType"] != "DIY"]
-    char_ids = {c["name"].strip('“”'): key for key, c in chars.items() if key.startswith("char_")}
+    catalog_ids = json.loads((DATA_DIR / "codex_extra.json").read_text(encoding="utf-8-sig"))["operators"]
+    char_ids = {name: op["charId"] for name, op in catalog_ids.items()}
+    names_by_id = {cid: name for name, cid in char_ids.items()}
     for op in operators:
         if op.get("diy"):
             key = f"chess_char_{op['tier']}_diy1_a"
@@ -581,9 +623,9 @@ def main() -> None:
         if not chess or not chess.get("upgradeChessId"):
             continue
         char = chars.get(entry["charId"])
-        if not char or char["name"].strip('“”') not in by_name:
+        if not char or entry["charId"] not in names_by_id:
             continue
-        name = char["name"].strip('“”')
+        name = names_by_id[entry["charId"]]
         elite = chess_dict.get(chess["upgradeChessId"]) or chess
         phase = phase_index(elite["status"])
         normal_phase = phase_index(chess["status"])

@@ -114,6 +114,7 @@ public sealed partial class HostApi
         api.InitializeCollections(dataDirectory);
         api._boardRouteStore = new BoardRouteStore(dataDirectory);
         api.Changed += (name, _) => { if (name is "field" or "match") api.PublishBoardView(); };
+        api.Changed += (name, _) => { if (name == "match") api.RefreshBoardRoutes(); };
         api.BoardRoutesEnabled = api.Settings.Routes.Enabled;
         api.StartupWorkbench = api.SettingsStore.StartInWorkbench();
         await api.RefreshTrackingAsync();

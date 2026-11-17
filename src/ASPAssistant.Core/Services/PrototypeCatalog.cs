@@ -38,7 +38,8 @@ public sealed class PrototypeCatalog
     {
         var defaults = Prototypes.Where(p => p.Tiers.Contains(tier) && Candidates(p.Name, tier, names).Length > 0)
             .Select(p => p.Name).ToArray();
-        var ranked = matcher.MatchCellWidth(patch, tier, defaults).Candidates;
+        var prototypeSkins = defaults.ToDictionary(n => n, n => (string?)("prototype:" + n));
+        var ranked = matcher.MatchCellWidth(patch, tier, defaults, prototypeSkins).Candidates;
         if (ranked.Count == 0 || ranked[0].Score < .65) return [];
         var ordinary = matcher.MatchCellWidth(patch, tier, names, appearances).Candidates.FirstOrDefault()?.Score ?? -2;
         if (ranked[0].Score - ordinary < SpriteMatcher.AutoFillGap) return [];

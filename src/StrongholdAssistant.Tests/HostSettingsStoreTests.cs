@@ -6,6 +6,37 @@ public sealed class HostSettingsStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("127.0.0.1:16384")]
+    [InlineData("android.local:65535")]
+    [InlineData("emulator-5554")]
+    public void AdbAddressDefaultsAndSurvivesReload(string address)
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        var store = new HostSettingsStore(path);
+        Assert.Equal("", store.LoadSettings().AdbAddress);
+        store.SaveSettings(store.LoadSettings() with { AdbAddress = address });
+        Assert.Equal(address, new HostSettingsStore(path).LoadSettings().AdbAddress);
+    }
+
+    [Theory]
+    [InlineData("localhost:0")]
+    [InlineData("localhost:65536")]
+    [InlineData("localhost")]
+    [InlineData("emulator-abc")]
+    [InlineData("host name:5555")]
+    [InlineData("http://localhost:5555")]
+    [InlineData(null)]
+    public void InvalidAdbAddressIsRejected(string? address)
+    {
+        var store = new HostSettingsStore(Path.Combine(_directory, "settings.json"));
+        var error = Assert.Throws<ArgumentException>(() =>
+            store.SaveSettings(store.LoadSettings() with { AdbAddress = address! }));
+        Assert.Equal("ADB 地址格式不对。", error.Message);
+        Assert.Equal("", store.LoadSettings().AdbAddress);
+    }
+
     [Fact]
     public void MarkerStylesDefaultAndSurviveReload()
     {

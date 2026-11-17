@@ -203,6 +203,7 @@ public sealed partial class HostApi
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };
         RecordRecognizedMatch(newMatch, opening);
+        RefreshBoardRoutes();
         return Match.BannedOperators.Except(previous).Count();
     }
 

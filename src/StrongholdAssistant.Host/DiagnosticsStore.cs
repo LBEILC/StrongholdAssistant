@@ -114,11 +114,12 @@ public sealed class DiagnosticsStore(string directory)
             }
             var all = JsonSerializer.SerializeToNode(settings, HostApi.JsonOptions)!.AsObject();
             // 白名单避免将未来增加的云端或账号字段带入诊断包。
-            string[] allowed = ["collect", "gameTheme", "gameThemeAuto", "uiSkin", "uiScheme", "uiAccent", "plazaNotices", "shopMarkers", "shopScanSpeed", "autoCheckUpdate", "updateSource", "updateProxy", "uiScale", "alwaysOnTop", "gameSource",
+            string[] allowed = ["collect", "gameTheme", "gameThemeAuto", "uiSkin", "uiScheme", "uiAccent", "plazaNotices", "shopMarkers", "shopScanSpeed", "autoCheckUpdate", "autoDownloadUpdate", "updateSource", "updateProxy", "uiScale", "alwaysOnTop", "gameSource",
                 "followGame", "dockSide", "overlaySide", "toggleHotkey", "refreshKey", "startupMode", "collapseMode", "focusCovenants", "focusOperators", "routes"];
             var safe = new JsonObject();
             foreach (var key in allowed) safe[key] = all[key]?.DeepClone();
             safe["updateProxy"] = settings.UpdateProxy == "" ? "system" : new Uri(settings.UpdateProxy).Scheme;
+            safe["adbAddress"] = settings.AdbAddress == "" ? "auto" : "manual";
             WriteJson(zip, "settings.json", safe);
             WriteJson(zip, "connection.json", connection);
             var systemFields = JsonSerializer.SerializeToNode(system, HostApi.JsonOptions)!.AsObject();

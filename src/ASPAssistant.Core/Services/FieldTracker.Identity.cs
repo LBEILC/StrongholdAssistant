@@ -13,7 +13,9 @@ public sealed partial class FieldTracker
     { _bannedCandidates = banned.ToHashSet(); _customCandidates = custom?.ToHashSet(); }
 
     private IEnumerable<string> MatchCandidates() => _identityOperators
-        .Where(p => p.Obtain is null && !_bannedCandidates.Contains(p.Name)
+        .Where(p => (p.Obtain is null || _strategyName is null
+                && Regex.IsMatch(p.Obtain, "策略「(.+?)」第\\s*(\\d+)\\s*回合赠送"))
+            && !_bannedCandidates.Contains(p.Name)
             && (!p.Diy || _customCandidates is null || _customCandidates.Contains(p.Name)))
         .Select(p => p.Name).Concat(_roster.Where(r => r.Value.Source is "strategy" or "equipment" or "ethan" or "dispatch"
             || !_bannedCandidates.Contains(r.Key) && (_customCandidates is null
@@ -501,8 +503,8 @@ public sealed partial class FieldTracker
 
     private RankResult ComputeRank(FieldSpritePatch patch, int tier, string[] names, string[] sourceNames, Dictionary<string, double> personal)
     {
-        // 分类模型没有原型外观训练类；本阶含已知替代时直接使用模板，避免预筛删掉真名或把概率投给原外观。
-        if (names.Concat(sourceNames).Any(n => _usesPrototype?.Invoke(n) == true))
+        // 模型的旧 Pith 类属于原型，且没有优等生训练类；和已知原型一样只用模板，避免误筛或索引不存在的类。
+        if (names.Concat(sourceNames).Any(n => n is "Pith" or PithIdentity.Gift || _usesPrototype?.Invoke(n) == true))
         {
             var rank = _matchSprite!(patch, tier, names.Concat(sourceNames).Distinct().ToArray()).Candidates.ToArray();
             return new(rank, rank, null);

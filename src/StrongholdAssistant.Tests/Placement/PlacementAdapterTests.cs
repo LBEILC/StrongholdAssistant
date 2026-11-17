@@ -111,9 +111,9 @@ public class PlacementAdapterTests(ITestOutputHelper output)
     {
         var ops = await new ASPAssistant.Core.Placement.JsonDataStore(Data).LoadOperatorsAsync();
         var planner = new PlacementPlanner(ops.ToDictionary(o => o.Name), []);
-        Assert.Equal(217, ops.Count);
+        Assert.Equal(218, ops.Count);
         Assert.All(ops, op => Assert.True(planner.CanPlace(op.Name), op.Name));
-        foreach (var name in new[] { "凯尔希", "陈", "银灰", "能天使", "暴躁铁皮" })
+        foreach (var name in new[] { "凯尔希", "陈", "银灰", "能天使", "暴躁铁皮", "Pith（优等生）" })
         {
             var profile = ops.Single(o => o.Name == name).Profile!;
             Assert.Equal(2, profile.NormalStats!.Phase);
@@ -121,6 +121,19 @@ public class PlacementAdapterTests(ITestOutputHelper output)
             Assert.Equal(60, profile.EliteStats!.Level);
             Assert.True(profile.NormalStats.Atk > 0);
         }
+    }
+
+    [Fact]
+    public async Task PithGiftComputesAndReportsElementalDamageAssumption()
+    {
+        var (input, _, _) = await Fixture();
+        var unit = input.Field.Units.First(u => u.Operator == "机械师") with { Operator = "Pith（优等生）" };
+        var field = input.Field with { Units = [unit] };
+        var result = (await PlacementAdapter.LoadAsync(Data)).Compute(input with { Field = field, StrategyId = "band_pith" });
+        Assert.NotNull(result);
+        Assert.Empty(result.Skipped);
+        Assert.Contains(result.Moves, m => m.Operator == "Pith（优等生）");
+        Assert.Contains(result.Assumptions, a => a.Contains("神经、灼燃、凋亡损伤"));
     }
 
     [Fact]

@@ -398,8 +398,7 @@
     bottom: 0;
     left: auto;
     right: 0;
-    /* 工作台能拖窄（v0.9.8 起）：面板至少 380px，窗口比这还窄就铺满，不再按 46% 挤成一条（v1.0.1） */
-    width: min(440px, max(46%, min(380px, 100%)));
+    width: var(--wb-panel-w);
     max-height: none;
     /* 设置面板自己写死了 86% 高，盖过 top/bottom，底下空出一截（v1.2.7 群友反馈）；工作台里一律从顶铺到底 */
     height: auto;
@@ -434,7 +433,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: min(440px, 46%);
+    width: var(--wb-panel-w);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -451,12 +450,16 @@
     margin: 0;
   }
   .content.docked main {
-    margin-right: min(440px, 46%);
+    margin-right: var(--wb-panel-w);
   }
   /* 阵容页放不下三栏时（「我的阵容」300 + 中间至少 360 + 面板 440），广场帖子、详情不再挤中间那栏，
      改成和编辑器一样盖住中间、露出左边「我的阵容」；关掉面板回到广场（用户 2026-11-15：中间被压成一条） */
   .content.wb {
     container-type: inline-size;
+    /* 右边面板宽度，详情面板、空着时的提示、左边内容让出的位置都用这一个（v1.2.8：原来左边只让 46%，
+       窄窗口里面板按至少 380px 盖住左栏右边一截，群友反馈图鉴「读取」「更多筛选」被截掉）。
+       工作台能拖窄（v0.9.8 起）：面板至少 380px，窗口比这还窄就铺满（v1.0.1） */
+    --wb-panel-w: min(440px, max(46%, min(380px, 100%)));
   }
   @container (max-width: 1099px) {
     .content.wb.lineup.docked main {

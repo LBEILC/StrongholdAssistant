@@ -743,6 +743,8 @@ export interface Settings {
    */
   collect: boolean
   autoCheckUpdate: boolean // 启动时和开着时每两小时检查新版本，发现了就在后台下载好（v1.0.4）
+  /** 自动检查发现新版后是否在后台下好（v1.2.8，默认 true）；false = 只在横幅提示，点了才下载 */
+  autoDownloadUpdate: boolean
   /**
    * 更新源（v0.7.2，默认 'github'）。mirrorchyan：检查走 Mirror酱；填了有效 CDK 时从 Mirror酱 下载，
    * 没填就从 GitHub 下载（UpdateStatus.source 告诉界面实际从哪下）
@@ -799,6 +801,11 @@ export interface Settings {
    * v0.9.4 前叫 mumuSerial，旧设置文件里的 mumuSerial 读进这里
    */
   emulatorSerial: string
+  /**
+   * 自定义 ADB 地址（v1.2.8）：'' = 自动发现；填了就只连这个地址（如 '192.168.1.5:5555'、'emulator-5554'），
+   * 优先于 emulatorSerial。宿主保存时校验格式：'' 或 主机:端口（端口 1～65535）或 emulator-数字
+   */
+  adbAddress: string
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]

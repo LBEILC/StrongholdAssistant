@@ -27,6 +27,11 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
 
     public async Task<bool> IsInformationScreenAsync(byte[] screenshot, int width, int height)
     {
+        // 高画面开局的核心盟约分两行，附加标题会下移；详情页仍可能只有一行。
+        if ((double)width / height < 1.7)
+            return await HasBothHeadersAsync(screenshot, width, height,
+                (.07, .1, .18, .9), (.07, .1, .18, .9), sameBand: true);
+
         if (await HasBothHeadersAsync(screenshot, width, height, CoreHeaderBand, AdditionalHeaderBand))
             return true;
 
@@ -97,7 +102,7 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
     public async Task<bool> HasSoloPromptAsync(byte[] screenshot, int width, int height)
     {
         var band = GameUiScale.InformationRegion(
-            new OcrRegionDefinition("SoloPrompt", .07, .225, .63, .035), GameUiScale.Information(screenshot));
+            new OcrRegionDefinition("SoloPrompt", .07, .225, .63, .035), GameUiScale.Information(screenshot), width, height);
         var texts = await ocr.RecognizeRegionAsync(screenshot,
             (int)(width * band.XPercent), (int)(height * band.YPercent),
             (int)(width * band.WidthPercent), (int)(height * band.HeightPercent));

@@ -1,5 +1,6 @@
 <script lang="ts">
   import BondPick from './BondPick.svelte'
+  import { opMatches } from '../lib/opsearch'
   import { sheet } from '../lib/sheet'
   import { fly, fade } from 'svelte/transition'
   import { untrack } from 'svelte'
@@ -156,7 +157,7 @@
   const pool = $derived.by(() => {
     if (!e) return []
     const base = useGoals ? rankForGoals(e.goals, app.catalog.operators) : [...app.catalog.operators].sort((a, b) => b.tier - a.tier)
-    return base.filter((o) => (!q || o.name.includes(q)) && (!bond || o.core.includes(bond) || o.extra.includes(bond)) && (!tiers.length || tiers.includes(o.tier)))
+    return base.filter((o) => opMatches(o.name, q) && (!bond || o.core.includes(bond) || o.extra.includes(bond)) && (!tiers.length || tiers.includes(o.tier)))
   })
   const progress = $derived(e ? goalProgress(e.goals, e.members, e.members.map((m) => m.name), e.groups) : [])
   const others = $derived(e ? otherBonds(e.goals, e.members) : [])

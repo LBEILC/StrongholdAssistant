@@ -56,6 +56,30 @@ public sealed class PrototypeTests
         Assert.Equal(op, JsonSerializer.Deserialize<RosterOperator>(JsonSerializer.Serialize(op, options), options));
     }
 
+    [Fact]
+    public async Task RealPithCardsUseTierInsteadOfPrototypeBranch()
+    {
+        using var canvas = new Bitmap(Path.Combine(AppContext.BaseDirectory, "TestData", "roster-left-end-1920x1080.jpg"));
+        using (var g = Graphics.FromImage(canvas))
+        {
+            DrawBonds(g, 269, 208, "mani");
+            DrawBonds(g, 269, 559, "empty");
+        }
+        using var png = new MemoryStream(); canvas.Save(png, ImageFormat.Png);
+        var names = new Queue<string>(["Pith", "Pith", "风絮", "乌有", "余", "仇白", "黍", "老鲤", "赤刃明霄陈", "斩业星熊"]);
+        var tiers = new Queue<string>(["III", "V"]);
+        var ocr = new Mock<IOcrEngine>();
+        ocr.Setup(o => o.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Returns((byte[] _, int x, int y, int w, int h) => Task.FromResult<IReadOnlyList<OcrTextResult>>(
+                y == 248 ? [new(names.Dequeue(), (x, y, w, h))] : x == 250 ? [new("物资调配 自选编队 12/12", (x, y, w, h))]
+                : w == 52 ? [new(tiers.Dequeue(), (x, y, w, h))] : []));
+        var result = await new RosterReader(ocr.Object, Data).ReadAsync(png.ToArray());
+        Assert.NotNull(result);
+        Assert.Empty(result.UnknownNames);
+        Assert.Equal(new[] { "Pith（优等生）", "Pith" }, result.Cards.Take(2).Select(c => c.Operator.Name));
+        Assert.All(result.Cards.Take(2), c => Assert.Null(c.Operator.Prototype));
+    }
+
     private static void DrawBonds(Graphics g, int x, int y, params string[] names)
     {
         g.FillRectangle(Brushes.Black, x + 40, y + 281, 165, 54);

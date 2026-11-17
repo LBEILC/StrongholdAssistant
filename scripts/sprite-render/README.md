@@ -12,6 +12,10 @@ python scripts/generate-sprite-templates.py --rendered out/214/rendered --size 1
 
 `--cache` 指定只读的 FieldEval 缓存目录；默认 `out/211/cache`。先渲染商店出现过的人和暴躁铁皮，再处理其余人。`--priority-only` 只处理前一组。`--out` 可更换输出目录，默认 `out/214/rendered`。素材只写入本工作区普通目录 `docs/research/refs/spine/`。
 
+`--names 'Pith,Pith（优等生）'` 只渲染指定产品名，不需要对局缓存。追加模板时可用独立的 `--operators` JSON
+列出两名干员及阶数；5 阶 `Pith` 另设 `templateName: "char_509_acast"`，3 阶使用产品名。
+这是为了保留旧包中名为 `Pith` 的 `char_612_accast` 原型记录；比对器根据是否声明原型选择对应模板键。
+
 以 PRTS 的 `meta.json` 为皮肤和朝向清单，皮肤展示名通过 `data/codex_extra.json` 映射为产品已有皮肤 ID；默认战斗模型统一使用 `default`，精二服装仍使用默认战斗模型。正面、背面和只有单一“战斗”朝向的资源均保留；不渲染基建。Idle 周期均匀取四帧，所有模型统一为每骨骼单位 0.5 像素，支持区域、变形网格、裁剪附件；输出透明 PNG。此处为离线模型渲染，不复现游戏光照及特效。
 
 `manifest.json` 只将完整成功的干员加入 `operators`，错误记入 `errors` 并返回非零退出码。重跑复用已下载文件和完整渲染记录。修改渲染算法后应使用新的输出目录，避免沿用旧图。

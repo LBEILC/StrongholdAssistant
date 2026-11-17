@@ -11,6 +11,27 @@ public sealed partial class FieldReader
     private readonly Dictionary<FieldCell, (double X, double Y)> _spriteFeet = [];
     private readonly Dictionary<FieldCell, FieldSpriteGeometry> _cellGeometry = [];
     private FieldFrameGeometry? _frameGeometry;
+    private bool HasShortUnitEvidence(System.Drawing.Bitmap bitmap, FieldCell cell, FieldBadge badge)
+    {
+        // 黑猫低于原身体采样带；用既有官方模板确认占用，不放宽所有二阶的轮廓门槛。
+        if (badge.Tier != 2) return false;
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+        using var raw = Cv2.ImDecode(stream.ToArray(), ImreadModes.Color);
+        using var image = new Mat();
+        Cv2.Resize(raw, image, new Size(1920, 1080));
+        var foot = _summonFeet[cell];
+        var patch = CropSprite(image, foot.X, foot.Y, cell.Zone == "bench");
+        if (patch is null) return false;
+        patch = patch with { Geometry = _cellGeometry[cell] with { BadgeFootX = foot.X, BadgeFootY = foot.Y } };
+        patch = patch with { TemplateRegion = CropTemplateSprite(image, patch) };
+        _summonOperatorMatcher ??= new(_operatorPackage);
+        var match = _summonOperatorMatcher.MatchCellWidth(patch, badge.Tier,
+            _operatorTiers.Where(o => o.Tier == badge.Tier).Select(o => o.Name).ToArray());
+        return match.Candidates.FirstOrDefault() is { Name: "Miss.Christine", Score: >= .45 }
+            && match.Gap >= .02;
+    }
+
     private Dictionary<FieldCell, FieldSpritePatch> ReadSprites(byte[] frame,
         IReadOnlyDictionary<FieldCell, int> cells)
     {

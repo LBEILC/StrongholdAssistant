@@ -13,6 +13,9 @@ public static class CrashGuard
     public static bool GpuDisabled { get; private set; }
     /// <summary>文字识别固定用 CPU：显卡推理读不出字过（v1.2.6）。</summary>
     public static bool OcrCpu { get; private set; }
+    /// <summary>连模拟器时崩过（v1.2.8）：ADB 截图只用最基本的两种方式，不让 MaaFramework 去试别的。</summary>
+    public static bool AdbSafe { get; private set; }
+    private static bool _adbMarked;
 
     private static string PathOf(string name) => Path.Combine(_directory!, name);
 
@@ -29,6 +32,15 @@ public static class CrashGuard
             AppLogger.Warn("CrashGuard", $"上次运行在用窗口捕获时异常退出（连续第 {count} 次）");
             if (count >= WgcCrashLimit) File.WriteAllText(PathOf("wgc-disabled"), DateTimeOffset.Now.ToString("O"));
         }
+        if (File.Exists(PathOf("adb-active")))
+        {
+            File.Delete(PathOf("adb-active"));
+            File.WriteAllText(PathOf("adb-safe"), DateTimeOffset.Now.ToString("O"));
+            AppLogger.Warn("CrashGuard", "上次运行在连模拟器截图时异常退出");
+        }
+        _adbMarked = false;
+        AdbSafe = File.Exists(PathOf("adb-safe"));
+        if (AdbSafe) AppLogger.Warn("CrashGuard", "这台电脑上连模拟器截图崩过，ADB 截图只用基本方式");
         WgcDisabled = File.Exists(PathOf("wgc-disabled"));
         GpuDisabled = File.Exists(PathOf("gpu-disabled"));
         OcrCpu = File.Exists(PathOf("ocr-cpu"));
@@ -43,6 +55,21 @@ public static class CrashGuard
         if (_directory is null || _wgcMarked) return;
         File.WriteAllText(PathOf("wgc-active"), DateTimeOffset.Now.ToString("O"));
         _wgcMarked = true;
+    }
+
+    /// <summary>建 ADB 截图连接前调用；第一次截图成功后调 <see cref="AdbLinked"/> 清掉标记。</summary>
+    public static void AdbStarting()
+    {
+        if (_directory is null || _adbMarked) return;
+        File.WriteAllText(PathOf("adb-active"), DateTimeOffset.Now.ToString("O"));
+        _adbMarked = true;
+    }
+
+    public static void AdbLinked()
+    {
+        if (_directory is null || !_adbMarked) return;
+        File.Delete(PathOf("adb-active"));
+        _adbMarked = false;
     }
 
     public static void GpuCrashed()
@@ -60,6 +87,7 @@ public static class CrashGuard
 
     public static void NormalExit()
     {
+        AdbLinked();
         if (_directory is null || !_wgcMarked) return;
         File.Delete(PathOf("wgc-active"));
         File.Delete(PathOf("wgc-crashes"));

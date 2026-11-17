@@ -10055,32 +10055,19 @@
         "normal": 2,
         "elite": 2
       },
-      "charId": "char_612_accast",
+      "charId": "char_509_acast",
       "skills": [
         {
-          "id": "skchr_accast_1",
-          "name": "“书我所书”"
-        },
-        {
-          "id": "skchr_accast_2",
+          "id": "skchr_acast_1",
           "name": "“为我所为”"
-        },
-        {
-          "id": "skchr_accast_3",
-          "name": "“驭我所驭”"
         }
       ],
-      "modules": [
-        {
-          "id": "uniequip_002_accast",
-          "name": "Pith证章"
-        }
-      ],
-      "defaultSkill": "skchr_accast_3",
-      "defaultModule": "uniequip_002_accast",
+      "modules": [],
+      "defaultSkill": "skchr_acast_1",
+      "defaultModule": null,
       "skins": [
         {
-          "id": "char_612_accast#1",
+          "id": "char_509_acast#1",
           "name": "默认服装"
         }
       ]
@@ -10217,6 +10204,37 @@
         },
         {
           "id": "char_617_sharp2#2",
+          "name": "精英化二"
+        }
+      ]
+    },
+    "Pith（优等生）": {
+      "equipSlots": {
+        "normal": 2,
+        "elite": 2
+      },
+      "charId": "char_616_pithst",
+      "skills": [
+        {
+          "id": "skchr_pithst_1",
+          "name": "战术咏唱·双型"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pithst",
+          "name": "盟约·辅助干员证章"
+        }
+      ],
+      "defaultSkill": "skchr_pithst_1",
+      "defaultModule": "uniequip_002_pithst",
+      "skins": [
+        {
+          "id": "char_616_pithst#1",
+          "name": "默认服装"
+        },
+        {
+          "id": "char_616_pithst#2",
           "name": "精英化二"
         }
       ]

@@ -51,7 +51,10 @@ export const lineupEquipment = (l: Lineup) => [...new Set([...l.equipment, ...l.
 
 export const covenantsOf = (m: LineupMember) => {
   const o = operatorByName.get(m.name)!
-  return m.transform ? [...o.core, ...o.extra, m.transform] : [...o.core, ...o.extra]
+  // 带着变形同构体时，身上每件转职装备（如卡西米尔竞技旗）都给这名干员加一个对应盟约，和后端 CovenantCalculator 一致（v1.2.8）
+  const eqs = m.equipment?.map((x) => x.name) ?? []
+  const shift = eqs.includes('变形同构体') ? eqs.flatMap((n) => equipmentByName.get(n)?.transformBond ?? []) : []
+  return [...new Set([...o.core, ...o.extra, ...(m.transform ? [m.transform] : []), ...shift])]
 }
 
 export type SettingsTab = 'game' | 'window' | 'keys' | 'account' | 'about'
@@ -215,7 +218,7 @@ export class AppState {
     if (retry) this.updateRetried = true
     await this.checkUpdate()
     // 发现新版就在后台下好，下好了横幅上点一下安装并重启（v1.0.4）
-    if (this.update.state === 'available' && !this.updateTried) {
+    if (this.update.state === 'available' && !this.updateTried && this.settings.autoDownloadUpdate) {
       this.updateAuto = true
       api.downloadUpdate()
     }

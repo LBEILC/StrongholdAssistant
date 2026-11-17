@@ -10,8 +10,10 @@ public sealed class DiagnosticsTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
-    [Fact]
-    public void KeepsTenFailuresAndExportsOnlySanitizedDiagnosticData()
+    [Theory]
+    [InlineData("", "auto")]
+    [InlineData("private-host:5555", "manual")]
+    public void KeepsTenFailuresAndExportsOnlySanitizedDiagnosticData(string address, string addressMode)
     {
         var store = new DiagnosticsStore(_directory);
         using var image = new Bitmap(2400, 1200);
@@ -33,7 +35,7 @@ public sealed class DiagnosticsTests : IDisposable
         var settings = new SettingsDto("terminal", true, true)
         {
             CloudSync = new(true, "private-cloud", null, null, []),
-            EmulatorSerial = "private-device", ShareIncome = true,
+            EmulatorSerial = "private-device", AdbAddress = address, ShareIncome = true,
             UpdateSource = "mirrorchyan", MirrorChyanCdk = "private-cdk", GitHubToken = "private-token-gh", ShopScanSpeed = "fast"
         };
         var path = Path.Combine(_directory, "diagnostics.zip");
@@ -65,6 +67,7 @@ public sealed class DiagnosticsTests : IDisposable
         Assert.False(json.RootElement.TryGetProperty("githubToken", out _));
         Assert.Equal("mirrorchyan", json.RootElement.GetProperty("updateSource").GetString());
         Assert.Equal("fast", json.RootElement.GetProperty("shopScanSpeed").GetString());
+        Assert.Equal(addressMode, json.RootElement.GetProperty("adbAddress").GetString());
         Assert.Equal("remember", json.RootElement.GetProperty("startupMode").GetString());
         using var systemReader = new StreamReader(zip.GetEntry("system.json")!.Open());
         using var system = JsonDocument.Parse(systemReader.ReadToEnd());

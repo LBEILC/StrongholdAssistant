@@ -45,8 +45,7 @@ public sealed partial class RosterReader
     {
         var text = string.Concat((await _ocr.RecognizeRegionAsync(card, 0, 6, 52, 80)).Select(l => l.Text))
             .Trim().Normalize(System.Text.NormalizationForm.FormKC).Replace(" ", "");
-        return text switch { "I" or "1" => 1, "II" or "2" => 2, "III" or "3" => 3,
-            "IV" or "4" => 4, "V" or "5" => 5, "VI" or "6" => 6, _ => null };
+        return PithIdentity.ReadTier(text);
     }
 
     private void ResolvePrototypeCards(List<PrototypeCard> pending, List<RosterCard> cards,

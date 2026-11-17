@@ -23,6 +23,12 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
     <Content Include="../../data/**/*" Link="data/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../ui/dist/**/*" Link="ui/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 两名同名干员的新增素材由数据层提供；覆盖旧构建中的 Pith 头像，不改前端源码。 -->
+    <Content Remove="../ui/dist/assets/data/operators/Pith.webp" />
+    <Content Include="../../data/operator_icons/*.webp" Link="ui/assets/data/operators/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../data/skins/char_509_acast%231.webp;../../data/skins/char_616_pithst%231.webp;../../data/skins/char_616_pithst%232.webp" Link="ui/assets/data/skins/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../data/skills/skchr_acast_1.webp;../../data/skills/skchr_pithst_1.webp" Link="ui/assets/data/skills/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../data/modules/uniequip_002_pithst.webp" Link="ui/assets/data/modules/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- Maa 按程序目录定位原生库、插件；数据和网页也必须留在磁盘上。 -->
   <Target Name="KeepExternalPackageFiles" BeforeTargets="_ComputeFilesToBundle">

@@ -26,7 +26,44 @@ public static class MuMuFallback
     public static string BridgedSerial(string serial) =>
         Regex.Replace(serial, @"^(?!127\.)(\d{1,3}(?:\.\d{1,3}){3}):\d+$", "$1:5555");
 
+    /// <summary>emulator-5554 这类本机串号和 127.x 地址算本机；局域网 IP、主机名不算</summary>
+    public static bool IsLoopback(string serial) => !Regex.IsMatch(serial, @"^(?!127\.)[^:]+:\d+$") || serial.StartsWith("localhost:");
+
     public static string? FindAdb(string processPath) => FindFile(processPath, "adb.exe", Path.Combine("shell", "adb.exe"));
+
+    public static EmulatorDevice? FindRunningAdb(string source)
+    {
+        foreach (var (name, kind) in new[] { ("MuMuNxMain", "mumu"), ("MuMuNxDevice", "mumu"),
+            ("MuMuNxService", "mumu"), ("MuMuPlayer", "mumu"), ("dnplayer", "ldplayer") })
+        {
+            if (source != "auto" && source != kind) continue;
+            foreach (var process in Process.GetProcessesByName(name))
+            {
+                using (process)
+                {
+                    using var handle = OpenProcess(0x1000, false, process.Id);
+                    if (handle.IsInvalid) continue;
+                    var path = new StringBuilder(32768);
+                    var size = (uint)path.Capacity;
+                    if (!QueryFullProcessImageName(handle, 0, path, ref size)) continue;
+                    var adb = FindAdb(path.ToString());
+                    if (adb is not null)
+                    {
+                        var window = kind == "ldplayer" ? process.MainWindowHandle : IntPtr.Zero;
+                        var render = window == IntPtr.Zero ? IntPtr.Zero
+                            : ASPAssistant.Core.Interop.User32.FindChildWindow(window, "RenderWindow");
+                        var valid = kind == "ldplayer" && LdPlayerWindows.IsValid(window, render);
+                        return new(name, adb, "", "{}", kind)
+                        {
+                            Window = valid ? window : IntPtr.Zero,
+                            RenderWindow = valid ? render : IntPtr.Zero
+                        };
+                    }
+                }
+            }
+        }
+        return null;
+    }
 
     private static string? FindFile(string processPath, params string[] names)
     {

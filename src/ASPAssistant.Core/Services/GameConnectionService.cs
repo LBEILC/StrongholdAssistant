@@ -21,20 +21,23 @@ public sealed class GameConnectionService : IDisposable
     private EmulatorDevice? _device;
     private IReadOnlyList<EmulatorDevice> _devices = [];
     private DateTime _discoverAfter, _retryAfter;
-    private string _source = "auto", _serial = "";
+    private string _source = "auto", _serial = "", _adbAddress = "";
+    private GameSourceSelection? _manualSelection;
     private bool _disposed;
     private GameConnectionState _state = new();
     public GameConnectionState State => Volatile.Read(ref _state);
     public bool IsAdb => State.Source is "mumu" or "ldplayer";
     public event Action<GameConnectionState>? Changed;
 
-    public bool Configure(string source, string serial)
+    public bool Configure(string source, string serial, string adbAddress = "")
     {
         lock (_gate)
         {
-            if (_source == source && _serial == serial) return false;
+            if (_source == source && _serial == serial && _adbAddress == adbAddress) return false;
             _source = source;
             _serial = serial;
+            _adbAddress = adbAddress;
+            _manualSelection = null;
             WindowCapture.Dispose();
             _controller?.Dispose();
             _controller = null;
@@ -46,7 +49,7 @@ public sealed class GameConnectionService : IDisposable
         }
     }
 
-    public static IReadOnlyList<EmulatorDevice> DiscoverEmulatorDevices()
+    public static IReadOnlyList<EmulatorDevice> DiscoverEmulatorDevices(bool useFallback = true)
     {
         using var found = MaaToolkit.Shared.AdbDevice.Find();
         var devices = found.Where(d => !d.Name.EndsWith("-LDPlayer", StringComparison.OrdinalIgnoreCase)
@@ -56,8 +59,8 @@ public sealed class GameConnectionService : IDisposable
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase),
                 d.AdbPath, MuMuFallback.BridgedSerial(d.AdbSerial), d.Config,
                 "mumu")).ToArray();
-        return MuMuFallback.UseIfMissing(devices, MuMuFallback.DiscoverDevices)
-            .Concat(LdPlayerWindows.DiscoverDevices()).ToArray();
+        var mumu = useFallback ? MuMuFallback.UseIfMissing(devices, MuMuFallback.DiscoverDevices) : devices;
+        return mumu.Concat(LdPlayerWindows.DiscoverDevices()).ToArray();
     }
 
     public static IReadOnlyList<EmulatorWindow> FindEmulatorWindows()
@@ -79,7 +82,8 @@ public sealed class GameConnectionService : IDisposable
         lock (_gate)
         {
             if (_disposed) return IntPtr.Zero;
-            var selected = GameSourceSelection.Find(_source, _serial, User32.FindArknightsWindow,
+            var selected = _adbAddress.Length > 0 && _source != "pc" ? FindManualSource()
+                : GameSourceSelection.Find(_source, _serial, User32.FindArknightsWindow,
                 FindEmulatorWindows, () =>
                 {
                     // 设备发现会调用 ADB；窗口轮询不必每 100 毫秒重新发现。
@@ -108,6 +112,22 @@ public sealed class GameConnectionService : IDisposable
                 SetState(new(selected.Source, selected.Window, selected.Problem));
             return selected.Window;
         }
+    }
+
+    private GameSourceSelection FindManualSource()
+    {
+        if (_manualSelection is null || DateTime.UtcNow >= _discoverAfter)
+        {
+            _discoverAfter = DateTime.UtcNow.AddSeconds(5);
+            IReadOnlyList<EmulatorDevice> devices;
+            // 手动地址只需要发现 adb 路径，不执行 MuMu 回退中的默认端口连接。
+            try { devices = DiscoverEmulatorDevices(useFallback: false).Where(d => File.Exists(d.AdbPath)).ToArray(); }
+            catch { devices = []; }
+            _manualSelection = GameSourceSelection.FindManual(_source, _adbAddress,
+                _source == "ldplayer" ? [] : FindEmulatorWindows(), devices,
+                MuMuFallback.FindRunningAdb, EmulatorDisplay.InspectManual);
+        }
+        return _manualSelection;
     }
 
     public RECT? GetViewport(IntPtr window)
@@ -140,10 +160,15 @@ public sealed class GameConnectionService : IDisposable
                     // 已确认游戏在主屏，保留原有截图方法和性能。
                     if (_controller is null)
                     {
+                        // 局域网地址（MuMu 桥接网络）连上后 MaaFramework 试截图方式时整个进程崩过（诊断包 44），
+                        // 这种地址、以及这台电脑崩过一次以后，只用最基本的两种方式
+                        var safe = CrashGuard.AdbSafe || !MuMuFallback.IsLoopback(_device.Serial);
+                        CrashGuard.AdbStarting();
                         _controller = new MaaAdbController(_device.AdbPath, _device.Serial,
-                            AdbScreencapMethods.Encode | AdbScreencapMethods.EncodeToFileAndPull
-                                | AdbScreencapMethods.RawWithGzip | AdbScreencapMethods.RawByNetcat,
-                            AdbInputMethods.AdbShell, config: _device.Config,
+                            safe ? AdbScreencapMethods.Encode | AdbScreencapMethods.EncodeToFileAndPull
+                                : AdbScreencapMethods.Encode | AdbScreencapMethods.EncodeToFileAndPull
+                                    | AdbScreencapMethods.RawWithGzip | AdbScreencapMethods.RawByNetcat,
+                            AdbInputMethods.AdbShell, config: safe ? "{}" : _device.Config,
                             agentPath: Path.Combine(AppContext.BaseDirectory, "MaaAgentBinary"), link: LinkOption.None);
                         if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded)
                         {
@@ -151,8 +176,10 @@ public sealed class GameConnectionService : IDisposable
                             _controller.Dispose();
                             _controller = null;
                             _retryAfter = DateTime.UtcNow.AddSeconds(5);
-                            SetState(State with { Problem = _device.Kind == "ldplayer"
-                                ? GameSourceSelection.LdAdbProblem : GameSourceSelection.AdbProblem, Width = 0, Height = 0 });
+                            SetState(State with { Problem = _adbAddress.Length > 0
+                                ? GameSourceSelection.ManualAdbProblem(_adbAddress)
+                                : _device.Kind == "ldplayer" ? GameSourceSelection.LdAdbProblem : GameSourceSelection.AdbProblem,
+                                Width = 0, Height = 0 });
                             return null;
                         }
                         _controller.SetOption_ScreenshotUseRawSize(true);
@@ -160,6 +187,7 @@ public sealed class GameConnectionService : IDisposable
                     var status = _controller.Screencap().Wait();
                     if (status != MaaJobStatus.Succeeded) throw new IOException($"Screencap status={status}");
                     if (!_controller.GetCachedImage(image) || image.IsEmpty) throw new IOException("Cached image is empty");
+                    CrashGuard.AdbLinked();
                 }
                 else
                 {
@@ -214,7 +242,9 @@ public sealed class GameConnectionService : IDisposable
                 _controller?.Dispose();
                 _controller = null;
                 _retryAfter = DateTime.UtcNow.AddSeconds(5);
-                SetState(State with { Problem = $"{_device.DisplayName}游戏画面截图失败，请在设置里导出诊断包反馈。", Width = 0, Height = 0 });
+                SetState(State with { Problem = _adbAddress.Length > 0
+                    ? GameSourceSelection.ManualAdbProblem(_adbAddress)
+                    : $"{_device.DisplayName}游戏画面截图失败，请在设置里导出诊断包反馈。", Width = 0, Height = 0 });
             }
         }
     }

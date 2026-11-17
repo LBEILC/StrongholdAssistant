@@ -5,6 +5,51 @@ namespace StrongholdAssistant.Tests;
 
 public sealed class FieldIdentityTests
 {
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("优等生", false)]
+    public void UnknownStrategyIncludesIronhideGift(string? strategy, bool included)
+    {
+        string[] candidates = [];
+        var t = new FieldTracker();
+        t.ConfigureIdentity([
+            new() { Name = "暴躁铁皮", Tier = 1, Obtain = "策略「暴躁铁皮」第 1 回合赠送" },
+            new() { Name = "甲", Tier = 1 },
+            new() { Name = "装备赠送", Tier = 1, Obtain = "装备赠送" }
+        ], (_, _, names) =>
+        {
+            candidates = names;
+            return new(names.Select(n => new SpriteCandidate(n, n == "暴躁铁皮" ? .95 : .4)).ToArray(), .55);
+        });
+        t.SeedRoster(strategy, [], 1, Start);
+        t.Observe(Frame(0, (A, 1, Pic())), force: true);
+        Assert.Equal(included, candidates.Contains("暴躁铁皮"));
+        Assert.DoesNotContain("装备赠送", candidates);
+        Assert.Equal(included ? "暴躁铁皮" : "甲", Assert.Single(t.State!.Units).Operator);
+    }
+
+    [Fact]
+    public void UnknownStrategyKeepsPithTierAndPrototypeSeparation()
+    {
+        var t = new FieldTracker();
+        var pools = new System.Collections.Concurrent.ConcurrentDictionary<int, string[]>();
+        t.ConfigureIdentity([
+            new() { Name = "Pith", Tier = 5, Diy = true },
+            new() { Name = PithIdentity.Gift, Tier = 3, Obtain = "策略「优等生」第 1 回合赠送" }
+        ], (_, tier, names) =>
+        {
+            pools[tier] = names;
+            return new(names.Select(n => new SpriteCandidate(n, .95)).ToArray(), null);
+        });
+        t.SeedRoster(null, [], 1, Start);
+        t.Observe(Frame(0, (A, 5, Pic()), (B, 3, Pic(1))), force: true);
+        Assert.Equal(new[] { "Pith" }, pools[5]);
+        Assert.Equal(new[] { PithIdentity.Gift }, pools[3]);
+        t.ConfigurePrototypes(_ => false, (_, _, _) => [new("甲", .95)]);
+        t.Observe(Frame(1, (C, 3, Pic(2))), force: true);
+        Assert.Equal("甲", t.State!.Units.Single(u => u.Cell == C).Operator);
+    }
+
     private static readonly FieldCell A = new("board", 1, 1), B = new("board", 2, 1), C = new("board", 3, 1), Bench = new("bench", 1, 0);
     private static readonly DateTimeOffset Start = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
     private static FieldSpritePatch Pic(int shift = 0, bool bench = false)

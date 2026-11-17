@@ -13,7 +13,7 @@ public sealed class SklandCatalogTests
         {
             var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), directory);
             var entries = api.Catalog.GetProperty("operators").EnumerateArray().ToArray();
-            Assert.Equal(217, entries.Length);
+            Assert.Equal(218, entries.Length);
             Assert.All(entries, e =>
             {
                 var skills = e.GetProperty("skills").EnumerateArray().ToArray();
@@ -25,7 +25,7 @@ public sealed class SklandCatalogTests
                 Assert.All(skills.Concat(modules), option =>
                     Assert.False(string.IsNullOrWhiteSpace(option.GetProperty("name").GetString())));
             });
-            Assert.Equal(7, entries.Count(e => e.GetProperty("modules").GetArrayLength() == 0));
+            Assert.Equal(8, entries.Count(e => e.GetProperty("modules").GetArrayLength() == 0));
             var estell = entries.Single(e => e.GetProperty("name").GetString() == "艾丝黛尔");
             Assert.Equal(new[] { "攻击力强化·β型", "舍身突击" }, estell.GetProperty("skills").EnumerateArray().Select(s => s.GetProperty("name").GetString()));
             Assert.Equal("荒野地的饯别礼", estell.GetProperty("modules")[0].GetProperty("name").GetString());
@@ -63,6 +63,7 @@ public sealed class SklandCatalogTests
             foreach (var (category, field) in new[] { ("operators", "charId"), ("equipment", "itemId") })
             {
                 var entries = api.Catalog.GetProperty(category).EnumerateArray().ToArray();
+                Assert.Equal(entries.Length, entries.Select(e => e.GetProperty("name").GetString()).Distinct().Count());
                 var ids = entries.SelectMany(e => new[] { e.GetProperty(field).GetString() }
                     .Concat(e.TryGetProperty("itemAliases", out var aliases)
                         ? aliases.EnumerateArray().Select(a => a.GetString()) : [])).ToArray();
@@ -70,6 +71,16 @@ public sealed class SklandCatalogTests
                 Assert.Equal(ids.Length, ids.Distinct().Count());
             }
             var equipment = api.Catalog.GetProperty("equipment").EnumerateArray();
+            var operators = api.Catalog.GetProperty("operators").EnumerateArray().ToArray();
+            var pith = operators.Single(o => o.GetProperty("name").GetString() == "Pith");
+            var gift = operators.Single(o => o.GetProperty("name").GetString() == "Pith（优等生）");
+            Assert.Equal("char_509_acast", pith.GetProperty("charId").GetString());
+            Assert.Equal("skchr_acast_1", pith.GetProperty("defaultSkill").GetString());
+            Assert.Equal("char_616_pithst", gift.GetProperty("charId").GetString());
+            Assert.Equal(3, gift.GetProperty("tier").GetInt32());
+            Assert.Equal("skchr_pithst_1", gift.GetProperty("defaultSkill").GetString());
+            Assert.Equal("uniequip_002_pithst", gift.GetProperty("defaultModule").GetString());
+            Assert.Equal("策略「优等生」第 1 回合赠送", gift.GetProperty("obtain").GetString());
             Assert.Equal("chess_item_6_03_e_a", equipment.Single(e => e.GetProperty("name").GetString() == "变形同构体").GetProperty("itemId").GetString());
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }

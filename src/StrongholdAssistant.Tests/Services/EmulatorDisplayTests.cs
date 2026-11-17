@@ -4,6 +4,32 @@ namespace StrongholdAssistant.Tests.Services;
 
 public class EmulatorDisplayTests
 {
+    [Theory]
+    [InlineData("")]
+    [InlineData("emulator-5554")]
+    public void LdProbeFailureReportsAdbProblemInsteadOfMissingGame(string serial)
+    {
+        var device = EmulatorDisplay.Inspect(new("雷电", "adb", "emulator-5554", "{}", "ldplayer"),
+            (_, _) => (1, [], "adb.exe: device 'emulator-5554' not found"));
+        Assert.True(device.ProbeFailed);
+        Assert.Null(device.DisplayId);
+        var selected = GameSourceSelection.Find("ldplayer", serial, () => IntPtr.Zero,
+            () => [], () => [device]);
+        Assert.Null(selected.Device);
+        Assert.Equal(GameSourceSelection.LdAdbProblem, selected.Problem);
+    }
+
+    [Fact]
+    public void LdSuccessfulProbeWithoutGameStillReportsMissingGame()
+    {
+        var device = EmulatorDisplay.Inspect(new("雷电", "adb", "emulator-5554", "{}", "ldplayer"),
+            (_, _) => (0, [], ""));
+        Assert.False(device.ProbeFailed);
+        var selected = GameSourceSelection.Find("ldplayer", "", () => IntPtr.Zero,
+            () => [], () => [device]);
+        Assert.Equal("雷电里没找到正在运行的明日方舟", selected.Problem);
+    }
+
     [Fact]
     public void FindsLdPlayer14GameOnMainDisplay()
     {

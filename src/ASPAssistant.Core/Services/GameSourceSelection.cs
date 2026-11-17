@@ -13,8 +13,36 @@ public sealed record EmulatorWindow(IntPtr Handle, string Name);
 public sealed record GameSourceSelection(string? Source, IntPtr Window, EmulatorDevice? Device, string? Problem)
 {
     public const string AdbProblem = "MuMu 已打开，但连不上它的 ADB。请确认模拟器设置里开启了 ADB 调试，或重启模拟器后再试。";
-    public const string LdAdbProblem = "雷电已打开，但连不上它的 ADB。请在雷电设置 → 其他设置里把「ADB 调试」改成「开启本地连接」，然后重启模拟器。";
+    public const string LdAdbProblem = "雷电已打开，但连不上它的 ADB。请在雷电设置 → 其他设置里把「ADB 调试」改成「开启本地连接」，然后重启模拟器。也可以在设置 → 游戏来源下面手动填 ADB 地址。";
     public const string GameMissingProblem = "MuMu里没找到正在运行的明日方舟";
+    public const string AdbMissingProblem = "没找到模拟器自带的 adb，请先打开模拟器";
+
+    public static string ManualAdbProblem(string address) =>
+        $"连不上你填的 ADB 地址 {address}，请确认模拟器开着、地址和端口对，用 adb devices 能看到它";
+
+    public static GameSourceSelection FindManual(string source, string address,
+        IReadOnlyList<EmulatorWindow> windows, IReadOnlyList<EmulatorDevice> devices,
+        Func<string, EmulatorDevice?> findRunningAdb, Func<EmulatorDevice, EmulatorDevice> inspect)
+    {
+        var candidates = devices.Where(d => source == "auto" || d.Kind == source).ToArray();
+        var kind = source != "auto" ? source : windows.Count > 0 ? "mumu"
+            : candidates.FirstOrDefault(d => d.Window != IntPtr.Zero)?.Kind;
+        var provider = candidates.FirstOrDefault(d => kind is null || d.Kind == kind)
+            ?? findRunningAdb(kind ?? source);
+        kind ??= provider?.Kind ?? "mumu";
+        var window = kind == "ldplayer" ? provider?.Window ?? IntPtr.Zero
+            : windows.FirstOrDefault()?.Handle ?? IntPtr.Zero;
+        if (provider is null) return new(kind, window, null, AdbMissingProblem);
+        // 发现结果只提供 adb 与窗口，不携带其他实例的截图配置或游戏显示屏。
+        var device = inspect(new(provider.Name, provider.AdbPath, address, "{}", kind)
+        {
+            Window = window, RenderWindow = provider.RenderWindow
+        });
+        if (device.ProbeFailed) return new(kind, window, null, ManualAdbProblem(address));
+        if (device.DisplayId is null)
+            return new(kind, window, null, $"{device.DisplayName}里没找到正在运行的明日方舟");
+        return new(kind, window, device, null);
+    }
 
     public static GameSourceSelection Find(string source, string serial, Func<IntPtr> findPc,
         Func<IReadOnlyList<EmulatorWindow>> findMumu, Func<IReadOnlyList<EmulatorDevice>> findDevices)
@@ -29,12 +57,12 @@ public sealed record GameSourceSelection(string? Source, IntPtr Window, Emulator
         var devices = findDevices().Where(d => source == "auto" || d.Kind == source).ToArray();
         if (windows.Count == 0 && devices.Length == 0) return new(null, IntPtr.Zero, null, null);
         var candidates = serial.Length == 0
-            ? devices.Where(d => d.DisplayId is not null).ToArray()
+            ? devices.Where(d => d.DisplayId is not null && !d.ProbeFailed).ToArray()
             : devices.Where(d => d.Serial == serial).ToArray();
         var device = candidates.FirstOrDefault();
-        var kind = device?.Kind ?? devices.FirstOrDefault()?.Kind ?? "mumu";
+        var kind = device?.Kind ?? devices.FirstOrDefault(d => d.ProbeFailed)?.Kind ?? devices.FirstOrDefault()?.Kind ?? "mumu";
         var window = device is { Kind: "ldplayer" } ? device.Window
-            : kind == "ldplayer" ? devices[0].Window
+            : kind == "ldplayer" ? devices.First(d => d.Kind == kind).Window
             // TODO(design): MuMu 多开窗口对应
             : (windows.FirstOrDefault(w => w.Name == device?.Name) ?? windows.FirstOrDefault())?.Handle ?? IntPtr.Zero;
         if (serial.Length == 0 && candidates.Length > 1)

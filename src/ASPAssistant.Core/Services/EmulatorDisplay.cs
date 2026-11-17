@@ -33,8 +33,11 @@ public static class EmulatorDisplay
 
     public static EmulatorDevice Inspect(EmulatorDevice device) => Inspect(device, RunAdb);
 
+    public static EmulatorDevice InspectManual(EmulatorDevice device) => Inspect(device, RunAdb, true);
+
     public static EmulatorDevice Inspect(EmulatorDevice device,
-        Func<EmulatorDevice, string[], (int ExitCode, byte[] Output, string Error)> runAdb)
+        Func<EmulatorDevice, string[], (int ExitCode, byte[] Output, string Error)> runAdb,
+        bool requireConnection = false)
     {
         (int ExitCode, byte[] Output, string Error)? Probe(string step, params string[] arguments)
         {
@@ -56,13 +59,14 @@ public static class EmulatorDisplay
         if (Regex.IsMatch(device.Serial, @"^\S+:\d+$"))
             Probe("connect", "connect", device.Serial);
         var windows = Probe("dumpsys", "-s", device.Serial, "shell", "dumpsys", "window", "windows");
+        var probeFailed = (requireConnection || device.Kind == "ldplayer") && windows is not { ExitCode: 0 };
         string? gamePackage = null;
         return device with
         {
             DisplayId = windows is { ExitCode: 0 } result
-                ? FindGameDisplay(Encoding.UTF8.GetString(result.Output), out gamePackage) : 0,
+                ? FindGameDisplay(Encoding.UTF8.GetString(result.Output), out gamePackage) : probeFailed ? null : 0,
             GamePackage = gamePackage,
-            ProbeFailed = false
+            ProbeFailed = probeFailed
         };
     }
 

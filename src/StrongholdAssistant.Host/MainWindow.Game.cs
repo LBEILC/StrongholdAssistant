@@ -256,7 +256,7 @@ public partial class MainWindow
     // 跟随定位不等待 OCR 预热；首次发现和后续移动共用 UpdateGame。
     private void InitializeGameTracking()
     {
-        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial);
+        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress);
         _capture.Connection.Changed += _ =>
         {
             _scanner?.InvalidateShop();
@@ -573,7 +573,7 @@ public partial class MainWindow
         {
             await Task.Run(() =>
             {
-                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial))
+                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress))
                     _capture.Connection.FindGameWindow();
             });
         }

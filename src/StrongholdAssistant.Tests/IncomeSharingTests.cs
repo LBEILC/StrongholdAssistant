@@ -18,7 +18,7 @@ public sealed class IncomeSharingTests : IDisposable
 
     private sealed class FakeHttp : HttpMessageHandler
     {
-        public IncomeTable Table { get; set; } = new(0x981d, "2026-11-12T00:00:00Z", []);
+        public IncomeTable Table { get; set; } = new(0xf462, "2026-11-12T00:00:00Z", []);
         public List<IncomeReport> Reports { get; } = [];
         public bool Fail { get; set; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -110,7 +110,7 @@ public sealed class IncomeSharingTests : IDisposable
         using var handler = new FakeHttp();
         using var http = new HttpClient(handler);
         api.IncomeClient = http;
-        Assert.Equal(0x981d, api.DataFingerprint);
+        Assert.Equal(0xf462, api.DataFingerprint);
         Open(api);
         Read(api, 1, 4);
         Read(api, 2, 8);
@@ -161,7 +161,7 @@ public sealed class IncomeSharingTests : IDisposable
         await api.IncomeReportTask;
         var report = Assert.Single(handler.Reports);
         Assert.Equal(new[] { new RoundMoney(1, 4), new RoundMoney(2, 8) }, report.Samples);
-        Assert.Equal(0x981d, report.Fingerprint);
+        Assert.Equal(0xf462, report.Fingerprint);
         Assert.True(Guid.TryParse(report.Device, out _));
         Read(api, 1, 0);
         api.SetMatchStrategy("band_fund");

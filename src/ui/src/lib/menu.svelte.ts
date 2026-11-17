@@ -34,7 +34,8 @@ export const menu = $state<{ open: MenuState | null; at: number }>({ open: null,
 export function openMenu(e: MouseEvent, m: Omit<MenuState, 'x' | 'y'>) {
   e.preventDefault()
   e.stopPropagation()
-  // 侧栏收起时窗口只有一条或很矮，菜单放不下会被截掉（v1.2.7 群友反馈）：先展开侧栏，菜单在展开后的窗口里重新定位
+  // 向上收起时窗口很矮，菜单放不下会被截掉（v1.2.7 群友反馈）：先展开侧栏，菜单在展开后的窗口里重新定位。
+  // 收成窄条时窄条上不弹菜单（CollapsedStrip 不接右键，v1.2.8）
   if (app.collapsed) app.setCollapsed(false)
   menu.open = { ...m, x: e.clientX, y: e.clientY }
   menu.at = performance.now()

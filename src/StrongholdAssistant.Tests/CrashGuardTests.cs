@@ -22,6 +22,22 @@ public sealed class CrashGuardTests
     }
 
     [Fact]
+    public void CrashWhileLinkingAdbSwitchesToSafeScreencap()
+    {
+        var directory = NewDirectory();
+        CrashGuard.Initialize(directory);
+        CrashGuard.AdbStarting();
+        CrashGuard.AdbLinked();
+        CrashGuard.Initialize(directory);
+        Assert.False(CrashGuard.AdbSafe);
+        CrashGuard.AdbStarting();
+        // 第一次截图前就没了，相当于连模拟器时闪退。
+        CrashGuard.Initialize(directory);
+        Assert.True(CrashGuard.AdbSafe);
+        CrashGuard.Initialize(NewDirectory());
+    }
+
+    [Fact]
     public void NormalExitResetsTheCount()
     {
         var directory = NewDirectory();

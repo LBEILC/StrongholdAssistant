@@ -58,7 +58,7 @@ def generate(rendered, operators, output, size=60, default_only=False, allow_par
             payload = struct.pack("<3H2f", op["tier"], w, h, ox - x, oy - y) + a[y:y+h, x:x+w].tobytes() + b[y:y+h, x:x+w].tobytes()
             if (skin_id, payload) not in seen:
                 seen.add((skin_id, payload))
-                encoded = name.encode("utf-8")
+                encoded = op.get("templateName", name).encode("utf-8")
                 skin = skin_id.encode("utf-8")
                 records.append(struct.pack("<H", len(encoded)) + encoded + struct.pack("<H", len(skin)) + skin + payload)
             covered.add(name)

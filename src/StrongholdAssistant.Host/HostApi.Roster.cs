@@ -120,6 +120,7 @@ public sealed partial class HostApi
             stop.Token.ThrowIfCancellationRequested();
             control = await Task.Run(_rosterControl!);
             first = await Task.Run(control.Capture);
+            _rosterReader.HasPithStrategy = Match.StrategyId is { } strategyId ? strategyId == "band_pith" : null;
             var reading = await _rosterReader.ReadAsync(first);
             stop.Token.ThrowIfCancellationRequested();
             if (reading is null)
@@ -174,6 +175,18 @@ public sealed partial class HostApi
         return sort;
     }
 
+    internal void CompleteRosterScan(string reason, HashSet<string> seen, List<string> squad)
+    {
+        lock (_rosterGate)
+        {
+            var roster = ReadRoster();
+            SaveRoster(roster with { ReadAt = DateTimeOffset.UtcNow.ToString("O"),
+                Operators = reason == "end" ? seen.Select(n => roster.Operators.Single(o => o.Name == n)).ToArray() : roster.Operators,
+                CustomSquad = reason == "end" ? squad.ToArray() : roster.CustomSquad });
+        }
+        Changed?.Invoke("roster", ReadRoster());
+    }
+
     private async Task RunRosterAsync(RosterGameControl control, byte[] frame, CancellationTokenSource stop)
     {
         string reason = "end"; string? error = null;
@@ -218,7 +231,8 @@ public sealed partial class HostApi
                     if (control.Lost) { reason = "lost"; break; }
                     step = "读取卡片";
                     reading = null;
-                    reading = await _rosterReader!.ReadAsync(frame);
+                    _rosterReader!.HasPithStrategy = Match.StrategyId is { } strategyId ? strategyId == "band_pith" : null;
+                    reading = await _rosterReader.ReadAsync(frame);
                     if (reading is null)
                     {
                         reason = "left";
@@ -253,16 +267,7 @@ public sealed partial class HostApi
             control.Dispose();
             try
             {
-                lock (_rosterGate)
-                {
-                    var roster = ReadRoster();
-                    var order = seen.ToArray();
-                    SaveRoster(roster with { ReadAt = DateTimeOffset.UtcNow.ToString("O"),
-                        Operators = reason == "end" ? order.Select(n => roster.Operators.Single(o => o.Name == n))
-                            .Concat(roster.Operators.Where(o => !seen.Contains(o.Name))).ToArray() : roster.Operators,
-                        CustomSquad = reason == "end" ? squad.ToArray() : roster.CustomSquad });
-                }
-                Changed?.Invoke("roster", ReadRoster());
+                CompleteRosterScan(reason, seen, squad);
             }
             catch (Exception ex) { reason = "failed"; error = ex.Message; }
             lock (_rosterGate) { _rosterStop = null; stop.Dispose(); }

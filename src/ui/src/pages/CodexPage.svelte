@@ -1,5 +1,6 @@
 <script lang="ts">
   import BondPick from '../components/BondPick.svelte'
+  import { opMatches } from '../lib/opsearch'
   import { app } from '../lib/state.svelte'
   import { asset, ROMAN, fmtHp } from '../lib/assets'
   import OpCard from '../components/OpCard.svelte'
@@ -59,6 +60,9 @@
   let q = $state('')
   let tiers = $state<number[]>([])
   let bonds = $state<string[]>([])
+  /** 选了几个盟约时：false = 全部符合（默认），true = 符合其一（v1.2.8 群友要） */
+  let bondAny = $state(false)
+  const hasBond = (o: { core: string[]; extra: string[] }, b: string) => o.core.includes(b) || o.extra.includes(b)
   let onlyTracked = $state(false)
   // 从顶栏追踪的「N 项」点进来：切到干员、只看追踪中
   $effect(() => {
@@ -94,9 +98,9 @@
   const ops = $derived(
     app.catalog.operators.filter(
       (o) =>
-        (!q || o.name.includes(q)) &&
+        opMatches(o.name, q) &&
         (!tiers.length || tiers.includes(o.tier)) &&
-        (!bonds.length || bonds.every((b) => o.core.includes(b) || o.extra.includes(b))) &&
+        (!bonds.length || (bondAny ? bonds.some((b) => hasBond(o, b)) : bonds.every((b) => hasBond(o, b)))) &&
         (!timings.length || timings.some((t) => hasTiming(o.name, t))) &&
         (!onlyTracked || app.tracked.has(o.name)) &&
         (!onlyFocus || app.focusOps.has(o.name)) &&
@@ -229,7 +233,14 @@
             <button class="chip" class:on={timings.includes(t)} onclick={() => (timings = toggle(timings, t))}>{t === OTHER ? t : `<${t}>`}</button>
           {/each}
         </div>
-        <BondPick state={(id) => ({ on: bonds.includes(id) })} onpick={(id) => (bonds = toggle(bonds, id))} />
+        <BondPick state={(id) => ({ on: bonds.includes(id) })} onpick={(id) => (bonds = toggle(bonds, id))}>
+          {#snippet coreAside()}
+            <span class="anyall" role="group" aria-label="多个盟约怎么筛">
+              <button class:on={!bondAny} onclick={() => (bondAny = false)}>全部符合</button>
+              <button class:on={bondAny} onclick={() => (bondAny = true)}>符合其一</button>
+            </span>
+          {/snippet}
+        </BondPick>
       {:else if timings.length + bonds.length}
         <!-- 收起时也看得到筛了什么，点 × 单个去掉 -->
         <div class="chips picked">
@@ -550,6 +561,20 @@
     font-size: var(--fs-sm);
     color: var(--fg-4);
     margin-right: 2px;
+  }
+  /* 多个盟约「全部符合 / 符合其一」，放在盟约组标题右边 */
+  .anyall {
+    display: inline-flex;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .anyall button {
+    padding: 2px 7px;
+    font-size: var(--fs-xs);
+    color: var(--fg-4);
+  }
+  .anyall button.on {
+    color: var(--mint-ink);
+    background: var(--mint);
   }
   .timing .chip {
     font-size: var(--fs-sm);

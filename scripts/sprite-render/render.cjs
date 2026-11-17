@@ -145,10 +145,12 @@ async function renderModel(meta, model, directory, prefix) {
 async function main() {
   const priority = new Set(['暴躁铁皮']);
   const cache = option('--cache', path.join(root,'out/211/cache'));
-  if (!prototypeOnly) for await (const line of readline.createInterface({ input:fs.createReadStream(path.join(cache,'observations.jsonl')) }))
+  const requested = option('--names', '').split(',').filter(Boolean);
+  if (!prototypeOnly && !requested.length) for await (const line of readline.createInterface({ input:fs.createReadStream(path.join(cache,'observations.jsonl')) }))
     for (const name of Object.values(JSON.parse(line).Observation?.Shop ?? {})) priority.add(name);
   const list = operators.map(o => ({...o,name:o.name.replace(/[“”]/g,'')})).sort((a,b) => Number(priority.has(b.name))-Number(priority.has(a.name)));
-  const selected = args.includes('--priority-only') ? list.filter(o => priority.has(o.name)) : list;
+  const selected = requested.length ? list.filter(o => requested.includes(o.name))
+    : args.includes('--priority-only') ? list.filter(o => priority.has(o.name)) : list;
   const manifestFile = path.join(output,'manifest.json');
   const manifest = fs.existsSync(manifestFile) ? read(manifestFile) : { operators:{}, errors:{} };
   if (manifest.pixelsPerUnit !== pixelsPerUnit) manifest.operators = {};

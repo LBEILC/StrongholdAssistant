@@ -69,6 +69,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public string ShopScanSpeed { get; init; } = "normal";
     public string UpdateSource { get; init; } = "github";
     public string UpdateProxy { get; init; } = "";
+    public bool AutoDownloadUpdate { get; init; } = true;
     public string MirrorChyanCdk { get; init; } = "";
     /// <summary>GitHub Token（可选，2026-11-16 加，对位 MAA 的 GitHubToken）。落盘加密，不进备份和诊断包</summary>
     [JsonPropertyName("githubToken")]
@@ -79,6 +80,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
     public string GameSource { get; init; } = "auto";
     public string EmulatorSerial { get; init; } = "";
+    public string AdbAddress { get; init; } = "";
     public bool AlwaysOnTop { get; init; }
     public bool FollowGame { get; init; } = true;
     public string DockSide { get; init; } = "auto";

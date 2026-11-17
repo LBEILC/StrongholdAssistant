@@ -123,6 +123,7 @@ public sealed partial class HostApi
         if (_fieldReaderGeneration != generation) { _fieldReader!.Reset(); _fieldReaderGeneration = generation; }
         _fieldReader!.Theme = Theme(Settings.GameTheme);
         _fieldReader.KnownMap = Field?.MapId;
+        _fieldReader.HasPithStrategy = Match.StrategyId is { } strategyId ? strategyId == "band_pith" : null;
         _fieldReader.BossRound = economy?.IsFinalRound == true || economy?.Round is { } round
             && _boardRouteStore?.IsBossRound(round, Match.Solo, Match.Mode?.Id) == true;
         var cursor = FieldCursorRegion();

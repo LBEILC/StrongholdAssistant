@@ -1,5 +1,6 @@
 <script lang="ts">
   import { slide } from 'svelte/transition'
+  import { opMatches } from '../lib/opsearch'
   import { cubicOut } from 'svelte/easing'
   import { app } from '../lib/state.svelte'
   import { field, cellKey, sameCell, placeable, terrainOf } from '../lib/field.svelte'
@@ -195,7 +196,7 @@
   const addAll = $derived(
     addCell
       ? app.catalog.operators
-          .filter((o) => (addTier === null || o.tier === addTier) && (!q.trim() || o.name.toLowerCase().includes(q.trim().toLowerCase())))
+          .filter((o) => (addTier === null || o.tier === addTier) && opMatches(o.name, q))
           .map((o) => o.name)
       : [],
   )
@@ -222,7 +223,7 @@
   })
   const tierAll = $derived(
     selUnit
-      ? app.catalog.operators.filter((o) => o.tier === selUnit.tier && (!q.trim() || o.name.toLowerCase().includes(q.trim().toLowerCase()))).map((o) => o.name)
+      ? app.catalog.operators.filter((o) => o.tier === selUnit.tier && opMatches(o.name, q)).map((o) => o.name)
       : [],
   )
   async function confirm(name: string | null) {
