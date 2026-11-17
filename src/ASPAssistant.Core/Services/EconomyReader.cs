@@ -15,6 +15,7 @@ public sealed record EconomyReading(int? Round, int? Money, int? Level, int? Upg
 /// <summary>复用商店截图；顶部读回合，右下读资金，LEVEL 标签定位升级面板。</summary>
 public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShopTheme.Terminal)
 {
+    public string RoundRawText { get; private set; } = "";
     private readonly Dictionary<(Rectangle Region, bool Line), (byte[] Pixels, IReadOnlyList<OcrTextResult> Text)> _regions = [];
     private OcrTextResult? _levelLabel;
     private Rectangle? _upgradeLabelRegion;
@@ -59,6 +60,7 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
             roundText = string.Join("", digits.Select(t => t.Text));
         }
         int? round = Number(roundText);
+        RoundRawText = string.Join(" | ", top.Select(t => t.Text)) + $"; digits={roundText}";
         if (round > 20) round = null;
         // 动画标牌会让顶部文字漏检；只用本帧就绪控件补证，不沿用上一帧阶段。
         bool isRest = heading.Contains("休息") || heading.Contains("休整")

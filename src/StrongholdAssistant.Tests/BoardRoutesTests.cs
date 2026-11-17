@@ -260,7 +260,7 @@ public sealed class BoardRoutesTests
     }
 
     [Fact]
-    public async Task EventsOnlyRecognizeWhenEnabledAndPublishChangesOnce()
+    public async Task RecognitionContinuesWhileDisabledAndRoutesPublishChangesOnceWhenEnabled()
     {
         string directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
         try
@@ -276,7 +276,8 @@ public sealed class BoardRoutesTests
             var frame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "shop-ui100-2000x1125.png"));
             var rest = new EconomyReading(1, null, null, null, true);
             api.ObserveBoardFrame(frame, rest);
-            Assert.Equal(0, calls);
+            Assert.Equal(1, calls);
+            Assert.Empty(events);
             api.BoardRoutesEnabled = true;
             api.ObserveBoardFrame(frame, rest); api.ObserveBoardFrame(frame, rest);
             Assert.Single(events);
@@ -302,7 +303,7 @@ public sealed class BoardRoutesTests
             api.ObserveBoardFrame(frame, rest with { IsRest = false });
             api.BoardRoutesEnabled = false;
             api.ObserveBoardFrame(frame, rest);
-            Assert.Equal(before, calls);
+            Assert.Equal(before + 1, calls);
         }
         finally { Directory.Delete(directory, true); }
     }

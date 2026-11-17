@@ -1,5 +1,6 @@
 // 颜色采样、距离截断与裁剪均值改编自 bingyunhe/asp-assistant-arknights BoardRecognizer.cs（Apache-2.0）。
 // 2026-11-17：宽高屏共用场上画幅转换，投影还原到原截图；采样明确使用像素单位。
+// 2026-11-17：普通回合允许有界的整体偏色，保留原始地图区分度和投影拟合。
 // 2026-11-15：首领回合使用本局地图，比较两侧镜头并排除地形变化格。
 // 2026-11-13：支持现有 PNG 截图；按画面拟合镜头的缩放与偏移，输出关卡地图 id 和投影。
 using System.Drawing;
@@ -106,7 +107,14 @@ public sealed class BoardRecognizer
         double Rank(Fit fit) => mapId is null ? fit.Full : fit.Trimmed;
         var winner = candidates.MinBy(Rank)!;
         double? gap = mapId is null ? candidates.Where(f => f.Map != winner.Map).Min(f => f.Full) - winner.Full : null;
-        string? rejection = winner.Trimmed > (boss ? 40 : 11) ? (boss ? "score>40" : "score>11") : gap < 5 ? "gap<5" : null;
+        bool colorMatch = winner.Trimmed <= (boss ? 40 : 11);
+        if (!boss && !colorMatch && !(gap < 5))
+        {
+            var references = _references[winner.Map];
+            var reference = references.GetValueOrDefault(winner.Camera) ?? references.Values.First();
+            colorMatch = MatchesWithColorOffset(Sample(pixels, winner.Projection, null), reference);
+        }
+        string? rejection = !colorMatch ? (boss ? "score>40" : "score>11") : gap < 5 ? "gap<5" : null;
         var projection = winner.Projection;
         if (viewport.Width != 1 || viewport.Height != 1)
             projection = new BoardProjection(new[] { (0d, 0d), (7d, 0d), (7d, 5d), (0d, 5d) }.Select(p =>
@@ -147,6 +155,21 @@ public sealed class BoardRecognizer
         double full = distances.Average();
         Array.Sort(distances);
         return (full, distances.Take((int)(distances.Length * .7)).Average());
+    }
+
+    private static bool MatchesWithColorOffset(byte[][] samples, byte[][] reference)
+    {
+        // 用全部采样的通道中位差估计整体偏色，不用少数被干员或面板覆盖的格子校色。
+        var offset = Enumerable.Range(0, 3).Select(channel => samples
+            .Select((sample, i) => sample[channel] - reference[i][channel])
+            .Order().ElementAt(samples.Length / 2)).ToArray();
+        // RGB 向量最多补偿 20，不能把拖人高亮、暗幕等大幅色变校成正常棋盘。
+        if (offset.Sum(value => value * value) > 20 * 20) return false;
+        var distances = samples.Select((sample, i) => Math.Min(45, Math.Sqrt(
+            Enumerable.Range(0, 3).Sum(channel => Math.Pow(
+                sample[channel] - reference[i][channel] - offset[channel], 2))))).Order();
+        // 只复核颜色；地图排名、gap、投影和对外诊断分数仍用未经校色的结果。
+        return distances.Take((int)(samples.Length * .7)).Average() <= 11;
     }
 
     // 数据来自地图文件；行 -1..4、列 -1..7，位 0 表示可走，位 1 表示有预置物（含隐藏）。

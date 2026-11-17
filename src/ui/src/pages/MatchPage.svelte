@@ -41,6 +41,16 @@
     app.showToast(on ? '已打开敌人路线：休整期在棋盘上画本回合路线' : '已关闭敌人路线')
   }
   let openType = $state<string | null>(null)
+  // 手动选的游戏主题和画面认到的不一致时提醒（任务 330：画面是乌萨斯、设成终端，商店整帧读空）；关掉后同一个认到的主题不再提醒
+  const THEME_NAMES = { terminal: '卫戍协议终端', ursus: '乌萨斯齐心团', closure: '「全能的」可露希尔' } as const
+  let themeDismissed = $state<string | null>(null)
+  const seenTheme = $derived(app.connection.theme)
+  const themeMismatch = $derived(!app.settings.gameThemeAuto && !!seenTheme && seenTheme !== app.settings.gameTheme && themeDismissed !== seenTheme)
+  const autoTheme = () => {
+    app.settings.gameThemeAuto = true
+    app.saveSettings()
+    app.showToast('已改成自动识别游戏主题')
+  }
   const setRoutes = (patch: Partial<typeof app.settings.routes>) => {
     app.settings.routes = { ...app.settings.routes, ...patch }
     app.saveSettings()
@@ -201,6 +211,16 @@
     <div class="note">
       <span>{app.scanNote.message}</span>
       <button class="nx" aria-label="关闭提示" onclick={() => (app.scanNote = null)}><Icon name="close" size={13} /></button>
+    </div>
+  {/if}
+  {#if themeMismatch && seenTheme}
+    <div class="note warn">
+      <span
+        >游戏画面是{THEME_NAMES[seenTheme]}主题，设置里选的是{THEME_NAMES[app.settings.gameTheme]}，商店和场上会读不准。<button class="lk" onclick={autoTheme}
+          >改成自动识别</button
+        ></span
+      >
+      <button class="nx" title="不改，这个主题不再提醒" aria-label="关闭提示" onclick={() => (themeDismissed = seenTheme)}><Icon name="close" size={13} /></button>
     </div>
   {/if}
   {#if edit}
@@ -636,6 +656,18 @@
   }
   .note span {
     flex: 1;
+  }
+  .note.warn {
+    color: var(--gold);
+    background: rgb(var(--gold-rgb) / 0.08);
+    box-shadow: inset var(--edge) 0 0 var(--gold);
+  }
+  .lk {
+    color: inherit;
+    font-weight: var(--fw-bold);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: 2px;
   }
   .nx {
     flex: none;
@@ -1283,7 +1315,7 @@
   :global([data-skin='closure']) .focus.bad .fl {
     padding: 0 8px;
   }
-  :global([data-skin='closure']) :is(.focus.ok, .note) {
+  :global([data-skin='closure']) :is(.focus.ok, .note:not(.warn)) {
     color: var(--win-cyan);
     background: rgb(var(--mint-rgb) / 0.08);
     box-shadow: inset 0 0 0 1.5px rgb(var(--mint-rgb) / 0.6);
@@ -1330,7 +1362,7 @@
   :global([data-skin='ursus']) .focus.bad .fl {
     padding: 0 8px;
   }
-  :global([data-skin='ursus']) :is(.focus.ok, .note) {
+  :global([data-skin='ursus']) :is(.focus.ok, .note:not(.warn)) {
     color: var(--mint);
     background: rgb(var(--mint-rgb) / 0.08);
     box-shadow: inset 3px 0 0 var(--mint);

@@ -209,14 +209,22 @@ public class OcrScannerService : IDisposable
             if (text.Any(t => t.Text.Replace(" ", "").Contains("确认准备", StringComparison.Ordinal)))
                 throw new InvalidOperationException("棋盘被面板挡住了，关掉面板再点");
         }
+        var boardSurface = new BoardSurfaceReader(_ocrEngine);
         bool main;
         using (FieldRecognitionTiming.Measure("mainScreen"))
-            main = await new BoardSurfaceReader(_ocrEngine).IsMainScreenAsync(frame, width, height);
+            main = await boardSurface.IsMainScreenAsync(frame, width, height);
         EconomyReading economy;
+        var economyReader = new EconomyReader(_ocrEngine, _shopReader.Theme);
         using (FieldRecognitionTiming.Measure("economy"))
-            economy = await new EconomyReader(_ocrEngine, _shopReader.Theme).ReadFieldAsync(frame, width, height, main);
+            economy = await economyReader.ReadFieldAsync(frame, width, height, main);
         if (!economy.IsRest || !main)
+        {
+            string detail = $"IsRest={economy.IsRest} main={main} round={economy.Round?.ToString() ?? "null"} finalRound={economy.IsFinalRound} roundOCR={economyReader.RoundRawText} readyOCR={boardSurface.RawText}";
+            AppLogger.Warn("Field", detail);
+            // 复用失败现场通道，保存本次手动识别的帧，不受路线或采集开关影响。
+            RecognitionFailed?.Invoke(frame, "现在不在休整期的棋盘画面", null, [detail]);
             throw new InvalidOperationException("现在不在休整期的棋盘画面，先关掉干员详情等面板、回到棋盘再点");
+        }
         // 手动认人只需卡身遮挡范围，不读商店文字，也不沿用上一帧卡片。
         using var stream = new MemoryStream(frame);
         using var bitmap = new System.Drawing.Bitmap(stream);

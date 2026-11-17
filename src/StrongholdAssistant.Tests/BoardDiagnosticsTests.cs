@@ -78,7 +78,7 @@ public sealed class BoardDiagnosticsTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public async Task ExportIncludesLatestRecognizedFrameOnlyWhileEnabled()
+    public async Task ExportIncludesLatestFrameWithRoutesDisabledAndAfterToggle()
     {
         string directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -87,7 +87,7 @@ public sealed class BoardDiagnosticsTests(ITestOutputHelper output)
             var data = Path.Combine(AppContext.BaseDirectory, "data");
             var api = await HostApi.CreateAsync(data, directory);
             api.InitializeBoardRoutes(data);
-            api.BoardRoutesEnabled = true;
+            Assert.False(api.BoardRoutesEnabled);
             var frame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "shop-ui100-2000x1125.png"));
             api.ObserveBoardFrame(frame, new(1, null, null, null, true));
             Assert.Same(frame, api.GetDiagnosticBoardFrame());
@@ -96,8 +96,9 @@ public sealed class BoardDiagnosticsTests(ITestOutputHelper output)
             using (var zip = ZipFile.OpenRead(path))
             using (var input = zip.GetEntry("diagnostics/board-latest.png")!.Open())
             using (var image = new Bitmap(input)) Assert.Equal((1920, 1080), (image.Width, image.Height));
+            api.BoardRoutesEnabled = true;
             api.BoardRoutesEnabled = false;
-            Assert.Null(api.GetDiagnosticBoardFrame());
+            Assert.Same(frame, api.GetDiagnosticBoardFrame());
         }
         finally { Directory.Delete(directory, true); }
     }

@@ -39,5 +39,17 @@ public sealed class BoardScanTests(ShopReaderFixture fixture, EnemyRecognitionFi
         await ShopScanTests.Frame(scanner, sample);
         output.WriteLine($"开启棋盘后的静帧扫描耗时 {clock.Elapsed.TotalMilliseconds:F1} ms。");
         Assert.Equal(new[] { "shop", "board" }, order);
+        scanner.BoardRoutesRequested = () => false;
+        bool fieldObserved = false;
+        scanner.ObserveFieldAsync = (_, _, reading, main, _, _) =>
+        {
+            Assert.True(main);
+            Assert.True(reading!.IsRest);
+            fieldObserved = true;
+            return Task.CompletedTask;
+        };
+        await ShopScanTests.Frame(scanner, sample);
+        Assert.True(fieldObserved);
+        Assert.Equal(new[] { "shop", "board", "board" }, order);
     }
 }

@@ -48,8 +48,7 @@ public sealed partial class HostApi
                 if (_boardRoutesEnabled == value) return;
                 _boardRoutesEnabled = value;
                 BoardLog($"BoardRoutesEnabled={value}");
-                if (!value) _latestBoardFrame = null;
-                if (!value) ClearBoard();
+                BoardRoutesChanged?.Invoke(value ? _boardRoutes : null);
             }
         }
     }
@@ -74,13 +73,13 @@ public sealed partial class HostApi
     {
         lock (_boardGate)
         {
-            if (!_boardRoutesEnabled) return;
             if (frame is null)
             {
                 _boardJump.Reset();
                 ClearBoard();
                 return;
             }
+            _latestBoardFrame = frame;
             if (_boardMainScreen != mainScreen)
             {
                 _boardMainScreen = mainScreen;
@@ -174,7 +173,7 @@ public sealed partial class HostApi
     {
         lock (_boardGate)
         {
-            if (!_boardRoutesEnabled || _boardRoutes is not { } previous) return;
+            if (_boardRoutes is not { } previous) return;
             // 已确认的回合可能先由经济扫描更新；沿用当前投影立即推送，下一帧仍按原流程校准棋盘。
             int round = Match.Economy?.Round == previous.Round + 1 ? previous.Round + 1 : previous.Round;
             var board = new BoardMatch(previous.MapId, previous.Camera, previous.Projection, 0, previous.PlayerSide);
@@ -207,7 +206,7 @@ public sealed partial class HostApi
 
     internal byte[]? GetDiagnosticBoardFrame()
     {
-        lock (_boardGate) return _boardRoutesEnabled ? _latestBoardFrame : null;
+        lock (_boardGate) return _latestBoardFrame;
     }
 
     private void ClearBoard()
@@ -250,6 +249,6 @@ public sealed partial class HostApi
         _boardRoutes = next;
         _boardMode = Match.Mode?.Id;
         BoardLog(next is null ? "覆盖层结果=null" : $"覆盖层结果=路线 map={next.MapId} camera={next.Camera} round={next.Round} routes={next.Routes.Count}");
-        BoardRoutesChanged?.Invoke(next);
+        if (_boardRoutesEnabled) BoardRoutesChanged?.Invoke(next);
     }
 }

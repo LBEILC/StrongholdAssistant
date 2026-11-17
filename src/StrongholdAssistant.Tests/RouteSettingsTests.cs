@@ -43,7 +43,7 @@ public sealed class RouteSettingsTests : IDisposable
         Assert.True((await HostApi.CreateAsync(data, _directory)).BoardRoutesEnabled);
         api.SaveSettings(api.Settings with { Routes = new(Enabled: false) });
         Assert.False(api.BoardRoutesEnabled);
-        api.RecognizeBoard = (_, _, _) => throw new Exception("关闭后不应识别棋盘");
+        api.RecognizeBoard = (_, _, _) => throw new Exception("没有休整期读数时不应识别棋盘");
         api.ObserveBoardFrame([], null);
         using var source = JsonDocument.Parse(File.ReadAllText(Path.Combine(data, "enemy_types.json")));
         var types = source.RootElement.GetProperty("types");
