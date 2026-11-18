@@ -46,7 +46,7 @@ public sealed class FieldManualAddTests
 
     [Theory]
     [InlineData(2, "甲", "sure")]
-    [InlineData(3, "乙", "auto")]
+    [InlineData(3, "乙", "pending")]
     public void RealOccupancyKeepsSameTierNameOrRecognizesReplacement(int tier, string name, string status)
     {
         var tracker = Tracker();

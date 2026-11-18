@@ -26,6 +26,11 @@ public sealed class FieldRecognitionTiming : IDisposable
 
     public static IDisposable? Measure(string stage) => Current.Value is { } timing ? new Segment(timing, stage) : null;
 
+    internal void Record(string stage, double milliseconds)
+    {
+        lock (_milliseconds) _milliseconds[stage] = _milliseconds.GetValueOrDefault(stage) + milliseconds;
+    }
+
     public void Dispose() => Current.Value = _previous;
 
     private sealed class Segment(FieldRecognitionTiming owner, string stage) : IDisposable
@@ -34,8 +39,7 @@ public sealed class FieldRecognitionTiming : IDisposable
         public void Dispose()
         {
             double elapsed = Stopwatch.GetElapsedTime(_start).TotalMilliseconds;
-            lock (owner._milliseconds)
-                owner._milliseconds[stage] = owner._milliseconds.GetValueOrDefault(stage) + elapsed;
+            owner.Record(stage, elapsed);
         }
     }
 }

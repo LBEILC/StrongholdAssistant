@@ -9,7 +9,7 @@ namespace StrongholdAssistant.Tests;
 public sealed class FieldManualTests
 {
     [Fact]
-    public void DisabledObservationKeepsSnapshotAndRecordsPurchaseWithoutGeneralMatching()
+    public void DisabledObservationKeepsSnapshotWithoutMatchingOrRecordingPurchase()
     {
         var tracker = new FieldTracker();
         int matches = 0;
@@ -27,9 +27,10 @@ public sealed class FieldManualTests
             Sprites = new Dictionary<FieldCell,FieldSpritePatch> { [cell] = patch } };
         tracker.Observe(purchase, recognize: false);
         Assert.Same(snapshot, tracker.State);
-        Assert.Equal(1, matches);
+        Assert.Equal(0, matches);
         tracker.Observe(purchase with { At = at.AddSeconds(3) }, force: true);
-        Assert.Contains(tracker.State!.Roster, r => r.Operator == "甲" && r.Source == "purchase");
+        Assert.Empty(tracker.State!.Roster);
+        Assert.DoesNotContain(tracker.State.Log, e => e.Kind == "buy");
         var previous = tracker.State.UpdatedAt;
         tracker.Observe(purchase with { At = at.AddSeconds(4) }, force: true);
         Assert.NotEqual(previous, tracker.State.UpdatedAt);

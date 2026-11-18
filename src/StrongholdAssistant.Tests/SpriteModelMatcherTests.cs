@@ -18,6 +18,43 @@ public sealed class SpriteModelMatcherTests
     }
 
     [Fact]
+    public void TemplateCandidatesRecallLookalikesWithinEligiblePool()
+    {
+        using var model = Model();
+        var classes = JsonSerializer.Deserialize<string[]>(File.ReadAllText(Data("sprite-model-classes.json")))!;
+        var logits = new float[classes.Length];
+        logits[Array.IndexOf(classes, "风絮")] = 5;
+        string[] eligible = ["风絮", "水灯心", "青枳", "车尔尼", "凯瑟琳", "罗比菈塔"];
+        Assert.Equal(eligible, model.TemplateCandidates(logits, eligible));
+        Assert.DoesNotContain("凯瑟琳", model.TemplateCandidates(logits, eligible.Where(n => n != "凯瑟琳").ToArray()));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ModerateGapAcceptsTemplateOnlyOrStrongModelEvidence(bool templateOnly)
+    {
+        using var model = Model();
+        using var crop = Crop();
+        var patch = FieldReader.CropSprite(crop, 90, 156, false)!;
+        using var image = Cv2.ImDecode(patch.Image, ImreadModes.Color);
+        var classes = JsonSerializer.Deserialize<string[]>(File.ReadAllText(Data("sprite-model-classes.json")))!;
+        var byModel = model.Shortlist(model.Predict(image), classes, classes.Length);
+        var first = templateOnly ? PithIdentity.Gift : byModel[0];
+        var second = byModel[^1];
+        var tracker = new FieldTracker();
+        tracker.ConfigureIdentity([new() { Name = first, Tier = 2 }, new() { Name = second, Tier = 2 }],
+            (_, _, _) => new([new(first, templateOnly ? .57 : .50), new(second, templateOnly ? .50 : .54)], null), model);
+        var cell = new FieldCell("board", 1, 1);
+        tracker.Observe(new(DateTimeOffset.UnixEpoch, true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = 2 })
+            { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [cell] = patch } }, force: true);
+        var unit = Assert.Single(tracker.State!.Units);
+        Assert.Equal(first, unit.Operator);
+        Assert.Equal("auto", unit.Status);
+        Assert.InRange(unit.Candidates[0].Score - unit.Candidates[1].Score, SpriteMatcher.AutoFillGap, SpriteModelMatcher.AutoFillGap);
+    }
+
+    [Fact]
     public void ShortlistKeepsConfirmedPersonalTemplateOutsideTopFourAndReusesPrediction()
     {
         using var model = Model(); using var crop = Crop();
@@ -33,9 +70,9 @@ public sealed class SpriteModelMatcherTests
         tracker.Observe(new(at, true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = 2 })
             { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [cell] = patch } });
         tracker.SetOperator(cell, names[5], at);
-        var rank = typeof(FieldTracker).GetMethod("Rank", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
-            [typeof(FieldSpritePatch), typeof(int), typeof(bool), typeof(string[])])!;
-        rank.Invoke(tracker, [patch, 2, true, names]);
+        var target = new FieldCell("board", 2, 1);
+        tracker.Observe(new(DateTimeOffset.UnixEpoch.AddSeconds(1), true, "m01", 1, new Dictionary<FieldCell, int> { [target] = 2 })
+            { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [target] = patch } }, force: true);
         Assert.Contains(names[5], matched); Assert.InRange(matched.Length, 4, 5);
         var templates = names.Select(n => new SpriteCandidate(n, .5)).ToArray();
         Assert.Equal(model.Fuse(crop, templates), model.Fuse(logits, templates));
@@ -55,9 +92,9 @@ public sealed class SpriteModelMatcherTests
         tracker.ConfigureIdentity(names.Select(n => new Operator { Name = n, Tier = 2 }).ToArray(),
             (_, _, pool) => { matched = pool; return new(pool.Select(n => new SpriteCandidate(n, .5)).ToArray(), 0); }, model);
         var patch = FieldReader.CropSprite(crop, 90, 156, false)! with { OcclusionRatio = ratio };
-        var rank = typeof(FieldTracker).GetMethod("Rank", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
-            [typeof(FieldSpritePatch), typeof(int), typeof(bool), typeof(string[])])!;
-        rank.Invoke(tracker, [patch, 2, true, names]);
+        var target = new FieldCell("board", 2, 1);
+        tracker.Observe(new(DateTimeOffset.UnixEpoch.AddSeconds(1), true, "m01", 1, new Dictionary<FieldCell, int> { [target] = 2 })
+            { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [target] = patch } }, force: true);
         using var actualCrop = Cv2.ImDecode(patch.Image, ImreadModes.Color);
         Assert.Equal(ratio >= .2 ? names : model.Shortlist(model.Predict(actualCrop), names, 4), matched);
     }
@@ -87,8 +124,6 @@ public sealed class SpriteModelMatcherTests
             // 第三轮模型对本图更偏向second；模板仍让first领先，融合分差落在两个阈值之间。
             (_, _, pool) => new(pool.Select(n => new SpriteCandidate(n, n == first ? .76 : .6)).ToArray(), .16), model);
         var at = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
-        tracker.AddRoster(first, "purchase", at);
-        tracker.AddRoster(second, "purchase", at);
         var cell = new FieldCell("board", 1, 1);
         var patch = FieldReader.CropSprite(crop, 90, 156, false)!;
         var observation = new FieldObservation(at, true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = 2 })
@@ -101,11 +136,11 @@ public sealed class SpriteModelMatcherTests
         Assert.True(gap > SpriteMatcher.AutoFillGap && gap < SpriteModelMatcher.AutoFillGap);
 
         tracker.SetOperator(cell, second, at);
-        // 直接检查排名阶段，避免移动承接的 sure 优先级绕过模板比较。
-        var rank = typeof(FieldTracker).GetMethod("Rank", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
-            [typeof(FieldSpritePatch), typeof(int), typeof(bool), typeof(string[])])!;
-        var learned = (SpriteCandidate[])rank.Invoke(tracker, [patch, 2, true, new[] { first, second }])!;
-        Assert.Equal(second, learned[0].Name);
+        var target = new FieldCell("board", 2, 1);
+        tracker.Observe(new(DateTimeOffset.UnixEpoch.AddSeconds(1), true, "m01", 1, new Dictionary<FieldCell, int> { [target] = 2 })
+            { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [target] = patch } }, force: true);
+        var learned = tracker.State!.Units.Single(u => u.Cell == target).Candidates;
+        Assert.Equal(second, learned[0].Operator);
         Assert.True(learned[0].Score > .9);
     }
 }

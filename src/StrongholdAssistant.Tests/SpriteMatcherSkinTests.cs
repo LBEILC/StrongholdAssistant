@@ -41,60 +41,10 @@ public sealed class SpriteMatcherSkinTests
             var overlap = matcher.WithOcclusion(target, [(unit, front)]);
             Assert.True(overlap.OcclusionRatio > 0);
             Assert.Null(matcher.WithOcclusion(target, [(unit, target)]).OcclusionMask);
-            var behind = target with { Geometry = target.Geometry with { BadgeFootY = 460 } };
-            var unobstructed = matcher.WithNeighbors(overlap with { OcclusionRatio = 0 }, [(unit, behind)]);
-            Assert.Empty(unobstructed.NeighborNames);
-            Assert.Null(unobstructed.NeighborMask);
-            var neighbors = matcher.WithNeighbors(overlap with { OcclusionRatio = .40 }, [(unit, behind)]);
-            Assert.Equal(["甲"], neighbors.NeighborNames);
-            Assert.NotNull(neighbors.NeighborMask);
-            var masked = matcher.MaskNeighbors(neighbors, 1, ["甲"]);
-            using var previousMask = Cv2.ImDecode(overlap.OcclusionMask!, ImreadModes.Grayscale);
-            using var combinedMask = Cv2.ImDecode(masked.OcclusionMask!, ImreadModes.Grayscale);
-            Assert.True(Cv2.CountNonZero(combinedMask) > Cv2.CountNonZero(previousMask));
-            // 本格上半身在后排邻居前，不能被邻居蒙版抹掉。
-            Assert.Equal(previousMask.At<byte>(130, 100), combinedMask.At<byte>(130, 100));
         }
         finally { File.Delete(file); }
     }
 
-    [Fact]
-    public void NeighborExclusionProtectsOnlyTheScoredCandidate()
-    {
-        string file = Path.GetTempFileName();
-        using var narrow = new Mat(40, 40, MatType.CV_8UC3);
-        using var wide = new Mat(60, 80, MatType.CV_8UC3);
-        using var crop = new Mat(204, 180, MatType.CV_8UC3);
-        var random = new Random(251);
-        foreach (var image in new[] { narrow, wide, crop })
-        {
-            var pixels = new byte[image.Width * image.Height * 3];
-            random.NextBytes(pixels);
-            Marshal.Copy(pixels, 0, image.Data, pixels.Length);
-        }
-        try
-        {
-            using (var writer = new BinaryWriter(new GZipStream(File.Create(file), CompressionLevel.Fastest)))
-            {
-                writer.Write(Encoding.ASCII.GetBytes("SPRT0004")); writer.Write((ushort)60);
-                writer.Write(.25f); writer.Write(2);
-                Write(writer, "甲", "default", narrow, new Point2d(20, 40));
-                Write(writer, "乙", "default", wide, new Point2d(40, 60));
-            }
-            using var matcher = new SpriteMatcher(file);
-            using var neighbor = new Mat(crop.Size(), MatType.CV_8UC1, Scalar.All(255));
-            var patch = new ASPAssistant.Core.Models.FieldSpritePatch(crop.ImEncode(".png"), [], false)
-            {
-                Geometry = new(.5 / .00271, 0, 0, 500, 500),
-                NeighborMask = neighbor.ImEncode(".png")
-            };
-            // 加入宽身候选不能改变甲的逐候选保护区；模型范围不参与模板评分。
-            double expected = matcher.MatchCellWidth(patch, 1, ["甲"]).Candidates.Single().Score;
-            double actual = matcher.MatchCellWidth(patch, 1, ["甲", "乙"]).Candidates.Single(c => c.Name == "甲").Score;
-            Assert.Equal(expected, actual, 10);
-        }
-        finally { File.Delete(file); }
-    }
 
     [Theory]
     [InlineData(30, false)]
@@ -224,7 +174,7 @@ public sealed class SpriteMatcherSkinTests
             front.Set(170, 90, (byte)255);
             var patch = new ASPAssistant.Core.Models.FieldSpritePatch(crop.ImEncode(".png"), [], bench)
             { Geometry = new(100, 0, 0, 500, 500), OcclusionMask = front.ImEncode(".png") };
-            var result = matcher.MaskNeighbors(patch, 1, ["甲"]);
+            var result = matcher.CropModelInput(patch, 1, ["甲"]);
             using var mask = Cv2.ImDecode(result.OcclusionMask!, ImreadModes.Grayscale);
             Assert.Equal(new Size(180, 204), mask.Size());
             Assert.Same(patch.Image, result.Image);

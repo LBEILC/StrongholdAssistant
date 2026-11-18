@@ -6,15 +6,8 @@ using ASPAssistant.Core.Models;
 namespace ASPAssistant.Core.Services;
 
 // 只比较名称条，避开卡面入场和悬停光效；辅助区域另行判断资金和信息页变化。
-internal sealed record ShopFrameFingerprint(byte[] Names, byte[] Context, double Left, double Right)
+internal sealed record ShopFrameFingerprint(byte[] Names, double Left, double Right)
 {
-    public static ShopFrameFingerprint Read(byte[] png, GameShopTheme theme)
-    {
-        using var stream = new MemoryStream(png);
-        using var source = new Bitmap(stream);
-        return Read(source, theme);
-    }
-
     public static ShopFrameFingerprint Read(Bitmap source, GameShopTheme theme)
     {
         double scale = Math.Min(source.Width / 1920.0, source.Height / 1080.0);
@@ -37,11 +30,7 @@ internal sealed record ShopFrameFingerprint(byte[] Names, byte[] Context, double
                 previous = current;
             }
         }
-        // 辅助区域发生变化时才重新核实资金和信息页；不以名称缓存替代状态机。
-        var heading = Sample(source, new Rectangle(0, 0, source.Width, source.Height / 2), 384, 96);
-        var economy = Sample(source, new Rectangle(0, source.Height - (int)(310 * scale),
-            source.Width, Math.Max(1, (int)(310 * scale))), 384, 96);
-        return new(names, [.. heading, .. economy], left / (double)source.Width, right / (double)source.Width);
+        return new(names, left / (double)source.Width, right / (double)source.Width);
     }
 
     public bool ChangedSlot(ShopFrameFingerprint current, ShopItem item)

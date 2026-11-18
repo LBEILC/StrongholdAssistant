@@ -31,13 +31,18 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
     public bool ReadUntracked { get; set; }
     public IReadOnlyList<ShopItem> AllItems { get; private set; } = [];
 
-    public async Task<IReadOnlyList<ShopItem>> ReadAsync(
-        byte[] screenshot, int width, int height, IReadOnlyList<string> trackedNames)
+    internal void ClearFrame()
     {
         HasVisibleCards = false;
         Failure = null;
         UiScale = null;
         AllItems = [];
+    }
+
+    public async Task<IReadOnlyList<ShopItem>> ReadAsync(
+        byte[] screenshot, int width, int height, IReadOnlyList<string> trackedNames, Bitmap? bitmap = null)
+    {
+        ClearFrame();
         if (trackedNames.Count == 0 && !ReadUntracked)
         {
             _emptyReadings = 0;
@@ -45,8 +50,9 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         }
         var theme = Theme;
 
-        using var stream = new MemoryStream(screenshot);
-        using var source = new Bitmap(stream);
+        using var stream = bitmap is null ? new MemoryStream(screenshot) : null;
+        using var decoded = stream is null ? null : new Bitmap(stream);
+        var source = bitmap ?? decoded!;
         // 居中的 16:9 录屏黑边不属于游戏视口；实际宽屏商店则锚定视口右下角。
         int contentWidth = (int)Math.Round(height * 16.0 / 9);
         int padding = (width - contentWidth) / 2;
@@ -56,7 +62,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         {
             using var cropped = source.Clone(new Rectangle(padding, 0, contentWidth, height), PixelFormat.Format32bppArgb);
             using var croppedBytes = new MemoryStream();
-            cropped.Save(croppedBytes, ImageFormat.Png);
+            cropped.Save(croppedBytes, ImageFormat.Bmp);
             var croppedItems = await ReadAsync(croppedBytes.ToArray(), contentWidth, height, trackedNames);
             foreach (var item in AllItems.Concat(croppedItems).Distinct())
             {
@@ -75,6 +81,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
             using var graphics = Graphics.FromImage(enlarged);
             graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
             graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.SetClip(new Rectangle(0, enlarged.Height / 2, enlarged.Width, enlarged.Height - enlarged.Height / 2));
             graphics.DrawImage(source, new Rectangle(0, 0, enlarged.Width, enlarged.Height), new Rectangle(0, 0, source.Width, source.Height), GraphicsUnit.Pixel);
             width = enlarged.Width;
             height = enlarged.Height;
@@ -144,7 +151,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 controlWidth, controlHeight, GraphicsUnit.Pixel);
         }
         using var encoded = new MemoryStream();
-        strip.Save(encoded, ImageFormat.Png);
+        strip.Save(encoded, ImageFormat.Bmp);
         var ocrInput = encoded.ToArray();
         // 高分辨率缩小后，空槽纹理可能被检测成横跨整张卡片的单个 W。
         // 只排除过宽的单个英文字符；「砾」这类单字干员名不受影响。
@@ -187,14 +194,35 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         {
             // Freezing can hide the entire word from the detector. Precisely read
             // the missing card's name line instead of guessing from a partial name.
-            for (int slot = 0; slot < 6; slot++)
+            // 卡片向右对齐。灰色升级栏上方是亮面板，下方是深灰按钮，这一栏及左侧都没有卡名。
+            bool UpgradePanel(int slot)
             {
+                int x = ShopX(slot * 220 - 500);
+                bool Gray(int y, int low, int high)
+                {
+                    var c = workingImage.GetPixel(x, ShopY(y));
+                    return c.R >= low && c.R <= high && Math.Abs(c.R - c.G) <= 5 && Math.Abs(c.B - c.G) <= 5;
+                }
+                return Gray(880, 175, 250) && Gray(950, 175, 250) && Gray(980, 60, 100) && Gray(1025, 92, 122);
+            }
+            for (int slot = 5; slot >= 0; slot--)
+            {
+                if (UpgradePanel(slot)) break;
                 int left = ShopX(slot * 220 - 600);
                 int slotWidth = Size(220);
                 if (items.Any(i => (i.OcrRegion.X + i.OcrRegion.Width / 2) * width >= left
                     && (i.OcrRegion.X + i.OcrRegion.Width / 2) * width < left + slotWidth))
                     continue;
                 int inset = Size(32);
+                // 售出槽的名字带接近纯黑。只有整片采样都很暗时才省略两次单行识别。
+                bool dark = true;
+                for (int y = nameTop; dark && y < nameTop + nameHeight; y += Math.Max(1, Size(4)))
+                for (int x = Math.Max(0, left + inset); x < Math.Min(width, left + inset + Size(140)); x += Math.Max(1, Size(4)))
+                {
+                    var c = workingImage.GetPixel(x, y);
+                    if (Math.Max(c.R, Math.Max(c.G, c.B)) > 48) { dark = false; break; }
+                }
+                if (dark) continue;
                 // The wide crop retains long names; the narrow crop removes
                 // snowflake texture to the right of short, dim names.
                 foreach (int lineWidthPx in new[] { 180, 110 })

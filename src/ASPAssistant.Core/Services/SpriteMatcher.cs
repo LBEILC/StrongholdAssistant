@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using ASPAssistant.Core.Models;
 using OpenCvSharp;
 
@@ -16,15 +17,19 @@ public sealed record SpriteMatch(IReadOnlyList<SpriteCandidate> Candidates, doub
 public sealed partial class SpriteMatcher : IDisposable
 {
     public const double AutoFillGap = 0.04592923876191826;
-    private sealed record Template(string Name, string SkinId, int Tier, int Size, Mat Color, Mat Mask, Point2d? Origin, int Variant = 0);
+    private sealed record Template(string Name, string SkinId, int Tier, int Size, Mat Color, Mat Mask, Point2d? Origin, int Variant = 0)
+    {
+        public Size Dimensions { get; } = Color.Size();
+        public SearchTemplate? Search { get; set; }
+    }
     private readonly double _resolution;
     private readonly bool _hasOrigins;
     private readonly double _pixelsPerUnit;
     public bool UsesPhysicalScale => _pixelsPerUnit > 0;
     private readonly List<Template> _source = [];
     // 比对线程独立持有缩放图，避免其他格换尺度时释放正在使用的 Mat。
-    private readonly ThreadLocal<Dictionary<string, List<Template>>> _scaledByThread = new(() => new(StringComparer.Ordinal), true);
-    private Dictionary<string, List<Template>> _scaled => _scaledByThread.Value!;
+    private readonly ThreadLocal<Dictionary<string, (double? Unit, List<Template> Items)>> _scaledByThread = new(() => new(StringComparer.Ordinal), true);
+    private readonly Dictionary<string, Template[]> _byName;
 
     public SpriteMatcher(string packagePath)
     {
@@ -61,6 +66,7 @@ public sealed partial class SpriteMatcher : IDisposable
             System.Runtime.InteropServices.Marshal.Copy(pixels, 0, mask.Data, pixels.Length);
             _source.Add(new(name, skinId, tier, 0, color, mask, origin, i));
         }
+        _byName = _source.GroupBy(t => t.Name).ToDictionary(g => g.Key, g => g.ToArray());
     }
 
     /// <summary>按人工标定的脚点和格宽匹配，并排除前排遮挡轮廓。</summary>
@@ -69,25 +75,33 @@ public sealed partial class SpriteMatcher : IDisposable
     {
         if (!UsesPhysicalScale || patch.Geometry is not { } g)
             throw new ArgumentException("格宽匹配需要真实比例模板及本帧格子几何。");
-        double dx = g.CellWidth * (patch.Bench ? .05017159418908035 : .061382994597481755);
-        double dy = g.CellWidth * (patch.Bench ? .03892515182781064 : .1774000064377288);
         var region = patch.TemplateRegion;
         using var crop = Cv2.ImDecode(region?.Image ?? patch.Image, ImreadModes.Color);
-        var anchor = new Point((int)Math.Round(90 + g.BadgeFootX + dx - Math.Round(g.BadgeFootX)) + (region?.OffsetX ?? 0),
-            (int)Math.Round((patch.Bench ? 180 : 156) + g.BadgeFootY + dy - Math.Round(g.BadgeFootY)) + (region?.OffsetY ?? 0));
-        using var blocked = patch.OcclusionMask is null ? new Mat() : Cv2.ImDecode(patch.OcclusionMask, ImreadModes.Grayscale);
-        return MatchCropCore(crop, patch.Bench, tier, candidates, anchor, skins, g.CellWidth * .00271, blocked, patch, searchRadius, quick);
+        using var blocked = patch.OcclusionMask is null ? null : Cv2.ImDecode(patch.OcclusionMask, ImreadModes.Grayscale);
+        return MatchAtFoot(crop, patch.Bench, g, region?.OffsetX ?? 0, region?.OffsetY ?? 0, tier,
+            candidates, skins, blocked, searchRadius, quick);
+    }
+
+    internal SpriteMatch MatchAtFoot(Mat crop, bool bench, FieldSpriteGeometry g, int offsetX, int offsetY,
+        int tier, IReadOnlyCollection<string> candidates, IReadOnlyDictionary<string, string?>? skins = null,
+        Mat? blocked = null, int searchRadius = 3, bool quick = false)
+    {
+        double dx = g.CellWidth * (bench ? .05017159418908035 : .061382994597481755);
+        double dy = g.CellWidth * (bench ? .03892515182781064 : .1774000064377288);
+        var anchor = new Point((int)Math.Round(90 + g.BadgeFootX + dx - Math.Round(g.BadgeFootX)) + offsetX,
+            (int)Math.Round((bench ? 180 : 156) + g.BadgeFootY + dy - Math.Round(g.BadgeFootY)) + offsetY);
+        return MatchCropCore(crop, bench, tier, candidates, anchor, skins, g.CellWidth * .00271, blocked, searchRadius, quick);
     }
 
     /// <summary>离线裁块入口。默认180×204；自定义锚点为相对裁块的脚点（旧包为外框底部）。</summary>
     public SpriteMatch MatchCrop(Mat crop, bool bench, int tier, IReadOnlyCollection<string> candidates,
         Point? searchAnchor = null, IReadOnlyDictionary<string, string?>? skins = null,
         double? screenPixelsPerUnit = null, Mat? occlusion = null, int searchRadius = 3)
-        => MatchCropCore(crop, bench, tier, candidates, searchAnchor, skins, screenPixelsPerUnit, occlusion, null, searchRadius, false);
+        => MatchCropCore(crop, bench, tier, candidates, searchAnchor, skins, screenPixelsPerUnit, occlusion, searchRadius, false);
 
     private SpriteMatch MatchCropCore(Mat crop, bool bench, int tier, IReadOnlyCollection<string> candidates,
         Point? searchAnchor, IReadOnlyDictionary<string, string?>? skins,
-        double? screenPixelsPerUnit, Mat? occlusion, FieldSpritePatch? fieldPatch, int searchRadius, bool quick)
+        double? screenPixelsPerUnit, Mat? occlusion, int searchRadius, bool quick)
     {
         using var timing = FieldRecognitionTiming.Measure("templates");
         if (crop.Empty() || crop.Type() != MatType.CV_8UC3)
@@ -110,27 +124,19 @@ public sealed partial class SpriteMatcher : IDisposable
             Cv2.Dilate(blocked, blocked, kernel);
         }
         // 缩放缓存仍由扫描线程构建；各候选只读模板，并行时独占临时 Mat。
-        using var neighbor = fieldPatch?.NeighborMask is { } bytes
-            ? Cv2.ImDecode(bytes, ImreadModes.Grayscale) : new Mat();
         var work = candidates.Distinct(StringComparer.Ordinal).Select(name => (Name: name,
-            Templates: Templates(AppearanceName(name, skins), screenPixelsPerUnit), Skin: skins?.GetValueOrDefault(name),
-            Excluded: neighbor.Empty() ? new Mat() : NeighborExclusion(fieldPatch!, neighbor, tier, [name], skins))).ToArray();
+            Templates: Templates(AppearanceName(name, skins), screenPixelsPerUnit), Skin: skins?.GetValueOrDefault(name))).ToArray();
+        var search = UsesPhysicalScale && Avx2.IsSupported ? new SearchImage(half) : null;
         var ranked = new SpriteCandidate?[work.Length];
         Parallel.For(0, work.Length, new ParallelOptions { MaxDegreeOfParallelism = 4 }, index =>
         {
-            var (name, templates, skin, excludedNeighbor) = work[index];
-            using var candidateBlocked = excludedNeighbor;
-            if (!candidateBlocked.Empty())
-            {
-                Cv2.Resize(candidateBlocked, candidateBlocked, half.Size(), interpolation: InterpolationFlags.Nearest);
-                using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(radius * 4 + 1, radius * 4 + 1));
-                Cv2.Dilate(candidateBlocked, candidateBlocked, kernel);
-                if (!blocked.Empty()) Cv2.BitwiseOr(candidateBlocked, blocked, candidateBlocked);
-            }
-            var exclusion = candidateBlocked.Empty() ? blocked : candidateBlocked;
+            var (name, templates, skin) = work[index];
             using var scores = new Mat(); using var difference = new Mat();
             var values = new float[(radius * 2 + 1) * (radius * 2 + 1)];
-            double best = -2;
+            double best = -2, tiedScore = -2;
+            Template? winner = null;
+            Rect winnerRegion = default;
+            using var winnerMask = new Mat();
             // 召唤物预筛每套皮肤仅取首尾外观和标定尺度；干员路径保持原样。
             var limits = quick ? templates.GroupBy(t => t.SkinId).ToDictionary(g => g.Key,
                 g => (First: g.Min(t => t.Variant), Last: g.Max(t => t.Variant))) : null;
@@ -141,25 +147,59 @@ public sealed partial class SpriteMatcher : IDisposable
                 if (!AllowsSkin(template.SkinId, skin)) continue;
                 if (template.Tier != tier || (!UsesPhysicalScale && (bench ? template.Size == 104 : template.Size == 168))) continue;
                 var a = template.Color; var mask = template.Mask;
-                int w = a.Width, h = a.Height;
+                int w = template.Dimensions.Width, h = template.Dimensions.Height;
                 int center = (int)Math.Round(anchor.X * _resolution - (template.Origin?.X ?? w / 2.0));
                 int top = template.Origin is { } origin ? (int)Math.Round(anchor.Y * _resolution - origin.Y) : bottom - h;
                 int x0 = Math.Max(0, center - radius), x1 = Math.Min(half.Width, center + radius + w);
                 int y0 = Math.Max(0, top - radius), y1 = Math.Min(half.Height, top + h + radius);
                 if (x1 - x0 < w || y1 - y0 < h) continue;
                 using var visible = new Mat();
-                if (!exclusion.Empty())
+                int visibleCount = 0;
+                if (!blocked.Empty())
                 {
-                    using var excluded = new Mat(exclusion, new Rect(x0, y0, w, h));
+                    using var excluded = new Mat(blocked, new Rect(x0, y0, w, h));
                     Cv2.BitwiseNot(excluded, visible);
                     Cv2.BitwiseAnd(mask, visible, visible);
-                    if (Cv2.CountNonZero(visible) < 16) continue;
+                    visibleCount = Cv2.CountNonZero(visible);
+                    if (visibleCount < 16) continue;
                     mask = visible;
                 }
                 using var roi = new Mat(half, new Rect(x0, y0, x1 - x0, y1 - y0));
-                Cv2.MatchTemplate(roi, a, scores, TemplateMatchModes.CCoeffNormed, mask);
-                // 与Python的nan_to_num一致，非有限值不能成为最佳位置。
-                // 按分辨率取相同物理搜索范围；批量读取，避免逐像素跨托管边界。
+                double value;
+                // 三通道有符号像素乘积和必须能用 32 位整数精确表示。
+                if (search is null || (long)w * h > int.MaxValue / (3 * 128 * 128))
+                    value = ReferenceScore(roi, a, mask);
+                else
+                {
+                    var shape = template.Search ??= new SearchTemplate(a, template.Mask);
+                    if (!blocked.Empty() && visibleCount != shape.Count) shape = new SearchTemplate(a, mask);
+                    var (location, corr) = shape.Best(search, x0, y0, roi.Width - w + 1, roi.Height - h + 1);
+                    value = ScoreAt(roi, a, mask, location, corr);
+                }
+                // OpenCV 的单精度舍入可颠倒近似并列的外观。留出复算余量，最终只比较原分数。
+                if (search is not null && Math.Abs(value - best) <= 1e-6)
+                {
+                    tiedScore = Math.Max(tiedScore, ReferenceScore(roi, a, mask));
+                    continue;
+                }
+                if (value <= best) continue;
+                best = value;
+                tiedScore = -2;
+                winner = template;
+                winnerRegion = new(x0, y0, roi.Width, roi.Height);
+                if (!blocked.Empty()) mask.CopyTo(winnerMask);
+            }
+            // 每名候选以胜出外观的原 OpenCV 分数参与排序、阈值和追踪。
+            if (search is not null && winner is not null)
+            {
+                using var roi = new Mat(half, winnerRegion);
+                best = Math.Max(tiedScore, ReferenceScore(roi, winner.Color, blocked.Empty() ? winner.Mask : winnerMask));
+            }
+            if (best > -2) ranked[index] = new(name, best);
+
+            double ReferenceScore(Mat roi, Mat color, Mat mask)
+            {
+                Cv2.MatchTemplate(roi, color, scores, TemplateMatchModes.CCoeffNormed, mask);
                 int count = scores.Rows * scores.Cols, bestIndex = 0;
                 Marshal.Copy(scores.Data, values, 0, count);
                 double corr = double.NegativeInfinity;
@@ -168,14 +208,16 @@ public sealed partial class SpriteMatcher : IDisposable
                     double value = float.IsFinite(values[i]) ? values[i] : -1;
                     if (value > corr) { corr = value; bestIndex = i; }
                 }
-                var location = new Point(bestIndex % scores.Cols, bestIndex / scores.Cols);
-                using var patch = new Mat(roi, new Rect(location.X, location.Y, w, h));
-                Cv2.Absdiff(patch, a, difference);
-                var mean = Cv2.Mean(difference, mask);
-                double color = 1 - (mean.Val0 + mean.Val1 + mean.Val2) / (3 * 255);
-                best = Math.Max(best, .75 * corr + .25 * color);
+                return ScoreAt(roi, color, mask, new(bestIndex % scores.Cols, bestIndex / scores.Cols), corr);
             }
-            if (best > -2) ranked[index] = new(name, best);
+
+            double ScoreAt(Mat roi, Mat color, Mat mask, Point location, double corr)
+            {
+                using var patch = new Mat(roi, new Rect(location, color.Size()));
+                Cv2.Absdiff(patch, color, difference);
+                var mean = Cv2.Mean(difference, mask);
+                return .75 * corr + .25 * (1 - (mean.Val0 + mean.Val1 + mean.Val2) / (3 * 255));
+            }
         });
         var sorted = ranked.OfType<SpriteCandidate>().OrderByDescending(r => r.Score).ThenBy(r => r.Name, StringComparer.Ordinal).ToArray();
         return new(sorted, sorted.Length > 1 ? sorted[0].Score - sorted[1].Score : null);
@@ -218,47 +260,58 @@ public sealed partial class SpriteMatcher : IDisposable
         return best;
     }
 
+    private static readonly int[] PhysicalSizes = [97, 100, 103], LegacySizes = [104, 120, 136, 152, 168];
+
     private List<Template> Templates(string name, double? screenPixelsPerUnit = null)
     {
         using var timing = FieldRecognitionTiming.Measure("templateScale");
-        string key = UsesPhysicalScale ? $"{name}@{screenPixelsPerUnit:R}" : name;
-        if (_scaled.TryGetValue(key, out var cached)) return cached;
-        // 拟合投影每帧会微调格宽；每人仅留当前尺度，避免整局积累连续尺度的原生图像。
-        if (UsesPhysicalScale)
-            foreach (var old in _scaled.Keys.Where(k => k.StartsWith(name + "@", StringComparison.Ordinal)).ToArray())
+        var cache = _scaledByThread.Value!;
+        if (cache.TryGetValue(name, out var cached) && cached.Unit == screenPixelsPerUnit) return cached.Items;
+        // 格宽的亚像素变化仅在目标整数宽高改变时才会改变缩放图和原点。
+        var result = cached.Items ?? [];
+        int index = 0;
+        using var mirrored = new Mat();
+        using var mirroredMask = new Mat();
+        foreach (var source in _byName.GetValueOrDefault(name) ?? [])
+            for (int flip = 0; flip <= 1; flip++)
             {
-                foreach (var template in _scaled[old]) { template.Color.Dispose(); template.Mask.Dispose(); }
-                _scaled.Remove(old);
-            }
-        var result = new List<Template>();
-        foreach (var source in _source.Where(t => t.Name == name))
-            foreach (bool flip in new[] { false, true })
-            {
-                using var color = new Mat(); using var mask = new Mat();
-                if (flip) { Cv2.Flip(source.Color, color, FlipMode.Y); Cv2.Flip(source.Mask, mask, FlipMode.Y); }
-                else { source.Color.CopyTo(color); source.Mask.CopyTo(mask); }
-                foreach (int size in UsesPhysicalScale ? new[] { 97, 100, 103 } : new[] { 104, 120, 136, 152, 168 })
+                bool mirroredReady = false;
+                int w = source.Dimensions.Width, h = source.Dimensions.Height;
+                foreach (int size in UsesPhysicalScale ? PhysicalSizes : LegacySizes)
                 {
                     double scale = UsesPhysicalScale
                         ? screenPixelsPerUnit!.Value * _resolution / _pixelsPerUnit * size / 100
-                        : size * _resolution / Math.Max(color.Width, color.Height);
-                    var target = new Size((int)Math.Round(color.Width * scale), (int)Math.Round(color.Height * scale));
+                        : size * _resolution / Math.Max(w, h);
+                    var target = new Size((int)Math.Round(w * scale), (int)Math.Round(h * scale));
+                    int slot = index++;
+                    if (slot < result.Count && result[slot].Dimensions == target) continue;
+                    if (flip == 1 && !mirroredReady)
+                    {
+                        Cv2.Flip(source.Color, mirrored, FlipMode.Y);
+                        Cv2.Flip(source.Mask, mirroredMask, FlipMode.Y);
+                        mirroredReady = true;
+                    }
                     var a = new Mat(); var b = new Mat();
-                    Cv2.Resize(color, a, target); Cv2.Resize(mask, b, target, interpolation: InterpolationFlags.Nearest);
-                    // 原点使用像素边界坐标；镜像后为宽度减X，缩放按实际取整后的宽高分别换算。
+                    Cv2.Resize(flip == 1 ? mirrored : source.Color, a, target);
+                    Cv2.Resize(flip == 1 ? mirroredMask : source.Mask, b, target, interpolation: InterpolationFlags.Nearest);
                     Point2d? origin = source.Origin is { } p
-                        ? new Point2d((flip ? color.Width - p.X : p.X) * target.Width / color.Width,
-                            p.Y * target.Height / color.Height) : null;
-                    result.Add(new(name, source.SkinId, source.Tier, size, a, b, origin, source.Variant));
+                        ? new((flip == 1 ? w - p.X : p.X) * target.Width / w, p.Y * target.Height / h) : null;
+                    var scaled = new Template(name, source.SkinId, source.Tier, size, a, b, origin, source.Variant);
+                    if (slot == result.Count) result.Add(scaled);
+                    else
+                    {
+                        result[slot].Color.Dispose(); result[slot].Mask.Dispose();
+                        result[slot] = scaled;
+                    }
                 }
             }
-        _scaled.Add(key, result);
+        cache[name] = (screenPixelsPerUnit, result);
         return result;
     }
 
     public void Dispose()
     {
-        foreach (var t in _source.Concat(_scaledByThread.Values.SelectMany(d => d.Values).SelectMany(v => v)))
+        foreach (var t in _source.Concat(_scaledByThread.Values.SelectMany(d => d.Values).SelectMany(v => v.Items)))
         { t.Color.Dispose(); t.Mask.Dispose(); }
         _scaledByThread.Dispose();
     }

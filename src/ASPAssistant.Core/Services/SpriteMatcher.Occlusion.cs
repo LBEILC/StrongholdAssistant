@@ -6,8 +6,6 @@ namespace ASPAssistant.Core.Services;
 public sealed partial class SpriteMatcher
 {
     // 遮挡率以个人模板使用的中心80×136区域为分母，不依赖后排候选名字。
-    public const double OcclusionLearningThreshold = .20;
-    public const double OcclusionPendingThreshold = .85;
 
     public FieldSpritePatch WithOcclusion(FieldSpritePatch target,
         IEnumerable<(FieldUnit Unit, FieldSpritePatch Patch)> foreground,

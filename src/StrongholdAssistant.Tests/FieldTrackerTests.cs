@@ -37,44 +37,6 @@ public sealed class FieldTrackerTests
     }
 
     [Fact]
-    public void PurchaseTakesPriorityOverSameTierMove()
-    {
-        var t = new FieldTracker(); t.Observe(O(0, board: 1, shop: new() { [2] = "灰喉" }));
-        t.SetOperator(Board, "慕斯", Start);
-        t.Observe(O(.8, bench: 1, shop: new(), money: 3));
-        Assert.Null(Assert.Single(t.State!.Units).Operator);
-        Assert.Contains(t.State.Roster, r => r.Operator == "灰喉" && r.Source == "purchase");
-        Assert.Contains(t.State.Log, e => e.Kind == "buy");
-        Assert.DoesNotContain(t.State.Log, e => e.Kind == "move");
-    }
-
-    [Fact]
-    public void BuyUsesWholeRowWithoutRequiringDisappearingSlot()
-    {
-        var t = new FieldTracker();
-        t.Observe(O(0, shop: new() { [2] = "慕斯", [3] = "慕斯" }));
-        t.Observe(O(.8, bench: 1, shop: new() { [2] = "慕斯", [3] = "慕斯" }, money: 3));
-        Assert.Null(Assert.Single(t.State!.Units).Source);
-        var e = Assert.Single(t.State.Log); Assert.Equal("buy", e.Kind); Assert.Equal(Bench, e.To); Assert.Equal("慕斯", e.Operator);
-        Assert.False(t.Observe(O(1.6, bench: 1, shop: new() { [3] = "慕斯" }, money: 3)));
-    }
-
-    [Fact]
-    public void PurchaseWaitsForNewCellAndDoesNotInferPurchaseWithoutOne()
-    {
-        var t = new FieldTracker();
-        t.Observe(O(0, shop: new() { [2] = "慕斯" }));
-        t.Observe(O(.8, shop: new() { [2] = "慕斯" }, money: 3));
-        t.Observe(O(1.6, bench: 1, shop: new(), money: 3));
-        t.Observe(O(2, bench: 1, shop: new(), money: 3));
-        Assert.Equal("buy", Assert.Single(t.State!.Log).Kind);
-        t.Observe(O(2.4, bench: 1, shop: new() { [1] = "灰喉" }, money: 3));
-        t.Observe(O(2.8, bench: 1, shop: new(), money: 2));
-        t.Observe(O(4.5, bench: 1, shop: new(), money: 2));
-        Assert.Equal("慕斯", Assert.Single(t.State!.Log).Operator);
-    }
-
-    [Fact]
     public void UnexplainedBenchArrivalIsUnknownGain()
     {
         var t = new FieldTracker(); t.Observe(O(0)); t.Observe(O(.8, bench: 2)); t.Observe(O(2.5, bench: 2));
@@ -149,7 +111,7 @@ public sealed class FieldTrackerTests
     }
 
     [Fact]
-    public void ResetClearsManualIdentityEventsAndPendingPurchases()
+    public void ResetClearsManualIdentityAndEvents()
     {
         var t = new FieldTracker(); t.Observe(O(0, shop: new() { [1] = "慕斯" })); t.Observe(O(.8, bench: 1, shop: new(), money: 3));
         t.SetOperator(Bench, "灰喉", Start); t.Reset(); Assert.Null(t.State);

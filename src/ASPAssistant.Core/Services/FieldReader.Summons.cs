@@ -40,15 +40,15 @@ public sealed partial class FieldReader
                 Cv2.MeanStdDev(region, out _, out Scalar deviation);
                 if (Math.Max(deviation.Val0, Math.Max(deviation.Val1, deviation.Val2)) < 10) continue;
             }
-            var patch = CropSprite(image, foot.X, foot.Y, cell.Zone == "bench");
-            if (patch is null) continue;
-            patch = patch with { Geometry = g with { BadgeFootX = foot.X, BadgeFootY = foot.Y } };
-            patch = patch with { TemplateRegion = CropTemplateSprite(image, patch) };
-            // 没有角标时也沿用格宽标定的脚点偏移，不能直接把格子中心当作骨骼原点。
-            var quick = _summonMatcher.MatchCellWidth(patch, 0, names, searchRadius: 8, quick: true);
+            bool bench = cell.Zone == "bench";
+            if (!CoversSprite(image, SpriteBounds(foot.X, foot.Y, bench))) continue;
+            g = g with { BadgeFootX = foot.X, BadgeFootY = foot.Y };
+            // 预筛、精排和干员复核共用同一裁块，无需在进程内来回编码 PNG。
+            using var crop = TemplateCrop(image, g, bench, out int left, out int top);
+            var quick = _summonMatcher.MatchAtFoot(crop, bench, g, left, top, 0, names, searchRadius: 8, quick: true);
             if (quick.Candidates.FirstOrDefault() is not { Score: >= .5 }) continue;
             var candidates = quick.Candidates.Take(4).Select(c => c.Name).ToArray();
-            var match = _summonMatcher.MatchCellWidth(patch, 0, candidates, searchRadius: 8);
+            var match = _summonMatcher.MatchAtFoot(crop, bench, g, left, top, 0, candidates, searchRadius: 8);
             var ranked = match.Candidates.GroupBy(c => _summonDefinitions.Single(s => s.CharId == c.Name).Name)
                 .Select(group => (Name: group.Key, Score: group.Max(c => c.Score)))
                 .OrderByDescending(c => c.Score).ToArray();
@@ -58,7 +58,7 @@ public sealed partial class FieldReader
             if (tier > 0)
             {
                 _summonOperatorMatcher ??= new(_operatorPackage);
-                var operators = _summonOperatorMatcher.MatchCellWidth(patch, tier,
+                var operators = _summonOperatorMatcher.MatchAtFoot(crop, bench, g, left, top, tier,
                     _operatorTiers.Where(o => o.Tier == tier).Select(o => o.Name).ToArray());
                 if (operators.Candidates.FirstOrDefault() is { } best && ranked[0].Score < best.Score + .12) continue;
             }

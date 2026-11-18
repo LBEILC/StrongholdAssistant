@@ -23,8 +23,6 @@ public sealed record FieldSpritePatch(byte[] Image, byte[] Pixels, bool Bench)
     // 模板区域内的遮挡蒙版（PNG）；不进入消息桥，也不写回读取缓存。
     public byte[]? OcclusionMask { get; init; }
     public double OcclusionRatio { get; init; }
-    public byte[]? NeighborMask { get; init; }
-    public string[] NeighborNames { get; init; } = [];
 }
 
 public sealed record FieldSpriteRegion(byte[] Image, int OffsetX, int OffsetY);

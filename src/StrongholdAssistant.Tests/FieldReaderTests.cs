@@ -17,6 +17,64 @@ public sealed class FieldReaderTests(EnemyRecognitionFixture fixture)
         (await new JsonDataStore(Data).LoadOperatorsAsync()).Select(o => o.Name));
 
     [Theory]
+    [InlineData("2131", 1, 0, 4)]
+    [InlineData("2051", 3, 0, 2)]
+    [InlineData("2051", 5, 0, 1)]
+    [InlineData("1905", 2, 0, 1)]
+    [InlineData("1805", 2, 3, 1)]
+    public async Task PartiallyObscuredBoardUnitsKeepTheirTier(string game, int col, int row, int tier)
+    {
+        // 保留采集帧的棋盘区域和原坐标，遮去外围界面。
+        var path = Sample($"field-badge-{game}.png");
+        var board = new BoardRecognizer(Data).Recognize(File.ReadAllBytes(path));
+        Assert.NotNull(board);
+        using var reader = await Reader();
+        using var frame = new Bitmap(path);
+        var cells = reader.ReadCells(frame, board, board.Camera == BoardCamera.Expanded);
+        Assert.Equal(tier, cells[new("board", col, row)]);
+    }
+
+
+    [Theory]
+    [InlineData("p0139-219.4", false, false, "board", 6, 3, 1)]
+    [InlineData("p1436-2946.7", false, true, "board", 3, 3, 5)]
+    [InlineData("p1749-2401.4", true, false, "bench", 3, 0, 4)]
+    [InlineData("p1905-1710.9", true, false, "board", 3, 3, 3)]
+    [InlineData("p1905-2384.5", false, true, "board", 2, 3, 3)]
+    [InlineData("p1905-2384.5", false, true, "board", 2, 0, 4)]
+    public async Task ReadsTierOnCollectedRestFrame(string sample, bool shopVisible, bool boss,
+        string zone, int col, int row, int tier)
+    {
+        using var reader = await Reader();
+        reader.BossRound = boss;
+        var result = await reader.ReadAsync(File.ReadAllBytes(Sample($"field-miss-{sample}.png")),
+            DateTimeOffset.UtcNow, new(1, 0, 1, 0, true), true, shopVisible, []);
+        Assert.Equal(tier, result.Cells.GetValueOrDefault(new(zone, col, row)));
+        if (boss) Assert.Null(result.MapId);
+    }
+
+    [Theory]
+    [InlineData("1749", 2560, true, "2,1 4,1 1,2 1,3 2,3 4,3")]
+    [InlineData("1622", 1600, false, "0,2 2,2 3,2")]
+    public async Task CameraFitFindsOccupiedCellsAtCaptureResolution(
+        string pack, int width, bool expanded, string occupied)
+    {
+        using var reader = await Reader();
+        using var saved = OpenCvSharp.Cv2.ImRead(Sample($"field-camera-{pack}.jpg"));
+        using var raw = new OpenCvSharp.Mat();
+        OpenCvSharp.Cv2.Resize(saved, raw, new OpenCvSharp.Size(width, width * 9 / 16),
+            interpolation: OpenCvSharp.InterpolationFlags.Cubic);
+        var frame = raw.ImEncode(".png");
+        var result = await reader.ReadAsync(frame, DateTimeOffset.UtcNow, new(4, 0, 1, 0, true),
+            true, expanded, []);
+        if (pack == "1749") Assert.Equal(6, result.Cells.Count(p => p.Value > 0));
+        foreach (string point in occupied.Split(' '))
+        {
+            var xy = point.Split(',');
+            Assert.True(result.Cells.GetValueOrDefault(new("board", int.Parse(xy[0]), int.Parse(xy[1]))) > 0, point);
+        }
+    }
+    [Theory]
     [InlineData(47, "bench:9:0,bench:10:0")]
     [InlineData(57, "board:4:2,board:5:3")]
     [InlineData(345, "bench:9:0,bench:10:0")]

@@ -12,6 +12,18 @@ public sealed class CollectionTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void BackgroundFramePreservesCapturePixelsWhenSaved()
+    {
+        using var image = new System.Drawing.Bitmap(Path.Combine(AppContext.BaseDirectory, "TestData", "shop-ui100-2000x1125.png"));
+        var capture = new ScreenCaptureService();
+        using var original = Cv2.ImDecode(capture.EncodeCapture(image), ImreadModes.Color);
+        var frame = capture.EncodeCapture(image, scanPixels: true);
+        Assert.Equal((original.Width, original.Height), OcrScannerService.GetFrameDimensions(frame));
+        using var diagnostic = Cv2.ImDecode(ScreenCaptureService.AsPng(frame), ImreadModes.Color);
+        Assert.Equal(0d, Cv2.Norm(original, diagnostic));
+    }
+
+    [Fact]
     public async Task DisabledDoesNotWriteAndEnabledExportsClearsAndKeepsThreeMatches()
     {
         var root = Path.Combine(_directory, "collect");

@@ -13,9 +13,11 @@ public static class WorkbenchGeometry
         var minimum = MinimumSize(work, uiScale);
         var width = Math.Clamp(saved?.Width ?? 1280 * uiScale, minimum.Width, work.Width);
         var height = Math.Clamp(saved?.Height ?? 800 * uiScale, minimum.Height, work.Height);
-        var left = saved?.Left ?? work.Left + (work.Width - width) / 2;
-        var top = saved?.Top ?? work.Top + (work.Height - height) / 2;
-        return new(Math.Clamp(left, work.Left, work.Right - width),
-            Math.Clamp(top, work.Top, work.Bottom - height), width, height);
+        var remainingWidth = work.Width - width;
+        var remainingHeight = work.Height - height;
+        var left = saved?.Left ?? work.Left + remainingWidth / 2;
+        var top = saved?.Top ?? work.Top + remainingHeight / 2;
+        return new(Math.Clamp(left, work.Left, work.Left + remainingWidth),
+            Math.Clamp(top, work.Top, work.Top + remainingHeight), width, height);
     }
 }

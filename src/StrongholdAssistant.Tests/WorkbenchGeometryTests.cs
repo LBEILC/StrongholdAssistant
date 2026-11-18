@@ -22,6 +22,14 @@ public class WorkbenchGeometryTests
     }
 
     [Fact]
+    public void FitsSmallWorkAreaWithFractionalOrigin()
+    {
+        var work = new Rect(235 / 1.5, 235 / 1.5, 800, 600);
+        var actual = WorkbenchGeometry.Calculate(work, 1.5);
+        Assert.Equal(new FreeWindowBounds(work.Left, work.Top, 800, 600), actual);
+    }
+
+    [Fact]
     public void AppliesMinimumSizeToSavedWindow()
     {
         var actual = WorkbenchGeometry.Calculate(new Rect(0, 0, 1920, 1080), 1,

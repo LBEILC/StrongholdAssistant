@@ -18,6 +18,9 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
     public string RoundRawText { get; private set; } = "";
     private readonly Dictionary<(Rectangle Region, bool Line), (byte[] Pixels, IReadOnlyList<OcrTextResult> Text)> _regions = [];
     private OcrTextResult? _levelLabel;
+    private readonly ScanRegionPixels _labelPixels = new();
+    private Rectangle _labelBounds;
+    private IReadOnlyList<OcrTextResult> _panelText = [];
     private Rectangle? _upgradeLabelRegion;
     private (int Width, int Height, double Scale) _layout;
     // 「回合」标签的右边界：取本布局下见过的最大值。换回合的动画里标签框偶尔量窄几个像素，
@@ -35,12 +38,19 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
     {
         using var stream = new MemoryStream(png);
         using var bitmap = new Bitmap(stream);
+        return await ReadAsync(png, bitmap, uiScale, readUpgrade, mainScreen);
+    }
+
+    internal async Task<EconomyReading> ReadAsync(byte[] png, Bitmap bitmap, double? uiScale, bool readUpgrade, bool? mainScreen)
+    {
+        int width = bitmap.Width, height = bitmap.Height;
         double scale = Math.Min(width / 1920.0, height / 1080.0) * (uiScale ?? GameUiScale.Shop(bitmap));
         var layout = (width, height, Math.Round(scale, 2));
         if (_layout != layout)
         {
             _regions.Clear();
             _levelLabel = null;
+            _labelBounds = Rectangle.Empty;
             _upgradeLabelRegion = null;
             _roundDigitsX = null;
             _layout = layout;
@@ -70,10 +80,23 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
         var moneyText = await Read((int)(width - 130 * scale),
             (int)(height - 273 * scale), (int)(65 * scale), (int)(38 * scale), true);
         int? money = Number(string.Join("", moneyText.Select(t => t.Text)));
-        // 卡位数量变化会移动升级面板；使用本帧的标签，像素未变时仍复用区域 OCR 缓存。
-        var panel = await Read(0, (int)(height * .72), (int)(width * .85), (int)(height * .28));
-        _levelLabel = panel.FirstOrDefault(t => t.Text.Contains("LEVEL", StringComparison.OrdinalIgnoreCase) || t.Text == "LEUEL")
-            ?? panel.FirstOrDefault(t => t.Text is "升级" or "已满级");
+        // 卡面动画也在底部大框里。已有定位时只核对标签和按钮，等级、价格仍各读本帧。
+        if (_labelBounds.IsEmpty || !_labelPixels.Unchanged(bitmap, _labelBounds))
+        {
+            _panelText = await Read(0, (int)(height * .72), (int)(width * .85), (int)(height * .28));
+            _levelLabel = _panelText.FirstOrDefault(t => t.Text.Contains("LEVEL", StringComparison.OrdinalIgnoreCase) || t.Text == "LEUEL")
+                ?? _panelText.FirstOrDefault(t => t.Text is "升级" or "已满级");
+            _labelBounds = Rectangle.Empty;
+            if (_levelLabel is { } anchor)
+            {
+                int centerX = anchor.Box.X + anchor.Box.W / 2;
+                _labelBounds = Rectangle.Intersect(new(0, 0, width, height),
+                    Rectangle.FromLTRB(centerX - (int)(70 * scale), anchor.Box.Y,
+                        centerX + (int)(70 * scale), height));
+                _labelPixels.Unchanged(bitmap, _labelBounds);
+            }
+        }
+        var panel = _panelText;
         var label = _levelLabel;
         int? level = null, cost = null;
         RectangleF? button = null;
@@ -128,6 +151,7 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
 
     private static bool SameTextPixels(byte[] current, byte[] previous, int width, int height)
     {
+        if (current.AsSpan().SequenceEqual(previous)) return true;
         // 局部小块比较亮度，容忍录屏压缩和底色微动；单个数字变化不能被整片平均值稀释。
         for (int y = 0; y < height; y += 8)
         for (int x = 0; x < width; x += 8)

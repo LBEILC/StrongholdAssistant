@@ -8,13 +8,24 @@ public sealed record GameThemeReading(GameShopTheme Theme, double Score);
 /// <summary>先查顶栏的主题色，再以回合及阶段文字确认游戏 HUD。</summary>
 public sealed class GameThemeDetector(IOcrEngine ocr)
 {
+    private readonly ScanRegionPixels _heading = new();
+    private GameThemeReading? _lastReading;
+
     public async Task<GameThemeReading?> ReadAsync(byte[] png, int width, int height)
     {
         using var stream = new MemoryStream(png);
         using var bitmap = new Bitmap(stream);
+        return await ReadAsync(png, bitmap);
+    }
+
+    internal async Task<GameThemeReading?> ReadAsync(byte[] png, Bitmap bitmap)
+    {
+        int width = bitmap.Width, height = bitmap.Height;
         // 顶栏以水平中心、顶边为锚；包住 UI90～100 的装饰，不依赖商店是否展开。
         double scale = Math.Min(width / 1920.0, height / 1080.0);
         int left = (int)(width / 2.0 - 330 * scale), topHeight = (int)(85 * scale);
+        if (_heading.Unchanged(bitmap, new(left, 0, width - 2 * left, topHeight))) return _lastReading;
+        _lastReading = null;
         int blue = 0, green = 0, orange = 0, count = 0;
         int step = Math.Max(1, (int)(3 * scale));
         for (int x = left; x < width - left; x += step)
@@ -34,7 +45,7 @@ public sealed class GameThemeDetector(IOcrEngine ocr)
         var texts = await ocr.RecognizeRegionAsync(png, left, 0, width - left * 2, topHeight);
         string heading = string.Concat(texts.Select(t => t.Text.Replace(" ", "")));
         if (heading.Contains("结算") || heading.Contains("加载")) return null;
-        return heading.Contains("回合") && (heading.Contains("休息") || heading.Contains("休整")
+        return _lastReading = heading.Contains("回合") && (heading.Contains("休息") || heading.Contains("休整")
             || heading.Contains("战斗") || heading.Contains("作战")) ? reading : null;
     }
 }
@@ -45,6 +56,7 @@ public sealed class GameThemeTracker
     public GameShopTheme? Current { get; private set; }
     private GameShopTheme? _candidate;
     private int _frames;
+    internal bool AwaitingConfirmation => _candidate is not null && _candidate != Current;
 
     public bool Observe(GameThemeReading? reading)
     {

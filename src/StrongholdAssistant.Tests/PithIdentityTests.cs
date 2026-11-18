@@ -43,9 +43,9 @@ public sealed class PithIdentityTests
         var tracker = new FieldTracker();
         tracker.ConfigureIdentity([new() { Name = name, Tier = tier }],
             (_, _, names) => new(names.Select(n => new SpriteCandidate(n, .9)).ToArray(), null), model);
-        var rank = typeof(FieldTracker).GetMethod("Rank", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
-            [typeof(FieldSpritePatch), typeof(int), typeof(bool), typeof(string[])])!;
-        var result = (SpriteCandidate[])rank.Invoke(tracker, [patch, tier, true, new[] { name }])!;
-        Assert.Equal(new SpriteCandidate(name, .9), Assert.Single(result));
+        var cell = new FieldCell("board", 1, 1);
+        tracker.Observe(new(DateTimeOffset.UnixEpoch, true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = tier })
+            { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [cell] = patch } }, force: true);
+        Assert.Equal(new FieldCandidate(name, .9), Assert.Single(Assert.Single(tracker.State!.Units).Candidates));
     }
 }

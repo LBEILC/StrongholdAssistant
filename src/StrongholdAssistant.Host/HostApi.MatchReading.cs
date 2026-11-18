@@ -39,6 +39,8 @@ public sealed partial class HostApi
 
     public async Task ObserveMatchFrameAsync(byte[] frame, int width, int height, EconomyReading? reading, double uiScale)
     {
+        // 战斗中盟约读数延至下次休整，保留上一条记录。
+        if (reading is { IsRest: false, Round: not null }) return;
         string? match = _activeRecord;
         int generation = _matchReadingGeneration;
         if (reading is not null)

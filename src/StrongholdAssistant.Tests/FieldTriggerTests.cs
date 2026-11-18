@@ -13,7 +13,7 @@ public sealed class FieldTriggerTests
     [Theory]
     [InlineData(.1, "auto")]
     [InlineData(.03, "pending")]
-    public void WholeRowPurchaseIsOnlyAHintForVisualIdentity(double gap, string status)
+    public void ShopRowDoesNotOverrideVisualIdentity(double gap, string status)
     {
         var t = new FieldTracker();
         t.ConfigureIdentity([new() { Name = "甲", Tier = 1 }, new() { Name = "乙", Tier = 1 },
@@ -49,7 +49,7 @@ public sealed class FieldTriggerTests
     [Theory]
     [InlineData(.1, "auto")]
     [InlineData(.01, "pending")]
-    public void PurchaseRanksAllOperatorsAtObservedTier(double gap, string status)
+    public void NewUnitRanksAllOperatorsAtObservedTier(double gap, string status)
     {
         string[] matched = [];
         var t = new FieldTracker();
@@ -67,37 +67,7 @@ public sealed class FieldTriggerTests
     }
 
     [Fact]
-    public void RefreshAndEquipmentSpendDoNotBecomePurchases()
-    {
-        var t = new FieldTracker();
-        t.Observe(Frame(0, 0, shop: new() { [1] = "甲" }));
-        t.Observe(Frame(1, 0, 9, new() { [1] = "乙" }));
-        t.Observe(Frame(2, 1, 9, new() { [1] = "乙" }));
-        t.Observe(Frame(3, 1, 9, new() { [1] = "乙" }));
-        Assert.DoesNotContain(t.State!.Log, e => e.Kind == "buy");
-        t.Observe(Frame(4, 1, 8, new() { [1] = "乙" }));
-        Assert.DoesNotContain(t.State.Log, e => e.Kind == "buy");
-    }
-
-    [Fact]
-    public void DragOrUnreadShopDoesNotCreateFreePurchase()
-    {
-        var t = new FieldTracker();
-        Dictionary<int, string> shop = new() { [1] = "甲", [2] = "乙", [3] = "丙" };
-        t.Observe(Frame(0, 0, shop: shop));
-        t.Observe(Frame(1, 0, 9) with { MainScreen = false, DragOperator = "丁" });
-        t.Observe(Frame(2, 1, shop: shop));
-        t.Observe(Frame(3, 1, shop: shop));
-        Assert.DoesNotContain(t.State!.Log, e => e.Kind == "buy");
-        t.Observe(Frame(4, 0));
-        t.Observe(Frame(5, 0));
-        t.Observe(Frame(6, 1));
-        t.Observe(Frame(7, 1));
-        Assert.DoesNotContain(t.State.Log, e => e.Kind == "buy");
-    }
-
-    [Fact]
-    public void FreeThreeChoiceRecordsPurchaseWithoutLockingIdentity()
+    public void FreeThreeChoiceDoesNotRecordPurchase()
     {
         var t = new FieldTracker();
         t.ConfigureIdentity([new() { Name = "甲", Tier = 1 }, new() { Name = "乙", Tier = 2 }, new() { Name = "丙", Tier = 3 }],
@@ -107,7 +77,7 @@ public sealed class FieldTriggerTests
         t.Observe(Frame(2, 1, shop: new()));
         var unit = Assert.Single(t.State!.Units);
         Assert.Null(unit.Operator); Assert.Equal("unknown", unit.Status);
-        Assert.Contains(t.State.Roster, r => r.Operator == "甲" && r.Source == "purchase");
-        Assert.Equal("buy", Assert.Single(t.State.Log).Kind);
+        Assert.Empty(t.State.Roster);
+        Assert.DoesNotContain(t.State.Log, e => e.Kind == "buy");
     }
 }

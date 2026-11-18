@@ -5,6 +5,11 @@ namespace ASPAssistant.Core.Services;
 /// <summary>Positive visual evidence for the opening, in-game info and gameplay pages.</summary>
 public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strategy)
 {
+    private readonly ScanRegionPixels _titlePixels = new();
+    private bool _hasTitle;
+    private byte[]? _openingFrame;
+    private bool _opening;
+
     // 开局左上角模式名；仅去掉空白，不纠错或模糊匹配。
     public async Task<ASPAssistant.Core.Models.GameModeInfo?> ReadModeAsync(byte[] screenshot, int width, int height,
         IReadOnlyList<ASPAssistant.Core.Models.GameModeInfo> modes)
@@ -69,16 +74,31 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
     /// <summary>标题里的「盟」在低分辨率/抗锯齿下常被读成「明」，统一归一化后再比较。</summary>
     private static string Normalize(string text) => text.Replace(" ", "").Replace("明", "盟").Replace("約", "约");
 
-    public async Task<bool> IsOpeningScreenAsync(byte[] screenshot, int width, int height)
+    public async Task<bool> IsOpeningScreenAsync(byte[] screenshot, int width, int height, System.Drawing.Bitmap? bitmap = null)
     {
         var region = strategy.GetScanRegions().Single(r => r.Name == "BanConfirmText");
-        var texts = await ocr.RecognizeRegionAsync(screenshot,
-            (int)(width * region.XPercent), (int)(height * region.YPercent),
+        var title = new System.Drawing.Rectangle((int)(width * region.XPercent), (int)(height * region.YPercent),
             (int)(width * region.WidthPercent), (int)(height * region.HeightPercent));
-        return texts.Any(t => t.Text.Replace(" ", "").Contains("确认本局信息"))
+        bool hasTitle = _hasTitle;
+        if (bitmap is null || !_titlePixels.Unchanged(bitmap, title))
+        {
+            var texts = await ocr.RecognizeRegionAsync(screenshot, title.X, title.Y, title.Width, title.Height);
+            hasTitle = texts.Any(t => t.Text.Replace(" ", "").Contains("确认本局信息"));
+            if (bitmap is not null) _hasTitle = hasTitle;
+        }
+        // 标题先出现、盟约稍后加载时，必须重新检查本帧的两个标题带。
+        if (bitmap is not null && _openingFrame is not null && screenshot.AsSpan().SequenceEqual(_openingFrame))
+            return _opening;
+        bool opening = hasTitle
             && (await IsInformationScreenAsync(screenshot, width, height)
                 // 单人核心盟约占两行，附加盟约标题比联机页更靠下。
                 || await HasBothHeadersAsync(screenshot, width, height, CoreHeaderBand, (.02, .60, .70, .16)));
+        if (bitmap is not null)
+        {
+            _openingFrame = hasTitle ? screenshot : null;
+            _opening = opening;
+        }
+        return opening;
     }
 
     public async Task<bool> IsGameplayAsync(byte[] screenshot, int width, int height)

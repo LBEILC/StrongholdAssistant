@@ -58,27 +58,37 @@ public sealed partial class FieldReader
     // 加上标定偏移和搜索余量；偶数扩边保持半尺寸采样与旧裁块一致。
     public static FieldSpriteRegion CropTemplateSprite(Mat image, FieldSpritePatch patch)
     {
-        var g = patch.Geometry!;
-        int left = 2 * (int)Math.Ceiling(Math.Max(0, 2 * g.CellWidth - 90) / 2);
-        int top = 2 * (int)Math.Ceiling(Math.Max(0, 2.25 * g.CellWidth - 180) / 2);
+        using var crop = TemplateCrop(image, patch.Geometry!, patch.Bench, out int left, out int top);
+        return new(crop.ImEncode(".png"), left, top);
+    }
+
+    private static Mat TemplateCrop(Mat image, FieldSpriteGeometry g, bool bench, out int left, out int top)
+    {
+        left = 2 * (int)Math.Ceiling(Math.Max(0, 2 * g.CellWidth - 90) / 2);
+        top = 2 * (int)Math.Ceiling(Math.Max(0, 2.25 * g.CellWidth - 180) / 2);
         int bottom = 2 * (int)Math.Ceiling(Math.Max(0, g.CellWidth - 24) / 2);
         var rect = new Rect((int)Math.Round(g.BadgeFootX) - 90 - left,
-            (int)Math.Round(g.BadgeFootY) + (patch.Bench ? 0 : 24) - 180 - top,
+            (int)Math.Round(g.BadgeFootY) + (bench ? 0 : 24) - 180 - top,
             180 + left * 2, 204 + top + bottom);
         var visible = rect & new Rect(0, 0, image.Width, image.Height);
         using var crop = new Mat(image, visible);
-        using var padded = new Mat();
+        var padded = new Mat();
         Cv2.CopyMakeBorder(crop, padded, visible.Top - rect.Top, rect.Bottom - visible.Bottom,
             visible.Left - rect.Left, rect.Right - visible.Right, BorderTypes.Constant, Scalar.All(0));
-        return new(padded.ImEncode(".png"), left, top);
+        return padded;
     }
+
+    private static Rect SpriteBounds(double x, double y, bool bench) =>
+        new((int)Math.Round(x) - 90, (int)Math.Round(y) + (bench ? 0 : 24) - 180, 180, 204);
+
+    private static bool CoversSprite(Mat image, Rect rect) =>
+        rect.X >= 0 && rect.Y >= 0 && rect.Right <= image.Width && rect.Bottom <= image.Height;
 
     // 与冻结比对器相同的裁块；脚点坐标以1920×1080计。
     public static FieldSpritePatch? CropSprite(Mat image, double footX, double footY, bool bench)
     {
-        int x = (int)Math.Round(footX), y = (int)Math.Round(footY) + (bench ? 0 : 24);
-        var rect = new Rect(x - 90, y - 180, 180, 204);
-        if (rect.X < 0 || rect.Y < 0 || rect.Right > image.Width || rect.Bottom > image.Height) return null;
+        var rect = SpriteBounds(footX, footY, bench);
+        if (!CoversSprite(image, rect)) return null;
         using var crop = new Mat(image, rect);
         using var center = new Mat(crop, new Rect(50, 40, 80, 136));
         using var small = new Mat();

@@ -28,6 +28,8 @@ public class OcrScannerService : IDisposable
     private readonly Func<IReadOnlyList<(string Name, IReadOnlyList<string> CoreCovenants, IReadOnlyList<string> AdditionalCovenants, IReadOnlyList<string> TemplateNames)>>? _getAllOperators;
     private readonly MaaBanIconMatcher? _iconMatcher;
     private readonly Timer _scanTimer;
+    private bool _disposed;
+    private byte[]? _combatRound;
     private readonly object _shopGate = new();
     private readonly ShopRefreshWindow _refreshWindow = new();
     private int _cacheVersion;
@@ -36,9 +38,8 @@ public class OcrScannerService : IDisposable
     private (int Width, int Height, GameShopTheme Theme) _frameKey;
     private string[] _trackedNames = [];
     private IReadOnlyList<ShopItem> _cachedItems = [];
-    private EconomyReading? _lastEconomy;
+    private volatile EconomyReading? _lastEconomy;
     private EconomyReader? _economyReader;
-    private byte[]? _informationContext;
     private long _lastTimingLog;
     public void InvalidateShop()
     {
@@ -58,6 +59,12 @@ public class OcrScannerService : IDisposable
         double interval = visibleRest ? Math.Min(_configuredInterval, 400) : _configuredInterval;
         if (_scanTimer.Interval != interval) _scanTimer.Interval = interval;
     }
+    private void SetIdleInterval(double interval)
+    {
+        _visibleRest = false;
+        if (_scanTimer.Interval != interval) _scanTimer.Interval = interval;
+    }
+
     public int ShopGeneration { get { lock (_shopGate) return _refreshWindow.Generation; } }
     public void RefreshShop()
     {
@@ -68,7 +75,7 @@ public class OcrScannerService : IDisposable
             _gameState.ShopItems = [];
         }
     }
-    private int _scanning; // re-entry guard (0=idle, 1=busy)
+    private readonly SemaphoreSlim _scanGate = new(1, 1);
 
     // Accumulated ban set for manual screenshot scans.
     private readonly HashSet<string> _accumulatedBans = [];
@@ -164,7 +171,6 @@ public class OcrScannerService : IDisposable
     private readonly Timer _probeTimer = new(300);
     private byte[]? _pendingEnemyFrame;
     private int _probing;
-    private bool? _framePanel;
     private bool _enemyPanelOpen, _enemyPanelFast;
     /// <summary>面板新弹出一次（上一次看到的截图里还没有）时触发，在扫描线程上。</summary>
     public event Action? EnemyPanelSeen;
@@ -172,6 +178,7 @@ public class OcrScannerService : IDisposable
     public Func<Rectangle, bool>? ProbeBlocked { get; set; }
 
     private int _manualFieldRequests;
+    private bool ManualWaiting => Volatile.Read(ref _manualFieldRequests) != 0;
 
     // 与定时扫描共用占用标志，当前帧的商店、资金和棋盘判定不会与扫描交错。
     // capture：宿主给的截图方法（点助手里的「识别」时前台是助手，要和开局识别一样允许并在需要时先藏起侧栏）
@@ -180,8 +187,7 @@ public class OcrScannerService : IDisposable
     {
         Interlocked.Increment(ref _manualFieldRequests);
         using (FieldRecognitionTiming.Measure("scanWait"))
-            while (Interlocked.CompareExchange(ref _scanning, 1, 0) != 0) await Task.Delay(20);
-        Interlocked.Decrement(ref _manualFieldRequests);
+            await _scanGate.WaitAsync();
         try
         {
             byte[]? frame;
@@ -189,14 +195,18 @@ public class OcrScannerService : IDisposable
             if (frame is null) throw new InvalidOperationException("还没连上游戏");
             return await ReadFieldFrameAsync(frame, DateTimeOffset.UtcNow, recognize);
         }
-        finally { Interlocked.Exchange(ref _scanning, 0); }
+        finally
+        {
+            Interlocked.Decrement(ref _manualFieldRequests);
+            _scanGate.Release();
+        }
     }
 
     public async Task<FieldState> ReadFieldFrameAsync(byte[] frame, DateTimeOffset at,
         Func<byte[], DateTimeOffset, EconomyReading?, bool, bool, IReadOnlyList<ShopItem>, Task<FieldState>> recognize)
     {
         CollectionFrame?.Invoke(frame, at);
-        var (width, height) = GetPngDimensions(frame);
+        var (width, height) = GetFrameDimensions(frame);
         (bool Obscured, bool Detail, bool ConfirmationCandidate) surface;
         using (FieldRecognitionTiming.Measure("surface")) surface = FieldReader.InspectSurface(frame);
         if (surface.Obscured || surface.Detail)
@@ -247,7 +257,8 @@ public class OcrScannerService : IDisposable
     // 2026-11-11：StrongholdAssistant 录入及关闭前等待检测释放 OCR。
     public async Task WaitForIdleAsync()
     {
-        while (Volatile.Read(ref _scanning) != 0) await Task.Delay(20);
+        await _scanGate.WaitAsync();
+        _scanGate.Release();
     }
 
     /// <summary>
@@ -276,31 +287,29 @@ public class OcrScannerService : IDisposable
     {
         if (_pauseBanScreenDetection) return;
         // 已排队的手动请求先取新帧，避免被下一轮定时扫描抢占。
-        if (Volatile.Read(ref _manualFieldRequests) != 0) return;
+        if (ManualWaiting) return;
         // Skip if a previous scan is still running.
-        if (Interlocked.CompareExchange(ref _scanning, 1, 0) != 0)
+        if (!_scanGate.Wait(0))
             return;
 
+        // 普通扫描结束后再等一整个间隔。敌人面板保留原来的周期快扫。
+        lock (_scanTimer)
+        {
+            if (_disposed) { _scanGate.Release(); return; }
+            if (!_enemyPanelFast) _scanTimer.Stop();
+        }
         byte[]? screenshot = null;
         _trace.Clear();
         try
         {
             var clock = Stopwatch.StartNew();
             var capturedAt = _refreshWindow.CaptureStarted();
-            ShopFrameFingerprint? fingerprint = null;
-            double fingerprintMs = 0;
-            var theme = _shopReader.Theme;
-            screenshot = _captureService.CaptureScreen(inspect: bitmap =>
-            {
-                var comparison = Stopwatch.StartNew();
-                fingerprint = ShopFrameFingerprint.Read(bitmap, theme);
-                fingerprintMs = comparison.Elapsed.TotalMilliseconds;
-                _framePanel = RoundEnemyReader.PanelVisible(bitmap);
-            });
-            double captureMs = clock.Elapsed.TotalMilliseconds - fingerprintMs;
+            screenshot = _captureService.CaptureScreen(scanPixels: CollectionFrame is null);
+            double captureMs = clock.Elapsed.TotalMilliseconds;
             if (screenshot == null)
             {
-                UpdateScanInterval(false);
+                _lastEconomy = null;
+                SetIdleInterval(2000);
                 _themeTracker.Observe(null);
                 BoardFrameReady?.Invoke(null, null);
                 InvalidateShop();
@@ -309,27 +318,31 @@ public class OcrScannerService : IDisposable
                 return;
             }
 
-            // Derive dimensions from the actual PNG bytes so that every downstream
-            // coordinate (ROI, card boxes, normalization) lives in the same pixel
-            // space as the image MAA will process. Using GetClientRect here was
-            // wrong when ScreenCaptureService downscales the capture to MaxCaptureWidth.
-            var (imgWidth, imgHeight) = GetPngDimensions(screenshot);
+            // 所有坐标均基于缩放后的工作帧。
+            var (imgWidth, imgHeight) = GetFrameDimensions(screenshot);
             if (imgWidth <= 0 || imgHeight <= 0)
                 return;
 
-            if (theme != _shopReader.Theme) fingerprint = null;
-            await ScanFrameAsync(screenshot, imgWidth, imgHeight, capturedAt, captureMs, fingerprint, fingerprintMs);
+            await ScanFrameAsync(screenshot, imgWidth, imgHeight, capturedAt, captureMs, null, 0);
         }
         catch (Exception ex)
         {
             // Swallow unexpected errors (e.g. capture failure during window state change)
             // so the timer-driven async void method never propagates an unhandled exception.
             AppLogger.Error("OcrScanner", "Scan tick failed", ex);
-            RecognitionFailed?.Invoke(screenshot, "商店识别失败。\n" + ex.Message, _shopReader.UiScale, _trace.Steps);
+            RecognitionFailed?.Invoke(screenshot is null ? null : ScreenCaptureService.AsPng(screenshot), "商店识别失败。\n" + ex.Message, _shopReader.UiScale, _trace.Steps);
         }
         finally
         {
-            Interlocked.Exchange(ref _scanning, 0);
+            lock (_scanTimer)
+            {
+                if (!_disposed)
+                {
+                    if (!_enemyPanelFast) _scanTimer.Stop();
+                    _scanTimer.Start();
+                }
+                _scanGate.Release();
+            }
         }
     }
 
@@ -353,21 +366,85 @@ public class OcrScannerService : IDisposable
     {
         lock (_shopGate)
             if (!_refreshWindow.Accept(capturedAt)) return;
-        if (await ReadEnemyPanelAsync(screenshot, width, height)) return;
-        // 开局页也有大片纯色，不能先套用棋盘遮挡判断；完整页可能只停留一帧。
-        var informationClock = Stopwatch.StartNew();
-        bool informationChanged = fingerprint is null || _informationContext is null
-            || !_informationContext.AsSpan().SequenceEqual(fingerprint.Context);
-        bool opening = false;
-        if (informationChanged || _readVersion != Volatile.Read(ref _cacheVersion)
-            || _banScreenActive || _informationState.IsConsumed || AwaitingDetail() || !_shopReader.HasVisibleCards)
+        using var stream = new MemoryStream(screenshot);
+        using var bitmap = new Bitmap(stream);
+        bool panel = RoundEnemyReader.PanelVisible(bitmap);
+        if (await ReadEnemyPanelAsync(screenshot, width, height, panel)) return;
+        if (ManualWaiting) return;
+        var theme = _shopReader.Theme;
+        var key = (width, height, theme);
+        if (!panel && !_banScreenActive && !_informationState.IsConsumed && !AwaitingDetail()
+            && ScanHudPixels.ModeMenu(bitmap))
         {
-            opening = await DetectBanScreenAsync(screenshot, width, height);
-            _informationContext = fingerprint?.Context;
+            _combatRound = null;
+            _fingerprint = null;
+            _shopReader.ClearFrame();
+            BoardMainScreenVisible = BoardDetailVisible = false;
+            _boardSurfacePixels = null;
+            _themeTracker.Observe(null);
+            _lastEconomy = new(null, null, null, null, false);
+            EconomyRead?.Invoke(_lastEconomy);
+            BoardFrameReady?.Invoke(null, null);
+            PublishShopItems([], false, capturedAt);
+            SetIdleInterval(2000);
+            return;
         }
+        var previousRound = _combatRound;
+        _combatRound = ScanHudPixels.CombatRound(bitmap, out bool hasRoundBadge);
+        bool phaseChecked = false;
+        bool knownCombat = key == _frameKey && _economyReader is not null && _lastEconomy is { Round: not null, IsRest: false };
+        bool checkCombat = !panel && (knownCombat || _combatRound is not null) && !_banScreenActive && !_informationState.IsConsumed && !AwaitingDetail()
+            && !_themeTracker.AwaitingConfirmation && !BoardShopVisible;
+        var fieldSurface = checkCombat && ObserveFieldAsync is not null ? FieldReader.InspectSurface(bitmap) : default;
+        if (checkCombat && !fieldSurface.Obscured && !fieldSurface.Detail && !fieldSurface.ConfirmationCandidate)
+        {
+            var phaseClock = Stopwatch.StartNew();
+            EconomyReading phase;
+            if (knownCombat && _combatRound is not null && previousRound is not null && ScanHudPixels.SameRound(_combatRound, previousRound))
+            {
+                phase = _lastEconomy! with { Money = null, Level = null, UpgradeCost = null, UpgradeButton = null };
+            }
+            else
+            {
+                await ReadBoardSurfaceAsync(screenshot, bitmap);
+                if (ManualWaiting) return;
+                phaseChecked = true;
+                if (key != _frameKey || _economyReader is null) _economyReader = new EconomyReader(_ocrEngine, theme);
+                phase = await _economyReader.ReadAsync(screenshot, bitmap, _shopReader.UiScale, false, BoardMainScreenVisible);
+            }
+            FieldRecognitionTiming.Active?.Record("phase", phaseClock.Elapsed.TotalMilliseconds);
+            if (phase is { Round: not null, IsRest: false })
+            {
+                if (!knownCombat)
+                {
+                    _frameKey = key;
+                    _fingerprint = null;
+                    var combatTheme = await _themeDetector.ReadAsync(screenshot, bitmap);
+                    if (_themeTracker.Observe(combatTheme)) ThemeDetected?.Invoke(combatTheme!);
+                }
+                SetIdleInterval(1200);
+                BoardDetailVisible = false;
+                _lastEconomy = phase;
+                EconomyRead?.Invoke(phase);
+                BoardFrameReady?.Invoke(screenshot, phase);
+                if (!ManualWaiting && ObserveFieldAsync is { } field)
+                    using (FieldRecognitionTiming.Measure("observeField"))
+                        await field(screenshot, capturedAt, phase, false, false, []);
+                if (!ManualWaiting && ObserveMatchFrameAsync is { } match)
+                    using (FieldRecognitionTiming.Measure("observeMatch"))
+                        await match(screenshot, width, height, phase, _shopReader.UiScale ?? 1);
+                return;
+            }
+        }
+        // 开局完整页可能只停一帧，先于棋盘遮挡判定。
+        var informationClock = Stopwatch.StartNew();
+        bool checkOpening = !hasRoundBadge || _banScreenActive || _informationState.IsConsumed || AwaitingDetail();
+        bool opening = checkOpening && await DetectBanScreenAsync(screenshot, width, height, bitmap);
         double informationMs = informationClock.Elapsed.TotalMilliseconds;
+        FieldRecognitionTiming.Active?.Record("information", informationMs);
         if (opening || _pauseBanScreenDetection)
         {
+            _lastEconomy = null;
             BoardMainScreenVisible = false;
             _boardSurfacePixels = null;
             UpdateScanInterval(false);
@@ -375,7 +452,8 @@ public class OcrScannerService : IDisposable
             PublishShopItems([], false, capturedAt);
             return;
         }
-        var fieldSurface = ObserveFieldAsync is not null ? FieldReader.InspectSurface(screenshot) : default;
+        if (ManualWaiting) return;
+        if (!checkCombat && ObserveFieldAsync is not null) fieldSurface = FieldReader.InspectSurface(bitmap);
         BoardDetailVisible = fieldSurface.Detail;
         bool confirmation = false;
         if (!fieldSurface.Obscured && fieldSurface.ConfirmationCandidate)
@@ -393,16 +471,15 @@ public class OcrScannerService : IDisposable
             BoardFrameReady?.Invoke(null, null);
             return;
         }
+        if (ManualWaiting) return;
         int version = Volatile.Read(ref _cacheVersion);
-        var theme = _shopReader.Theme;
         var tracked = _getTrackedNames().ToArray();
-        var key = (width, height, theme);
         if (key != _frameKey) _economyReader = null;
         bool forced = version != _readVersion || key != _frameKey || !tracked.SequenceEqual(_trackedNames);
         var clock = Stopwatch.StartNew();
-        // ADB 返回编码图；样图测试也走这一入口。PC 截图已经在编码前生成了指纹。
-        fingerprint ??= ShopFrameFingerprint.Read(screenshot, theme);
+        fingerprint ??= ShopFrameFingerprint.Read(bitmap, theme);
         fingerprintMs += clock.Elapsed.TotalMilliseconds;
+        FieldRecognitionTiming.Active?.Record("fingerprint", fingerprintMs);
         bool changed = _shopReader.NeedsEmptyConfirmation || forced || _fingerprint is null || !ShopFrameFingerprint.SameNames(_fingerprint.Names, fingerprint.Names);
         if (_fingerprint is { } previous && changed)
         {
@@ -423,7 +500,8 @@ public class OcrScannerService : IDisposable
         if (changed)
         {
             clock.Restart();
-            _cachedItems = await _shopReader.ReadAsync(screenshot, width, height, tracked);
+            using (FieldRecognitionTiming.Measure("shop"))
+                _cachedItems = await _shopReader.ReadAsync(screenshot, width, height, tracked, bitmap);
             shopMs = clock.Elapsed.TotalMilliseconds;
             _fingerprint = fingerprint;
             _readVersion = version;
@@ -433,11 +511,14 @@ public class OcrScannerService : IDisposable
         clock.Restart();
         PublishShopItems(_cachedItems, _shopReader.HasVisibleCards, capturedAt);
         double publishMs = clock.Elapsed.TotalMilliseconds;
+        FieldRecognitionTiming.Active?.Record("publishShop", publishMs);
+        double captureToPublish = (DateTimeOffset.UtcNow - capturedAt).TotalMilliseconds;
         if (changed && _shopReader.Failure is { } failure)
-            RecognitionFailed?.Invoke(screenshot, failure, _shopReader.UiScale, _trace.Steps);
+            RecognitionFailed?.Invoke(ScreenCaptureService.AsPng(screenshot), failure, _shopReader.UiScale, _trace.Steps);
 
         // 商店先发布。确认新主题后宿主同步更新设置；本帧后续读数和下一帧商店用新主题。
-        var detected = await _themeDetector.ReadAsync(screenshot, width, height);
+        if (ManualWaiting) return;
+        var detected = await _themeDetector.ReadAsync(screenshot, bitmap);
         if (_themeTracker.Observe(detected))
         {
             AppLogger.Info("GameTheme", $"theme={detected!.Theme} score={detected.Score:F4}");
@@ -448,6 +529,7 @@ public class OcrScannerService : IDisposable
             theme = _shopReader.Theme;
             _economyReader = null;
         }
+        if (ManualWaiting) return;
 
         // 每帧确认读数；各数字区域由持久化 reader 独立比较，未变不调用 OCR。
         EconomyReading? boardEconomy = _lastEconomy;
@@ -455,40 +537,47 @@ public class OcrScannerService : IDisposable
         {
             clock.Restart();
             _economyReader ??= new EconomyReader(_ocrEngine, theme);
-            var reading = await _economyReader.ReadAsync(screenshot, width, height, _shopReader.UiScale);
+            if (!phaseChecked) await ReadBoardSurfaceAsync(screenshot, bitmap);
+            if (ManualWaiting) return;
+            var reading = await _economyReader.ReadAsync(screenshot, bitmap, _shopReader.UiScale, true, BoardMainScreenVisible);
             _lastEconomy = boardEconomy = reading;
             EconomyRead?.Invoke(reading);
             economyMs = clock.Elapsed.TotalMilliseconds;
+            FieldRecognitionTiming.Active?.Record("economy", economyMs.Value);
         }
         if (_pauseBanScreenDetection || _banScreenActive) PublishShopItems([], false, capturedAt);
         // 商店已先发布，棋盘识别不会推迟本轮商店结果。
         if (BoardRoutesRequested() || ObserveFieldAsync is not null)
         {
-            await ReadBoardSurfaceAsync(screenshot, width, height);
             BoardFrameReady?.Invoke(_pauseBanScreenDetection || _banScreenActive ? null : screenshot, boardEconomy);
             // 本帧就绪控件可见时，资金降频不应跳过占用变化；战斗/弹窗仍不得拿旧读数更新占用。
             var fieldEconomy = boardEconomy ?? (BoardMainScreenVisible ? _lastEconomy : null);
-            UpdateScanInterval(!_pauseBanScreenDetection && !_banScreenActive && !fieldSurface.Detail
-                && BoardMainScreenVisible && fieldEconomy is { IsRest: true });
-            if (!_pauseBanScreenDetection && !_banScreenActive && ObserveFieldAsync is { } observe && fieldEconomy is not null)
-                await observe(screenshot, capturedAt, fieldEconomy, BoardMainScreenVisible, BoardShopVisible, _shopReader.AllItems);
+            if (!_banScreenActive && boardEconomy is { IsRest: false } away)
+                SetIdleInterval(away.Round is null ? 2000 : 1200);
+            else
+                UpdateScanInterval(!_pauseBanScreenDetection && !_banScreenActive && !fieldSurface.Detail
+                    && BoardMainScreenVisible && fieldEconomy is { IsRest: true });
+            if (!ManualWaiting && !_pauseBanScreenDetection && !_banScreenActive && ObserveFieldAsync is { } observe && fieldEconomy is not null)
+                using (FieldRecognitionTiming.Measure("observeField"))
+                    await observe(screenshot, capturedAt, fieldEconomy, BoardMainScreenVisible, BoardShopVisible, _shopReader.AllItems);
         }
-        if (!_pauseBanScreenDetection && ObserveMatchFrameAsync is { } observeMatch)
-            await observeMatch(screenshot, width, height, boardEconomy, _shopReader.UiScale ?? 1);
+        if (!ManualWaiting && !_pauseBanScreenDetection && ObserveMatchFrameAsync is { } observeMatch)
+            using (FieldRecognitionTiming.Measure("observeMatch"))
+                await observeMatch(screenshot, width, height, boardEconomy, _shopReader.UiScale ?? 1);
         double total = captureMs + fingerprintMs + (shopMs ?? 0) + publishMs + (economyMs ?? 0) + informationMs;
         // 有卡片时至多每两秒一行；慢轮（超过 800 ms）始终记录。
         if (total >= 800 || _shopReader.HasVisibleCards && Environment.TickCount64 - _lastTimingLog >= 2000)
         {
             _lastTimingLog = Environment.TickCount64;
             static string Ms(double? value) => value is { } ms ? $"{ms:F1}ms" : "skip";
-            AppLogger.Info("ShopTiming", $"capture={Ms(captureMs)} fingerprint={Ms(fingerprintMs)} shop={Ms(shopMs)} publish={Ms(publishMs)} economy={Ms(economyMs)} information={Ms(informationMs)} captureToPublish={captureMs + fingerprintMs + (shopMs ?? 0) + publishMs:F1}ms");
+            AppLogger.Info("ShopTiming", $"capture={Ms(captureMs)} fingerprint={Ms(fingerprintMs)} shop={Ms(shopMs)} publish={Ms(publishMs)} economy={Ms(economyMs)} information={Ms(informationMs)} captureToPublish={captureToPublish:F1}ms");
         }
     }
 
     private void ProbeEnemyPanel()
     {
         // 只在主扫描忙、休整期（已开局）、PC 截图时；截不到就跳过这一次，不重试也不记日志
-        if (Volatile.Read(ref _scanning) == 0 || _pauseBanScreenDetection || _lastEconomy is not { IsRest: true }
+        if (_scanGate.CurrentCount != 0 || ManualWaiting || _pauseBanScreenDetection || _lastEconomy is not { IsRest: true }
             || ObserveMatchFrameAsync is null) return;
         if (Interlocked.Exchange(ref _probing, 1) != 0) return;
         try
@@ -514,16 +603,14 @@ public class OcrScannerService : IDisposable
     }
 
     /// <summary>先读探针存下的面板整图；本帧是面板时只读敌人（棋盘被挡着，跳过开局页、商店和场上认人），返回 true。</summary>
-    private async Task<bool> ReadEnemyPanelAsync(byte[] screenshot, int width, int height)
+    private async Task<bool> ReadEnemyPanelAsync(byte[] screenshot, int width, int height, bool panel)
     {
-        bool panel = _framePanel ?? RoundEnemyReader.PanelVisible(screenshot);
-        _framePanel = null;
         var observe = ObserveMatchFrameAsync;
         bool rest = !_pauseBanScreenDetection && _lastEconomy is { IsRest: true } && observe is not null;
         if (Interlocked.Exchange(ref _pendingEnemyFrame, null) is { } pending && rest && !panel)
         {
             ObserveEnemyPanel(true);
-            var (w, h) = GetPngDimensions(pending);
+            var (w, h) = GetFrameDimensions(pending);
             await observe!(pending, w, h, _lastEconomy, _shopReader.UiScale ?? 1);
         }
         if (!rest || !panel)
@@ -542,10 +629,9 @@ public class OcrScannerService : IDisposable
     public DateTimeOffset ChangedShopCapturedAt { get; private set; }
     public bool RemovingChangedShopItems { get; private set; }
 
-    private async Task ReadBoardSurfaceAsync(byte[] frame, int width, int height)
+    private async Task ReadBoardSurfaceAsync(byte[] frame, Bitmap image)
     {
-        using var stream = new MemoryStream(frame);
-        using var image = new System.Drawing.Bitmap(stream);
+        int width = image.Width, height = image.Height;
         double scale = Math.Min(width / 1920d, height / 1080d);
         var pixels = new byte[32 * 20 * 3];
         int index = 0;
@@ -599,7 +685,7 @@ public class OcrScannerService : IDisposable
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                var (w, h) = GetPngDimensions(screenshot);
+                var (w, h) = GetFrameDimensions(screenshot);
                 AppLogger.Info("OcrScanner", $"Manual scan started (img={w}x{h})");
                 await RunBanMatchCoreAsync(screenshot, regions, w, h);
                 AppLogger.Info("OcrScanner", $"Manual scan completed in {sw.ElapsedMilliseconds}ms");
@@ -616,12 +702,11 @@ public class OcrScannerService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Reads width and height from a PNG file's IHDR chunk (bytes 16–23).
-    /// No dependencies beyond the raw byte array.
-    /// </summary>
-    private static (int Width, int Height) GetPngDimensions(byte[] png)
+    // 后台传未压缩 BMP，采集、ADB 和手动截图传 PNG。
+    internal static (int Width, int Height) GetFrameDimensions(byte[] png)
     {
+        if (png[0] == 'B' && png[1] == 'M')
+            return (BitConverter.ToInt32(png, 18), BitConverter.ToInt32(png, 22));
         int w = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
         int h = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
         return (w, h);
@@ -742,10 +827,10 @@ public class OcrScannerService : IDisposable
     /// <summary>Successful manual recording also consumes this opening screen.</summary>
     public void MarkInformationRecorded() => _informationState.MarkRecorded();
 
-    private async Task<bool> DetectBanScreenAsync(byte[] screenshot, int width, int height)
+    private async Task<bool> DetectBanScreenAsync(byte[] screenshot, int width, int height, Bitmap bitmap)
     {
         if (_pauseBanScreenDetection) return false;
-        bool opening = await _informationDetector.IsOpeningScreenAsync(screenshot, width, height);
+        bool opening = await _informationDetector.IsOpeningScreenAsync(screenshot, width, height, bitmap);
         bool gameplay = !opening && _informationState.IsConsumed
             && await _informationDetector.IsGameplayAsync(screenshot, width, height);
         if (_pauseBanScreenDetection) return false;
@@ -764,7 +849,7 @@ public class OcrScannerService : IDisposable
         {
             AppLogger.Info("BanScreen", "Validated opening info screen detected");
             bool solo = await _informationDetector.HasSoloPromptAsync(screenshot, width, height);
-            OpeningScreenshot = screenshot;
+            OpeningScreenshot = ScreenCaptureService.AsPng(screenshot);
             BanScreenDetected?.Invoke(solo);
         }
         if (!opening && AwaitingDetail()
@@ -775,8 +860,11 @@ public class OcrScannerService : IDisposable
 
     public void Dispose()
     {
-        _scanTimer.Stop();
-        _scanTimer.Dispose();
+        lock (_scanTimer)
+        {
+            _disposed = true;
+            _scanTimer.Dispose();
+        }
         _probeTimer.Stop();
         _probeTimer.Dispose();
         _manualScanChannel.Writer.TryComplete();

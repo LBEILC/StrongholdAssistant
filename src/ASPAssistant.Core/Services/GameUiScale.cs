@@ -1,4 +1,6 @@
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using ASPAssistant.Core.GameModes;
 
 namespace ASPAssistant.Core.Services;
@@ -50,14 +52,24 @@ public static class GameUiScale
         var edges = new double[bitmap.Width];
         int delta = Math.Max(1, (int)(2 * scale));
         // 卡片两侧的竖线在整段高度上重复，按间距做相关性比较，不依赖卡面或出售状态。
-        for (int x = delta; x < bitmap.Width - delta; x++)
-        // 高画面同样按宽度缩放，但商店锚定底部。
-        for (int y = (int)(bitmap.Height - 280 * scale); y < (int)(bitmap.Height - 130 * scale); y += 3)
+        int top = (int)(bitmap.Height - 280 * scale), bottom = (int)(bitmap.Height - 130 * scale);
+        if (bottom <= top) return 1;
+        var bits = bitmap.LockBits(new(0, top, bitmap.Width, bottom - top), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
         {
-            var a = bitmap.GetPixel(x - delta, y);
-            var b = bitmap.GetPixel(x + delta, y);
-            edges[x] += Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B);
+            var row = new byte[bitmap.Width * 4];
+            for (int y = 0; y < bits.Height; y += 3)
+            {
+                Marshal.Copy(bits.Scan0 + y * bits.Stride, row, 0, row.Length);
+                for (int x = delta; x < bitmap.Width - delta; x++)
+                {
+                    int a = (x - delta) * 4, b = (x + delta) * 4;
+                    edges[x] += Math.Abs(row[a] - row[b]) + Math.Abs(row[a + 1] - row[b + 1])
+                        + Math.Abs(row[a + 2] - row[b + 2]);
+                }
+            }
         }
+        finally { bitmap.UnlockBits(bits); }
         int pitch = (int)(220 * scale);
         double best = 0;
         for (int p = (int)(218 * scale); p <= (int)(246 * scale); p++)

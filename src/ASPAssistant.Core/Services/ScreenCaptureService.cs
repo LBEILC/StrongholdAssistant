@@ -29,11 +29,11 @@ public class ScreenCaptureService
     /// <summary>
     /// 优先捕获游戏客户区；失败时沿用前台 BitBlt，缩放和编码保持一致。
     /// </summary>
-    public byte[]? CaptureScreen(IntPtr allowedForeground = default, Action<Bitmap>? inspect = null)
+    public byte[]? CaptureScreen(IntPtr allowedForeground = default, Action<Bitmap>? inspect = null, bool scanPixels = false)
     {
         if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth, RequestedNativeFrame);
         using var window = CaptureWindowFrame();
-        return window is not null ? EncodeCapture(window, inspect) : CaptureBitBltScreen(allowedForeground, inspect);
+        return window is not null ? EncodeCapture(window, inspect, scanPixels) : CaptureBitBltScreen(allowedForeground, inspect, scanPixels);
     }
 
     // 信息识别先尝试本路径，失败后由宿主隐藏侧栏，再调用 BitBlt。
@@ -50,7 +50,7 @@ public class ScreenCaptureService
         return Connection.IsAdb ? null : Connection.WindowCapture.Capture(hwnd);
     }
 
-    public byte[]? CaptureBitBltScreen(IntPtr allowedForeground = default, Action<Bitmap>? inspect = null)
+    public byte[]? CaptureBitBltScreen(IntPtr allowedForeground = default, Action<Bitmap>? inspect = null, bool scanPixels = false)
     {
         if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth, RequestedNativeFrame);
         var hwnd = Connection.FindGameWindow();
@@ -119,7 +119,7 @@ public class ScreenCaptureService
                 return null;
             }
 
-            return EncodeCapture(raw, inspect);
+            return EncodeCapture(raw, inspect, scanPixels);
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
@@ -174,8 +174,19 @@ public class ScreenCaptureService
         return (image, Math.Min(rect.Width / 1920d, rect.Height / 1080d));
     }
 
+    // PC 后台帧以未压缩位图传递；仅在保留现场时压成 PNG。
+    public static byte[] AsPng(byte[] frame)
+    {
+        if (frame[0] != 'B' || frame[1] != 'M') return frame;
+        using var input = new MemoryStream(frame);
+        using var bitmap = new Bitmap(input);
+        using var output = new MemoryStream();
+        bitmap.Save(output, ImageFormat.Png);
+        return output.ToArray();
+    }
+
     // 合成图验收与真实截屏共享缩小、编码路径。
-    public byte[] EncodeCapture(Bitmap raw, Action<Bitmap>? inspect = null)
+    public byte[] EncodeCapture(Bitmap raw, Action<Bitmap>? inspect = null, bool scanPixels = false)
     {
         RequestedNativeFrame?.Invoke(raw);
         using var resized = raw.Width > MaxCaptureWidth
@@ -190,7 +201,7 @@ public class ScreenCaptureService
         // 识别循环直接用缩放后的截图生成指纹，避免编码后再解码同一张 PNG。
         inspect?.Invoke(resized ?? raw);
         using var stream = new MemoryStream();
-        (resized ?? raw).Save(stream, ImageFormat.Png);
+        (resized ?? raw).Save(stream, scanPixels ? ImageFormat.Bmp : ImageFormat.Png);
         return stream.ToArray();
     }
 

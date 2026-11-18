@@ -82,16 +82,17 @@ public sealed partial class HostApi
         }, _fieldSpriteModel, (patch, foreground) =>
         {
             var skins = FieldAppearances();
-            return _fieldSprites.WithNeighbors(_fieldSprites.WithOcclusion(patch, foreground, skins), foreground, skins);
-        }, (patch, tier, names) => _fieldSprites.MaskNeighbors(patch, tier, names,
+            return _fieldSprites.WithOcclusion(patch, foreground, skins);
+        }, (patch, tier, names) => _fieldSprites.CropModelInput(patch, tier, names,
             FieldAppearances()));
-        InitializeFieldPrototypes(directory);
+        _fieldTracker.ConfigurePrototypes(name => ReadRoster().Operators.Any(o => o.Name == name && o.Prototype is not null));
         _shopReader!.ReadUntracked = true;
     }
 
     public async Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
         bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop)
     {
+        if (!Settings.FieldAuto && !Settings.Collect) return;
         if (!await _fieldScanGate.WaitAsync(0)) return;
         try { await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false); }
         finally { _fieldScanGate.Release(); }
@@ -122,7 +123,8 @@ public sealed partial class HostApi
         lock (_fieldGate) generation = _fieldGeneration;
         if (_fieldReaderGeneration != generation) { _fieldReader!.Reset(); _fieldReaderGeneration = generation; }
         _fieldReader!.Theme = Theme(Settings.GameTheme);
-        _fieldReader.KnownMap = Field?.MapId;
+        var fieldMap = Field?.MapId;
+        lock (_boardGate) _fieldReader.KnownMap = fieldMap ?? _boardMap;
         _fieldReader.HasPithStrategy = Match.StrategyId is { } strategyId ? strategyId == "band_pith" : null;
         _fieldReader.BossRound = economy?.IsFinalRound == true || economy?.Round is { } round
             && _boardRouteStore?.IsBossRound(round, Match.Solo, Match.Mode?.Id) == true;

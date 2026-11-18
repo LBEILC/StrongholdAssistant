@@ -5,8 +5,8 @@ namespace ASPAssistant.Core.Services;
 
 public sealed partial class SpriteMatcher
 {
-    private FieldSpritePatch CropModelInput(FieldSpritePatch target, int tier, string[] candidates,
-        IReadOnlyDictionary<string, string?>? skins)
+    public FieldSpritePatch CropModelInput(FieldSpritePatch target, int tier, string[] candidates,
+        IReadOnlyDictionary<string, string?>? skins = null)
     {
         if (!UsesPhysicalScale || target.Geometry is not { } g) return target;
         var templates = _source.Where(t => t.Tier == tier && candidates.Any(n => AppearanceName(n, skins) == t.Name

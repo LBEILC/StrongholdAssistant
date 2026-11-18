@@ -199,7 +199,7 @@ internal sealed class CollectionStore
             else
             {
                 using var scaled = new Mat();
-                if (folder == "frames") Cv2.Resize(image, scaled, new Size(1920, 1080));
+                if (folder == "frames") Cv2.Resize(image, scaled, new Size(1920, (int)Math.Round(image.Height * 1920d / image.Width)));
                 File.WriteAllBytes(Path.Combine(directory, name), (folder == "frames" ? scaled : image)
                     .ImEncode(".jpg", new ImageEncodingParam(ImwriteFlags.JpegQuality, 90)));
             }

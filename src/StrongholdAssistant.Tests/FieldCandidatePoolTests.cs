@@ -42,14 +42,14 @@ public sealed class FieldCandidatePoolTests
         tracker.ConfigureCandidatePool(["乙"], []);
         tracker.Observe(Frame(), force: true);
         Assert.Equal("甲", Assert.Single(tracker.State!.Units).Operator);
-        Assert.Equal("only", tracker.State.Units[0].Source);
+        Assert.Equal("sprite", tracker.State.Units[0].Source);
         Assert.Equal(1, calls);
-        Assert.Equal("auto", tracker.State.Units[0].Status);
+        Assert.Equal("pending", tracker.State.Units[0].Status);
         Assert.Empty(tracker.State.Roster);
         tracker.Reset();
         tracker.Observe(Frame(), force: true);
         Assert.Equal(2, tracker.State!.Units[0].Candidates.Length);
-        Assert.NotEqual("only", tracker.State.Units[0].Source);
+        Assert.Equal("sprite", tracker.State.Units[0].Source);
     }
 
     private static FieldObservation Frame()

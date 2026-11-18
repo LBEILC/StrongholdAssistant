@@ -52,6 +52,25 @@ public sealed class SpriteModelMatcher : IDisposable
     public string[] Shortlist(float[] logits, IEnumerable<string> names, int count)
         => names.Distinct().OrderByDescending(n => logits[_indices[n]]).Take(count).ToArray();
 
+    internal string[] TemplateCandidates(float[] logits, string[] eligible)
+    {
+        var first = Shortlist(logits, eligible, 4);
+        // 被浮签、箭头盖住时，模型会把这些同阶外观排出前四；补比模板仍受本局候选池限制。
+        return first.Concat(eligible.Where(name => name switch
+        {
+            "凯瑟琳" or "罗比菈塔" => first.Contains("风絮"),
+            "慕斯" => first.Contains("陨星"),
+            _ => false
+        })).Distinct().ToArray();
+    }
+
+    internal bool StronglySupports(float[] logits, SpriteCandidate[] templates, string name)
+    {
+        // 以本次实际参与融合的名字为分母，与 Fuse 的概率口径一致。
+        double winner = logits[_indices[name]];
+        return templates.Sum(c => Math.Exp(logits[_indices[c.Name]] - winner)) <= 1 / .9;
+    }
+
     public SpriteCandidate[] Fuse(float[] logits, IReadOnlyList<SpriteCandidate> templates)
     {
         if (templates.Count == 0) return [];

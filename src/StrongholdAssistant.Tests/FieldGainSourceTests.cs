@@ -20,7 +20,7 @@ public sealed class FieldGainSourceTests
     private static FieldObservation Picture(FieldObservation o) => o with { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [Bench] = Patch } };
 
     [Fact]
-    public void EthanSaleUsesDistinctBoardNamesAndIncludesTiedCovenants()
+    public void EthanSaleRecordsSourceOnConfirmation()
     {
         string[] candidates = [];
         var t = new FieldTracker();
@@ -40,7 +40,7 @@ public sealed class FieldGainSourceTests
     [Theory]
     [InlineData("黑白相易", "auto", "乙")]
     [InlineData("人才盲盒", "auto", "丙")]
-    public void StrategyExtendsAllowedPoolAndConfirmationRecordsSource(string strategy,string status,string answer)
+    public void StrategyKeepsAllowedPoolAndConfirmationRecordsSource(string strategy,string status,string answer)
     {
         string[] candidates=[];
         var t=new FieldTracker();
@@ -62,7 +62,7 @@ public sealed class FieldGainSourceTests
     {
         var t=new FieldTracker();
         t.ConfigureIdentity(Operators,(_,_,names)=>new(names.Select(n=>new SpriteCandidate(n,n=="乙"?.9:rosterScore)).ToArray(),.5));
-        t.AddRoster("甲","purchase",Start);
+        t.AddRoster("甲","manual",Start);
         t.Observe(Frame(-1));
         t.Observe(Picture(Frame(0,(Bench,1))));
         t.Observe(Picture(Frame(7,(Bench,1))));

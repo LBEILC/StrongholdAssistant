@@ -93,4 +93,33 @@ public sealed class RestBoardRecognitionTests
         }
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
+
+    [Fact]
+    public async Task FirstManualRecognitionOnBossRoundUsesPreviousBoardMap()
+    {
+        string data = Path.Combine(AppContext.BaseDirectory, "data");
+        string samples = Path.Combine(AppContext.BaseDirectory, "TestData");
+        string directory = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var api = await HostApi.CreateAsync(data, directory);
+            var ocr = new Mock<IOcrEngine>();
+            ocr.Setup(o => o.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(Array.Empty<OcrTextResult>());
+            api.CreateShopReader(ocr.Object);
+            api.InitializeField(data, ocr.Object);
+            api.InitializeBoardRoutes(data);
+            api.ApplyRecognizedMatch(api.Match with { Solo = false }, []);
+            var normal = File.ReadAllBytes(Path.Combine(samples, "board-city-r13-expanded.jpg"));
+            var rest = new EconomyReading(13, null, null, null, true);
+            api.ObserveBoardFrame(normal, rest, true);
+            // 空字节确保两个开关都关闭时，后台回调完全不读图。
+            await api.ObserveFieldAsync([], DateTimeOffset.UtcNow, rest, true, true, []);
+            Assert.Null(api.Field);
+            var boss = File.ReadAllBytes(Path.Combine(samples, "board-boss-right-collapsed-r14.jpg"));
+            var field = await api.RecognizeFieldFrameAsync(boss, DateTimeOffset.UtcNow, rest with { Round = 14 }, true, false, []);
+            Assert.Equal("m05", field.MapId);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
 }

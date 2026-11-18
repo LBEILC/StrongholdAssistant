@@ -6,7 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="../../data/field-confusions.json" LogicalName="FieldConfusions" />
+    <InternalsVisibleTo Include="FieldEval" />
+    <InternalsVisibleTo Include="StrongholdAssistant.Tests" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Maa.Framework" Version="5.8.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
