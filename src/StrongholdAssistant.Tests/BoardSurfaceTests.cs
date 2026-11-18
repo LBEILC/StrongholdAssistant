@@ -1,4 +1,5 @@
 using System.Drawing;
+using ASPAssistant.Core.GameModes.GarrisonProtocol;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
 using ASPAssistant.Tests.Services;
@@ -11,6 +12,27 @@ namespace StrongholdAssistant.Tests;
 [Collection("Native OCR")]
 public sealed class BoardSurfaceTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
 {
+    [Fact]
+    public async Task ManualFieldRecognitionReadsBoardBehindFundsToast()
+    {
+        string directory = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            string data = Path.Combine(AppContext.BaseDirectory, "data");
+            var api = await HostApi.CreateAsync(data, directory);
+            var shop = api.CreateShopReader(fixture.Engine);
+            api.InitializeField(data, fixture.Engine);
+            api.InitializeBoardRoutes(data);
+            using var scanner = new OcrScannerService(new ScreenCaptureService(), new GarrisonOcrStrategy(),
+                shop, fixture.Engine, new ASPAssistant.Core.GameState.GameState(), () => []);
+            var frame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "field-funds-toast.png"));
+            var field = await scanner.ReadFieldFrameAsync(frame, DateTimeOffset.UtcNow, api.RecognizeFieldFrameAsync);
+            Assert.NotNull(field.MapId);
+            Assert.Contains(field.Units, unit => unit.Zone == "board" && unit.Operator is not null);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     [Theory]
     [InlineData(1.0)]
     [InlineData(1.1)]

@@ -36,8 +36,6 @@ public sealed partial class FieldTracker
     private Func<FieldSpritePatch, IEnumerable<(FieldUnit Unit, FieldSpritePatch Patch)>, FieldSpritePatch>? _occlusion;
     private Func<FieldSpritePatch, int, string[], FieldSpritePatch>? _modelRegion;
     private double IdentityAutoFillGap => _spriteModel is null ? SpriteMatcher.AutoFillGap : SpriteModelMatcher.AutoFillGap;
-    private Func<string, bool>? _usesPrototype;
-    public void ConfigurePrototypes(Func<string, bool> usesPrototype) => _usesPrototype = usesPrototype;
     private string? _strategyName;
     private (DateTimeOffset At, string Source)? _recentGift;
 
@@ -187,6 +185,13 @@ public sealed partial class FieldTracker
             { SetIdentity(cell, unit, patch, force: force); continue; }
             var names = MatchCandidates()
                 .Distinct().Where(n => HasTier(n, unit.Tier)).ToArray();
+            var prototype = _unknownPrototype?.Invoke(patch, unit.Tier, names) ?? [];
+            if (prototype.Length > 0)
+            {
+                SetIdentity(cell, unit with { Operator = prototype[0].Name, Source = "sprite", Status = "pending",
+                    Candidates = prototype.Select(p => new FieldCandidate(p.Name, p.Score)).ToArray() }, patch, force: force);
+                continue;
+            }
             var ranked = Rank(patch, unit.Tier, reidentify, names, CurrentName(unit), personalScores, out var evidence);
             if (reidentify && unit.Operator is not null)
                 ranked = ranked.OrderByDescending(c => c.Score + (c.Name == unit.Operator ? .01 : 0)).ToArray();
@@ -196,7 +201,7 @@ public sealed partial class FieldTracker
             double gap = evidence.Logits is null || ranked.Length > 1
                 && _spriteModel!.StronglySupports(evidence.Logits, evidence.Templates, ranked[0].Name)
                 ? SpriteMatcher.AutoFillGap : IdentityAutoFillGap;
-            string status = candidates.Length == 0 ? "unknown" : ranked.Length > 1
+            string status = candidates.Length == 0 ? "unknown" : evidence.Confirmed || ranked.Length > 1
                 && ranked[0].Score - ranked[1].Score >= gap ? "auto" : "pending";
             SetIdentity(cell, unit with { Operator = candidates.FirstOrDefault()?.Operator,
                 Source = candidates.Length == 0 ? null : "sprite", Status = status, Candidates = candidates,
@@ -333,7 +338,7 @@ public sealed partial class FieldTracker
             .GroupBy(p => p.Unit.Operator!).ToDictionary(g => g.Key, g => g.Max(p => Compare(p.Patch)));
     }
 
-    private sealed record RankResult(SpriteCandidate[] Templates, SpriteCandidate[] Fused, float[]? Logits);
+    private sealed record RankResult(SpriteCandidate[] Templates, SpriteCandidate[] Fused, float[]? Logits, bool Confirmed = false);
     private sealed record PreparedRank(FieldSpritePatch Patch, string[] Names, string[] Sources,
         Dictionary<string, double> Personal, RankResult Result);
     private readonly Dictionary<byte[], PreparedRank> _preparedRanks = [];
@@ -390,6 +395,18 @@ public sealed partial class FieldTracker
                 crop.SetTo(OpenCvSharp.Cv2.Mean(crop, visible), blocked);
             }
             logits = _spriteModel.Predict(crop);
+            if (names.Length > 1 && patch.OcclusionRatio < .2)
+            {
+                var quick = _spriteModel.TemplateCandidates(logits, names, 1);
+                if (_spriteModel.Confident(logits, names.Concat(sourceNames).Concat(personal.Keys).Distinct().ToArray(), quick[0]))
+                {
+                    var matches = _matchSprite!(patch, tier, quick).Candidates.OrderByDescending(c => c.Score).ToArray();
+                    // 同局学到的自动模板可能来自另一名相似干员。只用冻结模板复核模型首名。
+                    if (matches.Length > 0 && matches[0].Name == quick[0] && matches[0].Score >= .4
+                        && (matches.Length == 1 || matches[0].Score - matches[1].Score >= SpriteMatcher.AutoFillGap))
+                        return new(matches, _spriteModel.Fuse(logits, matches), logits, true);
+                }
+            }
             // 训练侧271条答案的最小完整召回K为4；当前名字和个人模板不被模型筛掉。
             // 原始遮挡率达到20%时保留该阶全部候选，避免模型预筛漏掉真名。
             if (patch.OcclusionRatio < .2) names = _spriteModel.TemplateCandidates(logits, names);

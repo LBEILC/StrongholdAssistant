@@ -32,4 +32,19 @@ public sealed class PrototypeCatalog
             && (order is null || s.Order == order) && bonds.All(s.Bonds.Contains)).ToArray();
         return candidates.Length == 1 ? candidates[0] : null;
     }
+
+    public SpriteCandidate[] MatchUnknown(SpriteMatcher matcher, ASPAssistant.Core.Models.FieldSpritePatch patch,
+        int tier, string[] names, IReadOnlyDictionary<string, string?>? appearances = null)
+    {
+        var defaults = Prototypes.Where(p => p.Tiers.Contains(tier) && Candidates(p.Name, tier, names).Length > 0)
+            .Select(p => p.Name).ToArray();
+        var prototypeSkins = defaults.ToDictionary(n => n, n => (string?)("prototype:" + n));
+        var ranked = matcher.MatchCellWidth(patch, tier, defaults, prototypeSkins).Candidates;
+        if (ranked.Count == 0 || ranked[0].Score < .65) return [];
+        var ordinary = matcher.MatchCellWidth(patch, tier, names, appearances).Candidates.FirstOrDefault()?.Score ?? -2;
+        if (ranked[0].Score - ordinary < SpriteMatcher.AutoFillGap) return [];
+        return ranked.Where(p => ranked[0].Score - p.Score < SpriteMatcher.AutoFillGap)
+            .SelectMany(p => Candidates(p.Name, tier, names).Select(n => new SpriteCandidate(n, p.Score)))
+            .DistinctBy(p => p.Name).ToArray();
+    }
 }

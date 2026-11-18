@@ -227,6 +227,9 @@ public class OcrScannerService : IDisposable
         var economyReader = new EconomyReader(_ocrEngine, _shopReader.Theme);
         using (FieldRecognitionTiming.Measure("economy"))
             economy = await economyReader.ReadFieldAsync(frame, width, height, main);
+        // 就绪区域可能只截到「资金不足」的后两个字；此时休整信号只能来自回合栏。
+        if (!main && economy.IsRest && boardSurface.RawText.Replace(" ", "") is "不足" or "资金不足")
+            main = true;
         if (!economy.IsRest || !main)
         {
             string detail = $"IsRest={economy.IsRest} main={main} round={economy.Round?.ToString() ?? "null"} finalRound={economy.IsFinalRound} roundOCR={economyReader.RoundRawText} readyOCR={boardSurface.RawText}";

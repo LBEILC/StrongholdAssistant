@@ -52,17 +52,22 @@ public sealed class SpriteModelMatcher : IDisposable
     public string[] Shortlist(float[] logits, IEnumerable<string> names, int count)
         => names.Distinct().OrderByDescending(n => logits[_indices[n]]).Take(count).ToArray();
 
-    internal string[] TemplateCandidates(float[] logits, string[] eligible)
+    internal string[] TemplateCandidates(float[] logits, string[] eligible, int count = 4)
     {
-        var first = Shortlist(logits, eligible, 4);
+        var first = Shortlist(logits, eligible, count);
         // 被浮签、箭头盖住时，模型会把这些同阶外观排出前四；补比模板仍受本局候选池限制。
         return first.Concat(eligible.Where(name => name switch
         {
             "凯瑟琳" or "罗比菈塔" => first.Contains("风絮"),
             "慕斯" => first.Contains("陨星"),
+            "砾" => first.Contains("瑰盐"),
+            "地灵" => first.Contains("拜松") || first.Contains("慕斯"),
             _ => false
         })).Distinct().ToArray();
     }
+
+    internal bool Confident(float[] logits, string[] eligible, string winner)
+        => eligible.Length > 1 && eligible.Sum(n => Math.Exp((double)logits[_indices[n]] - logits[_indices[winner]])) <= 1 / .99;
 
     internal bool StronglySupports(float[] logits, SpriteCandidate[] templates, string name)
     {

@@ -125,10 +125,11 @@ public sealed class PrototypeTests
     }
 
     [Fact]
-    public void PrototypeTemplateKeepsOriginalIdentity()
+    public void PrototypeTemplateKeepsOriginalIdentityAndUnknownRosterIsPending()
     {
         using var matcher = new SpriteMatcher(Path.Combine(Data, "sprite-templates.bin.gz"));
         using var model = new SpriteModelMatcher(Path.Combine(Data, "sprite-model.onnx"), Path.Combine(Data, "sprite-model-classes.json"));
+        var catalog = new PrototypeCatalog(Data);
         var patch = SharpPatch();
         var appearances = SpriteMatcher.RosterAppearances([new("贝洛内", "irrelevant", null, null, null, "", Prototype: "Sharp")]);
         var ranked = matcher.MatchCellWidth(patch, 5, ["贝洛内", "黍"], appearances).Candidates;
@@ -137,12 +138,30 @@ public sealed class PrototypeTests
         var tracker = new FieldTracker();
         tracker.ConfigureIdentity([new() { Name = "贝洛内", Tier = 5 }, new() { Name = "黍", Tier = 5 }],
             (p, tier, names) => matcher.MatchCellWidth(p, tier, names, appearances), model);
-        tracker.ConfigurePrototypes(n => n == "贝洛内");
+        tracker.ConfigurePrototypes(n => n == "贝洛内", (_, _, _) => []);
         var cell = new FieldCell("bench", 1, 0);
         var observation = new FieldObservation(DateTimeOffset.UtcNow, true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = 5 })
             { Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [cell] = patch } };
         tracker.Observe(observation, true, true);
         Assert.Equal("贝洛内", Assert.Single(tracker.State!.Units).Operator);
+        var unknown = new FieldTracker();
+        unknown.ConfigureIdentity([new() { Name = "贝洛内", Tier = 5 }, new() { Name = "佩佩", Tier = 5 }, new() { Name = "黍", Tier = 5 }],
+            (p, tier, names) => matcher.MatchCellWidth(p, tier, names), model);
+        unknown.ConfigurePrototypes(_ => false, (p, tier, names) => catalog.MatchUnknown(matcher, p, tier, names));
+        unknown.ConfigureCandidatePool(["佩佩"], []);
+        unknown.Observe(observation, true, true);
+        var unit = Assert.Single(unknown.State!.Units);
+        Assert.Equal("pending", unit.Status);
+        Assert.Equal("贝洛内", Assert.Single(unit.Candidates).Operator);
+        // 确认一格的名字不能把相同 Sharp 外观的另一格也确认为这个名字。
+        unknown.SetOperator(cell, "贝洛内", observation.At);
+        var second = new FieldCell("bench", 2, 0);
+        var two = observation with { At = observation.At.AddSeconds(1),
+            Cells = new Dictionary<FieldCell, int> { [cell] = 5, [second] = 5 },
+            Sprites = new Dictionary<FieldCell, FieldSpritePatch> { [cell] = patch, [second] = patch } };
+        unknown.Observe(two);
+        unknown.Observe(two with { At = two.At.AddMilliseconds(100) });
+        Assert.Equal("pending", unknown.State!.Units.Single(u => u.Cell == second).Status);
     }
 
     private static FieldSpritePatch SharpPatch()

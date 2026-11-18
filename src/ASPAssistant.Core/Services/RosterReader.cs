@@ -189,8 +189,11 @@ public sealed partial class RosterReader
             int bright = 0, blue = 0;
             for (int i = 0; i <= 8; i++)
             {
-                var c = image.GetPixel(x + (int)Math.Round(line.X1 + (line.X2 - line.X1) * i / 8.0),
-                    y + (int)Math.Round(line.Y1 + (line.Y2 - line.Y1) * i / 8.0));
+                int px = x + (int)Math.Round(line.X1 + (line.X2 - line.X1) * i / 8.0);
+                int py = y + (int)Math.Round(line.Y1 + (line.Y2 - line.Y1) * i / 8.0);
+                var c = image.GetPixel(px, py);
+                // 100% 界面缩回单卡时，底部横笔的右端可能比参考位置高一个像素。
+                if (line.Y1 == line.Y2 && !White(c) && !Blue(c)) c = image.GetPixel(px, py - 1);
                 if (Blue(c)) blue++;
                 if (White(c) || Blue(c)) bright++;
             }

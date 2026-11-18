@@ -116,6 +116,13 @@ public sealed class RosterReadingTests(EnemyRecognitionFixture fixture, ITestOut
     }
 
     [Fact]
+    public void FullPotentialAtPlayerUiScale()
+    {
+        using var icon = new System.Drawing.Bitmap(Path.Combine(AppContext.BaseDirectory, "TestData", "potential-6-ui100.png"));
+        Assert.Equal(6, RosterReader.ReadPotential(icon, 0, 0));
+    }
+
+    [Fact]
     public void PotentialTwoAndObscuredIcon()
     {
         using var icon = new System.Drawing.Bitmap(30, 30);

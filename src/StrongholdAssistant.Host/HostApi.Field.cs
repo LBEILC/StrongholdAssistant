@@ -85,7 +85,7 @@ public sealed partial class HostApi
             return _fieldSprites.WithOcclusion(patch, foreground, skins);
         }, (patch, tier, names) => _fieldSprites.CropModelInput(patch, tier, names,
             FieldAppearances()));
-        _fieldTracker.ConfigurePrototypes(name => ReadRoster().Operators.Any(o => o.Name == name && o.Prototype is not null));
+        InitializeFieldPrototypes(directory);
         _shopReader!.ReadUntracked = true;
     }
 

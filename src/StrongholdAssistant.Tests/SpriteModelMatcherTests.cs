@@ -105,11 +105,11 @@ public sealed class SpriteModelMatcherTests
         using var model = Model();
         using var crop = Crop();
         var logits = model.Predict(crop);
-        Assert.Equal(217, logits.Length);
+        Assert.Equal(223, logits.Length);
         // 由相同模型的 ONNX Runtime CPU 推理保存，覆盖通道、尺寸及归一化。
-        Assert.InRange(Math.Abs(logits[25] + 1.0640063285827637), 0, 1e-4);
-        Assert.InRange(Math.Abs(logits[93] - 0.5580694675445557), 0, 1e-4);
-        Assert.InRange(Math.Abs(logits[126] + 4.483623504638672), 0, 1e-4);
+        Assert.InRange(Math.Abs(logits[25] + .33912742), 0, 1e-4);
+        Assert.InRange(Math.Abs(logits[93] - 3.5014195), 0, 1e-4);
+        Assert.InRange(Math.Abs(logits[126] + 2.2731614), 0, 1e-4);
     }
 
     [Fact]
