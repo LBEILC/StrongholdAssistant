@@ -4305,20 +4305,10 @@
       "diy": true,
       "skills": [
         {
-          "id": "skchr_accast_1"
-        },
-        {
-          "id": "skchr_accast_2"
-        },
-        {
-          "id": "skchr_accast_3"
+          "id": "skchr_acast_1"
         }
       ],
-      "modules": [
-        {
-          "id": "uniequip_002_accast"
-        }
-      ]
+      "modules": []
     },
     {
       "name": "Touch",
@@ -4391,6 +4381,19 @@
       "modules": [
         {
           "id": "uniequip_002_sharp2"
+        }
+      ]
+    },
+    {
+      "name": "Pith（优等生）",
+      "skills": [
+        {
+          "id": "skchr_pithst_1"
+        }
+      ],
+      "modules": [
+        {
+          "id": "uniequip_002_pithst"
         }
       ]
     }

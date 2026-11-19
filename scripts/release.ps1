@@ -31,6 +31,18 @@ try {
     # 续跑也核对基本身份，但不重复构建或上传。
     Measure-Step Preflight {
         Run { powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export-public.ps1 -ScanOnly }
+        # 干净工作树首次导出时，宿主项目要求先有界面产物。
+        if (!(Test-Path 'src/ui/dist/index.html')) {
+            if (!(Test-Path 'src/ui/node_modules')) { Run { npm --prefix src/ui ci } }
+            Run { npm --prefix src/ui run build }
+        }
+        $catalogCheck = Join-Path $release 'catalog-check/catalog.json'
+        & "$PSScriptRoot/export-plaza-catalog.ps1" -OutputPath $catalogCheck
+        # Git 在 Windows 检出时可能转换换行符。
+        $expected = [IO.File]::ReadAllText((Join-Path $root 'src/plaza/data/catalog.json')).Replace("`r`n", "`n")
+        if ([IO.File]::ReadAllText($catalogCheck).Replace("`r`n", "`n") -cne $expected) {
+            throw '广场目录与宿主数据不一致，请先运行 scripts/export-plaza-catalog.ps1，提交目录并部署广场。'
+        }
         [xml]$props = Get-Content Directory.Build.props -Raw
         $declared = [string]@($props.Project.PropertyGroup.Version)[0]
         if ($Version -notmatch '^\d+\.\d+\.\d+$' -or $Version -ne $declared) { throw '版本必须与 Directory.Build.props 一致。' }

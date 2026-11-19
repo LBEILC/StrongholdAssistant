@@ -1,5 +1,5 @@
 import type { AdminPost, Post, PostLineup } from '../shared/api'
-import { catalog, decodeLineup, fingerprint } from './catalog'
+import { catalog, decodeLineup, currentFingerprints } from './catalog'
 import { authenticate, type Context } from './auth'
 import { body, description, empty, fail, hasBlocked, hash, ipSource, iso, json, mask, needNickname, stmt, string, type Env } from './common'
 
@@ -14,7 +14,7 @@ const select = `SELECT p.*,u.nickname,u.email,
 export function toPost(p: PostRow): Post {
  return { id: p.id, code: p.code, lineup: JSON.parse(p.lineup) as PostLineup, description: p.description,
   author: { id: p.user_id, nickname: p.nickname }, createdAt: p.created_at, updatedAt: p.updated_at,
-  featured: !!p.featured, likes: p.likes, imports: p.imports, comments: p.comments, liked: !!p.liked, favorited: !!p.favorited, current: p.fingerprint === fingerprint }
+  featured: !!p.featured, likes: p.likes, imports: p.imports, comments: p.comments, liked: !!p.liked, favorited: !!p.favorited, current: currentFingerprints.has(p.fingerprint) }
 }
 export const toAdminPost = (p: PostRow): AdminPost => ({
  ...toPost(p), status: p.status, ...(p.status === 'hidden' && { hidden: true }), authorEmailMasked: mask(p.email),
@@ -32,7 +32,7 @@ function decodePostCode(text: string) {
  if (hasBlocked(name)) fail(400, 'blocked_words', '阵容名或简介里有不允许的词。')
  // 提取分享码正文，格式已由 decodeLineup 校验。
  const code = text.match(/SA\d+-[A-Za-z0-9_-]+/)![0]
- return { code, lineup: JSON.stringify({ name, goals, members, equipment, strategyId, ...(stages && { stages }), ...(groups && { groups }), ...(upgrades && { upgrades }) }) }
+ return { code, fingerprint: decoded.fingerprint, lineup: JSON.stringify({ name, goals, members, equipment, strategyId, ...(stages && { stages }), ...(groups && { groups }), ...(upgrades && { upgrades }) }) }
 }
 export async function listPosts(ctx: Context, viewer: string | null, admin = false) {
  const q = new URL(ctx.request.url).searchParams, env = ctx.env
@@ -58,7 +58,10 @@ export async function listPosts(ctx: Context, viewer: string | null, admin = fal
   const season = q.get('season') ?? 'current'
   if (!favorite && !['current', 'all'].includes(season)) fail(400, 'bad_query', '赛季参数不正确。')
   if (q.has('author')) { where.push('p.user_id=?'); values.push(q.get('author')!) }
-  else if (!favorite && season === 'current') { where.push('p.fingerprint=?'); values.push(fingerprint) }
+  else if (!favorite && season === 'current') {
+   where.push(`p.fingerprint IN (${Array.from(currentFingerprints, () => '?').join(',')})`)
+   values.push(...currentFingerprints)
+  }
   if (favorite) { where.push('f.user_id=?'); values.push(viewer!) }
   for (const covenant of q.getAll('covenant')) {
    where.push("EXISTS(SELECT 1 FROM json_each(p.lineup,'$.goals') g WHERE json_extract(g.value,'$.id')=?)")
@@ -113,7 +116,7 @@ export async function posts(ctx: Context, path: string) {
   if (!u) fail(401, 'unauthorized', '请先登录。')
   needNickname(u)
   const input = await body(request), text = string(input.code), desc = description(input.description)
-  const { code, lineup } = decodePostCode(text)
+  const { code, fingerprint, lineup } = decodePostCode(text)
   const existing = await stmt(env, 'SELECT id,status FROM posts WHERE user_id=? AND code=?', u.id, code).first<{ id: string; status: string }>()
   if (existing) {
    // TODO(design): 重发已下架或删除的分享码暂不恢复可见状态，需确认后续产品提示。
@@ -135,7 +138,7 @@ export async function posts(ctx: Context, path: string) {
   fail(404, 'not_found', '帖子不存在。')
  if (!action && method === 'GET') return json({ ...toPost(p), ...(p.status === 'hidden' && { hidden: true }) })
  if (action === 'import' && method === 'POST') {
-  if (p.fingerprint !== fingerprint) fail(400, 'season_mismatch', '这个帖子来自其他赛季，不能导入。')
+  if (!currentFingerprints.has(p.fingerprint)) fail(400, 'season_mismatch', '这个帖子来自其他赛季，不能导入。')
   const device = string((await body(request)).device)
   if (!device.trim() || device.length > 256) fail(400, 'bad_device', '设备标识不正确。')
   await stmt(env, 'INSERT OR IGNORE INTO imports(post_id,device,source,created_at) VALUES(?,?,?,?)', id, await hash(device), await ipSource(env, request, 'import'), iso()).run()
@@ -163,7 +166,7 @@ export async function posts(ctx: Context, path: string) {
   if (method === 'PATCH') {
    const input = await body(request), desc = description(input.description)
    if (input.code !== undefined && input.code !== p.code) {
-    const { code, lineup } = decodePostCode(string(input.code))
+    const { code, fingerprint, lineup } = decodePostCode(string(input.code))
     const updated = await stmt(env, `UPDATE OR IGNORE posts SET code=?,fingerprint=?,lineup=?,description=?,updated_at=? WHERE id=? RETURNING id`,
      code, fingerprint, lineup, desc, iso(), id).first<{ id: string }>()
     if (!updated) fail(409, 'duplicate', '你已经发过一模一样的阵容。')

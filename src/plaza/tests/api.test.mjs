@@ -10,7 +10,7 @@ const built = await build({
  stdin: { contents: "export * from './server/api'; export * from './server/catalog'; export { ipSource } from './server/common'; export { signMail } from './server/mail'", resolveDir: process.cwd(), loader: 'ts' },
  bundle: true, platform: 'neutral', format: 'esm', write: false, loader: { '.txt': 'text' },
 })
-const { handleRequest, catalog, encodeLineup, fingerprint, covenantNames, ipSource, signMail } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
+const { handleRequest, catalog, encodeLineup, decodeLineup, fingerprint, covenantNames, ipSource, signMail } = await import('data:text/javascript;base64,' + Buffer.from(built.outputFiles[0].text).toString('base64'))
 const originalFetch = globalThis.fetch
 let mf, db, env, privateKey, jwk
 const mails = new Map()
@@ -904,8 +904,37 @@ test('封禁隐藏评论并返回403、解封不恢复，注销删除评论举�
 })
 
 const password = ' 中文密码🙂 test '
-test('046 SA3 阶段、精锐技能模组原样返回，目录指纹不变', async () => {
- assert.equal(fingerprint.toString(16), '981d')
+// 用 0x981d 的旧目录编码，保留固定字节，避免编解码同时改错。
+const oldCode = 'SA4-BJgdA29sZAGAAdgBAQAAAAEAAQEBBAJTMQGAAdgBAQAAAQABAAABAwQ'
+test('357 分享码保留旧 SA4 阵容内容，中间插入或改名后拒绝', () => {
+ const decoded = decodeLineup(oldCode, catalog)
+ assert.equal(decoded.ok, true)
+ const goals = [{ id: 'ursus', level: 2 }], equipment = ['维式重锤']
+ const members = [{ name: '领主·Sharp', key: true, equipment: [{ name: equipment[0], priority: true }] }]
+ assert.deepEqual({ ...decoded.lineup, updatedAt: '' }, {
+  id: '', source: 'user', updatedAt: '', name: 'old', goals, members, equipment, strategyId: 'band_amiya',
+  stages: [{ name: 'S1', fromRound: 1, toRound: 4, goals, members, equipment }], upgrades: [{ round: 3, level: 4 }],
+ })
+ const inserted = structuredClone(catalog), renamed = structuredClone(catalog)
+ inserted.operators.splice(1, 0, { name: '插入干员' })
+ renamed.operators.find(o => o.diy).name += '改名'
+ for (const changed of [inserted, renamed]) assert.match(decodeLineup(oldCode, changed).error, /其他赛季/)
+ const pith = decodeLineup('SA3-A5gdBFBpdGgAAdQAABT_AAA', catalog)
+ assert.deepEqual(pith.lineup.members, [{ name: 'Pith', skill: 'skchr_accast_2', module: 'uniequip_002_accast' }])
+})
+test('357 新干员能发帖，旧指纹帖子仍在当期列表且能导入', async () => {
+ const user = await login(), next = lineup()
+ next.members = [{ name: 'Pith（优等生）' }]
+ const post = code => ok('/api/posts', { method: 'POST', token: user.token, body: { code, description: '' } })
+ const recent = await post(encodeLineup(next, catalog)), old = await post(oldCode)
+ assert.deepEqual(recent.lineup.members, next.members)
+ assert.equal((await db.prepare('SELECT fingerprint FROM posts WHERE id=?').bind(old.id).first()).fingerprint, 0x981d)
+ const page = await ok('/api/posts?season=current')
+ assert.deepEqual(new Set(page.posts.filter(p => p.current).map(p => p.id)), new Set([recent.id, old.id]))
+ assert.equal((await ok('/api/posts/' + old.id + '/import', { method: 'POST', body: { device: '旧码验收' } })).imports, 1)
+})
+test('046 SA3 阶段、精锐技能模组原样返回', async () => {
+ assert.equal(fingerprint, 0xf462)
  const user = await login(), original = lineup()
  const op = catalog.operators.find(o => o.skills?.length && o.modules?.length)
  const member = { name: op.name, elite: true, skill: op.skills[0].id, module: op.modules[0].id }

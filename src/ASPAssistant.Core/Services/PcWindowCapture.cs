@@ -43,6 +43,7 @@ public sealed class PcWindowCapture : IDisposable
                 if (_controller is null)
                 {
                     _initializationFailed = true;
+                    _ = Task.Run(CaptureBorderDiagnostic.Log);
                     CrashGuard.WgcStarting();
                     _controller = new(new DesktopWindowInfo(window, "", "", Win32ScreencapMethod.FramePool,
                         Win32InputMethod.None, Win32InputMethod.None), LinkOption.None, CheckStatusOption.None);

@@ -1,5 +1,5 @@
 // 阵容分享码：把一套阵容编成一串短码，复制粘贴就能导入，不经过任何服务器。
-// 码里只放盟约、干员、装备在当期数据里的序号，再带一个当期数据的指纹；指纹对不上（换赛季、换数据）就不导入。
+// 码里存目录序号与当期数据指纹；历史目录的序号全部保留时也能导入。
 //
 // 格式：「SA<版本>-」+ base64url(字节)。字节依次是：
 //   版本 | 指纹 2 字节 | 名字字节数 + UTF-8 名字 | 一段阵容（成型阵容）| 策略序号（255 = 没选）
@@ -18,18 +18,32 @@
 // 指纹只算普通干员：自选干员（Operator.diy，v0.7.0）排在干员表最后，不进指纹，所以加了自选干员后指纹不变，
 // 新旧版本的码互相能导；码里用到自选干员时，旧版助手会提示码不完整。
 import type { Catalog, Lineup, LineupGroup, LineupMember, LineupStage, CovenantGoal } from './api'
+import history from './share-history.json'
 
 const VERSION = 4
 const MAX_NAME = 60
 
 /** 当期数据的指纹：盟约 id、普通干员名、装备名、策略 id 按顺序算 FNV-1a，取低 16 位。序号就是按这个顺序数的 */
-function fingerprint(c: Catalog) {
+export function fingerprint(c: Catalog) {
   const text = [c.covenants.map((x) => x.id), c.operators.filter((x) => !x.diy).map((x) => x.name), c.equipment.map((x) => x.name), c.strategies.map((x) => x.id)]
     .flat()
     .join('|')
   let h = 0x811c9dc5
   for (const b of new TextEncoder().encode(text)) h = Math.imul(h ^ b, 0x01000193)
   return h & 0xffff
+}
+
+/** 历史目录按完整的编码顺序比较，包含不参与指纹计算的自选干员。 */
+export function compatibleFingerprints(c: Catalog) {
+  const current = new Set([fingerprint(c)])
+  for (const [hex, old] of Object.entries(history)) {
+    const fp = parseInt(hex, 16)
+    if (old.covenants.every((id, i) => c.covenants[i]?.id === id)
+      && old.operators.every((name, i) => c.operators[i]?.name === name)
+      && old.equipment.every((name, i) => c.equipment[i]?.name === name)
+      && old.strategies.every((id, i) => c.strategies[i]?.id === id)) current.add(fp)
+  }
+  return current
 }
 
 const toBase64Url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -44,6 +58,8 @@ function utf8(text: string, max: number) {
 }
 
 type Part = { goals: CovenantGoal[]; members: LineupMember[]; equipment: string[] }
+type OperatorConfigs = Record<string, { skills: { id: string }[]; modules: { id: string }[] }>
+const historyByFingerprint: Record<string, { operatorConfigs?: OperatorConfigs }> = history
 
 export function encodeLineup(l: Lineup, c: Catalog): string {
   const cov = new Map(c.covenants.map((x, i) => [x.id, i]))
@@ -104,7 +120,7 @@ export function encodeLineup(l: Lineup, c: Catalog): string {
 /** 复制到剪贴板的整段文字：带上名字，贴到群里也看得懂是什么 */
 export const shareText = (l: Lineup, c: Catalog) => `【高效雅雅阵容】${l.name} ${encodeLineup(l, c)}`
 
-export type Decoded = { ok: true; lineup: Lineup } | { ok: false; error: string }
+export type Decoded = { ok: true; lineup: Lineup; fingerprint: number } | { ok: false; error: string }
 
 /** 从一段文字里找出分享码并解出阵容；文字可以是整段转发的消息 */
 export function decodeLineup(text: string, c: Catalog): Decoded {
@@ -119,6 +135,7 @@ export function decodeLineup(text: string, c: Catalog): Decoded {
     return { ok: false, error: '分享码不完整，复制时可能少了几个字符。' }
   }
   let p = 0
+  let oldConfigs: OperatorConfigs | undefined
   const next = () => {
     if (p >= b.length) throw new Error()
     return b[p++]
@@ -152,7 +169,8 @@ export function decodeLineup(text: string, c: Catalog): Decoded {
   const config = (members: LineupMember[]) => {
       for (const m of members) {
         const x = next()
-        const o = c.operators.find((o) => o.name === m.name)!
+        // 同一名干员的技能或模组序号修订过时，按发码时的目录还原。
+        const o = oldConfigs?.[m.name] ?? c.operators.find((o) => o.name === m.name)!
         if (x & 1) m.elite = true
         const sk = (x >> 1) & 3
         const md = x >> 3
@@ -170,9 +188,11 @@ export function decodeLineup(text: string, c: Catalog): Decoded {
   }
   try {
     if (next() !== v) throw new Error()
-    if (((next() << 8) | next()) !== fingerprint(c)) {
+    const fp = (next() << 8) | next()
+    if (!compatibleFingerprints(c).has(fp)) {
       return { ok: false, error: '这个分享码来自其他赛季或其他版本的数据，当前数据里对不上。双方都更新到最新版再试。' }
     }
+    oldConfigs = historyByFingerprint[fp.toString(16).padStart(4, '0')]?.operatorConfigs
     const name = text8(next())
     const final = part()
     const si = next()
@@ -211,6 +231,7 @@ export function decodeLineup(text: string, c: Catalog): Decoded {
     if (p !== b.length) throw new Error()
     return {
       ok: true,
+      fingerprint: fp,
       lineup: {
         id: '', name, ...final, strategyId, source: 'user',
         ...(stages?.length && { stages }), ...(groups.length && { groups }), ...(upgrades.length && { upgrades }),
