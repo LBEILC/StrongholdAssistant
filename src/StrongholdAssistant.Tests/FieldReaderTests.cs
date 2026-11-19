@@ -121,6 +121,18 @@ public sealed class FieldReaderTests(EnemyRecognitionFixture fixture)
     }
 
     [Fact]
+    public async Task EquipmentPanelWithVisibleReadyButtonDoesNotReplaceBoardOccupancy()
+    {
+        using var reader = await Reader();
+        reader.KnownMap = "m10";
+        var frame = File.ReadAllBytes(Sample("field-411-equipment-panel.png"));
+        var observation = await reader.ReadAsync(frame, DateTimeOffset.UnixEpoch,
+            new(4, null, null, null, true), true, false, []);
+        Assert.False(observation.MainScreen, string.Join(" ", observation.Cells.Where(p => p.Value > 0)));
+        Assert.Empty(observation.Cells);
+    }
+
+    [Fact]
     public async Task DragPanelReadsMousseDespiteHiddenReadyControl()
     {
         var reader = await Reader();

@@ -9,6 +9,45 @@ namespace ASPAssistant.Tests.Services;
 public class WindowGeometryTests
 {
     [Theory]
+    [InlineData(2560)]
+    [InlineData(-2560)]
+    public void MaximizedGameKeepsSidebarOnPrimaryAcrossPolls(int secondaryLeft)
+    {
+        var primary = new RECT { Right = 2560, Bottom = 1440 };
+        var secondary = new RECT { Left = secondaryLeft, Right = secondaryLeft + 2560, Bottom = 1440 };
+        var work = new RECT { Right = 2560, Bottom = 1400 };
+        var game = new RECT { Left = -7, Top = -7, Right = 2567, Bottom = 1407 };
+        var sidebar = new RECT { Left = secondaryLeft + 100, Right = secondaryLeft + 480, Bottom = 900 };
+        (RECT, RECT) MonitorAt(int x, int y) =>
+            x >= 0 && x < primary.Right && y >= 0 && y < primary.Bottom ? (primary, work) : (secondary, secondary);
+
+        for (var poll = 0; poll < 2; poll++)
+        {
+            var monitor = WindowGeometry.GameMonitor(work, MonitorAt);
+            Assert.Equal(primary, monitor.Bounds);
+            var fullscreen = WindowGeometry.IsFullscreen(game, monitor.Bounds);
+            Assert.True(fullscreen);
+            var side = WindowGeometry.SelectSide(game, monitor.WorkArea, 1, 380, fullscreen, "auto", "left");
+            Assert.Equal((true, "left"), side);
+            var move = WindowGeometry.MoveToMonitor(sidebar, monitor.Bounds);
+            var target = WindowGeometry.OverlayBounds(work, 1, 380, null, side.Side);
+            Assert.Equal(0, target.Left);
+            Assert.Equal(target, WindowGeometry.ClampBounds(target, primary));
+            if (poll == 0)
+            {
+                Assert.True(move.HasValue);
+                Assert.Equal(move.Value, WindowGeometry.ClampBounds(move.Value, primary));
+            }
+            else
+            {
+                Assert.Null(move);
+                Assert.Equal(sidebar, target);
+            }
+            sidebar = target;
+        }
+    }
+
+    [Theory]
     [InlineData(1.0, 1.25, 0, 1920, 1000, 475)]
     [InlineData(1.25, 1.25, 1920, 3920, 1250, 475)]
     public void MixedDpiFollowAndOverlayUsePhysicalGameAndPanelDpi(

@@ -163,7 +163,8 @@ public sealed partial class FieldReader : IDisposable
             selected = controls.Any(t => t.Text.Replace(" ", "") == "出售");
         }
         var equipment = drag is not null && selected ? await _equipment.ReadAsync(frame, drag) : null;
-        if (dragging || !mainScreen)
+        // 选中干员或装备时就绪按钮仍可见，出售、销毁和范围预览会遮住棋盘中间的格子。
+        if (panel || !mainScreen)
             return new(at, true, null, economy.Round, new Dictionary<FieldCell, int>(), Money: economy.Money, DragOperator: dragging ? drag : null, MainScreen: false)
                 { PanelOperator = drag, Equipment = equipment };
         // 棋盘按短边等比、居中显示；只转换棋盘，详情和商店控件仍在原画面读取。
@@ -195,7 +196,6 @@ public sealed partial class FieldReader : IDisposable
         _lastMap = board?.MapId ?? KnownMap;
         var hidden = shop.Select(i => new RectangleF((float)i.CardRegion.X, (float)i.CardRegion.Y,
             (float)i.CardRegion.Width, (float)i.CardRegion.Height)).ToList();
-        if (panel) hidden.Add(new(0, .17f, .33f, .75f));
         if (cursorRegion is { } cursor) hidden.Add(cursor);
         if (viewport.Width != 1 || viewport.Height != 1)
             hidden = hidden.Select(r => new RectangleF((r.X - viewport.X) / viewport.Width,
@@ -203,7 +203,6 @@ public sealed partial class FieldReader : IDisposable
         var cells = ReadCells(boardBitmap, board, shopVisible, hidden, cameraOnly);
         if ((viewport.Width != 1 || viewport.Height != 1) && OverlayGeometry is { } overlay)
             OverlayGeometry = RestoreBoardViewport(overlay, viewport);
-        if (panel) OverlayGeometry = null;
         Dictionary<int, string>? cards = null;
         if (readShop && shopVisible)
         {
@@ -404,7 +403,7 @@ public sealed partial class FieldReader : IDisposable
             // 全片仍有无法凭令牌分类的过渡/遮挡候选，保留原人体证据门槛。
             var bodyOrigin = badge with { X = badgeX + 35 * (badgeScale - 1), Y = badgeY + 112 * (badgeScale - 1) };
             if (!HasUnitEvidence(bodyPixels, bodyOrigin, 1920, 1080, cell.Zone == "board")
-                && !HasShortUnitEvidence(spriteImage, cell, badge)) continue;
+                && !HasModelBodyEvidence(spriteImage, cell, badge)) continue;
             cells[cell] = badge.Tier;
             _spriteFeet[cell] = foot;
             matchedBadges[cell] = badge with { X = badge.X / width, Y = badge.Y / height, Size = badge.Size / height };

@@ -56,6 +56,9 @@ public static class User32
     [DllImport("user32.dll")]
     public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT point);
+
     public static string GetWindowTitle(IntPtr hwnd)
     {
         var text = new StringBuilder(512);

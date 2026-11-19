@@ -12,6 +12,20 @@ public sealed class BoardBossRecognitionTests
     private static readonly string Data = Path.Combine(AppContext.BaseDirectory, "data");
     private static byte[] Sample(string file) => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", file));
 
+    [Fact]
+    public void M10RightDefenseGateCorrectsPreviouslyInferredLeftSide()
+    {
+        // 包 74 第一次展开只靠地板判左，随后两种镜头都沿用左侧。
+        Assert.False(BoardRecognizer.CanConfirmBossSide(26.018, 28.071));
+        var frame = Sample("board-411-m10-boss-right.png");
+        var result = new BoardRecognizer(Data).RecognizeDetailed(frame, "m10", BoardCamera.Collapsed, true, "left");
+        Assert.Equal("right", result.Match?.PlayerSide);
+        var routes = new BoardRouteStore(Data).Find(result.Match!, 15, false, "enemy_9021_acduml", "mode_multi_hard")!;
+        var spot = Assert.Single(routes.BossSpots);
+        Assert.Equal((6.5, 2.5), (spot.Col, spot.Row));
+        Assert.True(routes.Projection.Project(spot.Col, spot.Row).X < routes.Projection.Project(-.5, 3.5).X);
+    }
+
     [Theory]
     [InlineData("expanded", BoardCamera.Expanded)]
     [InlineData("collapsed", BoardCamera.Collapsed)]

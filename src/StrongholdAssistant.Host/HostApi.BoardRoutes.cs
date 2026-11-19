@@ -129,11 +129,12 @@ public sealed partial class HostApi
                         _boardMap = board.MapId;
                         ScheduleStrategyAdvice(mapOnly: true);
                     }
-                    if (_boardPlayerSide is null && board.Camera == BoardCamera.Expanded && board.PlayerSide is not null)
+                    if (board.PlayerSide is not null && _boardPlayerSide != board.PlayerSide
+                        && (board.Camera == BoardCamera.Expanded || _boardPlayerSide is not null))
                     {
                         _boardPlayerSide = board.PlayerSide;
                         PublishBoardView();
-                        // 收起镜头可能先独立判过侧边；展开确认后按本局侧边重新识别。
+                        // 展开确认侧边，或后续看清蓝门纠正了旧值，两种镜头都重新识别。
                         _boardCameras.Clear();
                     }
                     _boardCameras[board.Camera] = board;

@@ -3,6 +3,7 @@ using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using ASPAssistant.Core.Interop;
+using ASPAssistant.Core.Services;
 
 namespace StrongholdAssistant.Host;
 
@@ -37,9 +38,9 @@ public partial class MainWindow
                 _workbench = true;
                 _overlayMode = false;
                 // 首次打开时先进入游戏所在屏幕，让 WPF 应用目标屏幕的 DPI。
-                if (_dock.WorkbenchBounds is null && _lastGameRect is { } game)
+                if (_dock.WorkbenchBounds is null && _lastClientRect is { } viewport)
                 {
-                    var work = User32.GetMonitorGeometry(game.Left + game.Width / 2, game.Top + game.Height / 2).WorkArea;
+                    var work = WindowGeometry.GameMonitor(viewport, User32.GetMonitorGeometry).WorkArea;
                     var hwnd = new WindowInteropHelper(this).Handle;
                     var rect = User32.ReadWindowRect(hwnd);
                     User32.SetWindowBounds(hwnd, new RECT { Left = work.Left, Top = work.Top,

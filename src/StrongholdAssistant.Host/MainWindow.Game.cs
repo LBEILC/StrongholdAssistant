@@ -123,7 +123,9 @@ public partial class MainWindow
         var data = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data");
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
-        _iconMatcher = new MaaBanIconMatcher(data);
+        var matcherLoad = System.Diagnostics.Stopwatch.StartNew();
+        _iconMatcher = await Task.Run(() => new MaaBanIconMatcher(data));
+        ASPAssistant.Core.AppLogger.Info("MaaBanIconMatcher", $"初始化完成，耗时 {matcherLoad.ElapsedMilliseconds} ms");
         var scanOcr = new DiagnosticOcrEngine(_ocr);
         _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(scanOcr),
             scanOcr, new ASPAssistant.Core.GameState.GameState(),
@@ -390,31 +392,24 @@ public partial class MainWindow
         var hwnd = new WindowInteropHelper(this).Handle;
         var current = User32.ReadWindowRect(hwnd);
         var scale = User32.GetWindowDpiScale(hwnd);
-        var gameMonitor = User32.GetMonitorGeometry(game.Right - 1, game.Top + game.Height / 2);
+        var gameMonitor = WindowGeometry.GameMonitor(client.Value, User32.GetMonitorGeometry);
+        var fullscreen = WindowGeometry.IsFullscreen(game, gameMonitor.Bounds);
         var desiredScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
         var selection = WindowGeometry.SelectSide(game, gameMonitor.WorkArea, scale,
-            _dock.Width * desiredScale, _tracker.IsFullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
+            _dock.Width * desiredScale, fullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
         var offset = selection.Overlay ? null : selection.Side == "left" ? _dock.FollowLeftOffsetDip : _dock.FollowOffsetDip;
         var origin = selection.Side == "left" ? game.Left - _dock.Width * desiredScale * scale : game.Right;
         var monitor = offset is null
-            ? User32.GetMonitorGeometry(game.Right - 1, game.Top + game.Height / 2)
+            ? gameMonitor
             : User32.GetMonitorGeometry(
                 (int)Math.Clamp(origin + offset.X * scale + current.Width / 2, int.MinValue, int.MaxValue),
                 (int)Math.Clamp(game.Top + offset.Y * scale + current.Height / 2, int.MinValue, int.MaxValue));
-        var centerX = current.Left + current.Width / 2;
-        var centerY = current.Top + current.Height / 2;
-        if (centerX < monitor.Bounds.Left || centerX >= monitor.Bounds.Right
-            || centerY < monitor.Bounds.Top || centerY >= monitor.Bounds.Bottom)
-        {
-            var left = monitor.Bounds.Left + (monitor.Bounds.Width - current.Width) / 2;
-            var top = monitor.Bounds.Top + (monitor.Bounds.Height - current.Height) / 2;
-            User32.SetWindowBounds(hwnd, new RECT
-                { Left = left, Top = top, Right = left + current.Width, Bottom = top + current.Height });
-        }
+        if (WindowGeometry.MoveToMonitor(current, monitor.Bounds) is { } moved)
+            User32.SetWindowBounds(hwnd, moved);
         scale = User32.GetWindowDpiScale(hwnd);
         _uiScale = WindowGeometry.UiScale(_api.Settings.ScaleValue, client.Value.Height, scale);
         (_overlayMode, _side) = WindowGeometry.SelectSide(game, gameMonitor.WorkArea, scale,
-            _dock.Width * _uiScale, _tracker.IsFullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
+            _dock.Width * _uiScale, fullscreen, _api.Settings.DockSide, _api.Settings.OverlaySide);
         offset = _side == "left" ? _dock.FollowLeftOffsetDip : _dock.FollowOffsetDip;
         // 跟随位置和尺寸只在下方统一应用，避免先写旧的展开宽度再写停靠宽度。
         ApplyScale(client.Value.Height, updateWindowSize: false);

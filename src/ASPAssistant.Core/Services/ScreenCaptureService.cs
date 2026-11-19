@@ -1,4 +1,5 @@
 // 2026-11-12：参考上游 PR #5，共享连接来源与内部画面区域。
+// 2026-11-19：显卡重置期间游戏仍可报告为前台，丢弃实际显示桌面的 BitBlt 画面。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 // 2026-11-11：信息页截屏允许指定侧栏处于前台，避免不遮挡时切换窗口。
 using System.Drawing;
@@ -123,6 +124,9 @@ public class ScreenCaptureService
                 AppLogger.Warn("ScreenCapture", "Capture invalidated because foreground or client rect changed during capture");
                 return null;
             }
+
+            var center = User32.WindowFromPoint(new() { X = rect.Left + captureWidth / 2, Y = rect.Top + captureHeight / 2 });
+            if (User32.GetWindowClass(User32.GetAncestor(center, 2)) is "Progman" or "WorkerW") return null;
 
             return EncodeCapture(raw, inspect, scanPixels);
         }

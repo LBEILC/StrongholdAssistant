@@ -1,4 +1,5 @@
 // 颜色采样、距离截断与裁剪均值改编自 bingyunhe/asp-assistant-arknights BoardRecognizer.cs（Apache-2.0）。
+// 2026-11-19：联机首领展开镜头两侧难以区分时等待下一帧，避免整局锁错方向。
 // 2026-11-17：宽高屏共用场上画幅转换，投影还原到原截图；采样明确使用像素单位。
 // 2026-11-17：普通回合允许有界的整体偏色，保留原始地图区分度和投影拟合。
 // 2026-11-15：首领回合使用本局地图，比较两侧镜头并排除地形变化格。
@@ -57,6 +58,9 @@ public sealed class BoardRecognizer
         using (var g = Graphics.FromImage(bitmap)) g.DrawImage(source, new Rectangle(0, 0, bitmap.Width, bitmap.Height), new Rectangle(0, 0, source.Width, source.Height), GraphicsUnit.Pixel);
         var pixels = new Pixels(bitmap);
         bool boss = bossRound && mapId is not null;
+        // 已缓存的侧边只在看不清防守门时沿用。
+        string? gateSide = boss ? pixels.DefenseGateSide() : null;
+        if (playerSide is not null && gateSide is not null) playerSide = gateSide;
         var candidates = new List<Fit>();
         foreach (var side in boss ? (playerSide is null ? new string?[] { "left", "right" } : [playerSide]) : [null])
         foreach (var camera in _corners.Keys.Where(c => targetCamera is null || c == targetCamera))
@@ -105,7 +109,8 @@ public sealed class BoardRecognizer
             }
         }
         double Rank(Fit fit) => mapId is null ? fit.Full : fit.Trimmed;
-        var winner = candidates.MinBy(Rank)!;
+        // 蓝色防守门随玩家侧镜像，地板颜色则可能近似对称。只在两侧中恰有一扇门时采信。
+        var winner = candidates.Where(f => gateSide is null || f.Side == gateSide).MinBy(Rank)!;
         double? gap = mapId is null ? candidates.Where(f => f.Map != winner.Map).Min(f => f.Full) - winner.Full : null;
         bool colorMatch = winner.Trimmed <= (boss ? 40 : 11);
         if (!boss && !colorMatch && !(gap < 5))
@@ -115,6 +120,11 @@ public sealed class BoardRecognizer
             colorMatch = MatchesWithColorOffset(Sample(pixels, winner.Projection, null), reference);
         }
         string? rejection = !colorMatch ? (boss ? "score>40" : "score>11") : gap < 5 ? "gap<5" : null;
+        double? left = boss ? candidates.Where(f => f.Side == "left").Min(f => (double?)f.Trimmed) : null;
+        double? right = boss ? candidates.Where(f => f.Side == "right").Min(f => (double?)f.Trimmed) : null;
+        if (rejection is null && gateSide is null && winner.Camera == BoardCamera.Expanded && left is { } l && right is { } r
+            && !CanConfirmBossSide(l, r))
+            rejection = "首领左右侧分差不足";
         var projection = winner.Projection;
         if (viewport.Width != 1 || viewport.Height != 1)
             projection = new BoardProjection(new[] { (0d, 0d), (7d, 0d), (7d, 5d), (0d, 5d) }.Select(p =>
@@ -123,10 +133,10 @@ public sealed class BoardRecognizer
                 return (p, (viewport.X + point.X * viewport.Width, viewport.Y + point.Y * viewport.Height));
             }).ToArray());
         BoardMatch? match = rejection is null ? new(winner.Map, winner.Camera, projection, winner.Trimmed, winner.Side) : null;
-        return new(match, winner.Map, winner.Camera, winner.Trimmed, gap, rejection, original.Width, original.Height,
-            boss ? candidates.Where(f => f.Side == "left").Min(f => (double?)f.Trimmed) : null,
-            boss ? candidates.Where(f => f.Side == "right").Min(f => (double?)f.Trimmed) : null);
+        return new(match, winner.Map, winner.Camera, winner.Trimmed, gap, rejection, original.Width, original.Height, left, right);
     }
+
+    internal static bool CanConfirmBossSide(double left, double right) => Math.Abs(left - right) >= 3;
 
     private sealed record Fit(string Map, BoardCamera Camera, BoardProjection Projection,
         double Full, double Trimmed, double Scale, double X, double Y, string? Side);
@@ -200,6 +210,54 @@ public sealed class BoardRecognizer
             _bytes = new byte[_stride * Height];
             Marshal.Copy(data.Scan0, _bytes, 0, _bytes.Length);
             bitmap.UnlockBits(data);
+        }
+
+        public string? DefenseGateSide()
+        {
+            // 在 400 像素宽的标准图上找蓝门上下两条横边。单条血条、侧栏和顶部图标不作判据。
+            bool left = HasGate(70, 170), right = HasGate(218, 320);
+            return left == right ? null : left ? "left" : "right";
+        }
+
+        private bool HasGate(int start, int end)
+        {
+            bool Cyan(int x, int y)
+            {
+                int i = y * _stride + x * 3;
+                int b = _bytes[i], g = _bytes[i + 1], r = _bytes[i + 2];
+                return b > 145 && g > 100 && b - r > 55 && g - r > 30;
+            }
+            var lines = new List<(int X, int Y, int Length)>();
+            for (int y = Height / 3; y < Height * 3 / 4; y++)
+            {
+                int length = 0;
+                for (int x = start; x <= end; x++)
+                {
+                    if (Cyan(x, y)) { length++; continue; }
+                    if (length is >= 20 and <= 38)
+                    {
+                        int center = x - length / 2;
+                        foreach (var line in lines)
+                        {
+                            int height = y - line.Y;
+                            if (Math.Abs(line.X - center) > 5 || Math.Abs(line.Length - length) > 5
+                                || height < length * .65 || height > length) continue;
+                            // 两排干员的血条也可能上下平行，蓝门两侧还有连续的竖框。
+                            int connected = 0;
+                            for (int dy = 1; dy < height; dy++)
+                            {
+                                int left = line.X - line.Length / 2;
+                                left += (x - length - left) * dy / height;
+                                if (Cyan(left - 1, line.Y + dy) || Cyan(left, line.Y + dy) || Cyan(left + 1, line.Y + dy)) connected++;
+                            }
+                            if (connected > height * .6) return true;
+                        }
+                        lines.Add((center, y, length));
+                    }
+                    length = 0;
+                }
+            }
+            return false;
         }
         public byte[] Mean(int x, int y, int radius)
         {

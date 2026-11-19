@@ -133,20 +133,27 @@ try {
             $previous = & gh release list --repo $repo --exclude-drafts --exclude-pre-releases --limit 4 --json tagName
             if ($LASTEXITCODE -ne 0) { throw '读取已发布版本失败。' }
             $tags = @($previous | ConvertFrom-Json | ForEach-Object { $_ } | Where-Object {
-                $_.tagName -match '^v\d+\.\d+\.\d+$' -and [version]$_.tagName.Substring(1) -lt [version]$Version
+                # 1.3.3 起才是拆开发布的新结构，更早的版本用老更新器、用不上差量包，不下载
+                $_.tagName -match '^v\d+\.\d+\.\d+$' -and [version]$_.tagName.Substring(1) -lt [version]$Version -and [version]$_.tagName.Substring(1) -ge [version]'1.3.3'
             } | Select-Object -First 3 -ExpandProperty tagName)
             $deltas = @()
             foreach ($tag in $tags) {
                 $baseDir = Join-Path $release "bases/$tag"
                 New-Item -ItemType Directory -Force -Path $baseDir | Out-Null
                 $baseName = "StrongholdAssistant-$tag-win-x64.zip"
-                Run { gh release download $tag --repo $repo --dir $baseDir --pattern $baseName --pattern SHA256SUMS.txt --clobber }
-                $base = Join-Path $baseDir $baseName
-                $hash = (Get-FileHash -LiteralPath $base).Hash
-                if ("$hash  $baseName" -notin (Get-Content -LiteralPath (Join-Path $baseDir 'SHA256SUMS.txt'))) { throw "旧版校验失败：$tag" }
+                # 本地留着当时发布的 zip 就直接用（GitHub 下载常常很慢），仍按线上 SHA256SUMS 核对；没有才下载
+                $local = Join-Path $release $baseName
+                Run { gh release download $tag --repo $repo --dir $baseDir --pattern SHA256SUMS.txt --clobber }
+                $sums = Get-Content -LiteralPath (Join-Path $baseDir 'SHA256SUMS.txt')
+                $base = $local
+                if (!(Test-Path -LiteralPath $local) -or "$((Get-FileHash -LiteralPath $local).Hash)  $baseName" -notin $sums) {
+                    $base = Join-Path $baseDir $baseName
+                    Run { gh release download $tag --repo $repo --dir $baseDir --pattern $baseName --clobber }
+                    if ("$((Get-FileHash -LiteralPath $base).Hash)  $baseName" -notin $sums) { throw "旧版校验失败：$tag" }
+                }
                 $delta = Join-Path $release "StrongholdAssistant-v$Version-from-$tag-delta.zip"
                 & "$PSScriptRoot/package-delta.ps1" -Previous $base -Current $zip -Output $delta
-                Remove-Item -LiteralPath $base
+                if ($base -ne $local) { Remove-Item -LiteralPath $base }
                 $deltas += $delta
             }
             $sums = Join-Path $release 'SHA256SUMS.txt'

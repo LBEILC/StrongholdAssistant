@@ -9,6 +9,29 @@ namespace StrongholdAssistant.Tests;
 public sealed class FieldManualTests
 {
     [Fact]
+    public async Task ManualScanKeepsBothBluePoisonsAndTheBackFacingFerryman()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var data = Path.Combine(AppContext.BaseDirectory, "data");
+            var api = await HostApi.CreateAsync(data, directory);
+            var ocr = new Mock<IOcrEngine>();
+            ocr.Setup(o => o.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .ReturnsAsync(Array.Empty<OcrTextResult>());
+            api.CreateShopReader(ocr.Object);
+            api.InitializeField(data, ocr.Object);
+            var frame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "field-411-m06-duplicates.png"));
+            var field = await api.RecognizeFieldFrameAsync(frame, DateTimeOffset.UnixEpoch,
+                new(7, null, null, null, true), true, true, []);
+            var board = field.Units.Where(u => u.Zone == "board").ToArray();
+            Assert.Equal(new[] { (2, 1), (2, 2) }, board.Where(u => u.Operator == "蓝毒").Select(u => (u.Col, u.Row)).Order());
+            Assert.Contains(board, u => u.Col == 4 && u.Row == 3 && u.Tier == 1 && u.Operator == "摆渡人");
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public void DisabledObservationKeepsSnapshotWithoutMatchingOrRecordingPurchase()
     {
         var tracker = new FieldTracker();

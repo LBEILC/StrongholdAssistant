@@ -28,15 +28,19 @@ public sealed partial class FieldReader
         return best;
     }
 
-    private bool HasShortUnitEvidence(Mat image, FieldCell cell, FieldBadge badge)
+    private bool HasModelBodyEvidence(Mat image, FieldCell cell, FieldBadge badge)
     {
-        if (badge.Tier != 2) return false;
+        if (badge.Tier != 2 && !(badge.Tier == 1 && cell.Zone == "board")) return false;
         var foot = _summonFeet[cell];
-        var patch = CropSprite(image, foot.X, foot.Y, cell.Zone == "bench");
-        if (patch is null) return false;
+        var bounds = SpriteBounds(foot.X, foot.Y, cell.Zone == "bench");
+        if (!CoversSprite(image, bounds)) return false;
+        using var crop = new Mat(image, bounds);
+        var candidate = _occupancyModel.Value.LikelyOperators(crop).FirstOrDefault();
+        // 背身摆渡人的披风中段缺少轮廓，要求一阶角标和身体模型同时确认。
+        if (badge.Tier == 1) return candidate is { Name: "摆渡人", Score: >= .95 };
         // 光标特效会破坏黑猫的模板比对，完整裁块仍可由模型确认。
-        using var crop = new Mat(image, SpriteBounds(foot.X, foot.Y, cell.Zone == "bench"));
-        if (_occupancyModel.Value.LikelyOperators(crop).FirstOrDefault() is { Name: "Miss.Christine", Score: >= .9 }) return true;
+        if (candidate is { Name: "Miss.Christine", Score: >= .9 }) return true;
+        var patch = CropSprite(image, foot.X, foot.Y, cell.Zone == "bench")!;
         patch = patch with { Geometry = _cellGeometry[cell] with { BadgeFootX = foot.X, BadgeFootY = foot.Y } };
         patch = patch with { TemplateRegion = CropTemplateSprite(image, patch) };
         _summonOperatorMatcher ??= new(_operatorPackage);

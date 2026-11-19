@@ -8,6 +8,25 @@ namespace ASPAssistant.Core.Services;
 
 public static class WindowGeometry
 {
+    // 最大化窗口有不可见边框，边缘可能伸到邻屏；以实际画面中心选屏。
+    public static (RECT Bounds, RECT WorkArea) GameMonitor(RECT viewport,
+        Func<int, int, (RECT Bounds, RECT WorkArea)> monitorAt)
+        => monitorAt(viewport.Left + viewport.Width / 2, viewport.Top + viewport.Height / 2);
+
+    public static bool IsFullscreen(RECT game, RECT monitor)
+        => game.Left <= monitor.Left && game.Width >= monitor.Width - 10;
+
+    public static RECT? MoveToMonitor(RECT current, RECT monitor)
+    {
+        var centerX = current.Left + current.Width / 2;
+        var centerY = current.Top + current.Height / 2;
+        if (centerX >= monitor.Left && centerX < monitor.Right && centerY >= monitor.Top && centerY < monitor.Bottom)
+            return null;
+        var left = monitor.Left + (monitor.Width - current.Width) / 2;
+        var top = monitor.Top + (monitor.Height - current.Height) / 2;
+        return new RECT { Left = left, Top = top, Right = left + current.Width, Bottom = top + current.Height };
+    }
+
     public static bool IsSupportedGameAspectRatio(int width, int height)
         => width > 0 && height > 0 && width >= height * 1.5 && width <= height * 16.0 / 9 + 2;
 

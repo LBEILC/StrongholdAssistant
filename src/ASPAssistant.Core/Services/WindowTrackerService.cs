@@ -112,8 +112,8 @@ public class WindowTrackerService : IDisposable
             }
             IsGameMinimized = false;
 
-            var monitorRect = User32.GetMonitorRect(windowRect.Right - 1, windowRect.Top + windowRect.Height / 2);
-            var isFullscreen = CheckIsFullscreen(windowRect, monitorRect);
+            var isFullscreen = CurrentViewport is { } viewport && WindowGeometry.IsFullscreen(windowRect,
+                WindowGeometry.GameMonitor(viewport, User32.GetMonitorGeometry).Bounds);
             var dpi = User32.GetDpiForWindow(_gameWindowHandle);
             if (dpi == 0) return; // 读取窗口矩形后，游戏窗口可能已经被关闭。
 
@@ -136,11 +136,6 @@ public class WindowTrackerService : IDisposable
         {
             Interlocked.Exchange(ref _polling, 0);
         }
-    }
-
-    private static bool CheckIsFullscreen(RECT rect, RECT monitorRect)
-    {
-        return rect.Left <= monitorRect.Left && rect.Width >= monitorRect.Width - 10;
     }
 
     public static bool IsGameWindowChanged(RECT? previous, bool previousFullscreen, uint previousDpi,
