@@ -34,12 +34,12 @@ public sealed class FieldRestTimingTests : IDisposable
         {
             api.ObserveEconomy(new(round, null, null, null, true));
             var observation = new FieldObservation(at, true, "m01", round, new Dictionary<FieldCell, int>());
-            typeof(HostApi).GetMethod("CollectObservation", Private)!.Invoke(api, [frame, observation, null, state, Array.Empty<object>(), true, 0d]);
+            typeof(HostApi).GetMethod("CollectObservation", Private)!.Invoke(api, [frame, observation, null, state, Array.Empty<object>(), true, 0d, null]);
         }
         Recognize(9);
         api.ObserveCollectionFrame(Frame(), at.AddSeconds(3));
         api.ObserveEconomy(new(null, null, null, null, true));
-        api.CompleteCollectionScan(at.AddSeconds(3));
+        await api.CompleteCollectionScan(at.AddSeconds(3));
         api.ConfirmField();
         await api.DrainCollectionsAsync();
         string log = Directory.GetFiles(Path.Combine(_directory, "collect"), "log.jsonl.gz", SearchOption.AllDirectories).Single();

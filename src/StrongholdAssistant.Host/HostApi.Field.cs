@@ -92,6 +92,10 @@ public sealed partial class HostApi
     public async Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
         bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop)
     {
+        lock (_fieldGate)
+            _matchRest = economy is { IsRest: true } && mainScreen ? new(economy, shopVisible
+                ? shop.Where(c => c.SlotIndex is >= 0 and <= 5 && c.Name.Length > 0)
+                    .Select(c => (c.SlotIndex, c.Name, c.Price)).ToArray() : []) : null;
         if (!Settings.FieldAuto && !Settings.Collect) return;
         if (!await _fieldScanGate.WaitAsync(0)) return;
         try { await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false); }
@@ -116,6 +120,7 @@ public sealed partial class HostApi
         bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop, bool force)
     {
         var collectionClock = Settings.Collect ? System.Diagnostics.Stopwatch.StartNew() : null;
+        var capturedEconomy = economy;
         ObserveFieldPhase(economy);
         if (economy is { IsRest: true, Round: null })
             economy = economy with { Round = _fieldRestRound };
@@ -137,12 +142,15 @@ public sealed partial class HostApi
         var custom = match.CustomPicks?.Values.SelectMany(v => v).ToArray() ?? [];
         // 169：问号和推荐框的锚点用这一帧读到的角标和投影，随定人结果一起推给覆盖层
         var geometry = _fieldReader.OverlayGeometry;
+        var rest = !force && Settings.Collect && observation is { IsRest: true, MainScreen: true }
+            ? await ReadCollectionRest(frame, capturedEconomy, shopVisible, shop, match) : null;
         _fieldIdentityWork = Task.Run(() =>
         {
             FieldState? changed = null;
             lock (_fieldGate)
             {
                 if (generation != _fieldGeneration) return;
+                if (rest is not null) _matchHp = (rest.Round, rest.Vitals.Hp);
                 _fieldTracker.ConfigureCandidatePool(match.BannedOperators, match.CustomPicks is null ? null : custom);
                 _fieldTracker.SeedRoster(strategy, custom, observation.Round, at);
                 var before = Settings.Collect ? _fieldTracker.State : null;
@@ -151,10 +159,11 @@ public sealed partial class HostApi
                 using (FieldRecognitionTiming.Measure("tracker"))
                     if (_fieldTracker.Observe(observation, Settings.FieldAuto || force, force)) changed = _fieldTracker.State;
                 if (Settings.Collect) CollectObservation(frame, observation, before, _fieldTracker.State,
-                    _collectionComparisons?.ToArray() ?? [], force, collectionClock?.Elapsed.TotalMilliseconds ?? 0);
+                    _collectionComparisons?.ToArray() ?? [], force, collectionClock?.Elapsed.TotalMilliseconds ?? 0, rest);
                 _collectionComparisons = null; _comparingObservation = null;
                 if (Settings.FieldAuto || force) _fieldOverlayGeometry = geometry;
             }
+            if (fieldMap != Field?.MapId) ScheduleStrategyAdvice(mapOnly: true);
             using var publishTiming = FieldRecognitionTiming.Measure("publish");
             if (Settings.FieldAuto || force) FieldOverlayChanged?.Invoke(Field, geometry);
             if (changed is not null && (Settings.FieldAuto || force))
@@ -204,6 +213,8 @@ public sealed partial class HostApi
         lock (_fieldGate)
         {
             _fieldGeneration++;
+            _matchRest = null;
+            _matchHp = null;
             hadState = _fieldTracker.State is not null;
             _fieldTracker.Reset();
         }

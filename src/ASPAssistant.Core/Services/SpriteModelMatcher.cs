@@ -43,6 +43,15 @@ public sealed class SpriteModelMatcher : IDisposable
         return values;
     }
 
+    internal IEnumerable<SpriteCandidate> LikelyOperators(Mat crop)
+    {
+        var logits = Predict(crop);
+        double max = logits.Max();
+        double total = logits.Sum(v => Math.Exp(v - max));
+        return _indices.Select(p => new SpriteCandidate(p.Key, Math.Exp(logits[p.Value] - max) / total))
+            .Where(p => p.Score >= .2).OrderByDescending(p => p.Score).Take(2);
+    }
+
     public SpriteCandidate[] Fuse(Mat crop, IReadOnlyList<SpriteCandidate> templates)
     {
         if (templates.Count == 0) return [];

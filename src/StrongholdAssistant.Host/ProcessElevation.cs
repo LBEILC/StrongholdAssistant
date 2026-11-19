@@ -38,12 +38,17 @@ internal static class ProcessElevation
 
     public static void RestartElevated()
     {
-        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" };
+        var start = new ProcessStartInfo(ASPAssistant.Core.PackageLayout.Launcher) { UseShellExecute = true, Verb = "runas" };
         var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
         for (int i = 0; i < args.Length; i++)
         {
             if (args[i] == "--wait-for-exit") { i++; continue; }
             if (args[i] != "--keep-identity") start.ArgumentList.Add(args[i]);
+        }
+        if (!args.Contains("--profile") && AssistantProfile.Current.Name is { } name)
+        {
+            start.ArgumentList.Add("--profile");
+            start.ArgumentList.Add(name);
         }
         start.ArgumentList.Add("--wait-for-exit");
         start.ArgumentList.Add(Environment.ProcessId.ToString());

@@ -130,7 +130,32 @@ try {
     if ($first -le 5) {
         Measure-Step Release {
             if (!(Test-Path -LiteralPath $body)) { throw "缺少 $body。" }
-            Run { gh release create "v$Version" --repo $repo --verify-tag --title "高效雅雅·卫戍协议助手 v$Version" --notes-file $body $setup $zip (Join-Path $release 'SHA256SUMS.txt') (Join-Path $release 'release-notes.json') }
+            $previous = & gh release list --repo $repo --exclude-drafts --exclude-pre-releases --limit 4 --json tagName
+            if ($LASTEXITCODE -ne 0) { throw '读取已发布版本失败。' }
+            $tags = @($previous | ConvertFrom-Json | ForEach-Object { $_ } | Where-Object {
+                $_.tagName -match '^v\d+\.\d+\.\d+$' -and [version]$_.tagName.Substring(1) -lt [version]$Version
+            } | Select-Object -First 3 -ExpandProperty tagName)
+            $deltas = @()
+            foreach ($tag in $tags) {
+                $baseDir = Join-Path $release "bases/$tag"
+                New-Item -ItemType Directory -Force -Path $baseDir | Out-Null
+                $baseName = "StrongholdAssistant-$tag-win-x64.zip"
+                Run { gh release download $tag --repo $repo --dir $baseDir --pattern $baseName --pattern SHA256SUMS.txt --clobber }
+                $base = Join-Path $baseDir $baseName
+                $hash = (Get-FileHash -LiteralPath $base).Hash
+                if ("$hash  $baseName" -notin (Get-Content -LiteralPath (Join-Path $baseDir 'SHA256SUMS.txt'))) { throw "旧版校验失败：$tag" }
+                $delta = Join-Path $release "StrongholdAssistant-v$Version-from-$tag-delta.zip"
+                & "$PSScriptRoot/package-delta.ps1" -Previous $base -Current $zip -Output $delta
+                Remove-Item -LiteralPath $base
+                $deltas += $delta
+            }
+            $sums = Join-Path $release 'SHA256SUMS.txt'
+            $lines = @(Get-Content -LiteralPath $sums | Where-Object { $_ -notmatch '-delta\.zip$' })
+            $lines += @(foreach ($delta in $deltas) {
+                "$((Get-FileHash -LiteralPath $delta).Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($delta))"
+            })
+            [IO.File]::WriteAllLines($sums, [string[]]$lines, [Text.Encoding]::ASCII)
+            Run { gh release create "v$Version" --repo $repo --verify-tag --title "高效雅雅·卫戍协议助手 v$Version" --notes-file $body $setup $zip @deltas (Join-Path $release 'SHA256SUMS.txt') (Join-Path $release 'release-notes.json') }
         }
     }
     Measure-Step Verify {

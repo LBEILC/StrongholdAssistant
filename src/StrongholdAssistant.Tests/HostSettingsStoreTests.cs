@@ -6,6 +6,34 @@ public sealed class HostSettingsStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "StrongholdAssistant.Tests", Guid.NewGuid().ToString("N"));
 
+    [Fact]
+    public void MultiInstanceDefaultsOffAndSurvivesReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{}");
+        var store = new HostSettingsStore(path);
+        Assert.False(store.LoadSettings().MultiInstance);
+        store.SaveSettings(store.LoadSettings() with { MultiInstance = true });
+        Assert.True(new HostSettingsStore(path).LoadSettings().MultiInstance);
+    }
+
+    [Fact]
+    public void HideCaptureBorderDefaultsOffAndSurvivesReload()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, """{"gameSource":"pc"}""");
+        var store = new HostSettingsStore(path);
+        var settings = store.LoadSettings();
+        Assert.False(settings.HideCaptureBorder);
+        foreach (bool enabled in new[] { true, false })
+        {
+            store.SaveSettings(settings with { HideCaptureBorder = enabled });
+            Assert.Equal(enabled, new HostSettingsStore(path).LoadSettings().HideCaptureBorder);
+        }
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("127.0.0.1:16384")]

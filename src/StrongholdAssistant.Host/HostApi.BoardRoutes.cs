@@ -124,7 +124,11 @@ public sealed partial class HostApi
                 board = RecognizeBoard(frame, _boardMap, camera);
                 if (board is not null)
                 {
-                    _boardMap = board.MapId;
+                    if (_boardMap != board.MapId)
+                    {
+                        _boardMap = board.MapId;
+                        ScheduleStrategyAdvice(mapOnly: true);
+                    }
                     if (_boardPlayerSide is null && board.Camera == BoardCamera.Expanded && board.PlayerSide is not null)
                     {
                         _boardPlayerSide = board.PlayerSide;
@@ -222,6 +226,7 @@ public sealed partial class HostApi
         lock (_boardGate)
         {
             _boardMap = null;
+            ScheduleStrategyAdvice(mapOnly: true);
             _boardPlayerSide = null;
             _acceptedBoardRound = null;
             _diagnostics.ResetBoardFailures();

@@ -49,6 +49,13 @@ Type: filesandordirs; Name: "{app}\ui"
 Type: filesandordirs; Name: "{app}\runtimes"
 Type: filesandordirs; Name: "{app}\plugins"
 
+Type: filesandordirs; Name: "{app}\app"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\app"
+Type: filesandordirs; Name: "{app}\ui"
+Type: filesandordirs; Name: "{app}\data"
+
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "installed.json"; DestDir: "{app}"; Flags: ignoreversion

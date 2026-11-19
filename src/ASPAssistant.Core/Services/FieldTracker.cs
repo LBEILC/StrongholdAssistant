@@ -275,9 +275,13 @@ public sealed partial class FieldTracker
             && p.First.Candidates.SequenceEqual(p.Second.Candidates)
             && (p.First.Equipment ?? []).SequenceEqual(p.Second.Equipment ?? []));
 
+    // 手动识别模式也有逐帧占用，采集可以读取快照而不触发识别或发布。
+    public FieldUnit[] SnapshotUnits() =>
+        _units.Values.OrderBy(u => u.Zone == "bench" ? 0 : 1).ThenBy(u => u.Row).ThenBy(u => u.Col).ToArray();
+
     private bool Publish(string? map, int? round, DateTimeOffset at)
     {
-        var units = _units.Values.OrderBy(u => u.Zone == "bench" ? 0 : 1).ThenBy(u => u.Row).ThenBy(u => u.Col).ToArray();
+        var units = SnapshotUnits();
         var summons = _summons.Values.Where(s => !units.Any(u => u.Zone == s.Zone && u.Col == s.Col && u.Row == s.Row))
             .Select(s => {
                 var owners = _summonDefinitions.Where(d => d.Name == s.Name).SelectMany(d => d.Owners)

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrongholdAssistant.Host", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrongholdAssistant.Tests", "src\StrongholdAssistant.Tests\StrongholdAssistant.Tests.csproj", "{2BF57A43-9BE5-4862-876D-95C47E7EBD6D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrongholdAssistant.Cli", "src\StrongholdAssistant.Cli\StrongholdAssistant.Cli.csproj", "{74C8D09D-E88B-4516-B868-9182936EEF1A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,18 @@ Global
 		{2BF57A43-9BE5-4862-876D-95C47E7EBD6D}.Release|x64.Build.0 = Release|Any CPU
 		{2BF57A43-9BE5-4862-876D-95C47E7EBD6D}.Release|x86.ActiveCfg = Release|Any CPU
 		{2BF57A43-9BE5-4862-876D-95C47E7EBD6D}.Release|x86.Build.0 = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|x64.Build.0 = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Debug|x86.Build.0 = Debug|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|x64.ActiveCfg = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|x64.Build.0 = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|x86.ActiveCfg = Release|Any CPU
+		{74C8D09D-E88B-4516-B868-9182936EEF1A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -65,5 +79,6 @@ Global
 		{61E9962A-1C14-42E5-A7D4-CC763B9BDFDD} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{16E3F365-C6FF-454E-B234-2A3BD8E78815} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2BF57A43-9BE5-4862-876D-95C47E7EBD6D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{74C8D09D-E88B-4516-B868-9182936EEF1A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

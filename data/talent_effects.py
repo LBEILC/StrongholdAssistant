@@ -165,6 +165,9 @@ def parse_talent(text: str, groups: Groups) -> tuple[dict, list[dict], list[str]
     for sentence in re.split(r"[；。\n]", text):
         if not sentence or any(k in sentence for k in SKIP):
             continue
+        if sentence == "攻击时同时攻击两个目标":
+            own["targets"] = 2
+            continue
         found = False
         # 攻击附带的效果（只对自身）
         if m := CRIT.search(sentence):
@@ -262,7 +265,7 @@ def merge(parts: list[tuple[dict, list[dict], list[str]]]) -> dict:
     notes: list[str] = []
     for o, a, n in parts:
         for k, v in o.items():
-            if isinstance(v, (int, float)) and k not in ("dotSeconds",):
+            if isinstance(v, (int, float)) and k not in ("dotSeconds", "targets"):
                 _add(own, k, v)
             else:
                 own[k] = v

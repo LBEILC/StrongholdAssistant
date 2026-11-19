@@ -29,6 +29,10 @@ public sealed partial class HostApi
 
     public void InitializeMatchReading(string data, IOcrEngine ocr)
     {
+        _collectionHud = new(ocr);
+        var tactics = System.Text.Json.JsonSerializer.Deserialize<AdaptChoice[]>(
+            File.ReadAllText(Path.Combine(data, "adapt_tactics.json")), JsonOptions)!;
+        _adaptReader = new(ocr, Catalog, tactics);
         _strategyReader = new(ocr, data, Catalog.GetProperty("strategies").EnumerateArray()
             .ToDictionary(s => s.GetProperty("id").GetString()!, s => s.GetProperty("name").GetString()!));
         _roundEnemyReader = new(ocr);
@@ -85,7 +89,13 @@ public sealed partial class HostApi
                 if (reading is not { IsRest: true }) CollectOpening(frame, "info");
             }
         }
-        if (reading is not { IsRest: true } || Match.Economy is not { } economy || reading.Round != economy.Round) return;
+    }
+
+    public async Task ObserveEnemyFrameAsync(byte[] frame, EconomyReading reading)
+    {
+        if (!reading.IsRest || Match.Economy is not { } economy || reading.Round != economy.Round) return;
+        string? match = _activeRecord;
+        int generation = _matchReadingGeneration;
         var key = (match, (int?)economy.Round);
         if (_enemyReadKey != key) { _roundEnemyReader.Reset(); _enemyReadKey = key; }
         var names = await _roundEnemyReader.ReadAsync(frame);
@@ -101,11 +111,12 @@ public sealed partial class HostApi
     private void ResetMatchReading()
     {
         _matchReadingGeneration++;
+        _pendingAdapt = null;
         _enemyReadKey = default;
         _roundEnemyOrder.Clear();
         _covenantReadAt = DateTimeOffset.MinValue;
         _enemyPanelSeen = _enemyPanelRead = 0;
-        Match = Match with { CovenantBar = [] };
+        Match = Match with { CovenantBar = [], AdaptAdvice = null };
     }
 
     internal void ApplyCovenantBar(CovenantBarReading[] items, int? round)

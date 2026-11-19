@@ -12,6 +12,7 @@ namespace StrongholdAssistant.Host;
 public sealed partial class HostApi
 {
     private CollectionStore? _collections;
+    private CollectionHudReader? _collectionHud;
     private string _collectionData = "";
     private readonly object _collectionGate = new();
     private byte[]? _collectionFrame;
@@ -76,17 +77,31 @@ public sealed partial class HostApi
 
     }
 
-    public void CompleteCollectionScan(DateTimeOffset at)
+    public async Task CompleteCollectionScan(DateTimeOffset at)
     {
         if (!Settings.Collect) return;
-        byte[]? frame; bool observed;
+        byte[]? frame; FieldObservation? observation;
         lock (_collectionGate)
-        { frame = _collectionFrame; observed = _collectionObservation?.At == at; }
+        { frame = _collectionAt == at ? _collectionFrame : null; observation = _collectionObservation; }
+        var id = _activeRecord;
+        var result = frame is not null && id is not null && _collectionHud is not null &&
+            observation is not { IsRest: true, MainScreen: true }
+            ? await _collectionHud.ReadResult(frame) : null;
+        if (id != _activeRecord) return;
         Collect(at, batch =>
         {
-            if (!observed) batch.Log("scan", new { observed = false });
+            if (result is not null) batch.Settlement(result);
+            if (observation?.At != at) batch.Log("scan", new { observed = false });
             if (frame is not null) batch.Timer(frame);
         });
+    }
+
+    internal void CollectEnemyPanel(byte[] frame, EconomyReading reading)
+    {
+        int? round = reading.IsFinalRound ? _boardRouteStore?.LastRound(Match.Solo, Match.Mode?.Id) : reading.Round;
+        if (round is null || round != _acceptedBoardRound) return;
+        var enemies = Match.RoundEnemies?.Round == round ? Match.RoundEnemies.Enemies : null;
+        Collect(DateTimeOffset.UtcNow, b => b.Panel(round.Value, frame, enemies));
     }
 
     private void Collect(DateTimeOffset at, Action<CollectionStore.Batch> write)
@@ -132,8 +147,29 @@ public sealed partial class HostApi
         });
     }
 
+    private sealed record RestSample(int Round, RoundVitals Vitals, MatchInfo Match, IReadOnlyDictionary<int, string>? Shop);
+
+    private async Task<RestSample?> ReadCollectionRest(byte[] frame, EconomyReading? reading,
+        bool shopVisible, IReadOnlyList<ShopItem> shop, MatchInfo match)
+    {
+        if (reading is null || _collectionHud is null || _activeRecord is null) return null;
+        int? round = reading.IsFinalRound && match.Mode is not null
+            ? _boardRouteStore?.LastRound(match.Solo, match.Mode.Id) : reading.Round;
+        // 顶栏文字可能把“合”的右侧笔画读成十位数；只在有分歧时单读青色数字牌。
+        if (round != _acceptedBoardRound) round = await _collectionHud.ReadRoundBadge(frame);
+        if (round is not (>= 1 and <= 20) || round != _acceptedBoardRound) return null;
+        var vitals = await _collectionHud.ReadVitals(frame, reading, Theme(Settings.GameTheme));
+        Dictionary<int, string>? cards = null;
+        if (shopVisible)
+        {
+            // 场上读取器可能保留上回合的卡片；开店快照只取商店本帧读出的卡。
+            cards = shop.GroupBy(i => i.SlotIndex).ToDictionary(g => g.Key, g => g.First().Name);
+        }
+        return new(round.Value, vitals, match, cards);
+    }
+
     private void CollectObservation(byte[] frame, FieldObservation observation, FieldState? before, FieldState? after,
-        object[] comparisons, bool force, double milliseconds)
+        object[] comparisons, bool force, double milliseconds, RestSample? rest)
     {
         if (!Settings.Collect) return;
         Task<byte[]>? raw = null;
@@ -150,6 +186,7 @@ public sealed partial class HostApi
             }
         }
         var added = after?.Log.Except(before?.Log ?? []).ToArray() ?? [];
+        var units = rest is null ? null : _fieldTracker.SnapshotUnits();
         var crops = observation.Sprites?.Where(p => after?.Units.Any(u => u.Cell == p.Key) == true
             && (before?.Units.FirstOrDefault(u => u.Cell == p.Key) is not { } old
                 || after.Units.First(u => u.Cell == p.Key) is var next && (old.Operator != next.Operator || old.Tier != next.Tier)
@@ -157,6 +194,10 @@ public sealed partial class HostApi
         Collect(observation.At, batch =>
         {
             batch.Round(observation.Round);
+            if (rest is not null)
+                batch.RestFrame(rest.Round, rest.Vitals, rest.Match, observation, rest.Shop, units, frame);
+            else if (force && after is not null)
+                batch.ManualSnapshot(observation.Round, after.Units);
             batch.Log("scan", new
             {
                 observed = true, observation.IsRest, observation.MainScreen, observation.Round, observation.MapId,
@@ -171,6 +212,7 @@ public sealed partial class HostApi
             foreach (var entry in added) batch.Log("event", entry);
             batch.Log("decisions", new { units = after?.Units });
             batch.Observe(frame, observation.IsRest, observation.MainScreen);
+            if (!observation.IsRest && observation.Round.HasValue && batch.HasPendingRound) batch.FlushRound();
             if (raw is not null) batch.Image(raw.GetAwaiter().GetResult(), "first-rest", "raw", once: true);
             if (force)
                 batch.Log("recognizeFrame", new { milliseconds, result = after });
@@ -226,6 +268,7 @@ public sealed partial class HostApi
         if (frame is null) return;
         Collect(DateTimeOffset.UtcNow, batch =>
         {
+            batch.ConfirmUnits(cell, state, kind == "confirmField");
             batch.Answers(cell is not null ? [CellKey(cell)] : state?.Units.Select(u => CellKey(u.Cell)) ?? []);
             batch.Log(kind, new { cell, from, to, state, frameAt = at, frame = batch.Image(frame, "answer", capturedAt: at) });
         });

@@ -59,10 +59,10 @@ public sealed class MirrorChyanUpdateTests
         Assert.Equal(2, fixture.ApiRequests.Count);
         Assert.All(fixture.ApiRequests, request =>
         {
-            Assert.Contains(installed ? "arch=x64&" : "arch=&", request);
+            Assert.Contains("arch=&", request);
             Assert.Contains("user_agent=StrongholdAssistant", request);
             Assert.Contains("cdk=test-cdk", request);
-            Assert.DoesNotContain("current_version", request);
+            Assert.Contains("current_version=v1.0.0", request);
             Assert.DoesNotContain("channel=", request);
         });
         Assert.Contains("/package-2", fixture.Requests);
@@ -75,17 +75,28 @@ public sealed class MirrorChyanUpdateTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task NoCdkBuildsGitHubAssetUrls(bool installed)
+    public async Task NoCdkChecksGitHubForMatchingDelta(bool installed)
     {
         using var fixture = new MirrorFixture(installed);
         var service = new UpdateService(new Version(1, 0, 0), fixture.DirectoryPath, mirrorChyanUrl: fixture.Endpoint, httpClient: fixture.Http);
         var info = await service.CheckMirrorChyanAsync("  ");
         Assert.NotNull(info);
         Assert.Equal("github", info.Source);
-        var root = "https://github.com/LBEILC/StrongholdAssistant/releases/download/v99.0.0/";
-        Assert.Equal(root + "StrongholdAssistant-v99.0.0-" + (installed ? "setup.exe" : "win-x64.zip"), info.DownloadUrl);
-        Assert.Equal(root + "SHA256SUMS.txt", info.ChecksumsUrl);
-        Assert.DoesNotContain("cdk=", Assert.Single(fixture.ApiRequests));
+        Assert.Equal("StrongholdAssistant-v99.0.0-from-v1.0.0-delta.zip", info.AssetName);
+        Assert.Empty(fixture.ApiRequests);
+    }
+
+    [Fact]
+    public async Task BadIncrementalHashRequestsMirrorFullWithoutCurrentVersion()
+    {
+        using var fixture = new MirrorFixture(offerBadDelta: true);
+        var service = new UpdateService(new Version(1, 0, 0), fixture.DirectoryPath, mirrorChyanUrl: fixture.Endpoint, httpClient: fixture.Http);
+        var info = await service.ReadMirrorChyanAsync("test-cdk");
+        await service.DownloadAndApplyUpdateAsync(info!);
+        Assert.True(File.Exists(service.PendingScriptPath));
+        Assert.Collection(fixture.ApiRequests,
+            first => Assert.Contains("current_version=v1.0.0", first),
+            retry => Assert.DoesNotContain("current_version", retry));
     }
 
     [Fact]
@@ -115,8 +126,15 @@ public sealed class MirrorChyanUpdateTests
     private sealed class LocalUpdateHandler : HttpClientHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => request.RequestUri!.IsLoopback ? base.SendAsync(request, ct)
-                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        {
+            if (request.RequestUri!.IsLoopback) return base.SendAsync(request, ct);
+            if (request.RequestUri.AbsoluteUri != UpdateService.DefaultFeedUrl)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            var assets = new[] { "StrongholdAssistant-v99.0.0-win-x64.zip", "StrongholdAssistant-v99.0.0-from-v1.0.0-delta.zip" }
+                .Select(name => new { name, browser_download_url = "https://example.org/" + name });
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = new StringContent(JsonSerializer.Serialize(new { tag_name = "v99.0.0", assets })) });
+        }
     }
 
     private sealed class MirrorFixture : IDisposable
@@ -131,7 +149,7 @@ public sealed class MirrorChyanUpdateTests
         public List<string> Requests { get; } = [];
         public List<string> ApiRequests { get; } = [];
 
-        public MirrorFixture(bool installed = false, bool wrongHash = false, int errorCode = 0, bool refreshSameVersion = false)
+        public MirrorFixture(bool installed = false, bool wrongHash = false, int errorCode = 0, bool refreshSameVersion = false, bool offerBadDelta = false)
         {
             System.IO.Directory.CreateDirectory(DirectoryPath);
             if (installed) File.WriteAllText(Path.Combine(DirectoryPath, "installed.json"), "{}");
@@ -163,7 +181,8 @@ public sealed class MirrorChyanUpdateTests
                             code = errorCode, msg = "fixture", data = new
                             {
                                 version_name = refreshSameVersion && ApiRequests.Count > 1 ? "v1.0.0" : "v99.0.0", url = request.Contains("cdk=") ? root + "/package-" + ApiRequests.Count : null,
-                                sha256 = hash, filesize = package.Length, cdk_expired_time = 2000000000
+                                update_type = offerBadDelta && request.Contains("current_version=") ? "incremental" : "full",
+                                sha256 = offerBadDelta && request.Contains("current_version=") ? new string('0', 64) : hash, filesize = package.Length, cdk_expired_time = 2000000000
                             }
                         }) : package;
                         var status = isApi && errorCode != 0 ? "403 Forbidden" : "200 OK";

@@ -150,12 +150,14 @@ public sealed class BackupTests : IDisposable
         var selection = await api.ReadBackupAsync(BackupPath);
         var old = await AddLineup(api, "导入前阵容");
         api.SaveSettings(new("ursus", false, false) { FocusOperators = ["折光"] });
-        var settings = Json(api.Settings);
+        var settings = JsonSerializer.SerializeToNode(api.Settings, HostApi.JsonOptions)!.AsObject();
+        // 本机操作授权不随备份导出，其他设置应完整保留。
+        settings.Remove("control");
         await api.SaveSessionAsync(new(old.Id, ["折光"], ["车尔尼"]));
         await api.ImportDataAsync(selection.Token, "replace");
         var safetyPath = Assert.Single(Directory.GetFiles(Path.Combine(_directory, "backups"), "导入前-*.json"));
         var root = JsonNode.Parse(await File.ReadAllTextAsync(safetyPath))!;
-        Assert.Equal(settings, root["settings"]!.ToJsonString());
+        Assert.True(JsonNode.DeepEquals(settings, root["settings"]));
         Assert.Equal(Json(old), root["lineups"]![0]!.ToJsonString());
         Assert.Empty(await api.LineupsAsync());
         var session = await api.SessionAsync();

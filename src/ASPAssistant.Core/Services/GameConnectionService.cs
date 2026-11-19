@@ -26,13 +26,21 @@ public sealed class GameConnectionService : IDisposable
     private bool _disposed;
     private GameConnectionState _state = new();
     public GameConnectionState State => Volatile.Read(ref _state);
+    public EmulatorDevice? ConnectedDevice => Volatile.Read(ref _device);
+    public Control.AdbGameInput CreateControlInput(EmulatorDevice device, GameConnectionState state) =>
+        new(device.Serial, device.DisplayId!.Value, state.Width, state.Height, arguments =>
+        {
+            var result = EmulatorDisplay.RunAdb(device, arguments);
+            if (result.ExitCode != 0) throw new Control.ControlLostException("模拟器输入失败：" + result.Error);
+        });
     public bool IsAdb => State.Source is "mumu" or "ldplayer";
     public event Action<GameConnectionState>? Changed;
 
-    public bool Configure(string source, string serial, string adbAddress = "")
+    public bool Configure(string source, string serial, string adbAddress = "", bool hideCaptureBorder = false)
     {
         lock (_gate)
         {
+            WindowCapture.SetHideCaptureBorder(hideCaptureBorder);
             if (_source == source && _serial == serial && _adbAddress == adbAddress) return false;
             _source = source;
             _serial = serial;
@@ -290,6 +298,11 @@ public sealed class GameConnectionService : IDisposable
         Changed?.Invoke(state);
     }
 
+    // 主屏触控使用 input 的默认屏，兼容不支持 -d 参数的模拟器；副屏仍须显式指定。
+    internal static string[] RosterInputArguments(string serial, int display, params string[] gesture) =>
+        display == 0 ? ["-s", serial, "shell", "input", .. gesture]
+                     : ["-s", serial, "shell", "input", "-d", display.ToString(), .. gesture];
+
     // 仅在已确认按盟约排序时调用一次，坐标按当前游戏 display 缩放。
     internal void SelectRosterTierAdb(int x, int y)
     {
@@ -298,8 +311,8 @@ public sealed class GameConnectionService : IDisposable
             var device = _device ?? throw new IOException("模拟器连接已断开。");
             var state = State;
             var point = RosterCoordinates.ToScreen(x, y, state.Width, state.Height);
-            var result = EmulatorDisplay.RunAdb(device, ["-s", device.Serial, "shell", "input", "-d",
-                (device.DisplayId ?? 0).ToString(), "tap", point.X.ToString(), point.Y.ToString()]);
+            var result = EmulatorDisplay.RunAdb(device, RosterInputArguments(device.Serial,
+                device.DisplayId ?? 0, "tap", point.X.ToString(), point.Y.ToString()));
             if (result.ExitCode != 0) throw new IOException("模拟器排序切换失败：" + result.Error);
         }
     }
@@ -313,8 +326,8 @@ public sealed class GameConnectionService : IDisposable
             var state = State;
             var (start, end) = RosterCoordinates.Drag(left, distance, state.Width, state.Height);
             int x1 = start.X, x2 = end.X, y = start.Y;
-            var result = EmulatorDisplay.RunAdb(device, ["-s", device.Serial, "shell", "input", "-d",
-                (device.DisplayId ?? 0).ToString(), "swipe", x1.ToString(), y.ToString(), x2.ToString(), y.ToString(), "1100"]);
+            var result = EmulatorDisplay.RunAdb(device, RosterInputArguments(device.Serial,
+                device.DisplayId ?? 0, "swipe", x1.ToString(), y.ToString(), x2.ToString(), y.ToString(), "1100"));
             if (result.ExitCode != 0) throw new IOException("模拟器滑动失败：" + result.Error);
         }
     }

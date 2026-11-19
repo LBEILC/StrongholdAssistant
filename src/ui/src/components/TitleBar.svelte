@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { control } from '../lib/control.svelte'
   import { app } from '../lib/state.svelte'
   import Icon from './Icon.svelte'
   import { api } from '../lib/api'
@@ -7,6 +8,9 @@
 
   // 标题栏：产品里是无边框窗口的拖动区
   const conn = $derived(app.connection)
+  // 多开（365）：不是默认配置时在标题旁写配置名，几个助手一眼分得清
+  let profile = $state<string | null>(null)
+  api.currentProfile().then((p) => (profile = p))
   const onTop = $derived(!!conn.overlay || app.settings.alwaysOnTop)
   // 云同步状态（v0.7.0）：打开了才显示；点一下立即同步，出错时打开设置看原因
   const syncTip = $derived(
@@ -17,6 +21,7 @@
 <div class="bar">
   <img class="logo" src="./brand/icon-128.png" alt="" aria-hidden="true" draggable="false" />
   <span class="title">高效雅雅</span>
+  {#if profile}<em class="prof" title="多开的配置「{profile}」，用自己的一套设置和数据">{profile}</em>{/if}
   <span class="sub">卫戍协议助手<br /><span class="term">GXYY · Stronghold Assistant</span></span>
   <span class="spacer"></span>
   <!-- 连上游戏只亮绿点（分辨率放进提示里，标题栏窄，显示了会挤掉「覆盖」）；没连上才写字 -->
@@ -46,6 +51,18 @@
     <button class="wbtn" title="向上收起，只留追踪列表" aria-label="向上收起" onclick={() => app.collapse()}><Icon name="arrowUp" size={16} /></button>
   {:else}
     <button class="wbtn" title="收起成细条" aria-label="收起成细条" onclick={() => app.collapse()}><Icon name="contractLeft" size={15} /></button>
+  {/if}
+  <!-- 自动操作开着时常驻（docs/自动操作.md）：点一下就关；正在执行时闪 -->
+  {#if control.settings.enabled}
+    <button
+      class="auto"
+      class:busy={control.running}
+      title={control.running ? '正在自动操作。点一下停下并关掉自动操作' : '自动操作开着。点一下关掉'}
+      aria-label="关掉自动操作"
+      onclick={() => (control.running && api.stopControl(), control.toggle(false), app.showToast('已关掉自动操作'))}
+    >
+      <Icon name="robot" size={13} /><span>自动</span>
+    </button>
   {/if}
   <!-- 覆盖模式盖在游戏上，宿主总是置顶，按钮只显示状态 -->
   <button
@@ -116,6 +133,14 @@
     margin: 0 -2px 0 -3px;
   }
   /* 名字在按钮之后让出宽度，按钮永远不被挤掉（用户 2026-11-12 反馈） */
+  .prof {
+    flex: none;
+    font-style: normal;
+    font-size: var(--fs-xs);
+    padding: 0 5px;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
   .title {
     min-width: 0;
     overflow: hidden;
@@ -361,5 +386,30 @@
   }
   :global([data-skin='ursus']) .wbtn.close:hover {
     background: var(--rust-hi);
+  }
+  .auto {
+    -webkit-app-region: no-drag;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .auto:hover {
+    background: var(--red);
+    color: #fff;
+  }
+  .auto.busy {
+    animation: auto-busy 1s ease-in-out infinite alternate;
+  }
+  @keyframes auto-busy {
+    to {
+      opacity: 0.55;
+    }
   }
 </style>

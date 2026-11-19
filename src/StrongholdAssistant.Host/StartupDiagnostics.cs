@@ -29,7 +29,7 @@ internal static class StartupDiagnostics
     {
         using var identity = WindowsIdentity.GetCurrent();
         AppLogger.Info("Startup", $"Windows={windowsVersion}; WebView2={runtimeVersion ?? "missing"}; " +
-            $"UserDataFolder={userDataFolder}; Elevated={ProcessElevation.Current}; " +
+            $"Host={Environment.ProcessPath}; InstallDirectory={ASPAssistant.Core.PackageLayout.Root}; UserDataFolder={userDataFolder}; Elevated={ProcessElevation.Current}; " +
             $"BuiltInAdministrator={identity.User!.Value.EndsWith("-500", StringComparison.Ordinal)}");
     }
 

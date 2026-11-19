@@ -29,6 +29,8 @@ public class JsonDataStore
         return wrapper?.Operators ?? [];
     }
 
+    public string? StrategySeason { get; private set; }
+
     public async Task<List<Strategy>> LoadStrategiesAsync()
     {
         var json = await File.ReadAllTextAsync(Path.Combine(_dataDirectory, "strategies.json"));
@@ -37,6 +39,7 @@ public class JsonDataStore
         if (data.Strategies.Count == 0 || data.Strategies.Any(s => s.Id.Length == 0 || s.Name.Length == 0)
             || data.Strategies.Select(s => s.Id).Distinct().Count() != data.Strategies.Count)
             throw new InvalidDataException("策略数据包含空条目或重复 ID");
+        StrategySeason = data.Season;
         return data.Strategies;
     }
 
@@ -180,6 +183,7 @@ public class JsonDataStore
 
     private class StrategyDataFile
     {
+        public string? Season { get; set; }
         public required List<Strategy> Strategies { get; set; }
     }
 

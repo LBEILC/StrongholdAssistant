@@ -63,7 +63,7 @@ begin
   Blocked := CheckUpdateFiles(Directory, 'StrongholdAssistant.exe', False);
   if Blocked = '' then Blocked := CheckUpdateFiles(Directory, '*.dll', False);
   if Blocked = '' then Blocked := CheckUpdateFiles(Directory, 'StrongholdAssistant.*.json', False);
-  Subdirectories := ['runtimes', 'plugins', 'data', 'ui'];
+  Subdirectories := ['app', 'runtimes', 'plugins', 'data', 'ui'];
   for I := 0 to GetArrayLength(Subdirectories) - 1 do
   begin
     if Blocked <> '' then Break;

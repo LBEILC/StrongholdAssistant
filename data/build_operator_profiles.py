@@ -464,6 +464,20 @@ def skill_effect(char: dict, index: int | None, level: int, skills: dict, interv
         out["skillZone"] = round(zone, 3)
     if m := re.search(r"(?:敌人|敌方)[^，；。]*?移动速度-(\d+)%", text):
         out["skillSlow"] = int(m.group(1)) / 100
+    # 炼金单元是独立留场的投掷物；持续时间不占干员的技力回复周期。
+    sid = char["skills"][index]["skillId"]
+    if sid in ("skchr_thorn2_2", "skchr_hbound_2"):
+        field = {"seconds": val("projectile_delay_time"), "radius": val("projectile_range"), "damage": val("atk_scale")}
+        if sid == "skchr_thorn2_2":
+            field.update(drift=val("projectile_move_speed"), growth=val("value"))
+        else:
+            field.update(heavyWeight=int(val("value")), heavyDamage=val("heavy_atk_scale"), heavySlow=-val("move_speed"))
+        out["groundField"] = field
+    if sid == "skchr_blkkgt_3":
+        out["slashes"] = {"count": int(re.search(r"总计(\d+)次斩击", text).group(1)), "interval": val("d_hit_interval"),
+                          "damage": val("d_atk_scale"), "finisher": val("e_atk_scale_end")}
+    if sid == "skchr_gnosis_2":
+        out["areaBurst"] = val("atk_scale")
     if push := push_of(text):
         out["skillPush"] = push
     return out

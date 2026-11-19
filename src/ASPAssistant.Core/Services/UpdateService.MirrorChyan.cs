@@ -13,6 +13,7 @@ public partial class UpdateService
 
     public async Task<UpdateInfo?> CheckMirrorChyanAsync(string cdk, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(cdk)) return await CheckForUpdateAsync(ct);
         var info = await ReadMirrorChyanAsync(cdk, ct);
         if (info is null || TryParseVersion(info.Version)! <= CurrentVersion) return null;
         var notesUrl = $"https://github.com/LBEILC/StrongholdAssistant/releases/download/{info.TagName}/release-notes.json";
@@ -20,7 +21,7 @@ public partial class UpdateService
     }
 
     // 下载前再次请求，避免沿用检查时取得的限时地址。
-    public async Task<UpdateInfo?> ReadMirrorChyanAsync(string cdk, CancellationToken ct = default)
+    public async Task<UpdateInfo?> ReadMirrorChyanAsync(string cdk, CancellationToken ct = default, bool fullOnly = false)
     {
         LastError = null;
         CdkExpiresAt = null;
@@ -29,7 +30,8 @@ public partial class UpdateService
         var endpoint = mirrorChyanUrl ?? Environment.GetEnvironmentVariable(MirrorChyanOverrideVariable);
         if (string.IsNullOrWhiteSpace(endpoint)) endpoint = "https://mirrorchyan.com/api/resources/StrongholdAssistant/latest";
         var url = endpoint + (endpoint.Contains('?') ? "&" : "?")
-            + $"os=win&arch={(IsInstalled ? "x64" : "")}&user_agent=StrongholdAssistant"
+            + "os=win&arch=&user_agent=StrongholdAssistant"
+            + (fullOnly || FullOnly ? "" : "&current_version=v" + CurrentVersion.ToString(3))
             + (cdk.Length == 0 ? "" : "&cdk=" + Uri.EscapeDataString(cdk));
         try
         {
@@ -61,13 +63,16 @@ public partial class UpdateService
             if (data!.CdkExpiredTime is { } expires)
                 CdkExpiresAt = DateTimeOffset.FromUnixTimeSeconds(expires).ToString("O");
             var tag = "v" + version;
-            var asset = $"StrongholdAssistant-{tag}-{(IsInstalled ? "setup.exe" : "win-x64.zip")}";
+            if (data.UpdateType is not (null or "full" or "incremental")) { LastError = "Mirror酱 返回的更新类型无效"; return null; }
+            var incremental = data.UpdateType == "incremental";
+            var asset = incremental ? DeltaName(version) : $"StrongholdAssistant-{tag}-win-x64.zip";
             var root = $"https://github.com/LBEILC/StrongholdAssistant/releases/download/{tag}/";
             var mirror = !string.IsNullOrWhiteSpace(data.Url);
             return new(tag, version.ToString(), "", mirror ? data.Url! : root + asset,
                 asset, mirror ? null : root + ChecksumsAssetName,
                 $"https://github.com/LBEILC/StrongholdAssistant/releases/tag/{tag}")
-            { Source = mirror ? "mirrorchyan" : "github", Sha256 = data.Sha256 };
+            { Source = mirror ? "mirrorchyan" : "github", Sha256 = data.Sha256, Incremental = incremental && mirror,
+                FullPackage = token => ReadMirrorChyanAsync(cdk, token, fullOnly: true) };
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or ArgumentOutOfRangeException)
         {
@@ -81,6 +86,7 @@ public partial class UpdateService
     private record MirrorResponse(int Code, string? Msg, MirrorData? Data);
     private record MirrorData(
         [property: JsonPropertyName("version_name")] string? VersionName,
+        [property: JsonPropertyName("update_type")] string? UpdateType,
         string? Url, string? Sha256, long? Filesize,
         [property: JsonPropertyName("cdk_expired_time")] long? CdkExpiredTime);
 }

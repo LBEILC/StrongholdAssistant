@@ -95,6 +95,26 @@
     pickingSt = false
     stq = ''
   }
+  // 开局选策略推荐（决策 S2）：没选策略时列前 3 个；选了之后在策略卡上标名次。数值是复刻里机器人打的估计
+  const advice = $derived(m.strategyAdvice?.status === 'ok' ? m.strategyAdvice : null)
+  const adviceMap = $derived(advice ? new Map(advice.items.map((x, i) => [x.strategyId, { clearRate: x.clearRate, rank: i + 1 }])) : null)
+  const topAdvice = $derived(
+    advice?.items.slice(0, 3).map((x) => ({ ...x, s: app.catalog.strategies.find((s) => s.id === x.strategyId) })).filter((x) => x.s) ?? [],
+  )
+  // 单人宿主给「规程等级16」，多人给整句「按单人规程等级 9～14 平均估」
+  const basisText = (b: string) => (b.startsWith('按') ? b : `按${b}估`)
+  const pct = (v: number) => `${Math.round(v * 100)}%`
+  const diff = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(Math.round(v * 100))}%`
+  let adviceWhy = $state(false)
+  // 机变推荐（任务 373）：按画面从左到右列卡，推荐的那张亮起来；认不出的卡占位不排名。没有推荐（模型没过关、认不出）时整块不显示
+  const adapt = $derived(m.adaptAdvice)
+  const ADAPT_FAMILY = { bounty: '悬赏决策', supply: '道具补给', shop: '机密商店', tactic: '战术决策' } as const
+  const adaptPos = (i: number, n: number) => (n === 3 ? ['左', '中', '右'][i] : String(i + 1))
+  const adaptAvg = $derived.by(() => {
+    const r = adapt?.cards.filter((c) => c.clearRate !== null).map((c) => c.clearRate!) ?? []
+    return r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0
+  })
+  let adaptWhy = $state(false)
   // 目标阵容固定排第一个（不管本局合不合适，方便对照）；其余按目标盟约里阵容不完整的个数、再按名单被禁人数排序，一共取 3 套
   // 工作台里够宽就排成三栏（宽度按页面自己量，侧栏里不会触发）
   let pageW = $state(0)
@@ -260,21 +280,85 @@
         <input bind:value={stq} placeholder="搜名字、发起者、效果" />
         <button class="tool" onclick={() => ((pickingSt = false), (stq = ''))}>取消</button>
       </div>
-      <StrategyGrid selected={m.strategyId} q={stq} onpick={pickSt} />
+      <StrategyGrid selected={m.strategyId} q={stq} onpick={pickSt} advice={adviceMap} />
     </div>
   {:else if strategy}
     <!-- 整块可点：点一下换策略（用户 2026-11-13：只有一个「换」字太没设计，直接做成可点的） -->
     <button class="strategy" title="点一下换策略" onclick={() => (pickingSt = true)}>
       <img src={asset.strategy(strategy.id)} alt="" />
       <div>
-        <div class="sn"><b>{strategy.name}</b><span>{strategy.initiator}</span>{#if m.strategySource === 'recognized'}<em class="auto">自动识别</em>{/if}</div>
+        <div class="sn">
+          <b>{strategy.name}</b><span>{strategy.initiator}</span>{#if m.strategySource === 'recognized'}<em class="auto">自动识别</em>{/if}
+          {#if adviceMap?.has(strategy.id)}{@const a = adviceMap.get(strategy.id)!}<em class="rk">推荐第 {a.rank} · 预计通关 {pct(a.clearRate)}</em>{/if}
+        </div>
         <p>{strategy.description}</p>
       </div>
     </button>
+  {:else if advice && topAdvice.length}
+    <div class="advice">
+      <div class="ah">
+        <b>推荐策略</b><span>{basisText(advice.basis)}</span>
+        <button class="tool" onclick={() => (pickingSt = true)}>全部策略</button>
+      </div>
+      {#each topAdvice as x, i (x.strategyId)}
+        <button class="arow" title="选这个策略" onclick={() => pickSt(x.strategyId)}>
+          <i class="no">{i + 1}</i>
+          <img src={asset.strategy(x.strategyId)} alt="" />
+          <div class="an"><b>{x.s!.name}</b><span>{x.s!.initiator}</span></div>
+          <div class="av">
+            <b>{pct(x.clearRate)}</b><em>预计通关 · {diff(x.clearRate - advice.average.clearRate)}</em>
+            <span>撑到第 {x.reachedRound.toFixed(1)} 回合</span>
+          </div>
+        </button>
+      {/each}
+      <button class="why" onclick={() => (adviceWhy = !adviceWhy)}>
+        <Icon name={adviceWhy ? 'arrowUp' : 'arrowDown'} size={12} />怎么估的
+      </button>
+      {#if adviceWhy}
+        <ul class="wl" transition:slide={sl}>
+          <li>平均：预计通关 {pct(advice.average.clearRate)}，撑到第 {advice.average.reachedRound.toFixed(1)} 回合</li>
+          {#each advice.assumptions as t (t)}<li>{t}</li>{/each}
+        </ul>
+      {/if}
+    </div>
   {:else if m.source !== 'none'}
     <button class="stnone" onclick={() => (pickingSt = true)}>
-      <Icon name="add" size={14} />选本局策略<em>进了对局会自动认出，也可以先自己选；资金预测会按策略算</em>
+      <Icon name="add" size={14} />选本局策略<em>{m.strategyAdvice?.status === 'unavailable' ? `没有推荐：${m.strategyAdvice.reason}` : '进了对局会自动认出，也可以先自己选；资金预测会按策略算'}</em>
     </button>
+  {/if}
+{/snippet}
+
+{#snippet bAdapt()}
+  {#if adapt?.status === 'ok'}
+    <div class="advice adapt">
+      <div class="ah">
+        <b>机变推荐</b><span>第 {adapt.round} 回合{adapt.family ? ` · ${ADAPT_FAMILY[adapt.family]}` : ''} · {basisText(adapt.basis)}</span>
+      </div>
+      {#each adapt.cards as c (c.index)}
+        <div class="arow" class:best={c.rank === 1} class:unk={c.rank === null}>
+          <i class="no" title="画面上的位置">{adaptPos(c.index, adapt.cards.length)}</i>
+          <div class="an">
+            <b>{c.name ?? '没认出这张卡'}{#if c.rank === 1}<em class="pick">推荐</em>{/if}</b>
+            {#if c.desc}<span class="ad">{c.desc}</span>{/if}
+          </div>
+          {#if c.clearRate !== null}
+            <div class="av">
+              <b>{pct(c.clearRate)}</b><em>预计通关 · {diff(c.clearRate - adaptAvg)}</em>
+              {#if c.reachedRound !== null}<span>撑到第 {c.reachedRound.toFixed(1)} 回合</span>{/if}
+            </div>
+          {/if}
+        </div>
+      {/each}
+      <button class="why" onclick={() => (adaptWhy = !adaptWhy)}>
+        <Icon name={adaptWhy ? 'arrowUp' : 'arrowDown'} size={12} />怎么估的
+      </button>
+      {#if adaptWhy}
+        <ul class="wl" transition:slide={sl}>
+          <li>「预计通关」后面是比这几张卡的平均高或低多少</li>
+          {#each adapt.assumptions as t (t)}<li>{t}</li>{/each}
+        </ul>
+      {/if}
+    </div>
   {/if}
 {/snippet}
 
@@ -512,12 +596,13 @@
     <!-- 工作台：三栏一屏放下。左：盟约；中：资金、提醒、策略、敌方情报、禁用；右：本局可用阵容 -->
     <div class="cols">
       <div class="col">{@render bCore()}{@render bExtra()}<BondStatus /></div>
-      <div class="col">{@render bInfo()}{@render bStrategy()}<FieldBoard />{@render bEnemy()}{@render bBanned()}</div>
+      <div class="col">{@render bInfo()}{@render bStrategy()}{@render bAdapt()}<FieldBoard />{@render bEnemy()}{@render bBanned()}</div>
       <div class="col">{@render bLineups()}</div>
     </div>
   {:else}
     {@render bInfo()}
     {@render bStrategy()}
+    {@render bAdapt()}
     <FieldBoard />
     {@render bCore()}
     {@render bExtra()}
@@ -850,6 +935,163 @@
     color: var(--mint);
     padding: 0 4px;
     box-shadow: inset 0 0 0 1px rgb(var(--hl-rgb) / 0.35);
+  }
+  .sn .rk {
+    font-style: normal;
+    font-size: var(--fs-2xs);
+    color: var(--fg-2);
+    padding: 0 4px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  /* 机变推荐：卡不可点（选卡在游戏里），推荐那张描青绿边 */
+  .adapt .arow {
+    cursor: default;
+  }
+  .adapt .arow:hover {
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .adapt .arow.best {
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+    background: rgb(var(--mint-rgb) / 0.07);
+  }
+  .adapt .arow:first-of-type .no {
+    color: var(--fg-2);
+    background: none;
+  }
+  .adapt .arow.best .no {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .adapt .arow.unk .an b {
+    color: var(--fg-3);
+    font-weight: normal;
+  }
+  .adapt .ad {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+  }
+  .pick {
+    font-style: normal;
+    font-size: var(--fs-2xs);
+    font-weight: normal;
+    margin-left: 6px;
+    padding: 0 4px;
+    color: var(--mint);
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .advice {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 9px 5px;
+    background: var(--hatch), var(--bg-1);
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .ah {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .ah b {
+    font-size: var(--fs-md);
+  }
+  .ah span {
+    flex: 1;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .arow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 6px;
+    text-align: left;
+    background: rgb(var(--shade-rgb) / 0.18);
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .arow:hover {
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
+  .arow:first-of-type .no {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .no {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-size: var(--fs-2xs);
+    color: var(--fg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .arow img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    flex: none;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .an {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .an b {
+    font-size: var(--fs-md);
+  }
+  .an span {
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .av {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 5px;
+    align-items: baseline;
+    justify-items: end;
+    text-align: right;
+  }
+  .av b {
+    font-size: var(--fs-lg);
+    color: var(--mint);
+    font-variant-numeric: tabular-nums;
+  }
+  .av em {
+    font-style: normal;
+    font-size: var(--fs-2xs);
+    color: var(--fg-3);
+  }
+  .av span {
+    grid-column: 1 / -1;
+    font-size: var(--fs-2xs);
+    color: var(--fg-3);
+  }
+  .why {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: var(--fs-sm);
+    color: var(--fg-3);
+  }
+  .why:hover {
+    color: var(--fg-1);
+  }
+  .wl {
+    margin: 0;
+    padding: 0 0 2px 16px;
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+    color: var(--fg-3);
   }
   .strategy p {
     margin: 1px 0 0;

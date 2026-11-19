@@ -21,13 +21,15 @@ public partial class MainWindow
         _keysBlocked = ProcessElevation.KeysBlocked(ProcessElevation.Current, gameElevated);
         _fieldHotkeyRouter.Reset();
         if (HotkeyParser.Parse(_api.Settings.FieldHotkey) is { } fieldKey)
-            _fieldSystemHotkey.Configure(_keysBlocked, fieldKey, key => RegisterHotkey(4, key),
+            _fieldSystemHotkey.Configure(_keysBlocked, fieldKey, key => RegisterSettingsHotkey(4, key, "识别场上", _api.Settings.FieldHotkey),
                 () => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 4), _ => { });
         else _fieldSystemHotkey.Dispose(() => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 4));
-        _routeSystemHotkey.Configure(_keysBlocked, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value,
-            key => RegisterHotkey(3, key),
-            () => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 3),
-            blocked => { _routeHotkeyRouter.Reset(); _overlay.SetRouteTapOnly(blocked); });
+        if (HotkeyParser.Parse(_api.Settings.Routes.Hotkey) is { } routeKey)
+            _routeSystemHotkey.Configure(_keysBlocked, routeKey,
+                key => RegisterSettingsHotkey(3, key, "路线", _api.Settings.Routes.Hotkey),
+                () => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 3),
+                blocked => { _routeHotkeyRouter.Reset(); _overlay.SetRouteTapOnly(blocked); });
+        else _routeSystemHotkey.Dispose(() => User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, 3));
     }
 
     private void InitializeHotkey()
@@ -35,8 +37,11 @@ public partial class MainWindow
         if (!_connectGame) return;
         _refreshKey = HotkeyParser.Parse(_api.Settings.RefreshKey);
         var hwnd = new WindowInteropHelper(this).Handle;
-        _keyboardHook = new KeyboardHook((key, down, modifiers, foreground) =>
+        _keyboardHook = new KeyboardHook((key, down, modifiers, foreground, device) =>
         {
+            uint normalized = key switch { 0xA0 or 0xA1 => 0x10, 0xA2 or 0xA3 => 0x11, 0xA4 or 0xA5 => 0x12, _ => key };
+            if (device && down && HotkeyParser.Parse(_api.Settings.Control.StopHotkey) is { } stop && stop.Key == normalized
+                && (modifiers & stop.Modifiers) == stop.Modifiers) _api.StopControl("hotkey");
             var game = _tracker.CurrentGameWindowHandle;
             // 原始输入线程只投递，不等待 UI、日志文件或识别锁。
             Dispatcher.BeginInvoke(() =>
@@ -44,8 +49,8 @@ public partial class MainWindow
                 if (_closing) return;
                 var actions = _keyboardRouter.Observe(key, down, modifiers, foreground,
                     game, hwnd, _hotkey, _refreshKey);
-                var routeDown = _keysBlocked ? null : _routeHotkeyRouter.Observe(key, down, foreground,
-                    game, hwnd, HotkeyParser.Parse(_api.Settings.Routes.Hotkey)!.Value, modifiers);
+                var routeDown = _keysBlocked || HotkeyParser.Parse(_api.Settings.Routes.Hotkey) is not { } routeKey ? null : _routeHotkeyRouter.Observe(key, down, foreground,
+                    game, hwnd, routeKey, modifiers);
                 if (routeDown is { } pressed) _api.PublishRouteHotkey(pressed);
                 if (!_keysBlocked && HotkeyParser.Parse(_api.Settings.FieldHotkey) is { } fieldKey
                     && _fieldHotkeyRouter.Observe(key, down, foreground, game, hwnd, fieldKey, modifiers) == true)
@@ -59,7 +64,7 @@ public partial class MainWindow
                 }
                 if (actions.Toggle) ToggleFromHotkey();
             });
-        }, _api.NotifyRosterInput);
+        }, _api.NotifyRosterInput, _api.ObserveControlInput);
         var combo = _api.Settings.ToggleHotkey;
         if (combo.Length == 0) return;
         var hotkey = HotkeyParser.Parse(combo);
@@ -81,6 +86,15 @@ public partial class MainWindow
             User32.SetForegroundWindow(new WindowInteropHelper(this).Handle);
         }
         else Browser.CoreWebView2?.PostWebMessageAsJson("{\"event\":\"hotkey\",\"data\":null}");
+    }
+
+    private bool RegisterSettingsHotkey(int id, Hotkey key, string action, string combo)
+    {
+        if (RegisterHotkey(id, key)) return true;
+        // TODO(design): 设置页接入各快捷键的常驻冲突提示后，替换宿主提示框。
+        Dispatcher.BeginInvoke(() => System.Windows.MessageBox.Show(this,
+            $"{action}快捷键「{combo}」已被占用，请在设置里换一个。"));
+        return false;
     }
 
     private bool RegisterHotkey(int id, Hotkey key) => User32.RegisterHotKey(

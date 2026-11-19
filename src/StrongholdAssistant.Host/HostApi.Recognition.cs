@@ -57,6 +57,7 @@ public sealed partial class HostApi
 
     public void UpdateConnection(Connection connection)
     {
+        if (connection.State != "connected") StopControl("lost");
         connection = connection with { Theme = connection.State == "connected" ? _detectedTheme : null };
         if (Connection == connection) return;
         Connection = connection;
@@ -193,6 +194,7 @@ public sealed partial class HostApi
             StrategyId = newMatch ? null : Match.StrategyId,
             StrategySource = newMatch ? null : Match.StrategySource,
             RoundEnemies = newMatch ? null : Match.RoundEnemies,
+            AdaptAdvice = newMatch ? null : Match.AdaptAdvice,
             CustomPicks = newMatch ? null : Match.CustomPicks,
             // 单人开局清空后首次录入详情，保留刚确认的单人模式。
             Solo = opening || (newMatch && Match.RecognizedAt is not null) ? false : Match.Solo,
@@ -203,6 +205,7 @@ public sealed partial class HostApi
         RecomputeBans();
         Match = Match with { Source = "recognized", RecognizedAt = DateTimeOffset.UtcNow.ToString("O") };
         RecordRecognizedMatch(newMatch, opening);
+        ScheduleStrategyAdvice();
         RefreshBoardRoutes();
         return Match.BannedOperators.Except(previous).Count();
     }
@@ -219,10 +222,13 @@ public sealed partial class HostApi
         {
             lock (_historyGate) CompleteHistory();
             await ResetMatchAsync(true);
-            Match = Match with { Mode = await ReadOpeningMode() };
+            var mode = await ReadOpeningMode();
+            Match = Match with { Mode = mode };
+            ScheduleStrategyAdvice();
             Changed?.Invoke("match", Match);
             return;
         }
+        ResetStrategyAdvice();
         Match = Match with { Solo = false, AwaitingDetail = false, Mode = null };
         Changed?.Invoke("match", Match);
         await RecordInformationAsync(opening: true);

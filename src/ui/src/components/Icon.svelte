@@ -52,8 +52,12 @@
   import eyeOff from 'remixicon/icons/System/eye-off-line.svg?raw'
   import bell from 'remixicon/icons/Media/notification-3-line.svg?raw'
   import award from 'remixicon/icons/Business/award-line.svg?raw'
+  import play from 'remixicon/icons/Media/play-fill.svg?raw'
+  import skip from 'remixicon/icons/Media/skip-forward-line.svg?raw'
+  import warn from 'remixicon/icons/System/error-warning-line.svg?raw'
+  import robot from 'remixicon/icons/User & Faces/robot-2-line.svg?raw'
 
-  const icons = { settings, cloud, cloudOff, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowLeft, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll, chat, flag, reply, workbench, sidebar, history, chart, eye, eyeOff, bell, award, maximize, restore }
+  const icons = { settings, cloud, cloudOff, subtract, close, refresh, search, grid, focus, add, star, starFill, check, arrowRight, arrowLeft, arrowDown, arrowUp, contractLeft, expandRight, pencil, trash, lock, lockFill, forbid, magic, scan, stop, heart, heartFill, pin, pinFill, download, upload, folder, share, paste, cut, copy, selectAll, chat, flag, reply, workbench, sidebar, history, chart, eye, eyeOff, bell, award, maximize, restore, play, skip, warn, robot }
   export type IconName = keyof typeof icons
 </script>
 

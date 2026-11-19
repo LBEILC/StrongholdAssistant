@@ -17,6 +17,24 @@ public sealed class FieldReaderTests(EnemyRecognitionFixture fixture)
         (await new JsonDataStore(Data).LoadOperatorsAsync()).Select(o => o.Name));
 
     [Theory]
+    [InlineData("63", "m12", 6, "2,1=1 4,1=3 5,1=1 2,2=1 3,3=2 4,3=2 5,3=2")]
+    [InlineData("64", "m01", 4, "2,0=1 3,0=3 4,0=1 5,0=1 1,1=1 5,2=2")]
+    [InlineData("71", "m06", 5, "4,0=1 5,0=1 2,2=2 3,2=3 5,2=2 4,3=1 5,3=1")]
+    [InlineData("73", "m12", 4, "2,0=3 1,1=1 2,1=1 4,1=1 5,1=1 0,2=1 1,2=1 2,2=1")]
+    public async Task DiagnosticBoardMatchesVisibleOperators(string sample, string map, int round, string expected)
+    {
+        using var reader = await Reader();
+        reader.KnownMap = map;
+        var frame = File.ReadAllBytes(Sample($"field-368-{sample}.png"));
+        var observation = await reader.ReadAsync(frame, DateTimeOffset.UnixEpoch,
+            new(round, 0, 1, 0, true), true, true, []);
+        var cells = observation.Cells.Where(p => p.Key.Zone == "board" && p.Value > 0)
+            .OrderBy(p => p.Key.Row).ThenBy(p => p.Key.Col)
+            .Select(p => $"{p.Key.Col},{p.Key.Row}={p.Value}");
+        Assert.Equal(expected.Split(' '), cells);
+    }
+
+    [Theory]
     [InlineData("2131", 1, 0, 4)]
     [InlineData("2051", 3, 0, 2)]
     [InlineData("2051", 5, 0, 1)]

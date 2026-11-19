@@ -1,6 +1,6 @@
 // 原型用的假后端：数据取自参考项目的当期数据表，本局信息仿照 TestData/info-ingame-1920x1080.png。
 // 禁用推算是粗略的假实现，只为让界面能走通；真实逻辑在参考项目的 BanScreenAnalyzer。
-import type { Api, BanGroup, BoardView, Catalog, CollectionMatch, CovenantGoal, Economy, EmulatorInstance, FieldState, PlacementPlan, Income, Lineup, MatchInfo, MatchRecord, Roster, RosterOperator, RosterScanStatus, RoundEnemies, RoundEnemy, RoundEnemyOptions, ScanStatus, Session, Settings, UpdateStatus } from './types'
+import type { Api, BanGroup, ControlJob, ControlMode, GameAction, BoardView, Catalog, CollectionMatch, CovenantGoal, Economy, EmulatorInstance, FieldState, PlacementPlan, Income, Lineup, MatchInfo, MatchRecord, Roster, RosterOperator, RosterScanStatus, RoundEnemies, RoundEnemy, RoundEnemyOptions, ScanStatus, Session, StrategyAdvice, AdaptAdvice, Settings, UpdateStatus } from './types'
 import raw from '../mock/catalog.json'
 import boardData from '../mock/board.json'
 import intel from '../mock/enemy-intel.json'
@@ -140,7 +140,10 @@ function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchI
   return {
     source,
     recognizedAt,
-    strategyId: 'band_amiya',
+    // ?nost：还没选策略，看开局推荐；?advice=none：给不了推荐
+    strategyId: location.search.includes('nost') ? null : 'band_amiya',
+    strategyAdvice: strategyAdvice(),
+    adaptAdvice: adaptAdvice(),
     covenants: catalog.covenants.map((c) => ({ id: c.id, incomplete: incomplete.has(c.id) })),
     bannedOperators: [...banned],
     bossId: 'enemy_1521_dslily',
@@ -154,6 +157,53 @@ function computeMatch(source: MatchInfo['source'], recognizedAt: string): MatchI
     bansScanned: !location.search.includes('rule'), // ?rule：只做过入场自动识别
     mode: { id: 'mode_single_16', name: '规程等级16' },
     economy: economy(),
+  }
+}
+// 机变推荐的假数据：?adapt 打开（战术决策三选一），?adapt=multi 六张，?adapt=part 有一张没认出，?adapt=none 没有推荐
+function adaptAdvice(): AdaptAdvice | null {
+  const q = new URLSearchParams(location.search).get('adapt')
+  if (q === null) return null
+  if (q === 'none')
+    return { status: 'unavailable', reason: '这类机变还认不出，等助手更新。', round: 9, family: null, basis: '', cards: [], assumptions: [] }
+  const pool = [
+    { id: 'tactic_coin', name: '紧急拨款', desc: '获得 4 资金' },
+    { id: 'tactic_refresh', name: '情报更新', desc: '获得 3 次免费刷新' },
+    { id: 'tactic_elite', name: '精锐整训', desc: '接下来购买的 1 名干员直接成为精锐' },
+    { id: 'tactic_layer', name: '盟誓', desc: '【拉特兰】【萨尔贡】层数 +2（无需激活）' },
+    { id: 'tactic_equip', name: '战备补给', desc: '获得 2 件 III 阶装备' },
+    { id: 'tactic_bond', name: '驰援', desc: '获得 1 名【拉特兰】干员（不高于调度中心等级）' },
+  ]
+  const rates = [0.58, 0.66, 0.61, 0.52, 0.63, 0.55]
+  const n = q === 'multi' ? 6 : 3
+  const cards = pool.slice(0, n).map((c, i) => ({ index: i, ...c, clearRate: rates[i], reachedRound: 13.6 + rates[i], rank: 0 as number | null }))
+  if (q === 'part') Object.assign(cards[2], { id: null, name: null, desc: null, clearRate: null, reachedRound: null, rank: null })
+  ;[...cards].filter((c) => c.clearRate !== null).sort((a, b) => b.clearRate! - a.clearRate!).forEach((c, i) => (c.rank = i + 1))
+  return {
+    status: 'ok',
+    round: 9,
+    family: 'tactic',
+    basis: '规程等级16',
+    cards,
+    assumptions: ['按第三方复刻里自带机器人选了这张卡后接着打的结果估计，不是你本人的胜率', '复刻里机密商店单人只给 3 格是推断的'],
+  }
+}
+// 开局选策略推荐的假数据：全部策略按一个固定的伪随机分排序
+function strategyAdvice(): StrategyAdvice {
+  if (location.search.includes('advice=none'))
+    return { status: 'unavailable', reason: '这一局的游戏数据版本和推荐模型对不上，等助手更新。', basis: '', items: [], average: { clearRate: 0, reachedRound: 0 }, assumptions: [] }
+  const items = catalog.strategies
+    .map((s, i) => {
+      const r = ((i * 7919) % 97) / 97
+      return { strategyId: s.id, clearRate: 0.25 + 0.55 * r, reachedRound: 11 + 4 * r }
+    })
+    .sort((a, b) => b.clearRate - a.clearRate)
+  const avg = (k: 'clearRate' | 'reachedRound') => items.reduce((n, x) => n + x[k], 0) / items.length
+  return {
+    status: 'ok',
+    basis: '规程等级16',
+    items,
+    average: { clearRate: avg('clearRate'), reachedRound: avg('reachedRound') },
+    assumptions: ['按第三方复刻里自带机器人的打法估计，不是你本人的胜率', '复刻里没做完的策略效果估得不准：暴躁铁皮、幻画为真'],
   }
 }
 // 回合与资金：?econ=carry|deferred|kazimier|random 换策略规则，?econ=none 没有基础资金数据
@@ -261,6 +311,8 @@ let settings: Settings = {
   gameSource: 'auto',
   emulatorSerial: '',
   adbAddress: '',
+  hideCaptureBorder: false,
+  multiInstance: location.search.includes('multi'),
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
   toggleHotkey: 'Alt+S',
@@ -271,6 +323,7 @@ let settings: Settings = {
   cloudSync: { enabled: false, since: null, pushedAt: null, prefsAt: null, deleted: [] },
   plazaNotices: true,
   operatorDefaults: {},
+  control: { enabled: false, consent: 0, external: false, mode: 'dryRun', stopHotkey: 'Ctrl+Alt+Q', api: false },
 }
 // 历史记录假数据：一局本地和森空岛对上了，一局只有本地（还在打）
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString()
@@ -334,6 +387,65 @@ const mockDownload = () =>
 const scanListeners = new Set<(s: ScanStatus) => void>()
 const windowListeners = new Set<(e: 'closing') => void>()
 const matchListeners = new Set<(m: MatchInfo) => void>()
+// 自动操作假数据（任务 391 接口）：每步 700ms；逐步确认停在 waitingConfirm 等 confirmStep
+const modeRank: Record<ControlMode, number> = { dryRun: 0, confirm: 1, auto: 2 }
+const cellText = (c: { zone: string; col: number; row: number }) =>
+  c.zone === 'bench' ? `整备区第 ${c.col} 格` : `${String.fromCharCode(65 + c.row)}${c.col + 3}`
+const actionText = (a: GameAction): string => {
+  switch (a.type) {
+    case 'buy': return `买第 ${a.slot + 1} 张卡${a.expect ? `（${a.expect}）` : ''}`
+    case 'sell': return `卖掉 ${cellText(a.from)}${a.expect ? ` 的 ${a.expect}` : ''}`
+    case 'refresh': return '刷新商店'
+    case 'freeze': return a.on ? '冻结商店' : '取消冻结'
+    case 'upgrade': return '升级'
+    case 'move': return `把 ${a.expect ?? '?'} 从 ${cellText(a.from)} 拖到 ${cellText(a.to)}${a.facing ? `，朝${{ up: '上', down: '下', left: '左', right: '右' }[a.facing]}` : ''}`
+    case 'face': return `${cellText(a.at)} 转朝向`
+    case 'ready': return a.on ? '准备就绪' : '取消准备'
+    case 'pickStrategy': return `选策略 ${a.strategyId}`
+    case 'pickAdapt': return `机变选第 ${a.index + 1} 个`
+    case 'pickCustom': return `自选 ${a.tier} 阶：${a.operators.join('、')}`
+  }
+}
+let controlJob: ControlJob | null = null
+let controlTimer: ReturnType<typeof setTimeout> | undefined
+const controlListeners = new Set<(j: ControlJob) => void>()
+const pushControl = () => controlListeners.forEach((cb) => cb(structuredClone(controlJob!)))
+const endControl = (state: ControlJob['state'], reason: ControlJob['reason'] = null, message: string | null = null) => {
+  const job = controlJob!
+  clearTimeout(controlTimer)
+  job.state = state
+  job.reason = reason
+  job.message = message
+  job.endedAt = new Date().toISOString()
+  for (const s of job.steps) if (s.state === 'pending' || s.state === 'running') s.state = 'cancelled'
+  pushControl()
+}
+const stepControl = () => {
+  const job = controlJob!
+  const i = job.steps.findIndex((s) => s.state === 'pending')
+  if (i < 0) return endControl('done')
+  const step = job.steps[i]
+  step.preview = `https://placehold.co/960x540/1b1d22/22e3b2?text=${encodeURIComponent(step.text)}`
+  // ?controlFail：第 2 步核对不通过
+  if (location.search.includes('controlFail') && i === 1) {
+    step.state = 'failed'
+    step.verified = false
+    step.problem = '做完后 C5 没有看到能天使'
+    return endControl('failed', 'verify', `第 ${i + 1} 步：做完后 C5 没有看到能天使，已停下`)
+  }
+  if (job.mode === 'confirm' && job.state !== 'waitingConfirm') {
+    job.state = 'waitingConfirm'
+    return pushControl()
+  }
+  job.state = 'running'
+  step.state = 'running'
+  pushControl()
+  controlTimer = setTimeout(() => {
+    step.state = 'done'
+    step.verified = job.mode === 'dryRun' ? null : step.action.type === 'face' ? null : true
+    stepControl()
+  }, 700)
+}
 const wait = <T>(v: T, ms = 120) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), ms))
 
 // 假数据：仿录屏第 6 回合休整期。待确认（云迹 / 承曦格雷伊 / 真理）、自动填（风絮）、认不出（一个 I 阶）各一格，其余是确定的
@@ -491,7 +603,20 @@ function stopRoster(reason: RosterScanStatus['reason'], read: number) {
   pushRosterScan({ running: false, read, reason, message })
 }
 
+const profiles = new Set<string>()
 export const mockApi: Api = {
+  currentProfile: async () => null,
+  listProfiles: async () => [...profiles].sort(),
+  createProfile: async name => {
+    if (!/^[a-z0-9-]{1,24}$/i.test(name) || /^(con|aux|nul|prn|com[1-9]|lpt[1-9])$/i.test(name))
+      throw new Error('配置名限 1 至 24 个英文字母、数字或短横线，请避开系统保留名。')
+    const id = name.toLowerCase()
+    if (profiles.has(id)) throw new Error('这个配置名已经存在。')
+    profiles.add(id)
+  },
+  launchProfile: async name => {
+    if (name !== null && !profiles.has(name.toLowerCase())) throw new Error('这个配置不存在。')
+  },
   catalog: () => wait(catalog, 0),
   // 地址带 ?overlay 时模拟覆盖模式，方便看收起竖条
   // ?overlay：覆盖模式；?sideright / ?sideleft：侧栏在游戏哪一侧（不写时贴靠在右、覆盖在左）
@@ -948,4 +1073,45 @@ export const mockApi: Api = {
     rosterScanListeners.add(cb)
     return () => rosterScanListeners.delete(cb)
   },
+  runActions: async (actions, mode) => {
+    if (!settings.control.enabled) throw new Error('先在设置里打开自动操作')
+    if (controlJob && (controlJob.state === 'running' || controlJob.state === 'waitingConfirm')) throw new Error('上一批操作还没做完')
+    const limit = settings.control.mode
+    controlJob = {
+      id: String(Date.now()), source: 'ui',
+      mode: mode && modeRank[mode] < modeRank[limit] ? mode : limit,
+      state: 'running', reason: null, message: null, startedAt: new Date().toISOString(), endedAt: null,
+      steps: actions.map((action) => ({ action, text: actionText(action), state: 'pending', problem: null, preview: null, verified: null })),
+    }
+    setTimeout(stepControl, 200)
+    return wait(controlJob, 0)
+  },
+  runPlacement: async (mode) => {
+    const moves = (placement()?.moves ?? []).filter((m) => m.from.zone !== m.to.zone || m.from.col !== m.to.col || m.from.row !== m.to.row)
+    if (!moves.length) throw new Error('现在就是推荐站位，不用挪')
+    return mockApi.runActions(moves.map((m) => ({ type: 'move', from: m.from, to: m.to, expect: m.operator, ...(m.facing ? { facing: m.facing } : {}) })), mode)
+  },
+  confirmStep: async (id, answer) => {
+    if (controlJob?.id !== id || controlJob.state !== 'waitingConfirm') return
+    const step = controlJob.steps.find((s) => s.state === 'pending')!
+    if (answer === 'skip') step.state = 'skipped'
+    controlJob.state = 'running'
+    if (answer === 'skip') return stepControl()
+    step.state = 'running'
+    pushControl()
+    controlTimer = setTimeout(() => {
+      step.state = 'done'
+      step.verified = true
+      stepControl()
+    }, 700)
+  },
+  stopControl: async () => {
+    if (controlJob && (controlJob.state === 'running' || controlJob.state === 'waitingConfirm')) endControl('stopped', 'user', '已停止')
+  },
+  controlJob: () => wait(controlJob, 0),
+  onControlJob: (cb) => {
+    controlListeners.add(cb)
+    return () => controlListeners.delete(cb)
+  },
+  controlApi: () => wait({ address: settings.control.api ? 'http://127.0.0.1:51234' : null, profile: 'default' }, 0),
 }

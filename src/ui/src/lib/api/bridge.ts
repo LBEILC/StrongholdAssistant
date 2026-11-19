@@ -47,6 +47,10 @@ const call =
     })
 
 export const bridgeApi: Api = {
+  currentProfile: call('currentProfile'),
+  listProfiles: call('listProfiles'),
+  createProfile: call('createProfile'),
+  launchProfile: call('launchProfile'),
   catalog: call('catalog'),
   connection: call('connection'),
   match: call('match'),
@@ -121,6 +125,13 @@ export const bridgeApi: Api = {
   setRosterOperator: call('setRosterOperator'),
   onRoster: listen('roster'),
   onRosterScan: listen('rosterScan'),
+  runActions: call('runActions'),
+  runPlacement: call('runPlacement'),
+  confirmStep: call('confirmStep'),
+  stopControl: call('stopControl'),
+  controlJob: call('controlJob'),
+  onControlJob: listen('controlJob'),
+  controlApi: call('controlApi'),
   onWindow: listen('window'),
   onMaximized: listen('maximized'),
   onDeepLink: listen('deepLink'),

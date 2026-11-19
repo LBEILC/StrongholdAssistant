@@ -157,13 +157,15 @@ public class OcrScannerService : IDisposable
     public Func<bool> BoardRoutesRequested { get; set; } = () => false;
     public event Action<byte[]?, EconomyReading?>? BoardFrameReady;
     public Action<byte[], DateTimeOffset>? CollectionFrame { get; set; }
-    public Action<DateTimeOffset>? CollectionScanCompleted { get; set; }
+    public Action<byte[], EconomyReading>? CollectionEnemyPanel { get; set; }
+    public Func<DateTimeOffset, Task>? CollectionScanCompleted { get; set; }
     public bool BoardMainScreenVisible { get; private set; }
     private byte[]? _boardSurfacePixels;
     private (int, int) _boardSurfaceSize;
     public bool BoardShopVisible => _shopReader.HasVisibleCards;
     public bool BoardDetailVisible { get; private set; }
     public Func<byte[], DateTimeOffset, EconomyReading?, bool, bool, IReadOnlyList<ShopItem>, Task>? ObserveFieldAsync { get; set; }
+    public Func<byte[], int, int, Task<bool>>? ObserveAdaptFrameAsync { get; set; }
     public Func<byte[], int, int, EconomyReading?, double, Task>? ObserveMatchFrameAsync { get; set; }
 
     // 敌人面板是悬停弹出的，只停 1～2 秒，而一轮扫描要 2～3 秒：主扫描忙时探针每 300 ms 只截面板那一小块看一眼，
@@ -174,6 +176,7 @@ public class OcrScannerService : IDisposable
     private bool _enemyPanelOpen, _enemyPanelFast;
     /// <summary>面板新弹出一次（上一次看到的截图里还没有）时触发，在扫描线程上。</summary>
     public event Action? EnemyPanelSeen;
+    public Func<byte[], EconomyReading, Task>? ObserveEnemyFrameAsync { get; set; }
     /// <summary>宿主给：屏幕上这块被助手自己的窗口（侧栏）盖着时返回 true，探针就不截。</summary>
     public Func<Rectangle, bool>? ProbeBlocked { get; set; }
 
@@ -361,7 +364,7 @@ public class OcrScannerService : IDisposable
     {
         CollectionFrame?.Invoke(screenshot, capturedAt);
         try { await ScanFrameCoreAsync(screenshot, width, height, capturedAt, captureMs, fingerprint, fingerprintMs); }
-        finally { CollectionScanCompleted?.Invoke(capturedAt); }
+        finally { if (CollectionScanCompleted is { } complete) await complete(capturedAt); }
     }
 
     private async Task ScanFrameCoreAsync(byte[] screenshot, int width, int height, DateTimeOffset capturedAt, double captureMs,
@@ -371,8 +374,19 @@ public class OcrScannerService : IDisposable
             if (!_refreshWindow.Accept(capturedAt)) return;
         using var stream = new MemoryStream(screenshot);
         using var bitmap = new Bitmap(stream);
+        // 在遮挡、战斗及棋盘判定前识别机变。先用标题颜色过滤普通帧。
+        if (!ManualWaiting && !_pauseBanScreenDetection && ObserveAdaptFrameAsync is { } adapt
+            && AdaptReader.TitleVisible(bitmap) && await adapt(screenshot, width, height))
+        {
+            BoardMainScreenVisible = BoardDetailVisible = false;
+            _boardSurfacePixels = null;
+            BoardFrameReady?.Invoke(null, null);
+            PublishShopItems([], false, capturedAt);
+            _fingerprint = null;
+            return;
+        }
         bool panel = RoundEnemyReader.PanelVisible(bitmap);
-        if (await ReadEnemyPanelAsync(screenshot, width, height, panel)) return;
+        if (await ReadEnemyPanelAsync(screenshot, panel)) return;
         if (ManualWaiting) return;
         var theme = _shopReader.Theme;
         var key = (width, height, theme);
@@ -564,6 +578,14 @@ public class OcrScannerService : IDisposable
                 using (FieldRecognitionTiming.Measure("observeField"))
                     await observe(screenshot, capturedAt, fieldEconomy, BoardMainScreenVisible, BoardShopVisible, _shopReader.AllItems);
         }
+        // 初见面板时可能还没有上一帧的休整读数，本轮确认回合后再读一次。
+        if (panel && boardEconomy is { IsRest: true } && !ManualWaiting && !_pauseBanScreenDetection
+            && ObserveEnemyFrameAsync is { } observeEnemy)
+        {
+            ObserveEnemyPanel(true);
+            await observeEnemy(screenshot, boardEconomy);
+            CollectionEnemyPanel?.Invoke(screenshot, boardEconomy);
+        }
         if (!ManualWaiting && !_pauseBanScreenDetection && ObserveMatchFrameAsync is { } observeMatch)
             using (FieldRecognitionTiming.Measure("observeMatch"))
                 await observeMatch(screenshot, width, height, boardEconomy, _shopReader.UiScale ?? 1);
@@ -581,7 +603,7 @@ public class OcrScannerService : IDisposable
     {
         // 只在主扫描忙、休整期（已开局）、PC 截图时；截不到就跳过这一次，不重试也不记日志
         if (_scanGate.CurrentCount != 0 || ManualWaiting || _pauseBanScreenDetection || _lastEconomy is not { IsRest: true }
-            || ObserveMatchFrameAsync is null) return;
+            || ObserveEnemyFrameAsync is null) return;
         if (Interlocked.Exchange(ref _probing, 1) != 0) return;
         try
         {
@@ -606,15 +628,15 @@ public class OcrScannerService : IDisposable
     }
 
     /// <summary>先读探针存下的面板整图；本帧是面板时只读敌人（棋盘被挡着，跳过开局页、商店和场上认人），返回 true。</summary>
-    private async Task<bool> ReadEnemyPanelAsync(byte[] screenshot, int width, int height, bool panel)
+    private async Task<bool> ReadEnemyPanelAsync(byte[] screenshot, bool panel)
     {
-        var observe = ObserveMatchFrameAsync;
+        var observe = ObserveEnemyFrameAsync;
         bool rest = !_pauseBanScreenDetection && _lastEconomy is { IsRest: true } && observe is not null;
         if (Interlocked.Exchange(ref _pendingEnemyFrame, null) is { } pending && rest && !panel)
         {
             ObserveEnemyPanel(true);
-            var (w, h) = GetFrameDimensions(pending);
-            await observe!(pending, w, h, _lastEconomy, _shopReader.UiScale ?? 1);
+            await observe!(pending, _lastEconomy!);
+            CollectionEnemyPanel?.Invoke(pending, _lastEconomy!);
         }
         if (!rest || !panel)
         {
@@ -623,7 +645,8 @@ public class OcrScannerService : IDisposable
             return false;
         }
         ObserveEnemyPanel(true);
-        await observe!(screenshot, width, height, _lastEconomy, _shopReader.UiScale ?? 1);
+        await observe!(screenshot, _lastEconomy!);
+        CollectionEnemyPanel?.Invoke(screenshot, _lastEconomy!);
         _enemyPanelFast = true;
         _scanTimer.Interval = 150;
         return true;

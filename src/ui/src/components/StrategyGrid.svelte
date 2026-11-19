@@ -16,8 +16,11 @@
     /** 搜索词：按名字、发起者、效果过滤 */
     q?: string
     onpick?: (id: string) => void
+    /** 开局推荐（决策 S2）：策略 id → 预计通关率 0～1，头像下方显示百分比，详情里写名次 */
+    advice?: Map<string, { clearRate: number; rank: number }> | null
   }
-  let { selected = null, current = null, q = '', onpick }: Props = $props()
+  let { selected = null, current = null, q = '', onpick, advice = null }: Props = $props()
+  const pct = (v: number) => `${Math.round(v * 100)}%`
 
   // 盟约型 = 效果里点名了某个核心盟约（国家）；当期 17 个，和游戏里的分组一致
   const cores = app.catalog.covenants.filter((c) => c.kind === 'core')
@@ -46,6 +49,7 @@
           <b>{viewing.name}</b><span>{viewing.initiator}</span>
           {#if viewing.id === current}<em class="term now">本局</em>{/if}
           {#if onpick && selected === viewing.id}<em class="sel"><Icon name="check" size={11} />已选</em>{/if}
+          {#if advice?.has(viewing.id)}{@const a = advice.get(viewing.id)!}<em class="adv">推荐第 {a.rank} · 预计通关 {pct(a.clearRate)}</em>{/if}
         </div>
         <p><GameText text={viewing.description} /></p>
       </div>
@@ -70,6 +74,7 @@
           {#if cov}<span class="cv"><span class="glyph" style:--src="url({asset.bond(cov)})"></span></span>{/if}
           {#if s.id === current}<span class="now term">本局</span>{/if}
           {#if selected === s.id}<span class="ck"><Icon name="check" size={11} /></span>{/if}
+          {#if advice?.has(s.id)}{@const a = advice.get(s.id)!}<span class="rate" class:top={a.rank <= 3}>{pct(a.clearRate)}</span>{/if}
         </button>
       {/each}
     </div>
@@ -135,6 +140,10 @@
   .dn .now {
     color: var(--mint-ink);
     background: var(--mint);
+  }
+  .dn .adv {
+    color: var(--fg-2);
+    box-shadow: inset 0 0 0 1px var(--line);
   }
   .dn .sel {
     display: inline-flex;
@@ -238,6 +247,21 @@
     top: 0;
     font-size: var(--fs-2xs);
     padding: 1px 3px 0;
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
+  .rate {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    font-size: var(--fs-2xs);
+    line-height: 1.5;
+    text-align: center;
+    color: var(--fg-1);
+    background: rgb(var(--shade-rgb) / 0.72);
+  }
+  .rate.top {
     color: var(--mint-ink);
     background: var(--mint);
   }

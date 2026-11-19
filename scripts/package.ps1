@@ -17,8 +17,8 @@ $release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
 $zip = Join-Path $release "StrongholdAssistant-v$Version-win-x64.zip"
 $setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
 $packageCache = Join-Path $release "package-$Version.json"
-$paths = @('src', 'data', 'installer', 'branding', 'Directory.Build.props', 'LICENSE', 'LICENSE.upstream', 'NOTICE', 'ASSETS.md', ':(exclude)src/StrongholdAssistant.Tests')
-$entries = @(& git -c core.quotepath=false ls-tree -r HEAD -- src data installer branding Directory.Build.props LICENSE LICENSE.upstream NOTICE ASSETS.md | Where-Object { ($_ -split "`t", 2)[1] -notlike 'src/StrongholdAssistant.Tests/*' })
+$paths = @('scripts/package.ps1', 'scripts/package-zip.ps1', 'src', 'data', 'installer', 'branding', 'Directory.Build.props', 'LICENSE', 'LICENSE.upstream', 'NOTICE', 'ASSETS.md', ':(exclude)src/StrongholdAssistant.Tests')
+$entries = @(& git -c core.quotepath=false ls-tree -r HEAD -- scripts/package.ps1 scripts/package-zip.ps1 src data installer branding Directory.Build.props LICENSE LICENSE.upstream NOTICE ASSETS.md | Where-Object { ($_ -split "`t", 2)[1] -notlike 'src/StrongholdAssistant.Tests/*' })
 if ($LASTEXITCODE -ne 0) { throw '读取打包输入失败。' }
 $sha = [Security.Cryptography.SHA256]::Create()
 try { $fingerprint = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($entries -join "`n"))) } finally { $sha.Dispose() }
@@ -64,20 +64,30 @@ if (!$hasRid -or !(Test-Path $restoreCache) -or (Get-Content $restoreCache -Raw)
     Run { dotnet restore src/StrongholdAssistant.Host -r win-x64 -p:ReleaseBuild=true }
     Set-Content $restoreCache $restoreHash -Encoding ASCII
 }
-Run { dotnet publish src/StrongholdAssistant.Host -c Release -r win-x64 --self-contained true --no-restore -p:ReleaseBuild=true -p:DebugType=None -p:DebugSymbols=false -o $publish }
+Run { dotnet publish src/StrongholdAssistant.Host -c Release -r win-x64 --self-contained true --no-restore -p:ReleaseBuild=true -p:DebugType=None -p:DebugSymbols=false -o (Join-Path $publish app) }
+# sa 命令行（任务 392）和宿主同一运行时，发布到同一个 app 目录，只多出 sa.exe、sa.dll
+Run { dotnet publish src/StrongholdAssistant.Cli -c Release -r win-x64 --self-contained true -p:ReleaseBuild=true -p:DebugType=None -p:DebugSymbols=false -o (Join-Path $publish app) }
+foreach ($dir in @('data','ui')) {
+    Move-Item -LiteralPath (Join-Path $publish "app/$dir") -Destination $publish
+}
+# 用 SDK 自带的 Roslyn 和 Windows 自带的 .NET Framework 引用编译稳定的小启动器。
+$sdk = (dotnet --list-sdks | Select-Object -Last 1) -replace '^([^ ]+) \[(.+)\]$', '$2/$1'
+$framework = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319'
+Run { dotnet "$sdk/Roslyn/bincore/csc.dll" /nologo /noconfig /nostdlib /target:winexe /platform:x64 /optimize+ /deterministic+ "/reference:$framework/mscorlib.dll" "/reference:$framework/System.dll" /win32icon:branding/icon.ico "/out:$publish/StrongholdAssistant.exe" src/Launcher/Launcher.cs }
+
 foreach ($name in @('LICENSE','LICENSE.upstream','NOTICE','ASSETS.md')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination $publish
 }
 # 与上游独立运行包一致，随包携带本机已安装的 x64 VC++ 运行库。
 foreach ($name in @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','msvcp140_atomic_wait.dll','msvcp140_codecvt_ids.dll','vcruntime140.dll','vcruntime140_1.dll','concrt140.dll')) {
-    Copy-Item -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name) -Destination (Join-Path $publish 'runtimes/win-x64/native')
+    Copy-Item -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name) -Destination (Join-Path $publish 'app/runtimes/win-x64/native')
 }
 Get-ChildItem -LiteralPath $publish -File -Recurse | Where-Object { $_.Extension -in @('.pdb', '.xml') -or $_.Name -eq 'createdump.exe' } | Remove-Item -Force
 # 产品只做图像匹配，不使用 OpenCV 视频解码插件。
 Get-ChildItem -LiteralPath $publish -File -Recurse -Filter 'opencv_videoio_ffmpeg*.dll' | Remove-Item -Force
 # Maa 的包通过内容复制带入所有平台文件；只裁剪本次生成的发布目录。
-$unused = @(Get-ChildItem -LiteralPath (Join-Path $publish 'runtimes') -Directory | Where-Object Name -ne 'win-x64')
-$unused += Get-Item -LiteralPath (Join-Path $publish 'MaaAgentBinary') -ErrorAction SilentlyContinue
+$unused = @(Get-ChildItem -LiteralPath (Join-Path $publish 'app/runtimes') -Directory | Where-Object Name -ne 'win-x64')
+$unused += Get-Item -LiteralPath (Join-Path $publish 'app/MaaAgentBinary') -ErrorAction SilentlyContinue
 foreach ($item in $unused) {
     $target = [IO.Path]::GetFullPath($item.FullName)
     if (!$target.StartsWith($publish + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {

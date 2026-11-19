@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { control, MODES } from '../lib/control.svelte'
   import { slide } from 'svelte/transition'
   import { opMatches } from '../lib/opsearch'
   import { cubicOut } from 'svelte/easing'
@@ -550,7 +551,15 @@
               {:else}<em class="mv">{moveN ? `游戏里要挪 ${moveN} 人` : '现在就是推荐站位'}</em>{/if}
               <span class="sp"></span>
               <button class="chip" class:on={showPlan} onclick={() => (showPlan = !showPlan)}><i></i>虚影</button>
-              {#if moveN}<button class="act" onclick={() => field.applyPlan()}><Icon name="magic" size={13} />照推荐摆</button>{/if}
+              {#if moveN}<button class="act" onclick={() => field.applyPlan()} title="在这块小棋盘上照推荐摆着看，不动游戏"><Icon name="magic" size={13} />小棋盘上摆</button>{/if}
+              {#if moveN && control.settings.enabled}
+                <button
+                  class="act game"
+                  disabled={field.planStale || pl.goal !== goal || control.running}
+                  title={field.planStale ? '场上变了，等重新算完再摆' : control.running ? '上一批操作还没做完' : `在游戏里照推荐挪这 ${moveN} 人（${MODES.find((m) => m.id === control.settings.mode)?.label}）`}
+                  onclick={() => control.run(() => api.runPlacement())}
+                ><Icon name="play" size={12} />游戏里摆</button>
+              {/if}
             </div>
             {#if rec}
               <p class="sim">
@@ -1095,6 +1104,20 @@
   .act:hover {
     color: var(--fg-0);
     box-shadow: inset 0 0 0 1px var(--line-hi);
+  }
+  .act.game {
+    color: var(--mint-ink);
+    background: var(--mint);
+    box-shadow: none;
+    font-weight: var(--fw-bold);
+  }
+  .act.game:hover:not(:disabled) {
+    color: var(--mint-ink);
+    background: var(--mint-hi);
+    box-shadow: none;
+  }
+  .act.game:disabled {
+    opacity: 0.4;
   }
   .rec {
     display: flex;

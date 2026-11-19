@@ -32,10 +32,14 @@
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import UpdateBar from './components/UpdateBar.svelte'
+  import ControlBar from './components/ControlBar.svelte'
+  import ControlRisk from './components/ControlRisk.svelte'
+  import { control } from './lib/control.svelte'
   import { FONT_WEIGHTS, fontStack } from './lib/fonts'
 
   const EDGES: ResizeEdge[] = ['n', 's', 'w', 'e', 'nw', 'ne', 'sw', 'se']
   let upH = $state(0)
+  control.init()
   $effect(() => {
     if (app.collapsed === 'up' && upH) api.collapseUp(upH)
   })
@@ -198,6 +202,7 @@
         </div>
       {/key}
     </main>
+    <ControlBar />
     <DetailSheet />
     {#if app.workbench && app.tab === 'codex' && !app.detail}
       <!-- 工作台图鉴：右边常驻详情栏，没选中时给个提示 -->
@@ -212,6 +217,7 @@
     <PlazaSheet />
     <Toast />
     <SettingsSheet />
+    <ControlRisk />
     <ChangelogSheet />
   </div>
 {/snippet}

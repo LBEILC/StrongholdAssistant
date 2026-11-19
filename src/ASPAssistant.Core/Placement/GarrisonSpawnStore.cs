@@ -25,7 +25,7 @@ public sealed class GarrisonSpawnStore
     private sealed record Enemy(string Name, double Hp, double Atk, double Def, double Res, double Speed, double Interval,
         double Range, bool Flying, bool Arts, string Rank, int LifePoints, TraitsDto? Traits, int? Weight);
     private sealed record EmberDto(int Hits, double Seconds);
-    private sealed record SpawnDto(string Enemy, int Count, double Delay);
+    private sealed record SpawnDto(string Enemy, int Count, double Delay, bool? CountsOnLeak);
     private sealed record ElementDto(string Kind, double Ratio);
     private sealed record BleedDto(double Dps, double Seconds);
     private sealed record CloudDto(double Dps, double AtkScale, double Range, double Seconds, bool AtSource);
@@ -39,7 +39,7 @@ public sealed class GarrisonSpawnStore
     private sealed record TraitsDto(bool Invisible, double? Refraction, double? RefractionHp, int? Shield, int? DeathShieldAura,
         EmberDto? Ember, double? Reborn, SpawnDto[]? OnDeath, ElementDto? Element, BleedDto? Bleed, CloudDto? Cloud,
         CritDto? Crit, AuraDto? Aura, SlowDto? SlowOperators, double? UnblockedTaken, int? BlockCost, int? MinBlock, double? Regen,
-        StunDto? Stun, SplashDto? Splash, ChainDto? Chain, LineDto? Line);
+        StunDto? Stun, SplashDto? Splash, ChainDto? Chain, LineDto? Line, DefenseDecay? DefenseDecay);
     private sealed record Act(string Gate, string? Slot, string Enemy, int Count, double? Pre, double? Interval);
     private sealed record Group(string Key, string Name, string Type, double Weight, double Prob, bool Flying, Act[] Acts);
     private sealed record Endgame(string? Id, string? BossKey, string? Name, Act[] Actions);
@@ -127,6 +127,9 @@ public sealed class GarrisonSpawnStore
     }
 
     /// <summary>An enemy with the round's buff and its mechanics (what it spawns on death too).</summary>
+    public EnemyProfile? Profile(string key, double atk, double hp, double move) =>
+        Profile(key, (atk, hp, 0, move));
+
     private EnemyProfile? Profile(string key, (double Atk, double Hp, double AttackSpeedAdd, double Move) buff, int depth = 0)
     {
         if (!_data.Enemies.TryGetValue(key, out var e)) return null;
@@ -136,13 +139,14 @@ public sealed class GarrisonSpawnStore
             Invisible = t.Invisible,
             RefractionRes = t.Refraction ?? 0,
             Shield = t.Shield ?? 0,
+            DefenseDecay = t.DefenseDecay,
             DeathShieldAura = t.DeathShieldAura ?? 0,
             EmberHits = t.Ember?.Hits ?? 0,
             EmberSeconds = t.Ember?.Seconds ?? 0,
             RebornSeconds = t.Reborn ?? 0,
             OnDeath = depth > 2 || t.OnDeath is null ? []
                 : [.. t.OnDeath.Select(d => (d, p: Profile(d.Enemy, buff, depth + 1))).Where(x => x.p is not null)
-                    .Select(x => new DeathSpawn(x.p!, Math.Max(1, x.d.Count), x.d.Delay))],
+                    .Select(x => new DeathSpawn(x.p! with { CountsOnLeak = x.d.CountsOnLeak ?? true }, Math.Max(1, x.d.Count), x.d.Delay))],
             Element = t.Element?.Kind switch
             {
                 "burning" => ElementKind.Burning, "apoptosis" => ElementKind.Apoptosis,

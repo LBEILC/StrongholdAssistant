@@ -13,7 +13,21 @@ namespace ASPAssistant.Core.Services;
 public sealed class PcWindowCapture : IDisposable
 {
     private readonly object _gate = new();
-    private MaaWin32Controller? _controller;
+    private readonly Func<nint, IMaaController> _createController;
+    private IMaaController? _controller;
+    private volatile bool _hideCaptureBorder;
+    internal bool HideCaptureBorder => _hideCaptureBorder;
+
+    public PcWindowCapture() : this(window =>
+    {
+        _ = Task.Run(CaptureBorderDiagnostic.Log);
+        CrashGuard.WgcStarting();
+        return new MaaWin32Controller(new DesktopWindowInfo(window, "", "", Win32ScreencapMethod.FramePool,
+            Win32InputMethod.None, Win32InputMethod.None), LinkOption.None, CheckStatusOption.None);
+    }) { }
+
+    internal PcWindowCapture(Func<nint, IMaaController> createController) => _createController = createController;
+
     private nint _window;
     private bool _initializationFailed;
     private byte[]? _fingerprint;
@@ -22,10 +36,26 @@ public sealed class PcWindowCapture : IDisposable
     public string Method { get; private set; } = "bitblt";
     public string? LastFallbackReason { get; private set; }
 
+    public void SetHideCaptureBorder(bool enabled)
+    {
+        lock (_gate)
+        {
+            if (_hideCaptureBorder == enabled) return;
+            _hideCaptureBorder = enabled;
+            if (enabled)
+            {
+                Dispose();
+                Fallback("设置里打开了去掉黄框");
+            }
+            else LastFallbackReason = null;
+        }
+    }
+
     public Bitmap? Capture(nint window, bool requireFresh = true)
     {
         lock (_gate)
         {
+            if (_hideCaptureBorder) return null;
             if (_window != window)
             {
                 _controller?.Dispose();
@@ -43,10 +73,7 @@ public sealed class PcWindowCapture : IDisposable
                 if (_controller is null)
                 {
                     _initializationFailed = true;
-                    _ = Task.Run(CaptureBorderDiagnostic.Log);
-                    CrashGuard.WgcStarting();
-                    _controller = new(new DesktopWindowInfo(window, "", "", Win32ScreencapMethod.FramePool,
-                        Win32InputMethod.None, Win32InputMethod.None), LinkOption.None, CheckStatusOption.None);
+                    _controller = _createController(window);
                     if (_controller.LinkStart().Wait() != MaaJobStatus.Succeeded)
                     {
                         _initializationFailed = true;

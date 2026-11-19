@@ -23,7 +23,16 @@ public sealed partial class HostApi
     private readonly Dictionary<string, bool> _manualBans = [];
     private readonly HashSet<string> _avatarBans = [];
     public JsonElement Catalog { get; }
-    public MatchInfo Match { get; private set; }
+    private MatchInfo _match = null!;
+    public MatchInfo Match
+    {
+        get { lock (_adviceGate) return _match; }
+        private set
+        {
+            lock (_adviceGate)
+                _match = value.StrategyAdvice == _match?.StrategyAdvice ? value : value with { StrategyAdvice = _match?.StrategyAdvice };
+        }
+    }
     private GameModeInfo[] _modes = [];
 
     private HostApi(string userDirectory, Dictionary<string, string> ids, List<Operator> operators,
@@ -105,6 +114,11 @@ public sealed partial class HostApi
                 if (extra[category]![entry![category == "bosses" ? "id" : "name"]!.GetValue<string>()] is JsonObject fields)
                     foreach (var field in fields) entry[field.Key] = field.Value?.DeepClone();
         var api = new HostApi(userDirectory, ids, operators, covenants, JsonSerializer.SerializeToElement(merged, JsonOptions));
+        api._gameDataVersion = store.StrategySeason?.Replace('/', '@');
+        api._openingStrategies = strategies;
+        api._adaptModel = new(() => LoadAdaptModel(dataDirectory));
+        api._strategyModel = new(() => LoadStrategyModel(Path.Combine(dataDirectory, "decision", "strategy.json")));
+        api._multiStrategyModel = new(() => LoadStrategyModel(Path.Combine(dataDirectory, "decision", "strategy-multi.json")));
         using var roundIncome = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "round_income.json")));
         api._roundIncome = roundIncome.RootElement.GetProperty("default").Deserialize<Dictionary<int, int>>()!;
         api._estimatedIncomeRounds = roundIncome.RootElement.GetProperty("estimated").Deserialize<HashSet<int>>()!;
@@ -138,7 +152,9 @@ public sealed partial class HostApi
     {
         _ = CovenantName(id);
         Match = Match with { Covenants = Match.Covenants.Select(c => c.Id == id ? c with { Incomplete = incomplete } : c).ToArray() };
-        return RecomputeBans();
+        RecomputeBans();
+        ScheduleStrategyAdvice();
+        return Match;
     }
 
     public MatchInfo SetOperatorBanned(string name, bool banned)
@@ -146,7 +162,9 @@ public sealed partial class HostApi
         if (!_operators.Any(o => o.Name == name)) throw new ArgumentException("干员不存在。");
         _manualBans[name] = banned;
         SetBanGroupOperator(name, banned);
-        return RecomputeBans();
+        RecomputeBans();
+        ScheduleStrategyAdvice();
+        return Match;
     }
 
     private MatchInfo RecomputeBans()
@@ -380,6 +398,7 @@ public sealed partial class HostApi
             ResetField();
             lock (_historyGate)
             {
+                _collections?.End(_activeRecord);
                 _activeRecord = null;
                 ClearEconomy();
             }
@@ -388,6 +407,7 @@ public sealed partial class HostApi
             _banGroups.Clear();
             Match = new("none", null, _covenants.Select(c => new CovenantState(_ids[c.Name], false)).ToArray(), [], null, [])
                 { Solo = solo, AwaitingDetail = solo };
+            ResetStrategyAdvice();
             RecomputeTracking();
             Changed?.Invoke("match", Match);
             return Match;
@@ -422,6 +442,10 @@ public sealed partial class HostApi
         T Read<T>(int index) => args[index].Deserialize<T>(JsonOptions)!;
         switch (method)
         {
+            case "currentProfile": return AssistantProfile.Current.Name;
+            case "listProfiles": return AssistantProfile.Current.List();
+            case "createProfile": AssistantProfile.Current.Named(args[0].GetString()).Create(false); return null;
+            case "launchProfile": AssistantProfile.Current.Launch(args[0].GetString()); return null;
             case "plazaLogin": return await PlazaLoginAsync();
             case "sklandGuide": return await SklandGuideAsync(args[0].GetString()!);
             case "sklandGuides": return await SklandGuidesAsync(Read<SklandGuideQuery>(0));
@@ -455,11 +479,18 @@ public sealed partial class HostApi
             case "emulatorInstances": return await Task.Run(() => ASPAssistant.Core.Services.GameConnectionService.DiscoverEmulatorDevices()
                 .Select(d => new EmulatorInstance(d.Kind, d.Serial, d.Name)).ToArray());
             case "match": return Match;
+            case "recommendOpeningStrategies": return RecommendOpeningStrategies(GetMatchState(), Read<string[]>(0));
             case "field": return Field;
             case "confirmField": ConfirmField(); return null;
             case "collections": return await CollectionsAsync();
             case "exportCollection": return await ExportCollectionAsync(Read<string>(0));
             case "clearCollections": await ClearCollectionsAsync(); return null;
+            case "runActions": return RunActions(Read<ASPAssistant.Core.Control.GameAction[]>(0), args.Length > 1 ? args[1].GetString() : null);
+            case "confirmStep": _control?.Confirm(Read<string>(0), Read<string>(1)); return null;
+            case "stopControl": StopControl("user"); return null;
+            case "controlJob": return _control?.Current;
+            case "controlApi": return ControlApiStatus();
+            case "runPlacement": return RunActions(PlacementMoves(Placement, Field), args.Length > 0 ? args[0].GetString() : null);
             case "recognizeField": return await RecognizeFieldAsync();
             case "placement": return Placement;
             case "board": return Board();

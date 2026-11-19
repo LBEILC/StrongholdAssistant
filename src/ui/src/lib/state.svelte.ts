@@ -57,7 +57,7 @@ export const covenantsOf = (m: LineupMember) => {
   return [...new Set([...o.core, ...o.extra, ...(m.transform ? [m.transform] : []), ...shift])]
 }
 
-export type SettingsTab = 'game' | 'window' | 'keys' | 'account' | 'about'
+export type SettingsTab = 'game' | 'window' | 'keys' | 'control' | 'account' | 'about'
 
 export class AppState {
   catalog: Catalog = catalog

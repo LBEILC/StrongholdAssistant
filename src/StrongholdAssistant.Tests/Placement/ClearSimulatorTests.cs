@@ -101,13 +101,36 @@ public class ClearSimulatorTests
     }
 
     [Fact]
-    public void DeathSpawnsAddEnemies()
+    public void DeathSpawnsFightWithoutIncreasingWaveTotal()
     {
         var child = Grunt with { Name = "大君之触", Hp = 500 };
         var parent = Grunt with { Traits = new EnemyTraits { OnDeath = [new DeathSpawn(child, 2, 1)] } };
         var r = ClearSimulator.Run([Guard(2)], [Straight], Real(parent, 2));
-        r.Spawned.Should().Be(6);
-        r.Killed.Should().Be(6);
+        r.Spawned.Should().Be(2);
+        r.Killed.Should().Be(2);
+        r.Kills["近卫"].Should().Be(6);
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 2)]
+    public void EscapedChildrenUseTheirSettlementFlag(bool counted, int leaks)
+    {
+        var child = Grunt with { Hp = 100000, CountsOnLeak = counted };
+        var parent = Grunt with { Hp = 100, Traits = new EnemyTraits { OnDeath = [new(child, 2, 0)] } };
+        var r = ClearSimulator.Run([Sniper(3)], [Straight], Real(parent, 1));
+        r.Spawned.Should().Be(1);
+        r.Leaked.Should().Be(leaks);
+        r.Handled.Should().Be(1 - leaks);
+    }
+
+    [Fact]
+    public void SuccessiveHitsStripMirrorGuardArmor()
+    {
+        var armored = Grunt with { Hp = 1000, Def = 1200 };
+        var weaker = armored with { Traits = new EnemyTraits { DefenseDecay = new(5, -200, 0) } };
+        ClearSimulator.Run([Sniper(3)], [Straight], Real(armored, 1)).Leaked.Should().Be(1);
+        ClearSimulator.Run([Sniper(3)], [Straight], Real(weaker, 1)).Leaked.Should().Be(0);
     }
 
     [Fact]

@@ -190,7 +190,7 @@ public partial class EnemyViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(relativePath))
             return false;
         var trimmed = relativePath.Trim().Replace('/', Path.DirectorySeparatorChar);
-        var full    = Path.Combine(AppContext.BaseDirectory, "data", trimmed);
+        var full    = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data", trimmed);
         return File.Exists(full);
     }
 }

@@ -8,8 +8,10 @@ public sealed class RosterGameControl : IDisposable
 {
     private readonly GameConnectionService _connection;
     private readonly GameConnectionState _start;
+    private readonly ScreenCaptureService _screen;
     public RosterGameControl(GameConnectionService connection)
     {
+        _screen = new(connection) { MaxCaptureWidth = int.MaxValue };
         _connection = connection; _start = connection.State;
         if (_start.Window == 0 || !User32.IsWindow(_start.Window)) throw new IOException("未找到游戏窗口。");
         if (User32.IsIconic(_start.Window)) throw new IOException("游戏窗口已最小化，请先恢复窗口。");
@@ -26,8 +28,13 @@ public sealed class RosterGameControl : IDisposable
         if (Lost) throw new IOException("游戏窗口丢失或已最小化。");
         if (_connection.IsAdb) return _connection.CaptureAdbScreen(1920) ?? throw new IOException("模拟器截图失败。");
         // 物资页允许静止画面，沿用原有读取行为；原生截图控制器与扫描共用。
-        using var image = _connection.WindowCapture.Capture(_start.Window, requireFresh: false)
-            ?? throw new IOException("物资调配页截图失败。");
+        using var image = _connection.WindowCapture.Capture(_start.Window, requireFresh: false);
+        if (image is null)
+        {
+            if (_connection.WindowCapture.HideCaptureBorder && _screen.CaptureBitBltWindow(_start.Window) is { } frame)
+                return frame;
+            throw new IOException("物资调配页截图失败。");
+        }
         using var stream = new MemoryStream();
         image.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
         return stream.ToArray();

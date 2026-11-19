@@ -65,6 +65,9 @@ def traits(d: dict) -> tuple[dict, list[str]]:
         out["refraction"] = v
     if (v := bb.get("Refracting.max_hp")) is not None:
         out["refractionHp"] = 1 + v
+    if (hits := bb.get("def_reduce.max_stack_cnt")):
+        out["defenseDecay"] = {"hits": int(hits), "def": bb["def_reduce.def"] / hits,
+                               "res": bb["def_reduce.magic_resistance"] / hits}
     if (v := bb.get("Shield.max_block_damage_cnt")):
         out["shield"] = int(v)
     if (v := bb.get("Aura.max_damage_block_cnt")):
@@ -82,6 +85,8 @@ def traits(d: dict) -> tuple[dict, list[str]]:
         if prefix == "Attack" and "倒下后重生为" not in plain:
             continue
         spawns.append({"enemy": key, "count": int(bb.get(f"{prefix}.cnt") or 1), "delay": bb.get(f"{prefix}.delay") or 0})
+        if key.startswith(("enemy_1137_plasm", "enemy_1138_tumor", "enemy_1220_dzoms", "enemy_1221_dzomg")):
+            spawns[-1]["countsOnLeak"] = False
         children.append(key)
     if spawns:
         out["onDeath"] = spawns
@@ -257,7 +262,7 @@ def main() -> None:
             "res": site.get("resistance", value(a, "magicResistance")),
             "speed": value(a, "moveSpeed", 1.0),
             "interval": round(value(a, "baseAttackTime", 1.0) * 100 / max(1.0, value(a, "attackSpeed", 100.0)), 3),
-            "range": radius if radius > 0 else 0,
+            "range": radius if radius > 0 and value(d, "applyWay", "") != "MELEE" else 0,
             "flying": value(d, "motion") == "FLY" if d else False,
             "arts": "法术伤害" in desc,
             "rank": value(d, "levelType", "NORMAL") if d else "NORMAL",

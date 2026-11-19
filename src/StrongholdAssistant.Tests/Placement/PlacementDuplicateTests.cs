@@ -88,6 +88,10 @@ public class PlacementDuplicateTests
         var result = adapter.Compute(input)!;
 
         result.Should().NotBeNull();
+        var reversed = adapter.Compute(input with { Field = input.Field with { Units = units.Reverse().ToArray() } })!;
+        // 计算完成时间记录真实时钟；其余字段包括逐个副本的移动、模拟结果及顺序都应相同。
+        Assert.Equal(System.Text.Json.JsonSerializer.Serialize(result),
+            System.Text.Json.JsonSerializer.Serialize(reversed with { ComputedAt = result.ComputedAt }));
         var copies = result.Moves.Where(m => m.Operator == "塔露拉").ToArray();
         copies.Should().HaveCount(2).And.OnlyContain(m => m.To.Zone == "board");
         copies.Should().ContainSingle(m => m.From == units[0].Cell);

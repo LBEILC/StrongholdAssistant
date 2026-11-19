@@ -14,15 +14,20 @@ public sealed partial class FieldReader
     private readonly HashSet<FieldCell> _summonHints = [];
     public FieldSummon[] Summons { get; private set; } = [];
 
-    private void ReadSummons(System.Drawing.Bitmap bitmap, Dictionary<FieldCell, int> cells)
+    private static Mat NormalizeSpriteImage(System.Drawing.Bitmap bitmap)
     {
-        Summons = [];
-        if (_summonMatcher is null) return;
         using var stream = new MemoryStream();
         bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
         using var raw = Cv2.ImDecode(stream.ToArray(), ImreadModes.Color);
-        using var image = new Mat();
+        var image = new Mat();
         Cv2.Resize(raw, image, new Size(1920, 1080));
+        return image;
+    }
+
+    private void ReadSummons(Mat image, Dictionary<FieldCell, int> cells)
+    {
+        Summons = [];
+        if (_summonMatcher is null) return;
         var found = new List<FieldSummon>();
         var names = _summonDefinitions.Select(s => s.CharId).ToArray();
         foreach (var (cell, tier) in cells.ToArray())

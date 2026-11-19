@@ -141,6 +141,10 @@ public sealed class ChessStats
     [JsonPropertyName("skillHp")] public double SkillHp { get; set; }
     [JsonPropertyName("skillBlock")] public int SkillBlock { get; set; }
     /// <summary>Damage per second (× attack) to every enemy in its reach while the skill runs (zones, fields).</summary>
+    [JsonPropertyName("slashes")] public SlashSeries? Slashes { get; set; }
+    [JsonPropertyName("groundField")] public GroundField? GroundField { get; set; }
+    [JsonPropertyName("areaBurst")] public double AreaBurst { get; set; }
+    /// <summary>Damage per second (× attack) to every enemy in its reach while it runs (zones, fields, vortices).</summary>
     [JsonPropertyName("skillZone")] public double SkillZone { get; set; }
     /// <summary>Enemies in its reach move this much slower while the skill runs (0.5 = −50 %).</summary>
     [JsonPropertyName("skillSlow")] public double SkillSlow { get; set; }
@@ -224,6 +228,7 @@ public sealed class TalentAura : TalentEffect
 /// <summary>The talents in force from potential <see cref="Pot"/> on: own stats, attack riders, auras.</summary>
 public sealed class TalentLevel : TalentEffect
 {
+    [JsonPropertyName("targets")] public int Targets { get; set; }
     [JsonPropertyName("pot")] public int Pot { get; set; }
     /// <summary>Expected extra attack from chance-based empowered hits (0.15 = × 1.15 on average).</summary>
     [JsonPropertyName("crit")] public double Crit { get; set; }

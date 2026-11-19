@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Services/EnemyPanelTitle.png" LogicalName="EnemyPanelTitle.png" />
     <InternalsVisibleTo Include="FieldEval" />
     <InternalsVisibleTo Include="StrongholdAssistant.Tests" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />

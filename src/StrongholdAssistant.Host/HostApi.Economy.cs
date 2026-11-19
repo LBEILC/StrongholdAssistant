@@ -143,6 +143,16 @@ public sealed partial class HostApi
                 _canReadStart = _observedRound is not null || (_openingObserved && round == 1);
                 _startMoney = null;
                 _observedRound = round;
+                if (_pendingAdapt is { } page)
+                {
+                    _pendingAdapt = null;
+                    PublishAdaptAdvice(BuildAdaptAdvice(GetMatchState(), page, round));
+                }
+                if (Match.AdaptAdvice is { } advice && advice.Round != round)
+                {
+                    Match = Match with { AdaptAdvice = null };
+                    if (reading.Money is null) Changed?.Invoke("match", Match);
+                }
             }
             // 确认换回合的这一帧作为资金的首次读数，再等一帧相同值。
             if (_canReadStart && _startMoney is null)

@@ -30,7 +30,7 @@ public partial class MainWindow : Window
 
     private void ApplySplashTheme()
     {
-        var directory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
+        var directory = _userDirectory ?? AssistantProfile.Current.DirectoryPath;
         var settings = new HostSettingsStore(Path.Combine(directory, "settings.json")).LoadSettings();
         var light = settings.UiScheme == "light";
         if (settings.UiScheme == "system")
@@ -58,9 +58,9 @@ public partial class MainWindow : Window
 
     private async Task InitializeAsync()
     {
-        var userDirectory = _userDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
+        var userDirectory = _userDirectory ?? AssistantProfile.Current.DirectoryPath;
         Trace.Listeners.Add(new HostTraceListener());
-        _api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), userDirectory);
+        _api = await HostApi.CreateAsync(Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data"), userDirectory);
         _ = _api.DownloadIncomeTableAsync();
         _api.DialogOwner = this;
         _api.UpdateReady += () => Dispatcher.BeginInvoke(LaunchPreparedUpdate);
@@ -115,11 +115,14 @@ public partial class MainWindow : Window
             if (!args.IsSuccess) App.StartupResult.ReportFailure("界面加载失败");
         };
         if (!dev)
-            web.SetVirtualHostNameToFolderMapping("app.local", Path.Combine(AppContext.BaseDirectory, "ui"), CoreWebView2HostResourceAccessKind.DenyCors);
+            web.SetVirtualHostNameToFolderMapping("app.local", Path.Combine(ASPAssistant.Core.PackageLayout.Root, "ui"), CoreWebView2HostResourceAccessKind.DenyCors);
+        Directory.CreateDirectory(_api.ControlDirectory);
+        web.SetVirtualHostNameToFolderMapping("control.local", _api.ControlDirectory, CoreWebView2HostResourceAccessKind.DenyCors);
         web.Navigate(dev ? origin + "/" : origin + "/index.html");
         InitializeGameTracking();
         if (_connectGame && !_closing) _tracker.Start();
         await InitializeGameAsync();
+        if (!_closing) _api.ConfigureLocalApi();
         if (_connectGame && !_closing)
         {
             // 初始化完成后再按已连接窗口定位，避免停留在启动尺寸与位置。
@@ -225,6 +228,11 @@ public partial class MainWindow : Window
         {
             ShowUi();
             ReportStartupReady(windowCommand, App.StartupResult);
+            if (_api.Updater.FullOnly)
+            {
+                await _api.CheckUpdateAsync();
+                await _api.ApplyUpdateAsync();
+            }
         }
         if (windowCommand == "workbench") SetWorkbench(true);
         if (windowCommand == "sidebar") SetWorkbench(false);
@@ -233,12 +241,30 @@ public partial class MainWindow : Window
         if (resizeEdge is not null) ResizeWindow(resizeEdge);
     }
 
-    private void LaunchPreparedUpdate()
+    private bool _installing;
+    private async void LaunchPreparedUpdate()
     {
-        if (_api.UpdatePrepared)
+        if (_api.UpdatePrepared && !_installing)
         {
+            _installing = true;
             try
             {
+                try { using var check = ASPAssistant.Core.Services.UpdateService.OpenProfileLock(FileShare.None); }
+                catch (IOException ex) when ((ex.HResult & 0xffff) == 32)
+                {
+                    if (MessageBox.Show(this, "安装更新需要关闭这个安装目录的所有助手窗口。现在关闭并安装吗？",
+                            Title, MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
+                    try
+                    {
+                        await InstanceRecovery.CloseProfilesForUpdateAsync();
+                        using var check = ASPAssistant.Core.Services.UpdateService.OpenProfileLock(FileShare.None);
+                    }
+                    catch (Exception closeError) when (closeError is IOException or OperationCanceledException or System.ComponentModel.Win32Exception)
+                    {
+                        MessageBox.Show(this, "还有助手未能关闭。请手动关闭其他配置后再点安装更新。");
+                        return;
+                    }
+                }
                 if (!_api.Updater.LaunchPendingUpdateScript()) throw new IOException("更新脚本不存在");
                 Close();
             }
@@ -250,6 +276,7 @@ public partial class MainWindow : Window
                     @event = "update", data = new { state = "failed", message = "无法启动更新程序，请重试。" }
                 }, HostApi.JsonOptions));
             }
+            finally { _installing = false; }
         }
     }
 

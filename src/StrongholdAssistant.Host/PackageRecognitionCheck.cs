@@ -15,7 +15,7 @@ internal static class PackageRecognitionCheck
         try
         {
             var bytes = await File.ReadAllBytesAsync(args[1]);
-            var data = Path.Combine(AppContext.BaseDirectory, "data");
+            var data = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data");
             var store = new JsonDataStore(data);
             var (covenants, _) = await store.LoadCovenantsAsync();
             var bosses = new BossDataService();

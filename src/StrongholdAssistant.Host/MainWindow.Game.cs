@@ -80,6 +80,13 @@ public partial class MainWindow
         // 识别事件只会在 InitializeGameAsync 完成后出现，那时 _scanner 已就绪
         _api.Changed += (name, value) =>
         {
+            if (name == "controlJob")
+            {
+                // 执行线程发布不可变快照；停止键和 UI 查询都不能等待 UI 线程回调。
+                Dispatcher.BeginInvoke(() => Browser.CoreWebView2.PostWebMessageAsJson(
+                    JsonSerializer.Serialize(new { @event = name, data = value }, HostApi.JsonOptions)));
+                return;
+            }
             if (value is ScanStatus status)
             {
                 _scanner.SetBanScreenDetectionPaused(status.Busy || _closing);
@@ -113,7 +120,7 @@ public partial class MainWindow
     // OCR 加载和预热较慢，放在界面开始加载之后
     private async Task InitializeGameAsync()
     {
-        var data = Path.Combine(AppContext.BaseDirectory, "data");
+        var data = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data");
         _ocr = await Task.Run(() => new MaaOcrEngine(data));
         await _ocr.WarmUpAsync();
         _iconMatcher = new MaaBanIconMatcher(data);
@@ -155,7 +162,9 @@ public partial class MainWindow
         _api.InitializeBoardRoutes(data);
         _api.InitializeField(data, scanOcr);
         _api.InitializeMatchReading(data, scanOcr);
+        _scanner.ObserveAdaptFrameAsync = _api.ObserveAdaptFrameAsync;
         _scanner.ObserveMatchFrameAsync = _api.ObserveMatchFrameAsync;
+        _scanner.ObserveEnemyFrameAsync = _api.ObserveEnemyFrameAsync;
         _scanner.EnemyPanelSeen += _api.CountEnemyPanel;
         // 敌人面板探针：侧栏盖着面板那一块时不截
         var sidebar = new WindowInteropHelper(this).EnsureHandle();
@@ -171,6 +180,7 @@ public partial class MainWindow
         void ConfigureCollection()
         {
             _scanner.CollectionFrame = _api.Settings.Collect ? _api.ObserveCollectionFrame : null;
+            _scanner.CollectionEnemyPanel = _api.Settings.Collect ? _api.CollectEnemyPanel : null;
             _scanner.CollectionScanCompleted = _api.Settings.Collect ? _api.CompleteCollectionScan : null;
             _capture.NativeFrame = _api.Settings.Collect ? _api.ObserveCollectionNative : null;
             _capture.NativeFrameRequested = () => _api.NeedsCollectionRaw;
@@ -188,6 +198,7 @@ public partial class MainWindow
                 dpi = state.Window == 0 ? 96 : User32.GetWindowDpiScale(state.Window) * 96 };
         };
         // 和开局识别同一个截图方法：点助手里的「识别」时前台是助手，也能截；侧栏挡着游戏时先藏一下（v1.0.2 玩家反馈）
+        _api.InitializeControl(_capture, _scanner);
         _api.ReadCurrentField = () => _scanner.ReadCurrentFieldAsync(CaptureInformationScreenAsync, _api.RecognizeFieldFrameAsync);
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
         _scanner.BoardFrameReady += (frame, reading) =>
@@ -256,7 +267,7 @@ public partial class MainWindow
     // 跟随定位不等待 OCR 预热；首次发现和后续移动共用 UpdateGame。
     private void InitializeGameTracking()
     {
-        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress);
+        _capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress, _api.Settings.HideCaptureBorder);
         _capture.Connection.Changed += _ =>
         {
             _scanner?.InvalidateShop();
@@ -573,7 +584,7 @@ public partial class MainWindow
         {
             await Task.Run(() =>
             {
-                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress))
+                if (_capture.Connection.Configure(_api.Settings.GameSource, _api.Settings.EmulatorSerial, _api.Settings.AdbAddress, _api.Settings.HideCaptureBorder))
                     _capture.Connection.FindGameWindow();
             });
         }
@@ -592,6 +603,7 @@ public partial class MainWindow
         if (_closing || !_connectGame) return;
         var state = _capture.Connection.State;
         var viewport = _capture.Connection.GetViewport(state.Window);
+        if (state.Source == "pc" && User32.IsIconic(state.Window)) _api.StopControl("lost");
         bool connected = state.Source == "pc" ? viewport is not null
             : _capture.Connection.IsAdb && state.Width > 0 && state.Problem is null;
         string? resolution = !connected ? null : _capture.Connection.IsAdb
@@ -610,6 +622,8 @@ public partial class MainWindow
         e.Cancel = true;
         if (_closing) return;
         _closing = true;
+        _api?.CloseLocalApi();
+        if (_api is not null) await _api.StopControlAsync();
         _keyboardHook?.Dispose();
         if (_api is not null)
         {

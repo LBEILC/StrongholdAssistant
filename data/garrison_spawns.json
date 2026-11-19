@@ -46067,7 +46067,7 @@
    "res": 60,
    "speed": 0.7,
    "interval": 3.8,
-   "range": 1.0,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -46118,7 +46118,7 @@
    "res": 15,
    "speed": 0.5,
    "interval": 3.0,
-   "range": 0.5,
+   "range": 0,
    "flying": false,
    "arts": true,
    "rank": "ELITE",
@@ -46241,7 +46241,7 @@
    "res": 30,
    "speed": 0.9,
    "interval": 1.8,
-   "range": 2.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "NORMAL",
@@ -46259,7 +46259,7 @@
    "res": 0,
    "speed": 0.5,
    "interval": 3.5,
-   "range": 2.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -46281,7 +46281,7 @@
    "res": 0,
    "speed": 0.5,
    "interval": 3.5,
-   "range": 2.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -46351,7 +46351,7 @@
    "res": 0,
    "speed": 1.0,
    "interval": 1.7,
-   "range": 1.75,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "NORMAL",
@@ -46366,7 +46366,7 @@
    "res": 0,
    "speed": 1.0,
    "interval": 1.7,
-   "range": 1.9,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "NORMAL",
@@ -46593,7 +46593,8 @@
      {
       "enemy": "enemy_1137_plasm",
       "count": 2,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46617,7 +46618,8 @@
      {
       "enemy": "enemy_1138_tumor",
       "count": 2,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46641,7 +46643,8 @@
      {
       "enemy": "enemy_1137_plasm",
       "count": 3,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46665,7 +46668,8 @@
      {
       "enemy": "enemy_1138_tumor",
       "count": 3,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46689,7 +46693,8 @@
      {
       "enemy": "enemy_1137_plasm",
       "count": 4,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46713,7 +46718,8 @@
      {
       "enemy": "enemy_1138_tumor",
       "count": 4,
-      "delay": 0.2
+      "delay": 0.2,
+      "countsOnLeak": false
      }
     ]
    }
@@ -46947,7 +46953,7 @@
    "res": 0,
    "speed": 1.0,
    "interval": 2.5,
-   "range": 1.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "NORMAL",
@@ -46969,7 +46975,7 @@
    "res": 0,
    "speed": 1.0,
    "interval": 2.5,
-   "range": 1.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "NORMAL",
@@ -47046,7 +47052,7 @@
    "res": 0,
    "speed": 0.8,
    "interval": 4.0,
-   "range": 1.4,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -47068,7 +47074,7 @@
    "res": 0,
    "speed": 0.8,
    "interval": 4.0,
-   "range": 1.4,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -47090,7 +47096,7 @@
    "res": 0,
    "speed": 0.8,
    "interval": 2.1,
-   "range": 1.4,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -47282,7 +47288,7 @@
    "res": 20,
    "speed": 0.7,
    "interval": 3.0,
-   "range": 2.0,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -47368,7 +47374,8 @@
      {
       "enemy": "enemy_1220_dzoms",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47392,7 +47399,8 @@
      {
       "enemy": "enemy_1220_dzoms_2",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47416,7 +47424,8 @@
      {
       "enemy": "enemy_1220_dzoms",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47440,7 +47449,8 @@
      {
       "enemy": "enemy_1220_dzoms_2",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47494,7 +47504,8 @@
      {
       "enemy": "enemy_1221_dzomg",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ],
     "element": {
@@ -47526,7 +47537,8 @@
      {
       "enemy": "enemy_1221_dzomg_2",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ],
     "element": {
@@ -47558,7 +47570,8 @@
      {
       "enemy": "enemy_1221_dzomg",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47582,7 +47595,8 @@
      {
       "enemy": "enemy_1221_dzomg_2",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ]
    }
@@ -47975,7 +47989,7 @@
    "res": 20,
    "speed": 1.1,
    "interval": 2.5,
-   "range": 1.2,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -47993,7 +48007,7 @@
    "res": 20,
    "speed": 1.1,
    "interval": 2.5,
-   "range": 1.2,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -48144,7 +48158,14 @@
    "arts": false,
    "rank": "NORMAL",
    "lifePoints": 1,
-   "weight": 3
+   "weight": 3,
+   "traits": {
+    "defenseDecay": {
+     "hits": 80,
+     "def": -50,
+     "res": -2
+    }
+   }
   },
   "enemy_1329_cbshld_2": {
    "name": "弧光镜卫长",
@@ -48159,7 +48180,14 @@
    "arts": false,
    "rank": "NORMAL",
    "lifePoints": 1,
-   "weight": 3
+   "weight": 3,
+   "traits": {
+    "defenseDecay": {
+     "hits": 85,
+     "def": -50,
+     "res": -2
+    }
+   }
   },
   "enemy_1355_mrfly": {
    "name": "护障",
@@ -48211,7 +48239,7 @@
    "res": 20,
    "speed": 0.8,
    "interval": 2.0,
-   "range": 1.0,
+   "range": 0,
    "flying": false,
    "arts": true,
    "rank": "NORMAL",
@@ -48237,7 +48265,8 @@
      {
       "enemy": "enemy_1220_dzoms",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ],
     "splash": {
@@ -48264,7 +48293,8 @@
      {
       "enemy": "enemy_1220_dzoms_2",
       "count": 1,
-      "delay": 1.0
+      "delay": 1.0,
+      "countsOnLeak": false
      }
     ],
     "splash": {
@@ -48291,7 +48321,8 @@
      {
       "enemy": "enemy_1221_dzomg",
       "count": 1,
-      "delay": 0
+      "delay": 0,
+      "countsOnLeak": false
      }
     ],
     "stun": {
@@ -48320,7 +48351,8 @@
      {
       "enemy": "enemy_1221_dzomg_2",
       "count": 1,
-      "delay": 0
+      "delay": 0,
+      "countsOnLeak": false
      }
     ],
     "stun": {
@@ -48530,7 +48562,7 @@
    "res": 20,
    "speed": 0.7,
    "interval": 3.0,
-   "range": 2.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",
@@ -48552,7 +48584,7 @@
    "res": 20,
    "speed": 0.7,
    "interval": 3.0,
-   "range": 2.5,
+   "range": 0,
    "flying": false,
    "arts": false,
    "rank": "ELITE",

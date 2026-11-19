@@ -7,6 +7,8 @@ namespace ASPAssistant.Core.Placement;
 
 public sealed record PlacementOptions
 {
+    // 校准时仅记录最终原强度战斗，搜索中的候选无需保留明细。
+    public bool CollectDetails { get; init; }
     public IReadOnlySet<BoardCell> OccupiedCells { get; init; } = new HashSet<BoardCell>();
     public IReadOnlyList<SimUnit> FixedSummons { get; init; } = [];
     public IReadOnlySet<string> FixedSummonNames { get; init; } = new HashSet<string>();
@@ -375,8 +377,9 @@ public sealed class PlacementPlanner
             SelfDef = stats?.SkillDef ?? 0,
             SelfHp = stats?.SkillHp ?? 0,
             SelfBlock = stats?.SkillBlock ?? 0,
-            Zone = stats?.SkillZone ?? 0,
-            Slow = stats?.SkillSlow ?? 0,
+            Slashes = stats?.Slashes, GroundField = stats?.GroundField, AreaBurst = stats?.AreaBurst ?? 0,
+            Zone = stats?.GroundField is null ? stats?.SkillZone ?? 0 : 0,
+            Slow = stats?.GroundField is null ? stats?.SkillSlow ?? 0 : 0,
             Push = stats?.SkillPush,
         };
     }
@@ -559,6 +562,8 @@ public sealed class PlacementPlanner
         if (info.Skill is { } cycle && info.Talent is { InitSp: > 0 } ti)
             info.Skill = cycle with { Init = Math.Min(cycle.Cost, cycle.Init + ti.InitSp) };
         info.Pattern = PatternOf(p.SubProfession);
+        if (info.Talent is { Targets: > 1 } multi)
+            info.Pattern = info.Pattern with { Targets = Math.Max(info.Pattern.Targets, multi.Targets) };
         if (p.RangeFor(c.IsElite, duringSkill: true) is { } sr && sr != range)
             info.SkillOffsets = [.. Faces.Select(f => sr.Offsets(f).ToArray())];
         // "对前方一格…锤击" (怒潮凛冬): the skill strikes only the cell in front, so where it faces decides what it hits.
@@ -883,8 +888,8 @@ public sealed class PlacementPlanner
             return list.Count == 0 ? null : [.. list.Select(x => (x.Item1, sum > 0 ? x.Item2 / sum : 1.0 / list.Count))];
         }
 
-        private List<(RoundStream Stream, double Weight, WaveScenario Scenario)> StreamRuns(double factor) =>
-            [.. _streams!.Select(s => (s.Stream, s.Weight, new WaveScenario { Spawns = s.Stream.Spawns }.Tougher(factor)))];
+        private List<(RoundStream Stream, double Weight, WaveScenario Scenario)> StreamRuns(double factor, bool collectDetails = false) =>
+            [.. _streams!.Select(s => (s.Stream, s.Weight, new WaveScenario { Spawns = s.Stream.Spawns, CollectDetails = collectDetails }.Tougher(factor)))];
 
         private void SetStreamFactor(double factor)
         {
@@ -2118,7 +2123,7 @@ public sealed class PlacementPlanner
             var notes = pl.Keys.ToDictionary(k => k, _ => new List<string>());
             // The simulated fight: who killed how many, who went down.
             // With real streams: every stream at its real strength (not the search's calibrated one).
-            var real = _options.Simulate && _calibrated && _streams is not null ? SimulateStreams(pl, StreamRuns(1)) : null;
+            var real = _options.Simulate && _calibrated && _streams is not null ? SimulateStreams(pl, StreamRuns(1, _options.CollectDetails)) : null;
             // The search's own value for this placement (before the events below are pinned for the notes).
             double? objective = _options.Simulate && _calibrated ? SimScore(pl) : null;
             // Stacking on skill casts as the real fights had them (the score and the layer estimate alike).

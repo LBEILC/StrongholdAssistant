@@ -10,6 +10,7 @@
   import NotesList from './NotesList.svelte'
   import { plaza, PLAZA } from '../lib/plaza.svelte'
   import { cloud } from '../lib/sync.svelte'
+  import { control, MODES } from '../lib/control.svelte'
 
   // 设置：游戏主题（商店识别要用）、商店标记、版本与更新、关于
   const themes: { id: GameTheme; name: string; note: string }[] = [
@@ -172,6 +173,33 @@
   // 自定义 ADB 地址（v1.2.8）：'' = 自动找；填了就只连这个地址。和代理一样失焦或回车才保存
   const validAdb = (v: string) => /^emulator-\d+$/.test(v) || (/^[\w.-]+:(\d{1,5})$/.test(v) && +v.split(':')[1] >= 1 && +v.split(':')[1] <= 65535)
   let adbManual = $state(false)
+  // 多开（365）：默认配置里开关；任何配置里都能看到配置列表、打开或新建
+  let profile = $state<string | null>(null)
+  let profiles = $state<string[]>([])
+  let newProfile = $state('')
+  let profileError = $state('')
+  const loadProfiles = async () => {
+    profile = await api.currentProfile()
+    profiles = await api.listProfiles()
+  }
+  loadProfiles()
+  const openProfile = async (name: string | null) => {
+    profileError = ''
+    try { await api.launchProfile(name) } catch (e) { profileError = (e as Error).message }
+  }
+  const addProfile = async () => {
+    const name = newProfile.trim().toLowerCase()
+    if (!name) return
+    profileError = ''
+    try {
+      await api.createProfile(name)
+      newProfile = ''
+      await loadProfiles()
+      await api.launchProfile(name)
+    } catch (e) {
+      profileError = (e as Error).message
+    }
+  }
   let adbDraft = $state('')
   $effect(() => {
     adbDraft = app.settings.adbAddress
@@ -285,16 +313,18 @@
     { id: 'game', label: '游戏' },
     { id: 'window', label: '界面' },
     { id: 'keys', label: '按键' },
+    // 自动操作没实机测过（393），正式版先不显示这一页（2026-11-19 用户定），开发预览里照常显示
+    ...(import.meta.env.DEV ? [{ id: 'control' as const, label: '自动' }] : []),
     { id: 'account', label: '账号' },
     { id: 'about', label: '关于', dot: app.update.state === 'available' },
   ])
 
   // 按键录制：修饰键按 Ctrl、Alt、Shift、Win 的顺序，再接主键（写法见 Settings.toggleHotkey）。
   // v0.7.2 起允许单键：单键只在游戏或助手在前台时生效、不拦截按键（宿主实现）
-  let recording = $state<'toggle' | 'refresh' | 'route' | 'field' | null>(null)
+  let recording = $state<'toggle' | 'refresh' | 'route' | 'field' | 'stop' | null>(null)
   let hkMsg = $state('')
   /** hkMsg 是哪一个按键给的，提示显示在那一行下面 */
-  let hkFor = $state<'toggle' | 'refresh' | 'route' | 'field' | null>(null)
+  let hkFor = $state<'toggle' | 'refresh' | 'route' | 'field' | 'stop' | null>(null)
   const keyName = (e: KeyboardEvent) =>
     e.key === ' ' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key
   // 单键要收得到（v0.9.1）：游戏是管理员身份、助手不是时，单独按的键收不到，只收组合键
@@ -320,6 +350,7 @@
     if (target === 'toggle') applyHotkey(combo)
     else if (target === 'route') setRoutes({ hotkey: combo })
     else if (target === 'field') set('fieldHotkey', combo)
+    else if (target === 'stop') control.set({ stopHotkey: combo })
     else set('refreshKey', combo)
   }
   function recordKeyUp(e: KeyboardEvent) {
@@ -521,6 +552,43 @@
             {adbBad ? '格式是 地址:端口，如 127.0.0.1:16384、192.168.1.5:5555，或 emulator-5554' : '只连这个地址，不再自动找。在模拟器的 ADB 设置里能看到地址，用 adb devices 能连上的就行。'}
           </p>
         {/if}
+      {/if}
+      {#if app.settings.gameSource === 'pc' || app.settings.gameSource === 'auto'}
+        <label class="row">
+          <span class="lbl"><b>去掉黄框</b><small>Windows 10 上游戏窗口外有一圈黄框时打开</small></span>
+          <input type="checkbox" class="sw" checked={app.settings.hideCaptureBorder} onchange={(e) => set('hideCaptureBorder', e.currentTarget.checked)} />
+        </label>
+        {#if app.settings.hideCaptureBorder}
+          <p class="note">改用老的截图方式：游戏窗口要在最前面、别被其他窗口挡住，不然识别不了。</p>
+        {/if}
+      {/if}
+    </section>
+
+    <section>
+      <h4>多开助手 <small>同时连不同的游戏窗口，比如自己玩电脑版、另一个助手连模拟器</small></h4>
+      {#if profile === null}
+        <label class="row">
+          <span class="lbl"><b>允许多开</b><small>打开后再双击助手会新开一个；第二个起默认不占全局快捷键</small></span>
+          <input type="checkbox" class="sw" checked={app.settings.multiInstance} onchange={(e) => set('multiInstance', e.currentTarget.checked)} />
+        </label>
+      {:else}
+        <p class="note">这是配置「{profile}」，用自己的一套设置和数据。允许多开的开关在默认配置的设置里。</p>
+      {/if}
+      {#if profile !== null || app.settings.multiInstance}
+        <div class="profs">
+          {#each [null, ...profiles] as p (p ?? '')}
+            <div class="pf" class:cur={p === profile}>
+              <b>{p ?? '默认'}</b>
+              {#if p === profile}<em>当前</em>{:else}<button class="btn" onclick={() => openProfile(p)}>打开</button>{/if}
+            </div>
+          {/each}
+        </div>
+        <div class="cdk">
+          <input bind:value={newProfile} placeholder="新配置名，如 agent（英文字母、数字、短横线）" maxlength="24" spellcheck="false" autocomplete="off"
+            onkeydown={(e) => e.key === 'Enter' && addProfile()} />
+          <button class="btn" disabled={!newProfile.trim()} onclick={addProfile}>新建并打开</button>
+        </div>
+        {#if profileError}<p class="note bad">{profileError}</p>{/if}
       {/if}
     </section>
 
@@ -912,6 +980,77 @@
         <p class="note">不打开也行：快捷键用组合键（如 Alt+R），按一下切换显示；只是用不了单键和「按住才显示」。</p>
       {/if}
     </section>
+    {/if}
+    {#if tab === 'control'}
+    <!-- 自动操作（任务 390～393，docs/自动操作.md）：总开关先过风险说明页；其余项只在开着时显示 -->
+    <section>
+      <label class="row">
+        <span class="lbl"><b>自动操作</b><small>让助手照推荐、或照外部程序的指令，替你在游戏里点击和拖动。可能导致账号被封，后果自负</small></span>
+        <input
+          type="checkbox"
+          class="sw"
+          checked={control.settings.enabled}
+          onchange={(e) => {
+            const on = e.currentTarget.checked
+            e.currentTarget.checked = control.settings.enabled
+            control.toggle(on)
+          }}
+        />
+      </label>
+      <p class="note">
+        {#if !control.consented}第一次打开会先看一页风险说明，勾选同意后才能开。
+        {:else}已同意风险说明。<button class="link" onclick={() => (control.riskOpen = true)}>再看一遍</button>{/if}
+      </p>
+    </section>
+    {#if control.settings.enabled}
+      <section>
+        <h4>执行方式 <small>外部程序要求的也不会比这里更激进</small></h4>
+        <Seg items={MODES} value={control.settings.mode} onchange={(v) => control.set({ mode: v })} height={26} />
+        <p class="note">{MODES.find((m) => m.id === control.settings.mode)?.tip}。建议从试运行开始，熟悉了再换。</p>
+      </section>
+      <section class="keyrows">
+        <div class="hk">
+          <span class="hkl">停止键</span>
+          <button class="hkb" class:rec={recording === 'stop'} onclick={() => ((recording = recording === 'stop' ? null : 'stop'), (hkMsg = ''))} onkeydown={recordKey}>
+            {recording === 'stop' ? '按下新的按键…' : keyLabel(control.settings.stopHotkey) || '未设置'}
+          </button>
+        </div>
+        {#if hkMsg && hkFor === 'stop'}
+          <p class="note bad">{hkMsg}</p>
+        {:else if recording === 'stop'}
+          <p class="note">建议用组合键（如 Ctrl+Alt+Q），别选游戏里有用的键；Esc 取消。</p>
+        {:else if app.keysBlocked && rawOnly(control.settings.stopHotkey)}
+          <p class="note bad">游戏是以管理员身份运行的，单独一个键在游戏里按收不到，换成组合键，或者打开「按键」页的「以管理员身份运行」。</p>
+        {:else}
+          <p class="note">任何时候按一下就停，不用切到助手；同时开了几个助手时，每个都会停。</p>
+        {/if}
+      </section>
+      <section>
+        <h4>电脑版和模拟器 <small>操作方式不一样</small></h4>
+        <p class="note ctl">
+          <b>电脑客户端</b>只认真实的鼠标和键盘：执行时助手把游戏切到前台、接管鼠标，这期间别动鼠标键盘，一动就停；所以电脑版没法一边自己玩、一边让助手操作。
+          游戏是以管理员身份运行时，助手也要以管理员身份运行。
+        </p>
+        <p class="note ctl"><b>模拟器</b>（MuMu、雷电）走 ADB，不占鼠标，窗口可以在后台。想自己玩一个号、让 agent 玩另一个号，agent 那边用模拟器，再开一个助手连它。</p>
+      </section>
+      <section>
+        <h4>外部程序 <small>给 agent、脚本用</small></h4>
+        <label class="row">
+          <span class="lbl"><b>本机接口</b><small>在本机开一个只有这台电脑能连的接口，外部程序能读当前局面、站位推荐</small></span>
+          <input type="checkbox" class="sw" checked={control.settings.api} onchange={(e) => control.set({ api: e.currentTarget.checked })} />
+        </label>
+        <label class="row">
+          <span class="lbl"><b>允许外部程序操作游戏</b><small>关着时外部程序只能读、不能下发操作</small></span>
+          <input type="checkbox" class="sw" checked={control.settings.external} disabled={!control.settings.api} onchange={(e) => control.set({ external: e.currentTarget.checked })} />
+        </label>
+        {#if control.settings.api}
+          <p class="note">
+            {#if control.address}接口地址 <code>{control.address}</code>（口令在本配置的数据文件夹 api.json 里）。{:else}接口正在启动…{/if}
+            命令行：<code>sa{control.profile === 'default' ? '' : ` --profile ${control.profile}`} state</code> 读当前局面，<code>sa --help</code> 看全部命令。
+          </p>
+        {/if}
+      </section>
+    {/if}
     {/if}
     {#if tab === 'account'}
     <section>
@@ -1620,6 +1759,31 @@
   .usrc .scales {
     flex: 1;
   }
+  .profs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .pf {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    box-shadow: inset 0 0 0 1px var(--line-soft);
+  }
+  .pf b {
+    flex: 1;
+    font-size: var(--fs-md);
+  }
+  .pf em {
+    font-style: normal;
+    font-size: var(--fs-sm);
+    color: var(--mint);
+  }
+  .pf.cur {
+    box-shadow: inset 0 0 0 1px var(--mint-lo);
+  }
   .cdk {
     display: flex;
     gap: 6px;
@@ -2046,5 +2210,17 @@
   }
   .note.bad {
     color: var(--gold);
+  }
+  /* 自动操作页 */
+  .note code {
+    font-family: var(--font-term);
+    font-size: var(--fs-xs);
+    padding: 0 4px;
+    color: var(--fg-1);
+    background: var(--bg-2);
+    user-select: all;
+  }
+  .note.ctl b {
+    color: var(--fg-1);
   }
 </style>

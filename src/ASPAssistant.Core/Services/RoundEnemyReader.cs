@@ -1,140 +1,132 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using OpenCvSharp;
+using CvSize = OpenCvSharp.Size;
 
 namespace ASPAssistant.Core.Services;
 
-/// <summary>标题确认后读取亮色名称；标题和列表分别缓存，滚动后才重新读取。</summary>
+/// <summary>用面板标题定位名单，并按标题实测大小换算名字区域。</summary>
 public sealed class RoundEnemyReader(IOcrEngine ocr)
 {
-    private byte[]? _titlePixels, _listPixels;
-    private bool _visible;
-    public void Reset() { _titlePixels = _listPixels = null; _visible = false; }
+    private static readonly Mat Title = LoadTitle();
+    private byte[]? _listPixels;
+    public void Reset() => _listPixels = null;
 
-    private static byte[] Pixels(Bitmap image, Rectangle area)
+    private static Mat LoadTitle()
     {
-        using var small = new Bitmap(80, 40);
-        using (var g = Graphics.FromImage(small)) g.DrawImage(image, new Rectangle(0, 0, 80, 40), area, GraphicsUnit.Pixel);
-        var result = new byte[80 * 40];
-        for (int y = 0; y < 40; y++) for (int x = 0; x < 80; x++)
-            result[y * 80 + x] = small.GetPixel(x, y).G;
+        using var stream = typeof(RoundEnemyReader).Assembly.GetManifestResourceStream("EnemyPanelTitle.png")!;
+        using var bytes = new MemoryStream();
+        stream.CopyTo(bytes);
+        return Cv2.ImDecode(bytes.ToArray(), ImreadModes.Grayscale);
+    }
+
+    // 标题相对屏幕水平居中、顶部锚定。探针和整帧共用同一搜索区。
+    private static Rectangle Region(int width, int height, int x, int y, int w, int h)
+    {
+        double s = Math.Min(width / 1920d, height / 1080d);
+        return new((int)(width / 2d + (x - 960) * s), (int)(y * s), (int)(w * s), (int)(h * s));
+    }
+
+    public static Rectangle PanelStrip(int width, int height) => Region(width, height, 1090, 87, 220, 105);
+    public static Rectangle PanelArea(int width, int height) => Region(width, height, 1090, 80, 700, 890);
+
+    private static (OpenCvSharp.Point Origin, double Scale)? Locate(Mat gray, double screenScale)
+    {
+        // 90 到 100 档之间连续缩放；在小范围内同时比较图标和「敌人」两字。
+        double best = .78;
+        (OpenCvSharp.Point, double)? result = null;
+        for (int setting = 90; setting <= 100; setting += 2)
+        {
+            double scale = screenScale * setting / 90;
+            int w = (int)Math.Round(Title.Cols * scale), h = (int)Math.Round(Title.Rows * scale);
+            if (w < 1 || h < 1 || w > gray.Cols || h > gray.Rows) continue;
+            using var resized = new Mat();
+            Cv2.Resize(Title, resized, new CvSize(w, h));
+            using var scores = new Mat();
+            Cv2.MatchTemplate(gray, resized, scores, TemplateMatchModes.CCoeffNormed);
+            Cv2.MinMaxLoc(scores, out _, out double score, out _, out var location);
+            if (score <= best) continue;
+            best = score;
+            result = (location, scale);
+        }
         return result;
     }
 
-    /// <summary>判断面板要看的那一块（1920×1080 下 x 1110～1260、y 105～240）在截图里的位置；探针只截这一块。</summary>
-    public static Rectangle PanelStrip(int width, int height)
-    {
-        double s = Math.Min(width / 1920d, height / 1080d);
-        return new((int)(1110 * s), (int)(105 * s), (int)(150 * s), (int)(135 * s));
-    }
-
-    /// <summary>敌人面板最大能占的范围（1920×1080 下 x 1110～1670、y 95～855）。</summary>
-    public static Rectangle PanelArea(int width, int height)
-    {
-        double s = Math.Min(width / 1920d, height / 1080d);
-        return new((int)(1110 * s), (int)(95 * s), (int)(560 * s), (int)(760 * s));
-    }
-
-    /// <summary>
-    /// 不用 OCR 判断敌人面板在不在：标题框里「敌人」两个白字占的比例很固定（约 3.7%），
-    /// 面板左边缘内侧是均匀的深色。商店、大厅、编队页的白字更多或底色不匀，靠这两项分开。
-    /// strip 是 PanelStrip 那一块，s 是截图相对 1920×1080 的缩放。
-    /// </summary>
     public static bool PanelVisible(Bitmap strip, double s)
     {
-        var data = strip.LockBits(new(0, 0, strip.Width, strip.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        var px = new byte[data.Stride * data.Height];
-        Marshal.Copy(data.Scan0, px, 0, px.Length);
-        strip.UnlockBits(data);
-        int stride = data.Stride;
-        // 坐标相对 PanelStrip 左上角（1110, 105）
-        (double Mean, double Std, double White) Scan(int x, int y, int w, int h)
+        var bits = strip.LockBits(new(0, 0, strip.Width, strip.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
         {
-            double sum = 0, square = 0; int white = 0, count = 0;
-            for (int row = (int)(y * s); row < Math.Min(strip.Height, (int)((y + h) * s)); row++)
-            for (int col = (int)(x * s); col < Math.Min(strip.Width, (int)((x + w) * s)); col++)
-            {
-                int i = row * stride + col * 4;
-                byte b = px[i], g = px[i + 1], r = px[i + 2];
-                sum += b + g + r;
-                square += b * b + g * g + r * r;
-                if (Math.Min(r, Math.Min(g, b)) > 185) white++;
-                count++;
-            }
-            if (count == 0) return (255, 255, 0);
-            double mean = sum / (3 * count);
-            return (mean, Math.Sqrt(Math.Max(0, square / (3 * count) - mean * mean)), (double)white / count);
+            using var bgra = Mat.FromPixelData(bits.Height, bits.Width, MatType.CV_8UC4, bits.Scan0, bits.Stride);
+            using var gray = new Mat();
+            Cv2.CvtColor(bgra, gray, ColorConversionCodes.BGRA2GRAY);
+            return Locate(gray, s) is not null;
         }
-        var title = Scan(58, 0, 90, 40);
-        var edge = Scan(2, 55, 10, 80);
-        return title.White > .025 && title.White < .06 && edge.Mean < 25 && edge.Std < 12;
+        finally { strip.UnlockBits(bits); }
     }
 
-    /// <summary>整张截图（PNG）上判断，样图和模拟器截图走这里。</summary>
-    public static bool PanelVisible(byte[] png)
+    public static bool PanelVisible(byte[] frame)
     {
-        using var stream = new MemoryStream(png);
+        using var stream = new MemoryStream(frame);
         using var image = new Bitmap(stream);
         return PanelVisible(image);
     }
 
     public static bool PanelVisible(Bitmap image)
     {
-        var area = Rectangle.Intersect(PanelStrip(image.Width, image.Height), new(0, 0, image.Width, image.Height));
+        var area = PanelStrip(image.Width, image.Height);
         if (area.Width <= 0 || area.Height <= 0) return false;
         using var strip = image.Clone(area, PixelFormat.Format32bppArgb);
         return PanelVisible(strip, Math.Min(image.Width / 1920d, image.Height / 1080d));
     }
 
-    private static bool Same(byte[]? previous, byte[] current) => previous is not null
-        && previous.Zip(current, (a, b) => Math.Abs(a - b)).Average() < 2;
-
     public async Task<string[]?> ReadAsync(byte[] frame)
     {
-        using var stream = new MemoryStream(frame);
-        using var image = new Bitmap(stream);
-        double s = Math.Min(image.Width / 1920d, image.Height / 1080d);
-        Rectangle Region(int x, int y, int w, int h) => new((int)(x * s), (int)(y * s), (int)(w * s), (int)(h * s));
-        var title = Region(1168, 105, 90, 40);
-        var titlePixels = Pixels(image, title);
-        if (!Same(_titlePixels, titlePixels))
+        using var image = Cv2.ImDecode(frame, ImreadModes.Color);
+        var strip = PanelStrip(image.Cols, image.Rows);
+        using var header = new Mat(image, new Rect(strip.X, strip.Y, strip.Width, strip.Height));
+        using var gray = new Mat();
+        Cv2.CvtColor(header, gray, ColorConversionCodes.BGR2GRAY);
+        if (Locate(gray, Math.Min(image.Cols / 1920d, image.Rows / 1080d)) is not { } title)
         {
-            _titlePixels = titlePixels;
-            var heading = await ocr.RecognizeRegionAsync(frame, title.X, title.Y, title.Width, title.Height);
-            _visible = heading.Any(t => t.Text.Replace(" ", "") == "敌人");
-            if (_visible) AppLogger.Info("RoundEnemy", "敌人面板标题读出");
-            if (!_visible) _listPixels = null;
+            Reset();
+            return null;
         }
-        if (!_visible) return null;
-        // 面板高度随列表长度变化，沿暗底找到底边，不把后面的棋盘文字一起读入。
-        int bottom = (int)(855 * s), brightRows = 0;
-        for (int y = (int)(160 * s); y < bottom; y++)
+        // 模板左上角在标准画面为 (1132,106)，名单在其右下方，留出字形边缘。
+        double s = title.Scale;
+        int left = strip.Left + title.Origin.X + (int)(122 * s);
+        int top = strip.Top + title.Origin.Y + (int)(50 * s);
+        int width = Math.Min((int)(409 * s), image.Cols - left);
+        int height = Math.Min((int)(700 * s), image.Rows - top);
+        using var area = new Mat(image, new Rect(left, top, width, height));
+        using var green = area.ExtractChannel(1);
+        // 底框是横贯面板的细亮线。比较行间增量，避免半透明面板内的亮背景提前截断名单。
+        int gap = Math.Max(1, (int)Math.Round(2 * s));
+        using var upper = green.RowRange(0, height - gap);
+        using var lower = green.RowRange(gap, height);
+        using var difference = new Mat();
+        Cv2.Subtract(lower, upper, difference);
+        using var edge = difference.Threshold(28, 255, ThresholdTypes.Binary);
+        using var rows = new Mat();
+        Cv2.Reduce(edge, rows, ReduceDimension.Column, ReduceTypes.Avg, MatType.CV_32F);
+        for (int y = (int)(5 * s); y < rows.Rows; y++)
         {
-            int bright = 0, count = 0;
-            for (int x = (int)(1250 * s); x < (int)(1620 * s); x += 4)
-            {
-                if (image.GetPixel(x, y).G > 60) bright++;
-                count++;
-            }
-            brightRows = bright > count * .65 ? brightRows + 1 : 0;
-            if (brightRows == 3) { bottom = y - 2; break; }
+            if (rows.At<float>(y) > 255 * .83) { height = y + gap; break; }
         }
-        var list = Region(1250, 155, 420, 700);
-        list.Height = bottom - list.Top;
-        var pixels = Pixels(image, list);
-        if (Same(_listPixels, pixels)) return null;
-        // 名称是亮白色，能力说明为灰色；只保留名称，避免把说明当成未知敌人。
-        using var names = image.Clone(list, PixelFormat.Format24bppRgb);
-        for (int y = 0; y < names.Height; y++) for (int x = 0; x < names.Width; x++)
-        {
-            var c = names.GetPixel(x, y);
-            names.SetPixel(x, y, Math.Min(c.R, Math.Min(c.G, c.B)) >= 185 ? Color.White : Color.Black);
-        }
-        using var encoded = new MemoryStream();
-        names.Save(encoded, ImageFormat.Png);
-        var texts = await ocr.RecognizeRegionAsync(encoded.ToArray(), 0, 0, names.Width, names.Height);
+        using var list = new Mat(area, new Rect(0, 0, width, height));
+        using var thumbnail = new Mat();
+        using var listGreen = new Mat(green, new Rect(0, 0, width, height));
+        Cv2.Resize(listGreen, thumbnail, new CvSize(80, 40), interpolation: InterpolationFlags.Area);
+        var pixels = new byte[80 * 40];
+        Marshal.Copy(thumbnail.Data, pixels, 0, pixels.Length);
+        if (_listPixels is not null && _listPixels.Zip(pixels, (a, b) => Math.Abs(a - b)).Average() < 2)
+            return null;
+        using var names = new Mat();
+        Cv2.InRange(list, Scalar.All(185), Scalar.All(255), names);
+        var texts = await ocr.RecognizeRegionAsync(names.ImEncode(".png"), 0, 0, width, height);
         _listPixels = pixels;
-        return texts.Where(t => t.Box.H >= 16 * s && t.Box.H <= 40 * s)
+        return texts.Where(t => t.Box.X < 25 * s && t.Box.H >= 14 * s && t.Box.H <= 40 * s)
             .OrderBy(t => t.Box.Y).Select(t => t.Text.Trim()).Where(t => t.Length > 0).Distinct().ToArray();
     }
 }

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MatchState 或按回合排列的 MatchStep 序列",
+  "oneOf": [{"$ref":"#/$defs/MatchState"},{"type":"array","items":{"$ref":"#/$defs/MatchStep"}}],
+  "$defs": {
+    "factS": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"string"}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchEntity": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref":"#/$defs/factS"},
+        "name": {"$ref":"#/$defs/factS"}
+      },
+      "required": ["id","name"],
+      "additionalProperties": false
+    },
+    "factBondKind": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"enum":["core","extra"]}},"required":["source","value"],"additionalProperties":false}]},
+    "factB": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"boolean"}},"required":["source","value"],"additionalProperties":false}]},
+    "factI": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"integer"}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchCovenant": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref":"#/$defs/factS"},
+        "kind": {"$ref":"#/$defs/factBondKind"},
+        "incomplete": {"$ref":"#/$defs/factB"},
+        "level": {"$ref":"#/$defs/factI"},
+        "layers": {"$ref":"#/$defs/factI"},
+        "count": {"$ref":"#/$defs/factI"}
+      },
+      "required": ["id","kind","incomplete","level","layers","count"],
+      "additionalProperties": false
+    },
+    "MatchEquipment": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref":"#/$defs/factS"},
+        "name": {"$ref":"#/$defs/factS"},
+        "elite": {"$ref":"#/$defs/factB"}
+      },
+      "required": ["id","name","elite"],
+      "additionalProperties": false
+    },
+    "factZone": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"enum":["board","bench"]}},"required":["source","value"],"additionalProperties":false}]},
+    "factMatchEntity": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"$ref":"#/$defs/MatchEntity"}},"required":["source","value"],"additionalProperties":false}]},
+    "factMatchEquipmentList": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"array","items":{"$ref":"#/$defs/MatchEquipment"}}},"required":["source","value"],"additionalProperties":false}]},
+    "factDir": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"enum":["UP","RIGHT","DOWN","LEFT"]}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchUnit": {
+      "type": "object",
+      "properties": {
+        "zone": {"$ref":"#/$defs/factZone"},
+        "col": {"$ref":"#/$defs/factI"},
+        "row": {"$ref":"#/$defs/factI"},
+        "operator": {"$ref":"#/$defs/factMatchEntity"},
+        "tier": {"$ref":"#/$defs/factI"},
+        "elite": {"$ref":"#/$defs/factB"},
+        "skillIndex": {"$ref":"#/$defs/factI"},
+        "moduleId": {"$ref":"#/$defs/factS"},
+        "potential": {"$ref":"#/$defs/factI"},
+        "equipment": {"$ref":"#/$defs/factMatchEquipmentList"},
+        "dir": {"$ref":"#/$defs/factDir"}
+      },
+      "required": ["zone","col","row","operator","tier","elite","skillIndex","moduleId","potential","equipment","dir"],
+      "additionalProperties": false
+    },
+    "factCardKind": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"enum":["operator","equipment"]}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchCard": {
+      "type": "object",
+      "properties": {
+        "kind": {"$ref":"#/$defs/factCardKind"},
+        "card": {"$ref":"#/$defs/factMatchEntity"},
+        "tier": {"$ref":"#/$defs/factI"},
+        "price": {"$ref":"#/$defs/factI"},
+        "bought": {"$ref":"#/$defs/factB"}
+      },
+      "required": ["kind","card","tier","price","bought"],
+      "additionalProperties": false
+    },
+    "factDifficulty": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"enum":["FAST","FUNNY","NORMAL","HARD","ABYSS","TRAINING"]}},"required":["source","value"],"additionalProperties":false}]},
+    "factMatchEntityList": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"array","items":{"$ref":"#/$defs/MatchEntity"}}},"required":["source","value"],"additionalProperties":false}]},
+    "factMatchCovenantList": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"array","items":{"$ref":"#/$defs/MatchCovenant"}}},"required":["source","value"],"additionalProperties":false}]},
+    "factMatchUnitList": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"array","items":{"$ref":"#/$defs/MatchUnit"}}},"required":["source","value"],"additionalProperties":false}]},
+    "factCustomPicks": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"object","propertyNames":{"enum":["5","6"]},"additionalProperties":{"type":"array","items":{"$ref":"#/$defs/MatchEntity"}}}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchState": {
+      "type": "object",
+      "properties": {
+        "gameDataVersion": {"$ref":"#/$defs/factS"},
+        "modeId": {"$ref":"#/$defs/factS"},
+        "difficulty": {"$ref":"#/$defs/factDifficulty"},
+        "mapId": {"$ref":"#/$defs/factS"},
+        "round": {"$ref":"#/$defs/factI"},
+        "bossId": {"$ref":"#/$defs/factS"},
+        "enemies": {"$ref":"#/$defs/factMatchEntityList"},
+        "strategyId": {"$ref":"#/$defs/factS"},
+        "customPicks": {"$ref":"#/$defs/factCustomPicks"},
+        "bannedOperators": {"$ref":"#/$defs/factMatchEntityList"},
+        "covenants": {"$ref":"#/$defs/factMatchCovenantList"},
+        "hp": {"$ref":"#/$defs/factI"},
+        "money": {"$ref":"#/$defs/factI"},
+        "level": {"$ref":"#/$defs/factI"},
+        "upgradeCost": {"$ref":"#/$defs/factI"},
+        "upgradeProgress": {"$ref":"#/$defs/factI"},
+        "refreshCost": {"$ref":"#/$defs/factI"},
+        "frozen": {"$ref":"#/$defs/factB"},
+        "units": {"$ref":"#/$defs/factMatchUnitList"},
+        "shop": {"type":"array","items":{"$ref":"#/$defs/MatchCard"},"minItems":6,"maxItems":6}
+      },
+      "required": ["gameDataVersion","modeId","difficulty","mapId","round","bossId","enemies","strategyId","customPicks","bannedOperators","covenants","hp","money","level","upgradeCost","upgradeProgress","refreshCost","frozen","units","shop"],
+      "additionalProperties": false
+    },
+    "factMatchPosition": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"$ref":"#/$defs/MatchPosition"}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchMove": {
+      "type": "object",
+      "properties": {
+        "from": {"$ref":"#/$defs/factMatchPosition"},
+        "to": {"$ref":"#/$defs/factMatchPosition"},
+        "operator": {"$ref":"#/$defs/factMatchEntity"}
+      },
+      "required": ["from","to","operator"],
+      "additionalProperties": false
+    },
+    "MatchPosition": {
+      "type": "object",
+      "properties": {
+        "zone": {"$ref":"#/$defs/factZone"},
+        "col": {"$ref":"#/$defs/factI"},
+        "row": {"$ref":"#/$defs/factI"}
+      },
+      "required": ["zone","col","row"],
+      "additionalProperties": false
+    },
+    "factMatchMoveList": {"oneOf":[{"$ref":"#/$defs/unknown"},{"type":"object","properties":{"source":{"enum":["read","inferred","confirmed"]},"value":{"type":"array","items":{"$ref":"#/$defs/MatchMove"}}},"required":["source","value"],"additionalProperties":false}]},
+    "MatchDecision": {
+      "type": "object",
+      "properties": {
+        "purchases": {"$ref":"#/$defs/factMatchEntityList"},
+        "sales": {"$ref":"#/$defs/factMatchEntityList"},
+        "refreshes": {"$ref":"#/$defs/factI"},
+        "frozen": {"$ref":"#/$defs/factB"},
+        "upgraded": {"$ref":"#/$defs/factB"},
+        "moves": {"$ref":"#/$defs/factMatchMoveList"},
+        "hpChange": {"$ref":"#/$defs/factI"},
+        "leaks": {"$ref":"#/$defs/factI"},
+        "reachedRound": {"$ref":"#/$defs/factI"},
+        "cleared": {"$ref":"#/$defs/factB"}
+      },
+      "required": ["purchases","sales","refreshes","frozen","upgraded","moves","hpChange","leaks","reachedRound","cleared"],
+      "additionalProperties": false
+    },
+    "unknown": {
+      "type": "object",
+      "properties": {
+        "source": {"const":"unknown"},
+        "value": {"type":"null"}
+      },
+      "required": ["source","value"],
+      "additionalProperties": false
+    },
+    "MatchStep": {
+      "type": "object",
+      "properties": {
+        "state": {"$ref":"#/$defs/MatchState"},
+        "decision": {"$ref":"#/$defs/MatchDecision"},
+        "endState": {"anyOf":[{"$ref":"#/$defs/MatchState"},{"type":"null"}]},
+        "capture": {"$ref":"#/$defs/MatchCapture"}
+      },
+      "required": ["state","decision","endState"],
+      "additionalProperties": false
+    },
+    "MatchCapture": {
+      "type": "object",
+      "properties": {
+        "startAt": {"type":["string","null"]},
+        "endAt": {"type":["string","null"]},
+        "openingShopAt": {"type":["string","null"]},
+        "restStart": {"type":["string","null"]},
+        "restEnd": {"type":["string","null"]},
+        "enemyPanel": {"type":["string","null"]},
+        "openingShopSeen": {"type":"boolean"}
+      },
+      "required": ["startAt","endAt","openingShopAt","restStart","restEnd","enemyPanel","openingShopSeen"],
+      "additionalProperties": false
+    }
+  }
+}

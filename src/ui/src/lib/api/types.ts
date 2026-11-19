@@ -316,6 +316,59 @@ export interface MatchInfo {
    * 宿主还没接上时为 undefined；新局、清空本局时为 []
    */
   covenantBar?: CovenantBarItem[]
+  /**
+   * 开局选策略推荐（决策 S2，任务 364/365）：宿主在本局模式、盟约、禁用、首领有变化时重算并随 match 推送。
+   * 宿主还没接上时为 undefined；新局、清空本局时为 null
+   */
+  strategyAdvice?: StrategyAdvice | null
+  /**
+   * 机变推荐（任务 373）：游戏在机变页（单人第 3、9、11 回合休整前）读到卡时宿主算出并推送；
+   * 离开机变页后保留到这一回合休整期结束。宿主还没接上时为 undefined；下一回合开始、新局时为 null
+   */
+  adaptAdvice?: AdaptAdvice | null
+}
+
+/** 机变推荐。数值和 StrategyAdvice 一样是复刻里自带机器人选了这张卡后接着打的估计 */
+export interface AdaptAdvice {
+  status: 'ok' | 'unavailable'
+  /** unavailable 时给玩家看的一句话，如「这类机变还认不出」「游戏数据版本和推荐模型对不上」 */
+  reason?: string
+  round: number
+  /** 种类：悬赏决策 / 道具补给 / 机密商店 / 战术决策；认不出为 null */
+  family: 'bounty' | 'supply' | 'shop' | 'tactic' | null
+  /** 估计按的难度，同 StrategyAdvice.basis */
+  basis: string
+  /** 画面上的卡，从左到右；index 对应 GameAction pickAdapt.index。认不出的卡 id、name 为 null，不排名 */
+  cards: {
+    index: number
+    id: string | null
+    name: string | null
+    /** 卡上的效果原文（数据表里的，去掉富文本标记）；认不出为 null */
+    desc: string | null
+    clearRate: number | null
+    reachedRound: number | null
+    /** 1 起；认不出的卡为 null */
+    rank: number | null
+  }[]
+  assumptions: string[]
+}
+
+/**
+ * 开局选策略推荐。数值是在第三方复刻里让自带机器人用这个策略打出来的估计，不是玩家本人的胜率；
+ * 界面始终把 basis 和 assumptions 给玩家看得到
+ */
+export interface StrategyAdvice {
+  /** unavailable：这一局给不了推荐（游戏数据版本对不上、模式没读到等），reason 直接显示 */
+  status: 'ok' | 'unavailable'
+  reason?: string
+  /** 估计按的难度，如「规程等级16」；多人模式写「按单人规程等级 n 估」 */
+  basis: string
+  /** 全部候选策略，按推荐顺序（第 0 个最推荐）。clearRate 0～1；reachedRound 预计撑到的回合（可带小数） */
+  items: { strategyId: string; clearRate: number; reachedRound: number }[]
+  /** 所有候选的平均，用来显示「比平均高多少」 */
+  average: { clearRate: number; reachedRound: number }
+  /** 用到的假设，逐条显示，如「按复刻自带机器人的打法估计」「多人模式按单人估」 */
+  assumptions: string[]
 }
 
 /** 顶栏一个盟约图标读到的状态 */
@@ -806,6 +859,18 @@ export interface Settings {
    * 优先于 emulatorSerial。宿主保存时校验格式：'' 或 主机:端口（端口 1～65535）或 emulator-数字
    */
   adbAddress: string
+  /**
+   * 去掉黄框（v1.3.3，默认 false）：PC 客户端不用窗口捕获，只用前台截屏（BitBlt）。
+   * Windows 10（build 20348 以前）上窗口捕获会在游戏窗口外画一圈黄框且去不掉，介意的玩家自己打开。
+   * 代价：游戏窗口要在最前面、不被别的窗口挡住，否则截不到。只影响 PC 来源，模拟器走 ADB 不受影响
+   */
+  hideCaptureBorder: boolean
+  /**
+   * 允许多开（v1.3.3，默认 false，只看默认配置里的这一项）：关着时再双击助手只激活已开的那个；
+   * 开着时再双击会新开一个具名配置（「2」「3」…，没有就新建），各用各的设置和数据，第二个起默认不注册全局快捷键。
+   * 命令行 --profile 名字 不受这个开关限制，agent 和脚本随时可以拉起指定配置
+   */
+  multiInstance: boolean
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]
@@ -845,6 +910,97 @@ export interface Settings {
    * 关掉就不在后台联网问、标题栏不显示铃铛；消息仍能在广场分段里打开看。不进云同步
    */
   plazaNotices: boolean
+  /**
+   * 自动操作（任务 390～393，设计见 docs/自动操作.md）。旧设置文件没有这一项时宿主补默认值：
+   * { enabled: false, consent: 0, external: false, mode: 'dryRun', stopHotkey: 'Ctrl+Alt+Q', api: false }。
+   * 不进云同步、不进备份（换电脑要重新看风险页）
+   */
+  control: ControlSettings
+}
+
+/** 自动操作的设置（任务 391） */
+export interface ControlSettings {
+  /** 自动操作总开关，默认 false。界面只有在 consent 等于当前风险说明版本（CONTROL_CONSENT_VERSION）时才让打开 */
+  enabled: boolean
+  /** 用户勾选同意的风险说明版本，0 = 没同意过。界面在风险页勾选并点「开启」时写入 */
+  consent: number
+  /** 允许外部程序通过本机接口下发操作，默认 false；enabled 为 false 时宿主按 false 处理 */
+  external: boolean
+  /** 执行模式上限：dryRun 试运行（默认）、confirm 逐步确认、auto 自动。界面和本机接口下发时都不能比它更激进 */
+  mode: ControlMode
+  /** 停止键，默认 'Ctrl+Alt+Q'，写法同 fieldHotkey；'' 为不用（界面不允许清空，只能改）。低级钩子监听，不拦截，多开时每个实例都响应 */
+  stopHotkey: string
+  /** 本机接口（HTTP，任务 392）是否监听，默认 false。关着时 sa 命令行连不上 */
+  api: boolean
+}
+
+/** 执行模式，从保守到激进：dryRun 只在截图上标出会点哪，不发输入；confirm 每个动作等用户点「执行」；auto 一口气做完（仍逐个核对） */
+export type ControlMode = 'dryRun' | 'confirm' | 'auto'
+
+/** 朝向，和 PlacementMove.facing 一致 */
+export type Facing = 'up' | 'down' | 'left' | 'right'
+
+/**
+ * 一个对游戏的操作（docs/自动操作.md「操作清单」）。格子同 FieldCell；商店卡位 slot 0～5 从左到右，同 ShopLayout。
+ * expect：执行前核对的名字（卡名 / 干员名），对不上就不做、整批停下；不给就不核对名字
+ */
+export type GameAction =
+  | { type: 'buy'; slot: number; expect?: string }
+  | { type: 'sell'; from: FieldCell; expect?: string }
+  | { type: 'refresh' }
+  | { type: 'freeze'; on: boolean }
+  | { type: 'upgrade' }
+  | { type: 'move'; from: FieldCell; to: FieldCell; facing?: Facing; expect?: string }
+  | { type: 'face'; at: FieldCell; facing: Facing }
+  | { type: 'ready'; on: boolean }
+  | { type: 'pickStrategy'; strategyId: string }
+  | { type: 'pickAdapt'; index: number }
+  | { type: 'pickCustom'; tier: number; operators: string[] }
+
+/** 一批操作的执行情况（任务 391）。一个实例同时只有一批 */
+export interface ControlJob {
+  id: string
+  /** 谁下发的：界面按钮（如「照推荐摆」）还是本机接口 */
+  source: 'ui' | 'api'
+  /** 实际用的模式（下发要求和设置上限里更保守的那个） */
+  mode: ControlMode
+  /**
+   * running 正在做；waitingConfirm 逐步确认模式下等用户点「执行」或「跳过」；
+   * done 全部做完（试运行做完也是 done）；stopped 被停下；failed 画面不符、核对没通过或出错，停在某一步
+   */
+  state: 'running' | 'waitingConfirm' | 'done' | 'stopped' | 'failed'
+  steps: ControlStep[]
+  /**
+   * 停下或失败的原因：user 界面点停止；hotkey 停止键；input PC 上用户动了鼠标或键盘；api 本机接口要求停；
+   * screen 画面不是该动作能做的页面；mismatch 目标对不上（expect、格子里没人等）；verify 做完核对没通过；
+   * lost 游戏窗口或模拟器断了；limit 超过限速或单个休整期的动作上限；disabled 自动操作被关掉；error 其他错误
+   */
+  reason: 'user' | 'hotkey' | 'input' | 'api' | 'screen' | 'mismatch' | 'verify' | 'lost' | 'limit' | 'disabled' | 'error' | null
+  /** 给人看的一句话，如「第 3 步：B3 没有人，场上可能变了」；正常做完为 null */
+  message: string | null
+  startedAt: string
+  endedAt: string | null
+}
+
+export interface ControlStep {
+  action: GameAction
+  /** 给人看的描述，如「把 能天使 从 B3 拖到 C5，朝右」「买第 2 张卡（深靛）」「刷新商店」 */
+  text: string
+  state: 'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'cancelled'
+  /** 这一步的问题（核对没通过、对不上），没有为 null */
+  problem: string | null
+  /** 标注图的地址（在执行前的截图上画出会点 / 拖哪里），界面用 <img> 显示；还没截图为 null */
+  preview: string | null
+  /** 核对结果：true 通过；false 没通过；null 没核对（试运行、跳过、读不出来，如朝向） */
+  verified: boolean | null
+}
+
+/** 本机接口的状态（任务 392）。api 关着时 address 为 null */
+export interface ControlApiStatus {
+  /** 如 'http://127.0.0.1:51234'；口令不给界面 */
+  address: string | null
+  /** 本实例的配置名（默认配置为 'default'），sa 命令行用 --profile 指它 */
+  profile: string
 }
 
 /** 云同步在本机记的状态（v0.7.0），只有界面读写 */
@@ -1376,6 +1532,14 @@ export interface RosterScanStatus {
 }
 
 export interface Api {
+  /** 当前配置名，默认配置为 null。 */
+  currentProfile(): Promise<string | null>
+  /** 列出已有具名配置，默认配置由菜单单列。 */
+  listProfiles(): Promise<string[]>
+  /** 从默认设置创建，初始快捷键关闭。名称限 1–24 个英文字母、数字或短横线，统一小写；重名或 Windows 保留名返回错误。 */
+  createProfile(name: string): Promise<void>
+  /** 启动或激活配置，null 表示默认配置。 */
+  launchProfile(name: string | null): Promise<void>
   catalog(): Promise<Catalog>
   connection(): Promise<Connection>
   match(): Promise<MatchInfo>
@@ -1654,4 +1818,26 @@ export interface Api {
   onRoster(cb: (r: Roster) => void): () => void
   /** 后端推送：读取我的干员的进度 */
   onRosterScan(cb: (s: RosterScanStatus) => void): () => void
+  /**
+   * 下发一批操作（任务 391）。要 settings.control.enabled；mode 不给就用设置里的，给了取它和设置里更保守的那个。
+   * 已有一批在跑时 reject（「上一批操作还没做完」）。立刻 resolve 返回刚建的 ControlJob，之后进度推送 controlJob。
+   * PC 客户端且模式不是 dryRun 时，宿主开始前把游戏切到前台
+   */
+  runActions(actions: GameAction[], mode?: ControlMode): Promise<ControlJob>
+  /**
+   * 照站位推荐在游戏里摆（任务 392）：宿主取当前 PlacementPlan，basedOn 和当前 FieldState.updatedAt 对不上时 reject
+   * （「场上变了，等重新算完再摆」）；没有推荐、不用挪人时 reject。把 from ≠ to 的人排好顺序转成 move 动作
+   * （PlacementActions，任务 390），其余同 runActions
+   */
+  runPlacement(mode?: ControlMode): Promise<ControlJob>
+  /** 逐步确认模式下回答当前这一步：run 执行；skip 跳过这一步继续下一步。不在 waitingConfirm 时什么也不做 */
+  confirmStep(jobId: string, answer: 'run' | 'skip'): Promise<void>
+  /** 停止当前这批（reason 'user'）；没在跑时什么也不做 */
+  stopControl(): Promise<void>
+  /** 当前或最近一批（重启后为 null） */
+  controlJob(): Promise<ControlJob | null>
+  /** 后端推送：批次状态或任意一步有变化 */
+  onControlJob(cb: (job: ControlJob) => void): () => void
+  /** 本机接口状态（任务 392） */
+  controlApi(): Promise<ControlApiStatus>
 }

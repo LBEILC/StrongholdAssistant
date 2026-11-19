@@ -17,8 +17,9 @@ public sealed partial class FieldReader : IDisposable
     private readonly IOcrEngine _ocr;
     private readonly FieldEquipmentReader _equipment;
     private readonly string[] _names;
+    private readonly Lazy<SpriteModelMatcher> _occupancyModel;
     public bool? HasPithStrategy { get; set; }
-    private readonly List<(int Tier, int Size, double[] Values, double[] Fine, double[] Lower, double[] LowerFine)> _templates = [];
+    private readonly List<(int Tier, int Size, double[] Values, double[] Fine, double[] Lower, double[] LowerFine, double[] Rim)> _templates = [];
     private readonly BoardRecognizer _board;
     private readonly GarrisonBoardData _maps;
     private readonly Dictionary<(int, int, bool), BoardMatch> _boards = new();
@@ -33,6 +34,7 @@ public sealed partial class FieldReader : IDisposable
 
     public FieldReader(string directory, IOcrEngine ocr, IEnumerable<string> names)
     {
+        _occupancyModel = new(() => new(Path.Combine(directory, "sprite-model.onnx"), Path.Combine(directory, "sprite-model-classes.json")));
         _summonDefinitions = SummonCatalog.Load(directory);
         _summonMatcher = new(Path.Combine(directory, "summon-templates.bin.gz"));
         _operatorPackage = Path.Combine(directory, "sprite-templates.bin.gz");
@@ -73,12 +75,18 @@ public sealed partial class FieldReader : IDisposable
                 var fine = Sample(px, 0, 0, size, 20); Normalize(fine);
                 var lower = Sample(px, 0, 0, size, 10, 5); Normalize(lower);
                 var lowerFine = Sample(px, 0, 0, size, 20, 10); Normalize(lowerFine);
-                _templates.Add((tier, size, values, fine, lower, lowerFine));
+                var rim = lowerFine[100..]; Normalize(rim);
+                _templates.Add((tier, size, values, fine, lower, lowerFine, rim));
             }
         }
     }
 
-    public void Dispose() { _summonMatcher?.Dispose(); _summonOperatorMatcher?.Dispose(); }
+    public void Dispose()
+    {
+        if (_occupancyModel.IsValueCreated) _occupancyModel.Value.Dispose();
+        _summonMatcher?.Dispose();
+        _summonOperatorMatcher?.Dispose();
+    }
     public void Reset() { _boards.Clear(); _round = null; _lastMap = null; KnownMap = null; _shopCards.Clear(); Summons = []; }
 
     // 就绪控件可能露在外部窗口旁；棋盘中大面积连续的中性纯色不是地形纹理。
@@ -376,11 +384,15 @@ public sealed partial class FieldReader : IDisposable
             if (p.X < 20 || p.X > width - 55 || (p.Y < minY * height / 1080 && !topVisible.Contains(cell)) || p.Y + 55 > height * (shopVisible ? .72 : .94)) continue;
             cells[cell] = 0;
         }
+        using var spriteImage = NormalizeSpriteImage(bitmap);
         var matchedBadges = new Dictionary<FieldCell, FieldBadge>();
         foreach (var cell in cells.Keys.ToArray())
         {
             var p = anchors[cell];
             var badge = ReadBadge(px, bitmap.Width, bitmap.Height, p.X, p.Y, cell.Zone == "board");
+            // 首排被盟约栏遮住时，用可见的身体缩小阶数候选，再回到原图验证角标。
+            if (badge is null && cell is { Zone: "board", Row: 0 } && p.Y < 180 * width / 1920)
+                badge = ReadCovenantBadge(px, spriteImage, bitmap.Width, bitmap.Height, p.X, p.Y, badgeScale);
             if (badge is null) continue;
             double badgeX = badge.X * 1920 / width, badgeY = badge.Y * 1080 / height;
             // 大角标相对人物向左上延伸；整备区多出的 20 像素来自落脚点标定。
@@ -392,7 +404,7 @@ public sealed partial class FieldReader : IDisposable
             // 全片仍有无法凭令牌分类的过渡/遮挡候选，保留原人体证据门槛。
             var bodyOrigin = badge with { X = badgeX + 35 * (badgeScale - 1), Y = badgeY + 112 * (badgeScale - 1) };
             if (!HasUnitEvidence(bodyPixels, bodyOrigin, 1920, 1080, cell.Zone == "board")
-                && !HasShortUnitEvidence(bitmap, cell, badge)) continue;
+                && !HasShortUnitEvidence(spriteImage, cell, badge)) continue;
             cells[cell] = badge.Tier;
             _spriteFeet[cell] = foot;
             matchedBadges[cell] = badge with { X = badge.X / width, Y = badge.Y / height, Size = badge.Size / height };
@@ -404,13 +416,13 @@ public sealed partial class FieldReader : IDisposable
             if (hidden?.Any(r => r.IntersectsWith(area)) == true) cells.Remove(cell);
         }
         OverlayGeometry = new(projection, anchors.ToDictionary(p => p.Key, p => (p.Value.X / width, p.Value.Y / height)), matchedBadges);
-        ReadSummons(bitmap, cells);
+        ReadSummons(spriteImage, cells);
         foreach (var summon in Summons) matchedBadges.Remove(new(summon.Zone, summon.Col, summon.Row));
         return cells;
     }
 
     // 每格分别检查平地和高台的固定位置；角标不再按最近距离分配到其他格。
-    private FieldBadge? ReadBadge(Pixels px, int width, int height, double cx, double cy, bool board)
+    private FieldBadge? ReadBadge(Pixels px, int width, int height, double cx, double cy, bool board, int? supportedTier = null, double minimum = .73)
     {
         double scale = width / 1920d;
         // 展开商店时第一排角标与盟约栏重叠，只比较角标下半部。
@@ -418,7 +430,7 @@ public sealed partial class FieldReader : IDisposable
         FieldBadge? best = null;
         foreach (int size in new[] { 34, 40, 44 })
         {
-            var templates = _templates.Where(t => t.Size == size).ToArray();
+            var templates = _templates.Where(t => t.Size == size && (supportedTier is null || t.Tier == supportedTier)).ToArray();
             int actualSize = Math.Max(10, (int)Math.Round(size * scale));
             int radius = (int)Math.Ceiling((board ? 9 : 12) * scale);
             int horizontal = (int)Math.Ceiling(12 * scale);
@@ -438,7 +450,7 @@ public sealed partial class FieldReader : IDisposable
                         if (px.Gray(x + outer, y + mid) < px.Gray(x + inner, y + mid) + 6
                             && px.Gray(x + actualSize - outer - 1, y + mid) < px.Gray(x + actualSize - inner - 1, y + mid) + 6) continue;
                         var values = Sample(px, x, y, actualSize, 10, lower ? 5 : 0); Normalize(values);
-                        if (templates.Max(t => Dot(lower ? t.Lower : t.Values, values)) < .60) continue;
+                        if (templates.Max(t => Dot(lower ? t.Lower : t.Values, values)) < (supportedTier is null ? .60 : .40)) continue;
                         for (int yy = y; yy <= Math.Min(y + 1, height - actualSize - 1); yy++)
                             for (int xx = x; xx <= Math.Min(x + 1, width - actualSize - 1); xx++)
                             {
@@ -447,7 +459,15 @@ public sealed partial class FieldReader : IDisposable
                                 {
                                     double score = Dot(lower ? t.LowerFine : t.Fine, fine);
                                     if (best is not null && score <= best.Score) continue;
-                                    if (score < .73)
+                                    if (supportedTier is not null)
+                                    {
+                                        // 盟约文字可能盖住数字；只在身体模型支持该阶且下框仍清晰时采纳。
+                                        if (score < minimum) continue;
+                                        // 下半图为 10×20，最后五行保留底边与两个下角。
+                                        var rim = fine[100..]; Normalize(rim);
+                                        if (Dot(t.Rim, rim) < .72) continue;
+                                    }
+                                    else if (score < .73)
                                     {
                                         // 一阶细竖线的外框会被邻格小人挡住一角；两侧亮边均清晰时允许轻微缺损。
                                         if (score < .71 || !board || lower || t.Tier != 1

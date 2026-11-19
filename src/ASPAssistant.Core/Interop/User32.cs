@@ -201,13 +201,29 @@ public static class User32
     [StructLayout(LayoutKind.Sequential)]
     private struct MOUSEINPUT { public int Dx, Dy; public uint Data, Flags, Time; public IntPtr Extra; }
     [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT { public uint Type; public MOUSEINPUT Mouse; }
+    private struct INPUT { public uint Type; public InputData Data; }
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputData
+    {
+        [FieldOffset(0)] public MOUSEINPUT Mouse;
+        [FieldOffset(0)] public KEYBDINPUT Keyboard;
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT { public ushort Vk, Scan; public uint Flags, Time; public IntPtr Extra; }
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKey(uint code, uint mapType);
+    public static void SendScanKey(uint key, bool up)
+    {
+        var keyboard = new KEYBDINPUT { Scan = (ushort)MapVirtualKey(key, 0), Flags = up ? 10u : 8u };
+        if (SendInput(1, [new INPUT { Type = 1, Data = new() { Keyboard = keyboard } }], Marshal.SizeOf<INPUT>()) != 1)
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint count, INPUT[] inputs, int size);
 
     public static void SendMouse(uint flags, int dx = 0, int dy = 0)
     {
-        if (SendInput(1, [new INPUT { Mouse = new MOUSEINPUT { Dx = dx, Dy = dy, Flags = flags } }], Marshal.SizeOf<INPUT>()) != 1)
+        if (SendInput(1, [new INPUT { Data = new() { Mouse = new() { Dx = dx, Dy = dy, Flags = flags } } }], Marshal.SizeOf<INPUT>()) != 1)
             throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 

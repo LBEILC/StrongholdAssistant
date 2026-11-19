@@ -55,6 +55,11 @@ public class ScreenCaptureService
         if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth, RequestedNativeFrame);
         var hwnd = Connection.FindGameWindow();
         if (Connection.IsAdb) return Connection.CaptureAdbScreen(MaxCaptureWidth, RequestedNativeFrame);
+        return CaptureBitBltWindow(hwnd, allowedForeground, inspect, scanPixels);
+    }
+
+    internal byte[]? CaptureBitBltWindow(IntPtr hwnd, IntPtr allowedForeground = default, Action<Bitmap>? inspect = null, bool scanPixels = false)
+    {
         if (hwnd == IntPtr.Zero)
         {
             if (!_windowMissing) AppLogger.Warn("ScreenCapture", "Arknights window not found");

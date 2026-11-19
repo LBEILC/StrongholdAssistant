@@ -11,18 +11,32 @@ public sealed partial class FieldReader
     private readonly Dictionary<FieldCell, (double X, double Y)> _spriteFeet = [];
     private readonly Dictionary<FieldCell, FieldSpriteGeometry> _cellGeometry = [];
     private FieldFrameGeometry? _frameGeometry;
-    private bool HasShortUnitEvidence(System.Drawing.Bitmap bitmap, FieldCell cell, FieldBadge badge)
+    private FieldBadge? ReadCovenantBadge(Pixels pixels, Mat image, int width, int height,
+        double cx, double cy, double badgeScale)
     {
-        // 黑猫低于原身体采样带；用既有官方模板确认占用，不放宽所有二阶的轮廓门槛。
+        var bounds = SpriteBounds(cx * 1920 / width + 35 * badgeScale, cy * 1080 / height + 112 * badgeScale, false);
+        if (!CoversSprite(image, bounds)) return null;
+        using var crop = new Mat(image, bounds);
+        FieldBadge? best = null;
+        foreach (var candidate in _occupancyModel.Value.LikelyOperators(crop))
+        {
+            int tier = _operatorTiers.FirstOrDefault(o => o.Name == candidate.Name).Tier;
+            if (tier == 0) continue;
+            var badge = ReadBadge(pixels, width, height, cx, cy, true, tier, candidate.Score >= .8 ? .49 : .66);
+            if (badge is not null && (best is null || badge.Score > best.Score)) best = badge;
+        }
+        return best;
+    }
+
+    private bool HasShortUnitEvidence(Mat image, FieldCell cell, FieldBadge badge)
+    {
         if (badge.Tier != 2) return false;
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-        using var raw = Cv2.ImDecode(stream.ToArray(), ImreadModes.Color);
-        using var image = new Mat();
-        Cv2.Resize(raw, image, new Size(1920, 1080));
         var foot = _summonFeet[cell];
         var patch = CropSprite(image, foot.X, foot.Y, cell.Zone == "bench");
         if (patch is null) return false;
+        // 光标特效会破坏黑猫的模板比对，完整裁块仍可由模型确认。
+        using var crop = new Mat(image, SpriteBounds(foot.X, foot.Y, cell.Zone == "bench"));
+        if (_occupancyModel.Value.LikelyOperators(crop).FirstOrDefault() is { Name: "Miss.Christine", Score: >= .9 }) return true;
         patch = patch with { Geometry = _cellGeometry[cell] with { BadgeFootX = foot.X, BadgeFootY = foot.Y } };
         patch = patch with { TemplateRegion = CropTemplateSprite(image, patch) };
         _summonOperatorMatcher ??= new(_operatorPackage);

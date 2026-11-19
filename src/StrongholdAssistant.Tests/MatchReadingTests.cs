@@ -70,7 +70,7 @@ public sealed class MatchReadingTests(EnemyRecognitionFixture fixture, ITestOutp
         Assert.Equal(new[] { "源石虫", "宿主士兵" }, names);
         clock.Restart();
         Assert.Null(await reader.ReadAsync(frame));
-        Assert.Equal(2, calls);
+        Assert.Equal(1, calls);
         output.WriteLine($"敌人静帧检测 {clock.Elapsed.TotalMilliseconds:F1} ms");
         var api = await Api();
         api.ApplyRoundEnemies(1, names!);

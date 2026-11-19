@@ -72,6 +72,38 @@ public class UpdateScriptExecutionTests
         finally { DeleteTestDirectory(root); }
     }
 
+    [Fact]
+    public async Task InstalledDeltaRestoresProductFilesAfterPartialActivation()
+    {
+        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
+        try
+        {
+            var (app, source) = await PrepareFilesAsync(root, "installed");
+            foreach (var directory in new[] { app, source })
+            {
+                Directory.CreateDirectory(Path.Combine(directory, "data"));
+                Directory.CreateDirectory(Path.Combine(directory, "ui"));
+                File.WriteAllText(Path.Combine(directory, "data", "value"), directory == app ? "old" : "new");
+            }
+            File.WriteAllText(Path.Combine(app, "unins000.dat"), "uninstall");
+            File.WriteAllText(Path.Combine(root, "affected.txt"), "data/value");
+            const string interrupt = """
+                function Move-Item($LiteralPath, $Destination) {
+                    if ($LiteralPath -eq (Join-Path $stagingDir 'ui')) { throw '模拟安装中断' }
+                    Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination
+                }
+
+                """;
+            var result = await RunUpdateAsync(root, app, source, prefix: interrupt, installedDelta: true);
+            Assert.Equal(1, result.ExitCode);
+            Assert.Equal("old", File.ReadAllText(Path.Combine(app, "data", "value")));
+            Assert.True(Directory.Exists(Path.Combine(app, "ui")));
+            Assert.Equal("uninstall", File.ReadAllText(Path.Combine(app, "unins000.dat")));
+            Assert.Contains("rolled back to previous version", File.ReadAllText(Path.Combine(root, "update.log")));
+        }
+        finally { DeleteTestDirectory(root); }
+    }
+
     private static async Task<(string App, string Source)> PrepareFilesAsync(string root, string folder)
     {
         var compiler = Path.Combine(root, "compile.ps1");
@@ -130,10 +162,11 @@ public class UpdateScriptExecutionTests
     }
 
     private static async Task<(int ExitCode, string Output)> RunUpdateAsync(
-        string root, string app, string source, int pid = int.MaxValue, bool shortWait = false, string prefix = "")
+        string root, string app, string source, int pid = int.MaxValue, bool shortWait = false, string prefix = "", bool installedDelta = false)
     {
         var script = UpdateService.BuildUpdateScript(pid, source, app, Path.Combine(app, "StrongholdAssistant.exe"),
-            Path.Combine(root, "staging"), Path.Combine(root, "backup"), Path.Combine(root, "update.log"));
+            Path.Combine(root, "staging"), Path.Combine(root, "backup"), Path.Combine(root, "update.log"),
+            installedDelta ? "1.3.4" : null, installedDelta);
         if (shortWait) script = script.Replace("$timeout = 300", "$timeout = 1")
             .Replace("$startupTimeout = 60", "$startupTimeout = 1");
         var path = Path.Combine(root, "update.ps1");

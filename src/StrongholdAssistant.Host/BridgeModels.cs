@@ -53,9 +53,11 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public string PlacementGoal { get; init; } = "balanced";
     public bool Collect { get; init; }
     public bool FieldAuto { get; init; }
+    public ControlSettings Control { get; init; } = new();
     public string FieldHotkey { get; init; } = "Alt+F";
     public MarkerStyles MarkerStyles { get; init; } = new();
     public bool GameThemeAuto { get; init; } = true;
+    public bool MultiInstance { get; init; }
     public bool RunAsAdmin { get; init; } = true;
     public RouteOverlaySettings Routes { get; init; } = new();
     public OverlayLayerSettings OverlayLayers { get; init; } = new();
@@ -78,6 +80,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     [JsonPropertyName("githubTokenExpiresAt")]
     public string GitHubTokenExpiresAt { get; init; } = "";
     public Dictionary<string, OperatorDefaults> OperatorDefaults { get; init; } = [];
+    public bool HideCaptureBorder { get; init; }
     public string GameSource { get; init; } = "auto";
     public string EmulatorSerial { get; init; } = "";
     public string AdbAddress { get; init; } = "";
@@ -105,6 +108,7 @@ public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[
     string[] BannedOperators, string? BossId, string[] EnemyTypes,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? RecognizedAt = null)
 {
+    public StrategyAdvice? StrategyAdvice { get; init; }
     public BanGroup[] BanGroups { get; init; } = [];
     public bool BansScanned { get; init; }
     public bool Solo { get; init; }
@@ -115,6 +119,7 @@ public sealed record MatchInfo(string Source, string? StrategyId, CovenantState[
     public RoundEnemies? RoundEnemies { get; init; }
     public Dictionary<int, string[]>? CustomPicks { get; init; }
     public CovenantBarItem[] CovenantBar { get; init; } = [];
+    public AdaptAdvice? AdaptAdvice { get; init; }
 }
 public sealed record CovenantBarItem(string Id, int? Level, int? Layers, int? Round, string At);
 public sealed record RoundEnemy(string? Id, string Name, string Source = "read");

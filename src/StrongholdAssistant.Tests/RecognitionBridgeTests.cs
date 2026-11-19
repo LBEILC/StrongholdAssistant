@@ -19,6 +19,26 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         return api;
     }
 
+    // 保留扫描期间的局面变化；同一局面单独补推推荐时不计作识别事件。
+    private static Func<(string Name, object Value)[]> ScanEvents(HostApi api)
+    {
+        var before = api.Match with { StrategyAdvice = null };
+        var events = new System.Collections.Concurrent.ConcurrentQueue<(string Name, object Value)>();
+        api.Changed += (name, value) => events.Enqueue((name, value));
+        return () =>
+        {
+            var last = before;
+            return events.ToArray().Where(e =>
+            {
+                if (e.Value is not MatchInfo match) return true;
+                var next = match with { StrategyAdvice = null };
+                if (next == last) return false;
+                last = next;
+                return true;
+            }).ToArray();
+        };
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -88,8 +108,7 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         var operators = api.Catalog.GetProperty("operators").EnumerateArray()
             .Select(o => o.GetProperty("name").GetString()!).ToHashSet();
         foreach (var name in operators) api.SetOperatorBanned(name, false);
-        var events = new List<(string Name, object Value)>();
-        api.Changed += (name, value) => events.Add((name, value));
+        var readEvents = ScanEvents(api);
 
         var match = Assert.IsType<MatchInfo>(await api.InvokeAsync("rescan", []));
 
@@ -108,8 +127,9 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         Assert.NotNull(match.RecognizedAt);
         Assert.True(DateTimeOffset.TryParse(match.RecognizedAt, out _));
         Assert.Null(match.StrategyId);
-        Assert.Same(match, api.Match);
+        Assert.Equal(match with { StrategyAdvice = null }, api.Match with { StrategyAdvice = null });
         // 换局时额外清除上一局推荐；没有场上状态，不重复发送空结果。
+        var events = readEvents();
         Assert.Equal(new[] { "scan", "placement", "match", "scan" }, events.Select(e => e.Name));
         Assert.Null(events[1].Value);
         Assert.Equal(new ScanStatus(true), events[0].Value);
@@ -125,12 +145,12 @@ public sealed class RecognitionBridgeTests(EnemyRecognitionFixture fixture)
         var api = await CreateApi("shop-tier2-color.png");
         api.SetCovenantIncomplete("victoria", true);
         var before = api.Match;
-        var events = new List<(string Name, object Value)>();
-        api.Changed += (name, value) => events.Add((name, value));
+        var readEvents = ScanEvents(api);
 
         var error = await Assert.ThrowsAsync<RecognitionException>(() => api.InvokeAsync("rescan", []));
 
-        Assert.Same(before, api.Match);
+        Assert.Equal(before with { StrategyAdvice = null }, api.Match with { StrategyAdvice = null });
+        var events = readEvents();
         Assert.Equal(new[] { "scan", "scan" }, events.Select(e => e.Name));
         Assert.Equal(new ScanStatus(true), events[0].Value);
         Assert.Equal(new ScanStatus(false, error.Message, false), events[1].Value);

@@ -1,7 +1,6 @@
 // 2026-11-11：适配 StrongholdAssistant 的更新源、包名、启动确认与安装版更新分支。
 // Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
-using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -26,6 +25,8 @@ public record UpdateInfo(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonElement? Notes { get; init; }
     public string Source { get; init; } = "github";
+    [JsonIgnore] internal bool Incremental { get; init; }
+    [JsonIgnore] internal Func<CancellationToken, Task<UpdateInfo?>>? FullPackage { get; init; }
     public string? Sha256 { get; init; }
 }
 
@@ -36,7 +37,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     string? feedUrl = null, string? mirrorChyanUrl = null, HttpClient? httpClient = null,
     TimeSpan? readTimeout = null, string? githubApiUrl = null)
 {
-    private readonly string _appDirectory = Path.GetFullPath(appDirectory ?? AppContext.BaseDirectory).TrimEnd('\\', '/');
+    private readonly string _appDirectory = Path.GetFullPath(appDirectory ?? ASPAssistant.Core.PackageLayout.Root).TrimEnd('\\', '/');
     public bool IsInstalled => File.Exists(Path.Combine(_appDirectory, "installed.json"));
     /// <summary>
     /// 覆盖更新源的环境变量（仅用于本地验证更新流程，正式用户不设置就走 GitHub）。
@@ -140,7 +141,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             var checksums = release.Assets.FirstOrDefault(a =>
                 string.Equals(a.Name, ChecksumsAssetName, StringComparison.OrdinalIgnoreCase));
 
-            return new UpdateInfo(
+            var info = new UpdateInfo(
                 release.TagName,
                 latestVersion.ToString(),
                 release.Body ?? string.Empty,
@@ -152,6 +153,11 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
                 Notes = await ReadReleaseNotesAsync(release.Assets.FirstOrDefault(a => a.Name == "release-notes.json")?.DownloadUrl,
                     latestVersion.ToString(), ct)
             };
+            if (asset.Name != DeltaName(latestVersion)) return info;
+            var full = release.Assets.FirstOrDefault(a => a.Name == $"StrongholdAssistant-v{latestVersion}{PackageSuffix}")
+                ?? throw new InvalidDataException("发布中缺少全量 ZIP");
+            return info with { Incremental = true, FullPackage = _ => Task.FromResult<UpdateInfo?>(
+                info with { AssetName = full.Name, DownloadUrl = full.DownloadUrl }) };
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -185,7 +191,24 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         CleanupStaleUpdateDirs();
         var tempDir = Directory.CreateTempSubdirectory("StrongholdAssistant-Update-").FullName;
 
-        var zipPath = Path.Combine(tempDir, info.AssetName);
+        try
+        {
+            await PreparePackageAsync(info, tempDir, progress, ct);
+        }
+        catch (Exception ex) when (info.Incremental && ex is (UpdateIntegrityException or IOException or
+            InvalidDataException or UnauthorizedAccessException or HttpRequestException))
+        {
+            Directory.Delete(tempDir, true);
+            var full = await info.FullPackage!(ct);
+            if (full is null || full.Incremental || full.Version != info.Version)
+                throw IntegrityFailure(LastError ?? "无法取得对应版本的全量包");
+            await DownloadAndApplyUpdateAsync(full, progress, ct);
+        }
+    }
+
+    private async Task PreparePackageAsync(UpdateInfo info, string tempDir, IProgress<double>? progress, CancellationToken ct)
+    {
+        var zipPath = Path.Combine(tempDir, "package.zip");
 
         // Download with progress reporting
         using (var response = await _http.GetAsync(
@@ -235,33 +258,17 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
 
         progress?.Report(0.92);
 
-        if (IsInstalled)
-        {
-            var installerScript = Path.Combine(tempDir, "update.ps1");
-            await File.WriteAllTextAsync(installerScript,
-                BuildInstallerUpdateScript(Environment.ProcessId, zipPath, _appDirectory),
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
-            PendingScriptPath = installerScript;
-            PendingStagingDir = tempDir;
-            progress?.Report(1.0);
-            return;
-        }
-
-        // Extract zip
-        var extractDir = Path.Combine(tempDir, "extracted");
-        Directory.CreateDirectory(extractDir);
-        ZipFile.ExtractToDirectory(zipPath, extractDir);
-
         progress?.Report(0.96);
 
         // 新发布包直接以程序目录为根，不兼容旧包的外层目录。
-        var sourceDir = extractDir;
+        var sourceDir = Path.Combine(tempDir, "extracted");
+        UpdateImage.Prepare(zipPath, sourceDir, _appDirectory, info.Incremental, IsInstalled);
         if (!File.Exists(Path.Combine(sourceDir, AppExecutableName)))
             throw IntegrityFailure("更新包不完整，缺少主程序，已停止更新");
 
         var appDir = _appDirectory;
         var parentDir = Path.GetDirectoryName(appDir) ?? appDir;
-        var stamp = $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+        var stamp = $"{InstallationId(appDir)}-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
         var scriptPath = Path.Combine(tempDir, "update.ps1");
 
         var scriptContent = BuildUpdateScript(
@@ -271,7 +278,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             Path.Combine(appDir, AppExecutableName),
             Path.Combine(parentDir, $"StrongholdAssistant-Staging-{stamp}"),
             Path.Combine(parentDir, $"StrongholdAssistant-backup-{stamp}"),
-            Path.Combine(tempDir, "update.log"));
+            Path.Combine(tempDir, "update.log"), IsInstalled ? info.Version : null, info.Incremental);
 
         await File.WriteAllTextAsync(scriptPath, scriptContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
 
@@ -329,7 +336,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         try
         {
             var parent = Path.GetDirectoryName(_appDirectory)!;
-            foreach (var directory in Directory.GetDirectories(parent, "StrongholdAssistant-Staging-*"))
+            foreach (var directory in Directory.GetDirectories(parent, $"StrongholdAssistant-Staging-{InstallationId(_appDirectory)}-*"))
             {
                 if (string.Equals(directory, _appDirectory, StringComparison.OrdinalIgnoreCase)) continue;
                 try { Directory.Delete(directory, true); }
@@ -432,7 +439,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         string exePath,
         string stagingDir,
         string backupDir,
-        string logPath)
+        string logPath, string? installedVersion = null, bool incremental = false)
     {
         static string Q(string value) => "'" + (value ?? "").Replace("'", "''") + "'";
 
@@ -465,12 +472,14 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine();
         sb.AppendLine("function Start-Version([string]$path, [string]$resultPath) {");
         sb.AppendLine("    $start = New-Object System.Diagnostics.ProcessStartInfo");
-        sb.AppendLine("    $start.FileName = $path");
+        sb.AppendLine("    $hostPath = Join-Path $appDir 'app/StrongholdAssistant.exe'");
+        sb.AppendLine("    $start.FileName = if ($resultPath -and (Test-Path -LiteralPath $hostPath)) { $hostPath } else { $path }");
         sb.AppendLine("    $start.WorkingDirectory = $appDir");
         sb.AppendLine("    $start.UseShellExecute = $false");
         sb.AppendLine("    $start.Arguments = '--keep-identity'");
         sb.AppendLine("    $start.EnvironmentVariables.Remove('STRONGHOLD_UPDATE_STARTUP_RESULT')");
         sb.AppendLine("    if ($resultPath) { $start.EnvironmentVariables['STRONGHOLD_UPDATE_STARTUP_RESULT'] = $resultPath }");
+        if (incremental) sb.AppendLine("    if (!$resultPath) { $start.Arguments += ' --retry-full-update' }");
         sb.AppendLine("    $process = [System.Diagnostics.Process]::Start($start)");
         sb.AppendLine("    if ($null -eq $process) { throw '无法启动辅助程序' }");
         sb.AppendLine("    return $process");
@@ -512,7 +521,15 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    if (Get-Process -Id $appPid -ErrorAction SilentlyContinue) {");
         sb.AppendLine("        throw '辅助仍在运行，请完全退出辅助（含托盘图标）后重新检查更新。'");
         sb.AppendLine("    }");
+        sb.AppendLine($"    $profileLock = [IO.File]::Open({Q(ProfileLockPath(appDir))}, 'OpenOrCreate', 'Read', 'None')");
         sb.AppendLine("    Start-Sleep -Milliseconds 800");
+        if (incremental)
+        {
+            sb.AppendLine("    foreach ($name in (Get-Content -LiteralPath (Join-Path (Split-Path -Parent $sourceDir) 'affected.txt') -Encoding UTF8)) {");
+            sb.AppendLine("        $path = Join-Path $appDir $name");
+            sb.AppendLine("        if ([IO.File]::Exists($path)) { [IO.File]::Open($path, 'Open', 'ReadWrite', 'ReadWrite, Delete').Dispose() }");
+            sb.AppendLine("    }");
+        }
         sb.AppendLine();
         sb.AppendLine("    if (-not (Test-Path -LiteralPath (Join-Path $sourceDir 'StrongholdAssistant.exe'))) {");
         sb.AppendLine("        throw '更新包不完整：缺少 StrongholdAssistant.exe'");
@@ -523,35 +540,52 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    Copy-Item -LiteralPath $sourceDir -Destination $stagingDir -Recurse -Force");
         sb.AppendLine("    Write-Log \"staged new files to $stagingDir\"");
         sb.AppendLine();
-        sb.AppendLine("    $renamedOld = $false");
-        sb.AppendLine("    for ($try = 1; $try -le 10; $try++) {");
-        sb.AppendLine("        try {");
-        sb.AppendLine("            Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $backupDir) -ErrorAction Stop");
-        sb.AppendLine("            $renamedOld = $true");
-        sb.AppendLine("            break");
-        sb.AppendLine("        } catch {");
-        sb.AppendLine("            Write-Log \"rename attempt $try failed: $($_.Exception.Message)\"");
-        sb.AppendLine("            Start-Sleep -Milliseconds 500");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("    Write-Log \"renamed current install to ${backupDir}: $renamedOld\"");
-        sb.AppendLine();
-        sb.AppendLine("    if (-not $renamedOld) {");
-        sb.AppendLine("        throw '安装目录仍被占用，未替换任何旧版文件。请完全退出辅助（含托盘图标），并关闭该目录的终端或预览后重试。'");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine("    try {");
-        sb.AppendLine("        Rename-Item -LiteralPath $stagingDir -NewName (Split-Path -Leaf $appDir)");
-        sb.AppendLine("        Write-Log \"activated new version\"");
-        sb.AppendLine("    } catch {");
-        sb.AppendLine("        Write-Log \"activation failed, rolling back: $($_.Exception.Message)\"");
-        sb.AppendLine("        if ($renamedOld) { Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir) }");
-        sb.AppendLine("        $renamedOld = $false");
-        sb.AppendLine("        Start-OldVersion");
-        sb.AppendLine("        Show-Failure \"无法切换新版本，已回滚到旧版本：$($_.Exception.Message)\"");
-        sb.AppendLine("        exit 1");
-        sb.AppendLine("    }");
-        sb.AppendLine();
+        if (installedVersion is not null)
+        {
+            // 自选目录可能同时存有其他程序。只交换产品项，卸载记录和无关文件留在原位。
+            sb.AppendLine("    $moved = @(); $activated = @()");
+            sb.AppendLine("    [IO.Directory]::CreateDirectory($backupDir) | Out-Null");
+            sb.AppendLine("    $renamedOld = $true");
+            sb.AppendLine($"    foreach ($name in @({string.Join(",", UpdateImage.ProductEntries.Select(Q))})) {{");
+            sb.AppendLine("        $old = Join-Path $appDir $name");
+            sb.AppendLine("        if (Test-Path -LiteralPath $old) { Move-Item -LiteralPath $old -Destination $backupDir; $moved += $name }");
+            sb.AppendLine("        $next = Join-Path $stagingDir $name");
+            sb.AppendLine("        if (Test-Path -LiteralPath $next) { Move-Item -LiteralPath $next -Destination $appDir; $activated += $name }");
+            sb.AppendLine("    }");
+            sb.AppendLine("    [IO.Directory]::Delete($stagingDir)");
+        }
+        else
+        {
+            sb.AppendLine("    $renamedOld = $false");
+            sb.AppendLine("    for ($try = 1; $try -le 10; $try++) {");
+            sb.AppendLine("        try {");
+            sb.AppendLine("            Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $backupDir) -ErrorAction Stop");
+            sb.AppendLine("            $renamedOld = $true");
+            sb.AppendLine("            break");
+            sb.AppendLine("        } catch {");
+            sb.AppendLine("            Write-Log \"rename attempt $try failed: $($_.Exception.Message)\"");
+            sb.AppendLine("            Start-Sleep -Milliseconds 500");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine("    Write-Log \"renamed current install to ${backupDir}: $renamedOld\"");
+            sb.AppendLine();
+            sb.AppendLine("    if (-not $renamedOld) {");
+            sb.AppendLine("        throw '安装目录仍被占用，未替换任何旧版文件。请完全退出辅助（含托盘图标），并关闭该目录的终端或预览后重试。'");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+            sb.AppendLine("    try {");
+            sb.AppendLine("        Rename-Item -LiteralPath $stagingDir -NewName (Split-Path -Leaf $appDir)");
+            sb.AppendLine("        Write-Log \"activated new version\"");
+            sb.AppendLine("    } catch {");
+            sb.AppendLine("        Write-Log \"activation failed, rolling back: $($_.Exception.Message)\"");
+            sb.AppendLine("        if ($renamedOld) { Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir) }");
+            sb.AppendLine("        $renamedOld = $false");
+            sb.AppendLine("        Start-OldVersion");
+            if (!incremental) sb.AppendLine("        Show-Failure \"无法切换新版本，已回滚到旧版本：$($_.Exception.Message)\"");
+            sb.AppendLine("        exit 1");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+        }
         sb.AppendLine("    Start-Sleep -Milliseconds 400");
         sb.AppendLine("    $startupResult = Join-Path (Split-Path -Parent $logPath) ('startup-' + [Guid]::NewGuid().ToString('N') + '.status')");
         sb.AppendLine("    $newProcess = Start-Version $exePath $startupResult");
@@ -574,6 +608,13 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("        if ([DateTime]::UtcNow -ge $deadline) { throw '等待新版启动就绪超时' }");
         sb.AppendLine("        Start-Sleep -Milliseconds 200");
         sb.AppendLine("    }");
+        if (installedVersion is not null)
+        {
+            sb.AppendLine(@"    $uninstall = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{C4B65DDD-AB40-40BD-8B72-422B90E13403}_is1'");
+            sb.AppendLine("    if ((Get-ItemProperty -LiteralPath $uninstall).InstallLocation.TrimEnd('\\') -eq $appDir) {");
+            sb.AppendLine($"        Set-ItemProperty -LiteralPath $uninstall -Name DisplayVersion -Value {Q(installedVersion)}");
+            sb.AppendLine("    }");
+        }
         sb.AppendLine("    Write-Log 'new version confirmed ready'");
         sb.AppendLine();
         sb.AppendLine("    try {");
@@ -590,8 +631,17 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    }");
         sb.AppendLine("    if ($renamedOld) {");
         sb.AppendLine("        try {");
-        sb.AppendLine("            if (Test-Path -LiteralPath $appDir) { Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $stagingDir) }");
-        sb.AppendLine("            Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir)");
+        if (installedVersion is not null)
+        {
+            sb.AppendLine("            [IO.Directory]::CreateDirectory($stagingDir) | Out-Null");
+            sb.AppendLine("            foreach ($name in $activated) { Move-Item -LiteralPath (Join-Path $appDir $name) -Destination $stagingDir }");
+            sb.AppendLine("            foreach ($name in $moved) { Move-Item -LiteralPath (Join-Path $backupDir $name) -Destination $appDir }");
+        }
+        else
+        {
+            sb.AppendLine("            if (Test-Path -LiteralPath $appDir) { Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $stagingDir) }");
+            sb.AppendLine("            Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir)");
+        }
         sb.AppendLine("            $renamedOld = $false");
         sb.AppendLine("            Write-Log 'rolled back to previous version'");
         sb.AppendLine("            try { if (Test-Path -LiteralPath $stagingDir) { Remove-Item -LiteralPath $stagingDir -Recurse -Force } }");
@@ -604,12 +654,16 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("        Show-Failure \"更新未完成且自动恢复失败：$message。请保留备份目录 $backupDir。\"");
         sb.AppendLine("    } else {");
         sb.AppendLine("        Start-OldVersion");
-        sb.AppendLine("        Show-Failure \"更新未完成，旧版本文件已保留：$message\"");
+        if (!incremental) sb.AppendLine("        Show-Failure \"更新未完成，旧版本文件已保留：$message\"");
         sb.AppendLine("    }");
         sb.AppendLine("    exit 1");
         sb.AppendLine("}");
         sb.AppendLine("finally {");
         sb.AppendLine("    if ($null -ne $newProcess) { $newProcess.Dispose() }");
+        sb.AppendLine("}");
+        sb.AppendLine("if ($PSCommandPath -and (Split-Path -Leaf (Split-Path -Parent $PSCommandPath)) -like 'StrongholdAssistant-Update-*') {");
+        sb.AppendLine("    Set-Location ([IO.Path]::GetTempPath()); [Environment]::CurrentDirectory = [IO.Path]::GetTempPath()");
+        sb.AppendLine("    Remove-Item -LiteralPath (Split-Path -Parent $PSCommandPath) -Force -Recurse -ErrorAction SilentlyContinue");
         sb.AppendLine("}");
         sb.AppendLine("exit 0");
         return sb.ToString();

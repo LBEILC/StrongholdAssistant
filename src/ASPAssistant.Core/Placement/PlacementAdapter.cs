@@ -31,6 +31,10 @@ public sealed record PlacementResult(string BasedOn, string ComputedAt, string G
 
 public sealed class PlacementAdapter
 {
+    public static PlacementOptions ProductBudget => new()
+    {
+        Iterations = 5000, Restarts = 1, SimulationIterations = 1000, MaxStreams = 6, Simulate = true
+    };
     private readonly Dictionary<string, Operator> _operators;
     private readonly Dictionary<string, string> _ids;
     private readonly Dictionary<string, string> _transforms;
@@ -44,7 +48,10 @@ public sealed class PlacementAdapter
     public string[]? GetCells(string mapId) => _board.Find(mapId)?.CellRows;
 
     public IReadOnlyList<RoundStream> RoundStreams(int round, string? mode, bool solo, string[] enemyTypes, string? bossId)
-        => _spawns.Streams(round, solo ? "mode_multi_funny" : mode, enemyTypes, bossId);
+        => solo ? SoloRoundStreams(_spawns, round, enemyTypes, bossId) : _spawns.Streams(round, mode, enemyTypes, bossId);
+
+    public static IReadOnlyList<RoundStream> SoloRoundStreams(GarrisonSpawnStore spawns, int round, string[] enemyTypes, string? bossId)
+        => spawns.Streams(round, "mode_multi_funny", enemyTypes, bossId);
 
     public CombatEffect? SelectEquipmentEffect(FieldEquipment item)
     {
@@ -83,14 +90,15 @@ public sealed class PlacementAdapter
         int guessed = 0, missingPotential = 0, defaultSkill = 0;
         var ignoredEquipment = new List<string>();
         bool missingElite = false, missingEquipment = false, missingEquipmentQuality = false;
-        foreach (var unit in field.Units)
+        // 同一盘的枚举顺序不参与副本编号、候选顺序和固定种子搜索。
+        foreach (var unit in field.Units.OrderBy(u => u.Zone, StringComparer.Ordinal).ThenBy(u => u.Row).ThenBy(u => u.Col))
         {
             if (unit.Status == "unknown" || unit.Operator is not { } name || !_planner.CanPlace(name))
             {
                 skipped.Add(unit.Cell);
                 continue;
             }
-            var equipment = unit.Equipment ?? [];
+            var equipment = unit.Equipment?.OrderBy(e => e.Name, StringComparer.Ordinal).ThenBy(e => e.Elite).ToArray() ?? [];
             // TODO(design): 现有模拟器没有元素损伤累计、爆发和对应选敌，按既有假设列表说明。
             if (name == PithIdentity.Gift && !assumptions.Any(a => a.StartsWith(PithIdentity.Gift, StringComparison.Ordinal)))
                 assumptions.Add("Pith（优等生）的神经、灼燃、凋亡损伤及优先攻击未爆发目标没算");
@@ -188,7 +196,7 @@ public sealed class PlacementAdapter
         assumptions.Add("现在的朝向按最好的算");
         // TODO(design): 候选总数不足原上场人数时，先算可用的人；确认是否应整次不推荐。
         if (pool.Count < count) assumptions.Add("有场上干员没认出或缺少计算资料，上场人数按可计算人数算");
-        var options = new PlacementOptions
+        var options = ProductBudget with
         {
             FieldCount = count, Mode = input.Goal switch { "leak" => PlacementMode.Combat, "layers" => PlacementMode.Stacking, _ => PlacementMode.Balanced },
             Round = input.Round, TotalRounds = _routes.RoundCount(routeMode), Routes = routes,
@@ -198,6 +206,7 @@ public sealed class PlacementAdapter
                 .Select(s => new BoardCell(s.Col, s.Row)).ToHashSet(),
             FixedSummonNames = (field.Summons ?? []).Where(s => s.Zone == "board").Select(s => s.Name).ToHashSet(),
             FixedSummons = (field.Summons ?? []).Where(s => s.Zone == "board")
+                .OrderBy(s => s.Row).ThenBy(s => s.Col)
                 .Select(s => (Summon: s, Definition: _summons.FirstOrDefault(d => d.Name == s.Name)))
                 .Where(p => p.Definition is not null).Select(p => {
                     var d = p.Definition!;
@@ -205,7 +214,6 @@ public sealed class PlacementAdapter
                     return new SimUnit($"summon:{p.Summon.Col},{p.Summon.Row}", new(p.Summon.Col, p.Summon.Row), [],
                         d.BaseBlock > 0, d.BaseBlock, false, 0, 1, false, d.Hp, d.Defense, false) { Res = d.Resistance };
                 }).ToArray(),
-            Iterations = 5000, Restarts = 1, SimulationIterations = 1000, MaxStreams = 6
         };
         cancel.ThrowIfCancellationRequested();
         var recommended = _planner.Plan(map, pool, options, cancel);

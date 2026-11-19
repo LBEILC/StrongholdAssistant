@@ -21,6 +21,7 @@ public sealed partial class HostApi
 
     public async Task<object> CheckUpdateAsync()
     {
+        if (AssistantProfile.Current.Name is not null) return new { state = "latest" };
         if (Volatile.Read(ref _downloadStatus) is { } downloading) return downloading;
         if (UpdatePrepared && _availableUpdate is { } prepared) return ReportUpdate(new { state = "ready", version = prepared.Version });
         Updater.GetUpdateProxy = () => Settings.UpdateProxy;
@@ -67,6 +68,7 @@ public sealed partial class HostApi
     /// <summary>玩家点「更新」：没下就下、在下就等，下好了马上安装并重启。</summary>
     public Task ApplyUpdateAsync()
     {
+        if (AssistantProfile.Current.Name is not null) throw new ArgumentException("请在默认配置中安装更新。");
         _installWhenReady = true;
         if (UpdatePrepared) { UpdateReady?.Invoke(); return Task.CompletedTask; }
         return DownloadUpdateAsync();

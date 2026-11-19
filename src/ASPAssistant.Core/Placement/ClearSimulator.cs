@@ -13,6 +13,8 @@ public sealed record EnemyProfile(double Hp, double Def, double Res, double Atk,
     /// <summary>Its attacks deal arts damage (reduced by the operator's arts resistance).</summary>
     public bool Arts { get; init; }
     public string Rank { get; init; } = "NORMAL";
+    // 死亡生成物是否计入结算漏怪，与本体的生命点参数独立。
+    public bool CountsOnLeak { get; init; } = true;
     /// <summary>Protection-point HP lost when it gets through.</summary>
     public int LifePoints { get; init; } = 1;
     /// <summary>Weight (massLevel); 3 or more sinks twice as fast in 沼泽地段.</summary>
@@ -32,6 +34,8 @@ public sealed record EnemyProfile(double Hp, double Def, double Res, double Atk,
             : Traits with { OnDeath = [.. Traits.OnDeath.Select(d => d with { Profile = d.Profile.Tougher(factor) })] },
     };
 }
+
+public sealed record DefenseDecay(int Hits, double Def, double Res);
 
 public enum ElementKind { None, Burning, Apoptosis, Neural, Erosion }
 
@@ -53,6 +57,7 @@ public sealed record EnemyTraits
     /// <summary>Every fall: an ember (unblockable, still) that needs this many hits, or it comes back at full HP (and falls into an ember again).</summary>
     public int EmberHits { get; init; }
     public double EmberSeconds { get; init; }
+    public DefenseDecay? DefenseDecay { get; init; }
     /// <summary>First death: untargetable for this long, then back at full HP.</summary>
     public double RebornSeconds { get; init; }
     public IReadOnlyList<DeathSpawn> OnDeath { get; init; } = [];
@@ -120,6 +125,7 @@ public sealed record SimSpawn(double Time, bool Upper, bool Flying, EnemyProfile
 /// </summary>
 public sealed record WaveScenario
 {
+    public bool CollectDetails { get; init; }
     public EnemyProfile Ground { get; init; } = new(4000, 250, 20, 450, 1.6, 0.85);
     public EnemyProfile Flying { get; init; } = new(2200, 120, 20, 0, 0, 1.0);
     public int GroundCount { get; init; } = 24;
@@ -148,6 +154,11 @@ public enum SkillCharge { Auto, Attack, Hit }
 /// <summary>What damage a skill's hits deal while it runs: the operator's own type, arts, or true damage.</summary>
 public enum SkillDamage { Same, Arts, True }
 
+public sealed record SlashSeries(int Count, double Interval, double Damage, double Finisher);
+
+public sealed record GroundField(double Seconds, double Radius, double Damage, double Drift = 0,
+    double Growth = 0, int HeavyWeight = 0, double HeavyDamage = 0, double HeavySlow = 0);
+
 /// <summary>
 /// A skill on its SP cycle: SP from <see cref="Init"/> up to <see cref="Cost"/>, then attack (or healing) × <see cref="Gain"/>
 /// for <see cref="Duration"/> s (0: one strong action). Auto skills wait for a target; no SP is gained while one runs.
@@ -155,6 +166,9 @@ public enum SkillDamage { Same, Arts, True }
 /// </summary>
 public sealed record SimSkill(double Gain, double Cost, double Init, double Duration, SkillCharge Charge)
 {
+    public SlashSeries? Slashes { get; init; }
+    public GroundField? GroundField { get; init; }
+    public double AreaBurst { get; init; }
     /// <summary>Enemies hit per attack (99: every enemy in range).</summary>
     public int Targets { get; init; } = 1;
     /// <summary>Strikes per skill action ("持续进行五次").</summary>
@@ -284,11 +298,16 @@ public sealed record SimLane(IReadOnlyList<(double Col, double Row)> Points, dou
     public bool Upper => Points.Count > 0 && Points[0].Row < 2;
 }
 
+public sealed record SimUnitDetail(double Seconds, double Active, double Atk, double Speed);
+public sealed record SimEnemyDetail(string Name, double Hp, double Taken, double Seconds, bool Killed);
+
 public sealed record SimResult(
     int Spawned, int Killed, int Leaked, int Alive,
     IReadOnlyDictionary<string, int> Kills, IReadOnlyDictionary<string, double> Damage,
     IReadOnlyList<string> Fallen, IReadOnlyDictionary<int, int> LeaksByLane)
 {
+    public IReadOnlyDictionary<string, SimUnitDetail>? UnitDetails { get; init; }
+    public IReadOnlyList<SimEnemyDetail>? EnemyDetails { get; init; }
     /// <summary>Enemies that got through, by name (what the line could not handle).</summary>
     public IReadOnlyDictionary<string, int> LeakedByName { get; init; } = new Dictionary<string, int>();
     /// <summary>Skills cast per operator (only for operators given a <see cref="SimUnit.Skill"/>).</summary>
@@ -317,9 +336,11 @@ public sealed record SimResult(
     public const double MinBossWorth = 8;
     /// <summary>
     /// Enemies handled with the bosses at their worth: kills of the others, plus each boss's worth times how far
-    /// it was beaten (so damage on a boss that survives still counts). Equals <see cref="Killed"/> without bosses.
+    /// it was beaten (so damage on a boss that survives still counts).
     /// </summary>
-    public double Handled => Killed - BossesKilled + BossWorth * BossProgress;
+    public double Handled => Killed - ChargedChildLeaks - BossesKilled + BossWorth * BossProgress;
+    // 子代不占波次名额，漏出去仍会扣血的子代在站位评分里单独扣除。
+    public int ChargedChildLeaks { get; init; }
     /// <summary>The most <see cref="Handled"/> can be.</summary>
     public double Worth => Spawned - Bosses + BossWorth * Bosses;
     public double KillRate => Spawned == 0 ? 1 : (double)Killed / Spawned;
@@ -344,6 +365,7 @@ public sealed record SimResult(
             Sum(r => r.Damage), fallen,
             leaks.Where(kv => kv.Value >= 0.5).ToDictionary(kv => kv.Key, kv => (int)Math.Round(kv.Value)))
         {
+            ChargedChildLeaks = Avg(r => r.ChargedChildLeaks),
             LeakedByName = names.Where(kv => kv.Value >= 0.5).ToDictionary(kv => kv.Key, kv => (int)Math.Round(kv.Value)),
         };
     }
@@ -373,6 +395,12 @@ public static class ClearSimulator
     private const double MireStack = 0.05, MireInterval = 1;
     private const int MireMaxStacks = 10, MireHeavy = 3;
 
+    private sealed record Field(int Owner, GroundField Spec, double Start, double X, double Y,
+        double Vx, double Vy, double Atk)
+    {
+        public int Ticks;
+    }
+
     private sealed class Enemy
     {
         public required EnemyProfile Profile;
@@ -397,6 +425,13 @@ public static class ClearSimulator
         public double StunUntil = -1, StopUntil = -1;   // controlled by an operator's skill
         public HashSet<int>? Struck; // operators already hit once (first-hit crits)
         public int Attacks;
+        private int _decayHits;
+        public double Def => Profile.Def + _decayHits * (T.DefenseDecay?.Def ?? 0);
+        public double Res => Profile.Res + _decayHits * (T.DefenseDecay?.Res ?? 0);
+        public void Damaged()
+        {
+            if (T.DefenseDecay is { } decay && _decayHits < decay.Hits) _decayHits++;
+        }
         public bool Infected;       // walked over 活性源石: stronger, losing HP
         public TerrainKind Tile;
         public double LineReady;
@@ -404,6 +439,8 @@ public static class ClearSimulator
         public int MireStacks;
         public double MireNext = double.NegativeInfinity;   // next 沼泽 trigger while on it
         public bool Killed;
+        public bool Child;
+        public double Taken, Seconds;
         public int LivesLost;       // embers and rebirths it went through
         public double Fragile, SlowBy;   // from operators' talents and zones this step
         public double PoisonDps, PoisonUntil = -1;
@@ -435,6 +472,7 @@ public static class ClearSimulator
         public int BlockCap;
         public bool BuffOn;          // the skill's self buffs applied
         public double Damage, Taken, Healed;
+        public double Seconds, Active, AtkSum, SpeedSum;
         public double StunUntil = -1, NoHealUntil = -1, SkillLockUntil = -1, BurnUntil = -1, ApoptosisUntil = -1;
         public double BleedDps, BleedUntil = -1;
         public double DefLoss;
@@ -444,6 +482,8 @@ public static class ClearSimulator
         public TerrainKind Tile;
         public double Sp, ActiveUntil = -1;
         public bool Empowered;
+        public int SlashIndex = -1;
+        public double NextSlash;
         public double NextUp = double.PositiveInfinity, UpUntil = double.PositiveInfinity;   // summons
         public double X => Spec.Cell.Col + 0.5;
         public double Y => Spec.Cell.Row + 0.5;
@@ -563,7 +603,7 @@ public static class ClearSimulator
         bool anyReveal = units.Any(u => u.Spec.Reveals);
         bool anyDebuff = units.Any(u => u.Spec.Skill is { Debuffs: true });
         bool anyHot = units.Any(u => u.Spec.Skill is { HealPerSecond: > 0 } || u.Spec.Pattern.HealAura > 0);
-        bool anyField = units.Any(u => u.Spec.Fragile > 0 || u.Spec.EnemySlow > 0 || u.Spec.Skill is { Zone: > 0 } or { Slow: > 0 });
+        bool anyField = units.Any(u => u.Spec.Fragile > 0 || u.Spec.EnemySlow > 0 || u.Spec.Skill is { Zone: > 0 } or { Slow: > 0 } or { GroundField.HeavySlow: > 0 });
         bool anyRegen = units.Any(u => u.Spec.Regen > 0);
         bool anyLoss = units.Any(u => u.Spec.LossPerSecond > 0 || u.Spec.NonlethalLossPerSecond > 0);
         bool anySummon = units.Any(u => u.Spec.Summon is not null);
@@ -582,10 +622,13 @@ public static class ClearSimulator
         var leaksByLane = new Dictionary<int, int>();
         var leakedByName = new Dictionary<string, int>();
         var bosses = new List<Enemy>();
-        int next = 0, killed = 0, leaked = 0, spawned = spawns.Count;
+        int next = 0, killed = 0, leaked = 0, chargedChildLeaks = 0;
         double end = (w.Spawns is { Count: > 0 } real ? real.Max(s => s.Time) : w.SpawnSeconds) + w.TailSeconds;
         bool anyAura = spawns.Any(s => HasAura(s.Profile)), anySlow = spawns.Any(s => s.Profile.Traits.SlowFactor < 1);
         double t = 0;
+
+        var fields = new List<Field>();
+        List<Enemy>? observed = w.CollectDetails ? [] : null;
 
         Enemy Add(EnemyProfile p, int lane, double s)
         {
@@ -597,6 +640,7 @@ public static class ClearSimulator
             (e.X, e.Y) = paths[lane].At(s);
             Locate(e);
             enemies.Add(e);
+            observed?.Add(e);
             if (p.Rank == "BOSS") bosses.Add(e);
             return e;
         }
@@ -766,12 +810,26 @@ public static class ClearSimulator
         // Skills: ready once SP reaches the cost; casting starts the boosted window (or arms one strong action).
         bool Ready(Unit u) => u.Spec.Skill is { } sk && u.ActiveUntil <= t && !u.Empowered && u.Sp >= sk.Cost && u.SkillLockUntil <= t;
 
+        double PanelAttack(Unit u)
+        {
+            double atk = u.Spec.Atk;
+            if (u.Spec.Skill is not null) atk /= Math.Max(1e-9, u.Spec.SkillFactor);
+            else if (u.SkillLockUntil > t) atk /= Math.Max(1, u.Spec.SkillFactor);
+            return u.Tile == TerrainKind.Infection ? atk * InfectionAtk : atk;
+        }
+
         void Cast(Unit u)
         {
             var sk = u.Spec.Skill!;
             u.Sp = 0;
             u.Casts++;
-            if (sk.Duration > 0) u.ActiveUntil = t + sk.Duration; else u.Empowered = true;
+            if (sk.Slashes is { } series)
+            {
+                u.SlashIndex = 0;
+                u.NextSlash = t;
+                u.ActiveUntil = t + series.Count * series.Interval;
+            }
+            else if (sk.Duration > 0) u.ActiveUntil = t + sk.Duration; else u.Empowered = true;
             double baseAtk = u.Spec.Atk / Math.Max(1e-9, u.Spec.SkillFactor) * (1 + u.Spec.CastAtk * Math.Min(10, u.Casts));
             if (sk.HealBurst > 0)
                 foreach (int j in u.SkillAllies)
@@ -808,24 +866,23 @@ public static class ClearSimulator
                 return;
             }
             if (target.Shield > 0) { target.Shield--; return; }
-            var p = target.Profile;
             var sk = skillHit ? u.Spec.Skill : null;
             var kind = sk is { Damage: not SkillDamage.Same } ? sk.Damage : u.Spec.Arts ? SkillDamage.Arts : SkillDamage.Same;
             double dmg;
             if (kind == SkillDamage.True) dmg = atk;
             else if (kind == SkillDamage.Arts)
             {
-                double res = Math.Clamp(p.Res + target.T.RefractionRes + target.AuraRes + target.ResAdd - (sk?.ResIgnore ?? 0) - u.Spec.ResIgnore, 0, 100);
+                double res = Math.Clamp(target.Res + target.T.RefractionRes + target.AuraRes + target.ResAdd - (sk?.ResIgnore ?? 0) - u.Spec.ResIgnore, 0, 100);
                 dmg = Math.Max(atk * (1 - res / 100), 0.05 * atk);
             }
             else
             {
-                double def = Math.Max(0, (p.Def + target.AuraDef) * target.DefScale * (1 - u.Spec.DefIgnoreRatio) - u.Spec.DefIgnore);
+                double def = Math.Max(0, (target.Def + target.AuraDef) * target.DefScale * (1 - u.Spec.DefIgnoreRatio) - u.Spec.DefIgnore);
                 dmg = Math.Max(atk - def, 0.05 * atk);
             }
             if (u.Spec.Weakness && kind != SkillDamage.True)
             {
-                double physical = Math.Max(atk - Math.Max(0, (p.Def + target.AuraDef) * target.DefScale
+                double physical = Math.Max(atk - Math.Max(0, (target.Def + target.AuraDef) * target.DefScale
                     * (1 - u.Spec.DefIgnoreRatio) - u.Spec.DefIgnore), .05 * atk);
                 dmg = Math.Max(physical, ArtsOn(target, atk, (sk?.ResIgnore ?? 0) + u.Spec.ResIgnore));
             }
@@ -839,6 +896,8 @@ public static class ClearSimulator
             if (target.BlockedBy < 0) dmg *= target.T.UnblockedTaken;
             dmg = Math.Min(dmg, target.Hp);
             target.Hp -= dmg;
+            if (w.CollectDetails) target.Taken += dmg;
+            if (dmg > 0) target.Damaged();
             u.Damage += dmg;
             if (u.Spec.Lifesteal > 0 && !u.Spec.NoHeal) Heal(u, u, dmg * u.Spec.Lifesteal);
             if (target.Hp <= 0) { Die(target, i); return; }
@@ -881,7 +940,7 @@ public static class ClearSimulator
         // Arts damage on an enemy after its resistance (talent riders, poison, zones).
         double ArtsOn(Enemy e, double amount, double ignore)
         {
-            double res = Math.Clamp(e.Profile.Res + e.T.RefractionRes + e.AuraRes + e.ResAdd - ignore, 0, 100);
+            double res = Math.Clamp(e.Res + e.T.RefractionRes + e.AuraRes + e.ResAdd - ignore, 0, 100);
             return Math.Max(amount * (1 - res / 100), 0.05 * amount);
         }
 
@@ -891,6 +950,8 @@ public static class ClearSimulator
             if (e.Done || e.Still || e.Shield > 0) return;
             dmg = Math.Min(dmg * (1 + e.Fragile), e.Hp);
             e.Hp -= dmg;
+            if (w.CollectDetails) e.Taken += dmg;
+            if (dmg > 0) e.Damaged();
             if (by >= 0) units[by].Damage += dmg;
             if (e.Hp <= 0) Die(e, by);
         }
@@ -950,17 +1011,14 @@ public static class ClearSimulator
             e.Done = true;
             e.Ember = false;
             e.Killed = true;
-            killed++;
+            if (!e.Child) killed++;
             foreach (var o in units)
                 if (!o.Down && (e.CellBit >= 0 ? Has(o.Mask, e.CellBit) : o.Range.Contains(e.Cell))) o.KillsSeen++;
             if (killer >= 0) units[killer].Kills++;
             Release(e);
             foreach (var child in e.T.OnDeath)
                 for (int k = 0; k < child.Count; k++)
-                {
                     pending.Add((t + child.Delay, e.Lane, e.S, child.Profile));
-                    spawned++;
-                }
             if (e.T.CloudSeconds > 0)
             {
                 bool atSource = e.T.CloudAtSource && killer >= 0;
@@ -996,9 +1054,11 @@ public static class ClearSimulator
             for (int k = pending.Count - 1; k >= 0; k--)
                 if (pending[k].Time <= t)
                 {
-                    Add(pending[k].Profile, pending[k].Lane, pending[k].S);
+                    Add(pending[k].Profile, pending[k].Lane, pending[k].S).Child = true;
                     pending.RemoveAt(k);
                 }
+
+            if (w.CollectDetails) foreach (var e in enemies) e.Seconds += w.Step;
 
             if (anyReveal)
             {
@@ -1075,6 +1135,7 @@ public static class ClearSimulator
                 else e.MireNext = double.NegativeInfinity;
                 if (e.Infected)
                 {
+                    if (w.CollectDetails) e.Taken += Math.Min(e.Hp, InfectionDps * w.Step);
                     e.Hp -= InfectionDps * w.Step;
                     if (e.Hp <= 0) { Die(e, -1); continue; }
                 }
@@ -1127,7 +1188,9 @@ public static class ClearSimulator
                 if (e.S >= path.Length)
                 {
                     e.Done = true;
+                    if (!prof.CountsOnLeak) continue;
                     leaked++;
+                    if (e.Child) chargedChildLeaks++;
                     leaksByLane[e.Lane] = leaksByLane.GetValueOrDefault(e.Lane) + 1;
                     leakedByName[prof.Name] = leakedByName.GetValueOrDefault(prof.Name) + 1;
                     continue;
@@ -1201,6 +1264,23 @@ public static class ClearSimulator
                     }
                 }
             }
+            for (int j = fields.Count - 1; j >= 0; j--)
+            {
+                var f = fields[j];
+                double age = t - f.Start;
+                if (age > f.Spec.Seconds + 1e-6) { fields.RemoveAt(j); continue; }
+                bool tick = age + 1e-6 >= f.Ticks + 1;
+                if (tick) f.Ticks++;
+                double radius = f.Spec.Radius + age * f.Spec.Growth;
+                foreach (var e in enemies)
+                {
+                    if (e.Done || e.Still || e.Flying || Dist(e.X, e.Y, f.X + age * f.Vx, f.Y + age * f.Vy) > radius) continue;
+                    bool heavy = f.Spec.HeavyWeight > 0 && e.Profile.Weight >= f.Spec.HeavyWeight;
+                    if (heavy) e.SlowBy = Math.Max(e.SlowBy, f.Spec.HeavySlow);
+                    if (tick) Wear(e, f.Owner, ArtsOn(e, f.Atk * (f.Spec.Damage + (heavy ? f.Spec.HeavyDamage : 0)),
+                        units[f.Owner].Spec.ResIgnore));
+                }
+            }
             if (anyLoss) for (int i = 0; i < units.Count; i++)
                 if (!units[i].Down && (units[i].Spec.LossPerSecond > 0 || units[i].Spec.NonlethalLossPerSecond > 0))
                 {
@@ -1242,7 +1322,7 @@ public static class ClearSimulator
                 if (sk is not null)
                 {
                     // 凋亡 cuts a running skill short; auto skills gain SP every second while none runs.
-                    if (u.SkillLockUntil > t) { u.ActiveUntil = Math.Min(u.ActiveUntil, t); u.Empowered = false; }
+                    if (u.SkillLockUntil > t) { u.SlashIndex = -1; u.ActiveUntil = Math.Min(u.ActiveUntil, t); u.Empowered = false; }
                     if (sk.Charge == SkillCharge.Auto && u.ActiveUntil <= t && !u.Empowered) u.Sp = Math.Min(sk.Cost, u.Sp + w.Step);
                     if (u.Spec.SpPerSecond > 0 && u.ActiveUntil <= t && !u.Empowered) u.Sp = Math.Min(sk.Cost, u.Sp + u.Spec.SpPerSecond * w.Step);
                 }
@@ -1263,9 +1343,39 @@ public static class ClearSimulator
                     }
                 }
                 u.Cooldown -= w.Step;
-                if (u.Cooldown > 0 || u.Stunned(t)) continue;
+                bool canAct = u.Cooldown <= 0 && !u.Stunned(t);
                 var pat = u.Spec.Pattern;
-                if (pat.HealAura > 0) continue;   // heals through its aura, never attacks
+                if (sk?.Slashes is { } series)
+                {
+                    if (u.SlashIndex < 0 && Ready(u) && !u.Stunned(t)) Cast(u);
+                    if (u.SlashIndex >= 0)
+                    {
+                        canAct = false;
+                        while (u.SlashIndex >= 0 && u.NextSlash <= t + 1e-6)
+                        {
+                            bool final = u.SlashIndex == series.Count;
+                            double atkScale = final ? series.Finisher : series.Damage;
+                            double damage = PanelAttack(u) * (1 + u.Spec.CastAtk * Math.Min(10, u.Casts)) * atkScale;
+                            var targets = enemies.Where(e => !e.Done && !e.Reviving && u.SkillRange.Contains(e.Cell)
+                                && (!(e.T.Invisible || e.Tile == TerrainKind.Hide) || e.Ember || e.BlockedBy >= 0 ||
+                                    e.RevealedUntil > t || Revealed(e))).OrderByDescending(e => e.S).Take(sk.Targets).ToArray();
+                            foreach (var e in targets) Hit(u, i, e, damage, true);
+                            u.SlashIndex = final ? -1 : u.SlashIndex + 1;
+                            u.NextSlash += series.Interval;
+                        }
+                    }
+                }
+                if (sk is { AreaBurst: > 0 } && Ready(u) && !u.Stunned(t) &&
+                    enemies.Any(e => !e.Done && !e.Still && InRange(u, e) && (!e.Flying || u.Spec.AntiAir)))
+                {
+                    Cast(u);
+                    u.Empowered = false;
+                    double damage = sk.AreaBurst * PanelAttack(u) * (1 + u.Spec.CastAtk * Math.Min(10, u.Casts));
+                    foreach (var e in enemies)
+                        if (!e.Done && !e.Still && InRange(u, e) && (!e.Flying || u.Spec.AntiAir))
+                            Hit(u, i, e, damage, true);
+                }
+                if (!w.CollectDetails && (!canAct || pat.HealAura > 0)) continue;   // heals through its aura, never attacks
                 double tileSpeed = u.Tile switch
                 {
                     TerrainKind.Infection => InfectionSpeed,
@@ -1274,9 +1384,15 @@ public static class ClearSimulator
                     _ => 1,
                 };
                 double interval = u.Spec.Interval / u.Slow / tileSpeed;
-                double atk = sk is not null ? u.Spec.Atk / Math.Max(1e-9, u.Spec.SkillFactor)
-                    : u.SkillLockUntil > t ? u.Spec.Atk / Math.Max(1, u.Spec.SkillFactor) : u.Spec.Atk;
-                if (u.Tile == TerrainKind.Infection) atk *= InfectionAtk;
+                double atk = PanelAttack(u);
+                if (w.CollectDetails)
+                {
+                    u.Seconds += w.Step;
+                    if (u.ActiveUntil > t) u.Active += w.Step;
+                    u.AtkSum += atk * (1 + u.Spec.CastAtk * Math.Min(10, u.Casts)) * w.Step;
+                    u.SpeedSum += w.Step / interval;
+                    if (!canAct || pat.HealAura > 0) continue;
+                }
                 if (u.Spec.Healer || pat.HealsDuringSkill && SkillOn(u))
                 {
                     Unit? patient = null;
@@ -1359,7 +1475,17 @@ public static class ClearSimulator
                     continue;
                 }
                 u.Cooldown += interval;
-                atk *= SkillBoost(u, out bool skillHit);
+                if (sk?.GroundField is { } field && Ready(u) && !target.Flying)
+                {
+                    Cast(u);
+                    u.Empowered = false;
+                    double dx = target.X - u.X, dy = target.Y - u.Y;
+                    double len = Math.Max(1e-9, Math.Sqrt(dx * dx + dy * dy));
+                    fields.Add(new(i, field, t, target.X, target.Y, field.Drift * dx / len, field.Drift * dy / len,
+                        atk * (1 + u.Spec.CastAtk * Math.Min(10, u.Casts))));
+                }
+                bool skillHit = false;
+                if (sk?.GroundField is null && !(sk?.AreaBurst > 0)) atk *= SkillBoost(u, out skillHit);
                 atk *= 1 + u.Spec.CastAtk * Math.Min(10, u.Casts);
                 int strikes = Math.Max(1, pat.HitsPerAttack) * (skillHit && sk is { Hits: > 1 } ? sk.Hits : 1);
                 for (int rep = 0; rep < strikes; rep++)
@@ -1412,7 +1538,7 @@ public static class ClearSimulator
                 break;
         }
 
-        int alive = enemies.Count(e => !e.Done) + pending.Count + (spawns.Count - next);
+        int alive = enemies.Count(e => !e.Done && !e.Child) + (spawns.Count - next);
         // A boss not yet spawned counts as untouched; one with a second life (rebirth) has twice the HP to beat.
         int bossCount = bosses.Count + spawns.Skip(next).Count(s => s.Profile.Rank == "BOSS");
         double bossProgress = bosses.Sum(b =>
@@ -1422,10 +1548,14 @@ public static class ClearSimulator
             double part = b.Still ? 0 : 1 - Math.Clamp(b.Hp / Math.Max(1, b.MaxHp), 0, 1);
             return Math.Min(1, (b.LivesLost + part) / lives);
         });
-        return new SimResult(spawned, killed, leaked, alive,
+        return new SimResult(spawns.Count, killed, leaked, alive,
             units.ToDictionary(u => u.Spec.Key, u => u.Kills), units.ToDictionary(u => u.Spec.Key, u => u.Damage),
             [.. units.Where(u => u.Down && u.Spec.Summon is null).Select(u => u.Spec.Key)], leaksByLane)
         {
+            UnitDetails = w.CollectDetails ? units.ToDictionary(u => u.Spec.Key, u => new SimUnitDetail(
+                u.Seconds, u.Active, u.Seconds > 0 ? u.AtkSum / u.Seconds : 0, u.Seconds > 0 ? u.SpeedSum / u.Seconds : 0)) : null,
+            EnemyDetails = observed?.Select(e => new SimEnemyDetail(e.Profile.Name, e.MaxHp, e.Taken, e.Seconds, e.Killed)).ToList(),
+            ChargedChildLeaks = chargedChildLeaks,
             LeakedByName = leakedByName,
             Casts = units.Where(u => u.Spec.Skill is not null).ToDictionary(u => u.Spec.Key, u => u.Casts),
             StunsAround = units.ToDictionary(u => u.Spec.Key, u => u.StunsSeen),

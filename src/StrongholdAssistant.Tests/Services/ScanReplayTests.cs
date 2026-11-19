@@ -15,7 +15,8 @@ public sealed class ScanReplayTests(ShopReaderFixture catalog)
 {
     // SCAN_REPLAY 指向 JSON 数组；每段给出 Phase、Theme、Paths（依次采样的 PNG）。
     // SCAN_RESULTS 接收逐帧 JSONL；不启动扫描器的截屏计时器。
-    public sealed record Clip(string Phase, GameShopTheme Theme, string[] Paths, bool Adb = false);
+    public sealed record Clip(string Phase, GameShopTheme Theme, string[] Paths, bool Adb = false,
+        double[]? Seconds = null, string? OpeningFrame = null, int[]? RecognizeFrames = null);
 
     [Fact]
     public async Task Replay()
@@ -34,6 +35,9 @@ public sealed class ScanReplayTests(ShopReaderFixture catalog)
         var profile = Environment.GetEnvironmentVariable("SCAN_OCR_PROFILE") == "1"
             ? new ReplayOcrProfile(native, process) : null;
         IOcrEngine ocr = (IOcrEngine?)profile ?? native;
+        string? collection = Environment.GetEnvironmentVariable("SCAN_COLLECTION");
+        if (collection is not null)
+            api.SaveSettings(api.Settings with { Collect = true, ShareIncome = false });
         var reader = api.CreateShopReader(ocr);
         api.InitializeBoardRoutes(data);
         api.InitializeField(data, ocr);
@@ -71,8 +75,20 @@ public sealed class ScanReplayTests(ShopReaderFixture catalog)
             scanner.EnemyPanelSeen += api.CountEnemyPanel;
             scanner.ObserveFieldAsync = api.ObserveFieldAsync;
             scanner.ObserveMatchFrameAsync = api.ObserveMatchFrameAsync;
-            foreach (string path in clip.Paths)
+            scanner.ObserveEnemyFrameAsync = api.ObserveEnemyFrameAsync;
+            if (collection is not null)
             {
+                var openingFrame = File.ReadAllBytes(clip.OpeningFrame ?? throw new InvalidDataException("导出采集包需要本局开局信息页 PNG"));
+                await api.InitializeRecognitionAsync(data, ocr, () => Task.FromResult<byte[]?>(openingFrame));
+                await api.RecordInformationAsync(opening: true);
+                scanner.CollectionFrame = api.ObserveCollectionFrame;
+                scanner.CollectionEnemyPanel = api.CollectEnemyPanel;
+                scanner.CollectionScanCompleted = api.CompleteCollectionScan;
+            }
+            var origin = DateTimeOffset.UtcNow;
+            for (int i = 0; i < clip.Paths.Length; i++)
+            {
+                string path = clip.Paths[i];
                 using var source = new Bitmap(path);
                 var encoded = clip.Adb ? File.ReadAllBytes(path) : null;
                 publish = remove = null;
@@ -80,16 +96,19 @@ public sealed class ScanReplayTests(ShopReaderFixture catalog)
                 profile?.Calls.Clear();
                 var cpu = process.TotalProcessorTime;
                 clock.Restart();
-                var at = DateTimeOffset.UtcNow;
+                var at = clip.Seconds is null ? DateTimeOffset.UtcNow : origin.AddSeconds(clip.Seconds[i]);
                 var bytes = encoded ?? new ScreenCaptureService().EncodeCapture(source, scanPixels: true);
                 var (w, h) = OcrScannerService.GetFrameDimensions(bytes);
                 double capture = clock.Elapsed.TotalMilliseconds;
                 using var stages = new FieldRecognitionTiming();
                 await (Task)scan.Invoke(scanner, [bytes, w, h, at, capture, null, 0d])!;
+                if (collection is not null && clip.RecognizeFrames?.Contains(i) == true)
+                    await api.RecognizeFieldFrameAsync(bytes, at, economy, scanner.BoardMainScreenVisible,
+                        scanner.BoardShopVisible, reader.AllItems);
                 double elapsed = clock.Elapsed.TotalMilliseconds;
                 var period = timer.Interval == 150 ? Math.Ceiling(elapsed / timer.Interval) * timer.Interval
                     : elapsed + timer.Interval;
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(0, period - elapsed)));
+                if (collection is null) await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(0, period - elapsed)));
                 process.Refresh();
                 output.WriteLine(JsonSerializer.Serialize(new { clip.Phase, frame = Path.GetFileName(path),
                     capture, elapsed, stages = stages.Snapshot(), period = clock.Elapsed.TotalMilliseconds, publish, remove,
@@ -98,6 +117,13 @@ public sealed class ScanReplayTests(ShopReaderFixture catalog)
                     result = new { economy, theme, opening, panel, scanner.BoardMainScreenVisible,
                         scanner.BoardDetailVisible, scanner.BoardShopVisible, state.ShopItems, api.Match.CustomPicks,
                         routes, enemies = api.Match.RoundEnemies?.Enemies } }));
+            }
+            if (collection is not null)
+            {
+                await api.FinishCollectionsAsync();
+                var match = (await api.CollectionsAsync()).First();
+                await api.ExportCollectionToAsync(match.Id, collection);
+                continue;
             }
             // 每段最后一帧另测一次竞争；在后台已进入时请求手动截图，只计到取帧入口。
             using var last = new Bitmap(clip.Paths[^1]);

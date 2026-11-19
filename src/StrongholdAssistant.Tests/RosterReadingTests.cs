@@ -7,6 +7,27 @@ namespace StrongholdAssistant.Tests;
 public sealed class RosterReadingTests(EnemyRecognitionFixture fixture, ITestOutputHelper output)
 {
     [Fact]
+    public async Task LdPlayerFirstPageReadsSortTargetAndTenNames()
+    {
+        var reader = new RosterReader(fixture.Engine, Path.Combine(AppContext.BaseDirectory, "data"));
+        var frame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "roster-ldplayer-1600x900.png"));
+        var sort = await reader.ReadSortAsync(frame);
+        Assert.NotNull(sort);
+        Assert.Equal("covenant", sort.Mode);
+        var tap = RosterCoordinates.ToScreen(sort.X, sort.Y, 1600, 900);
+        Assert.InRange(tap.X, 1395, 1430);
+        Assert.InRange(tap.Y, 35, 65);
+        var gesture = new[] { "tap", tap.X.ToString(), tap.Y.ToString() };
+        Assert.Equal(["-s", "device", "shell", "input", .. gesture],
+            GameConnectionService.RosterInputArguments("device", 0, gesture));
+        Assert.Equal(["-s", "device", "shell", "input", "-d", "2", .. gesture],
+            GameConnectionService.RosterInputArguments("device", 2, gesture));
+        var page = await reader.ReadAsync(frame);
+        Assert.NotNull(page);
+        Assert.Equal("拜松,矩,风絮,乌有,余,仇白,黍,老鲤,烛煌,夕".Split(','), page.Cards.Select(c => c.Operator.Name));
+    }
+
+    [Fact]
     public async Task WideFrameKeepsCardsUndistortedAndSortAnchoredRight()
     {
         var reader = new RosterReader(fixture.Engine, Path.Combine(AppContext.BaseDirectory, "data"));

@@ -14,7 +14,11 @@ public partial class App : Application
     private EventWaitHandle? _activation;
     private EventWaitHandle? _activated;
     private RegisteredWaitHandle? _wait;
+    private FileStream? _profileLock;
+    private EventWaitHandle? _updateClose;
+    private RegisteredWaitHandle? _updateWait;
     private bool _ownsInstance;
+    private EventWaitHandle? _ownerMarker;
     private readonly DeepLinkChannel _deepLinks = new("StrongholdAssistant.DeepLink");
     private Task? _deepLinkListener;
     private string _logDirectory = null!;
@@ -36,13 +40,40 @@ public partial class App : Application
         }
         await ProcessElevation.WaitForPreviousAsync(e.Args);
         var noGame = e.Args.Contains("--no-game");
-        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant", "settings.json");
         var deepLink = e.Args.FirstOrDefault(DeepLinkChannel.IsValid);
-        _instance = new Mutex(true, @"Local\StrongholdAssistant", out _ownsInstance);
-        _activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activate");
-        _activated = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\StrongholdAssistant.Activated");
+        var profile = AssistantProfile.Current;
+        var index = Array.IndexOf(e.Args, "--profile");
+        if (index >= 0 && deepLink is null)
+        {
+            try { profile = profile.Named(e.Args.ElementAtOrDefault(index + 1)); }
+            catch (ArgumentException ex) { MessageBox.Show(ex.Message); Shutdown(2); return; }
+        }
+        if (noGame)
+        {
+            var root = Environment.GetEnvironmentVariable(AssistantProfile.TestRootVariable)
+                ?? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"));
+            profile = profile with { Root = root };
+        }
+        _instance = new Mutex(true, profile.KernelName(""), out _ownsInstance);
+        if (!_ownsInstance && index < 0 && deepLink is null && !e.Args.Contains("--default-profile")
+            && new HostSettingsStore(Path.Combine(profile.DirectoryPath, "settings.json")).LoadSettings().MultiInstance)
+        {
+            // 在选编号时直接占用该配置，同一时间启动的进程会继续尝试下一个编号。
+            for (var number = 2; !_ownsInstance; number++)
+            {
+                _instance.Dispose();
+                profile = profile.Named(number.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                _instance = new Mutex(true, profile.KernelName(""), out _ownsInstance);
+            }
+        }
+        AssistantProfile.Current = profile;
+        var settingsPath = Path.Combine(profile.DirectoryPath, "settings.json");
+        _activation = new EventWaitHandle(false, EventResetMode.AutoReset, profile.KernelName(".Activate"));
+        _activated = new EventWaitHandle(false, EventResetMode.AutoReset, profile.KernelName(".Activated"));
         if (_ownsInstance)
         {
+            _ownerMarker = new EventWaitHandle(false, EventResetMode.ManualReset, profile.KernelName(".Owner." + Environment.ProcessId));
+            ProcessElevation.AllowSameUser(_ownerMarker.SafeWaitHandle);
             ProcessElevation.AllowSameUser(_instance.SafeWaitHandle);
             ProcessElevation.AllowSameUser(_activation.SafeWaitHandle);
             ProcessElevation.AllowSameUser(_activated.SafeWaitHandle);
@@ -68,6 +99,15 @@ public partial class App : Application
             Shutdown();
             return;
         }
+        if (profile.Name is not null)
+        {
+            try { _profileLock = UpdateService.OpenProfileLock(FileShare.Read); }
+            catch (IOException ex) when ((ex.HResult & 0xffff) == 32)
+            {
+                MessageBox.Show("助手正在安装更新，请稍后再打开配置。"); Shutdown(); return;
+            }
+        }
+        profile.Create(true);
         if (!noGame && !ProcessElevation.Current && !e.Args.Contains("--keep-identity")
             && new HostSettingsStore(settingsPath).LoadSettings().RunAsAdmin)
         {
@@ -75,10 +115,8 @@ public partial class App : Application
             catch (ArgumentException) { /* 取消授权后继续普通运行，不重试。 */ }
         }
         // 无游戏模式供打包验收使用，不启动窗口跟踪或截图。
-        new UpdateService().CleanupStaleStagingDirs();
-        var userDirectory = noGame
-            ? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"))
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant");
+        if (profile.Name is null) new UpdateService().CleanupStaleStagingDirs();
+        var userDirectory = profile.DirectoryPath;
         _logDirectory = Path.Combine(userDirectory, "logs");
         AppLogger.Initialize(_logDirectory);
         CrashGuard.Initialize(userDirectory);
@@ -105,7 +143,7 @@ public partial class App : Application
         }
         MainWindow = new MainWindow(!noGame, userDirectory);
         if (DeepLinkChannel.IsValid(deepLink)) ((MainWindow)MainWindow).ReceiveDeepLink(deepLink!);
-        _deepLinkListener = _deepLinks.ListenAsync(url => Dispatcher.BeginInvoke(() =>
+        if (profile.Name is null) _deepLinkListener = _deepLinks.ListenAsync(url => Dispatcher.BeginInvoke(() =>
         {
             ActivateMainWindow();
             (MainWindow as MainWindow)?.ReceiveDeepLink(url);
@@ -113,6 +151,13 @@ public partial class App : Application
                 _activated.Set();
         }));
         MainWindow.Show();
+        if (profile.Name is not null)
+        {
+            _updateClose = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceRecovery.UpdateCloseName(Environment.ProcessId));
+            ProcessElevation.AllowSameUser(_updateClose.SafeWaitHandle);
+            _updateWait = ThreadPool.RegisterWaitForSingleObject(_updateClose,
+                (_, _) => Dispatcher.BeginInvoke(() => MainWindow?.Close()), null, Timeout.Infinite, true);
+        }
         _wait = ThreadPool.RegisterWaitForSingleObject(_activation,
             (_, _) => Dispatcher.BeginInvoke(() =>
             {
@@ -136,7 +181,7 @@ public partial class App : Application
             _instance!.Dispose();
             _activation!.Dispose();
             _activated!.Dispose();
-            var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+            var start = new ProcessStartInfo(ASPAssistant.Core.PackageLayout.Launcher) { UseShellExecute = false };
             foreach (var arg in args) start.ArgumentList.Add(arg);
             using var restarted = Process.Start(start);
         }
@@ -211,6 +256,10 @@ public partial class App : Application
         _activated?.Dispose();
         if (_ownsInstance) _instance!.ReleaseMutex();
         _instance?.Dispose();
+        _ownerMarker?.Dispose();
+        _updateWait?.Unregister(null);
+        _updateClose?.Dispose();
+        _profileLock?.Dispose();
         base.OnExit(e);
     }
 

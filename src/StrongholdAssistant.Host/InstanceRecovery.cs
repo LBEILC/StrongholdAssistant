@@ -16,16 +16,44 @@ internal static class InstanceRecovery
     internal static Task<bool> WaitForResponseAsync(Func<TimeSpan, Task<bool>> wait) =>
         wait(TimeSpan.FromSeconds(3));
 
+    internal static string UpdateCloseName(int pid) =>
+        $@"Local\StrongholdAssistant.UpdateClose.{ASPAssistant.Core.Services.UpdateService.InstallationId(ASPAssistant.Core.PackageLayout.Root)}.{pid}";
+
+    internal static async Task CloseProfilesForUpdateAsync()
+    {
+        using var current = Process.GetCurrentProcess();
+        var processes = Process.GetProcessesByName(current.ProcessName);
+        try
+        {
+            var exits = new List<Task>();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            foreach (var process in processes)
+            {
+                if (!EventWaitHandle.TryOpenExisting(UpdateCloseName(process.Id), out var request)) continue;
+                using (request)
+                {
+                    if (process.HasExited) continue;
+                    request.Set();
+                    exits.Add(process.WaitForExitAsync(timeout.Token));
+                }
+            }
+            await Task.WhenAll(exits);
+        }
+        finally { foreach (var process in processes) process.Dispose(); }
+    }
+
     internal static void StopOtherInstances()
     {
         using var current = Process.GetCurrentProcess();
-        var processes = Process.GetProcessesByName("StrongholdAssistant");
+        var processes = Process.GetProcessesByName(current.ProcessName);
         var stopped = new List<(Process Process, TimeSpan Uptime)>();
         try
         {
             foreach (var process in processes)
             {
                 if (process.Id == current.Id || process.HasExited || process.SessionId != current.SessionId) continue;
+                if (!EventWaitHandle.TryOpenExisting(AssistantProfile.Current.KernelName(".Owner." + process.Id), out var marker)) continue;
+                using var owner = marker;
                 if (!ShouldStop(process.Id, process.SessionId, process.MainModule?.FileName,
                         current.Id, current.SessionId, Environment.ProcessPath!)) continue;
                 var uptime = DateTime.Now - process.StartTime;

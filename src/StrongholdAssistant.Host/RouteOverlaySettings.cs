@@ -33,7 +33,7 @@ public sealed record RouteOverlaySettings(bool Enabled = false, string Display =
 
     private static bool ValidDisplay(string value) => value is "always" or "hold" or "peek";
     private static bool ValidPeek(double value) => value is >= 3 and <= 15;
-    private static bool ValidHotkey(string value) => HotkeyParser.Parse(value) is not null;
+    private static bool ValidHotkey(string value) => value == "" || HotkeyParser.Parse(value) is not null;
     private static bool ValidOverlap(string value) => value is "cycle" or "all";
     private static bool ValidCycle(double value) => value is >= 1 and <= 5;
     private static bool ValidFly(string value) => value is "main" or "all" or "off";

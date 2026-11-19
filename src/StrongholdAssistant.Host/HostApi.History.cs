@@ -56,6 +56,7 @@ public sealed partial class HostApi
         CompleteHistory();
         ClearEconomy();
         ResetMatchReading();
+        ResetStrategyAdvice();
         Match = Match with { StrategyId = null, StrategySource = null, RoundEnemies = null, CustomPicks = null };
         string now = DateTimeOffset.UtcNow.ToString("O");
         _activeRecord = Guid.NewGuid().ToString("N");

@@ -63,10 +63,16 @@ public sealed partial class HostApi
         if (settings.GameThemeAuto && _detectedTheme is { } detected)
             settings = settings with { GameTheme = detected };
         settings = settings with { ToggleHotkey = Settings.ToggleHotkey, RunAsAdmin = Settings.RunAsAdmin, FieldAuto = false };
+        if (settings.Control is null || settings.Control.Mode is not ("dryRun" or "confirm" or "auto")
+            || settings.Control.StopHotkey != "" && HotkeyParser.Parse(settings.Control.StopHotkey) is null)
+            throw new ArgumentException("自动操作设置无效。");
+        settings = settings with { Control = settings.Control.Local() };
         ValidateSettings(settings);
         var theme = Theme(settings.GameTheme);
         SettingsStore.SaveSettings(settings);
         lock (_fieldGate) Settings = settings;
+        if (!settings.Control.Enabled) StopControl("disabled");
+        ConfigureLocalApi();
         ConfigureCollectionEnabled();
         if (!settings.FieldAuto)
             lock (_placementGate) { _placementStop?.Cancel(); _placementGeneration++; }

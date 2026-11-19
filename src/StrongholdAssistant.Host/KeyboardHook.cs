@@ -11,7 +11,7 @@ internal sealed class KeyboardHook : IDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly Thread _thread;
-    public KeyboardHook(Action<uint, bool, uint, nint> observe, Action? physicalInput = null)
+    public KeyboardHook(Action<uint, bool, uint, nint, bool> observe, Action? physicalInput = null, Action? controlInput = null)
     {
         var ready = new TaskCompletionSource<Dispatcher>(TaskCreationOptions.RunContinuationsAsynchronously);
         _thread = new Thread(() =>
@@ -20,13 +20,13 @@ internal sealed class KeyboardHook : IDisposable
             using var source = new HwndSource(new HwndSourceParameters("KeyboardInput") { ParentWindow = new nint(-3) });
             var pressed = new HashSet<uint>();
             var nudge = new MouseNudge();
-            void Observe(uint key, bool down)
+            void Observe(uint key, bool down, bool device)
             {
                 if (!(down ? pressed.Add(key) : pressed.Remove(key))) return;
                 bool Has(uint left, uint right) => pressed.Contains(left) || pressed.Contains(right);
                 uint modifiers = (Has(0xA2, 0xA3) ? 2u : 0) | (Has(0xA4, 0xA5) ? 1u : 0)
                     | (Has(0xA0, 0xA1) ? 4u : 0) | (Has(0x5B, 0x5C) ? 8u : 0);
-                observe(key, down, modifiers, User32.GetForegroundWindow());
+                observe(key, down, modifiers, User32.GetForegroundWindow(), device);
             }
             source.AddHook((nint hwnd, int message, nint wparam, nint lparam, ref bool handled) =>
             {
@@ -44,10 +44,11 @@ internal sealed class KeyboardHook : IDisposable
                     var flags = input.Data.MouseButtonFlags;
                     if (device && (flags != 0 || (input.Data.MouseFlags & 1) == 0
                         && nudge.Add(input.Data.LastX, input.Data.LastY, Environment.TickCount64))) physicalInput?.Invoke();
-                    if ((flags & 0x40) != 0) Observe(0x05, true);
-                    if ((flags & 0x80) != 0) Observe(0x05, false);
-                    if ((flags & 0x100) != 0) Observe(0x06, true);
-                    if ((flags & 0x200) != 0) Observe(0x06, false);
+                    if ((flags & 0x40) != 0) Observe(0x05, true, device);
+                    if ((flags & 0x80) != 0) Observe(0x05, false, device);
+                    if ((flags & 0x100) != 0) Observe(0x06, true, device);
+                    if ((flags & 0x200) != 0) Observe(0x06, false, device);
+                    if (device && (flags != 0 || input.Data.LastX != 0 || input.Data.LastY != 0)) controlInput?.Invoke();
                 }
                 else if (input.Header.Type == 1)
                 {
@@ -60,7 +61,8 @@ internal sealed class KeyboardHook : IDisposable
                         0x12 => (input.Data.KeyboardFlags & 2) != 0 ? 0xA5u : 0xA4u,
                         _ => input.Data.Key
                     };
-                    Observe(key, (input.Data.KeyboardFlags & 1) == 0);
+                    Observe(key, (input.Data.KeyboardFlags & 1) == 0, device);
+                    if (device && (input.Data.KeyboardFlags & 1) == 0) controlInput?.Invoke();
                 }
                 // 留给默认窗口过程清理原始输入；不使用 NOLEGACY，不影响游戏收键。
                 return 0;
