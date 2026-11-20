@@ -23,7 +23,7 @@ public sealed partial class HostApi
     public ShopReader CreateShopReader(IOcrEngine engine)
     {
         _shopReader = new ShopReader(engine, _operators.Where(o => o.Obtain is null).Select(o => o.Name)
-            .Concat(_equipmentNames).ToArray());
+            .Concat(_equipmentNames).ToArray()) { ReadPrices = true };
         _shopReader.Theme = Theme(Settings.GameTheme);
         return _shopReader;
     }

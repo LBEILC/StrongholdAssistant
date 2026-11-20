@@ -7,8 +7,16 @@ internal sealed record Command(string Method, string Path, object? Body = null, 
 {
     internal static readonly Dictionary<string, string> Usage = new()
     {
+        ["page"] = "page                         读取当前页面和选中的规程等级",
+        ["start"] = "start <等级>                 在规程主界面或难度页开始单人独立模拟（1～20）",
+        ["leave"] = "leave                        从结算页回到规程主界面",
         ["info"] = "info                         读取实例、连接和操作设置",
         ["state"] = "state                        读取当前局面",
+        ["turn"] = "turn [--wait 秒] [--after turnId]  读取决策点，可等待与给定编号不同的决策点（最多 600 秒）",
+        ["adapt"] = "adapt <1～3>                  选择从左往右第 1～3 张机变卡",
+        ["strategy"] = "strategy <id 或名字>          选择策略",
+        ["custom"] = "custom <阶> <名字>…           确认 5 或 6 阶自选编队，最多两人",
+        ["schedule"] = "schedule                     读取按游戏数据推算的回合与可能敌人",
         ["field"] = "field [--recognize]          读取场上，或重新识别一次",
         ["placement"] = "placement                    读取站位推荐",
         ["screenshot"] = "screenshot <文件>            保存当前游戏画面为 PNG",
@@ -29,6 +37,9 @@ internal sealed record Command(string Method, string Path, object? Body = null, 
     {
         IEnumerable<string> lines = name == null ? Usage.Values : Usage.TryGetValue(name, out var line)
             ? [line] : throw new ArgumentException("未知命令");
+        if (name is "turn" or "adapt")
+            return "用法：sa [--profile 配置名] " + Usage[name]
+                + (name == "adapt" ? "\n可加 --mode dryRun|confirm|auto 和 --wait 等到结束。" : "");
         return "用法：sa [--profile 配置名] <命令> [参数]\n" + string.Join('\n', lines)
             + "\n操作命令可加 --mode dryRun|confirm|auto 和 --wait 等到结束。逐步确认请在助手界面完成。"
             + "\n棋盘格写作 D7（行字母、列数字），整备区写作 bench:3（第 3 格）。卡位从左到右为 1～6。"
@@ -55,12 +66,32 @@ internal sealed record Command(string Method, string Path, object? Body = null, 
         throw new ArgumentException("格子写作 D7 或 bench:3");
     }
 
+    private static Command ParseMenu(string name, List<string> args)
+    {
+        if (name == "page" && args.Count == 0) return new("GET", "page");
+        if (name == "page") throw new ArgumentException($"用法：sa {Usage[name]}");
+        var mode = Option(args, "--mode");
+        if (mode is not (null or "dryRun" or "confirm" or "auto")) throw new ArgumentException("执行模式无效");
+        bool wait = args.Remove("--wait");
+        object action = name switch
+        {
+            "start" when args.Count == 1 && int.TryParse(args[0], out int level) && level is >= 1 and <= 20
+                => new { type = "startSolo", level },
+            "leave" when args.Count == 0 => new { type = "leaveResult" },
+            _ => throw new ArgumentException($"用法：sa {Usage[name]}")
+        };
+        var body = new Dictionary<string, object> { ["actions"] = new[] { action } };
+        if (mode != null) body["mode"] = mode;
+        return new("POST", "actions", body, Wait: wait);
+    }
+
     internal static Command Parse(List<string> args)
     {
         if (args.Count == 0 || !Usage.ContainsKey(args[0])) throw new ArgumentException("请用 sa --help 查看命令");
         var name = args[0];
         args.RemoveAt(0);
-        bool action = name is "do" or "buy" or "sell" or "move" or "refresh" or "freeze" or "upgrade" or "ready" or "place";
+        if (name is "start" or "leave" or "page") return ParseMenu(name, args);
+        bool action = name is "adapt" or "custom" or "strategy" or "do" or "buy" or "sell" or "move" or "refresh" or "freeze" or "upgrade" or "ready" or "place";
         string? mode = action ? Option(args, "--mode") : null;
         if (mode is not (null or "dryRun" or "confirm" or "auto")) throw new ArgumentException("执行模式无效");
         bool wait = (action || name == "job") && args.Remove("--wait");
@@ -68,10 +99,18 @@ internal sealed record Command(string Method, string Path, object? Body = null, 
         if (facing is not (null or "up" or "down" or "left" or "right")) throw new ArgumentException("朝向无效");
         var expect = name == "move" ? Option(args, "--expect") : null;
         bool recognize = name == "field" && args.Remove("--recognize");
+        if (name == "turn")
+        {
+            var seconds = Option(args, "--wait") ?? "0";
+            var after = Option(args, "--after");
+            if (args.Count != 0 || !int.TryParse(seconds, out var n) || n < 0)
+                throw new ArgumentException($"用法：sa {Usage[name]}");
+            return new("GET", $"turn?wait={Math.Min(n, 600)}" + (after == null ? "" : "&after=" + Uri.EscapeDataString(after)));
+        }
         int count = args.Count;
         if (name == "job" && count <= 1 && (count == 0 || !args[0].StartsWith("--")))
             return new("GET", "jobs/" + (count == 0 ? "current" : Uri.EscapeDataString(args[0])) + (wait ? "?wait=120" : ""), Wait: wait);
-        if (count == 0 && name is "info" or "state" or "field" or "placement")
+        if (count == 0 && name is "schedule" or "info" or "state" or "field" or "placement")
             return recognize ? new("POST", "field/recognize") : new("GET", name);
         if (name == "screenshot" && count == 1) return new("GET", name, FileName: args[0]);
         if (name == "stop" && count == 0) return new("POST", "stop");
@@ -81,6 +120,10 @@ internal sealed record Command(string Method, string Path, object? Body = null, 
         object single = name switch
         {
             "buy" when count == 1 && int.TryParse(args[0], out int n) && n is >= 1 and <= 6 => new { type = name, slot = n - 1 },
+            "adapt" when count == 1 && int.TryParse(args[0], out int i) && i is >= 1 and <= 3 => new { type = "pickAdapt", index = i - 1 },
+            "strategy" when count == 1 => new { type = "pickStrategy", strategyId = args[0] },
+            "custom" when count is >= 1 and <= 3 && int.TryParse(args[0], out int tier) && tier is 5 or 6 =>
+                new { type = "pickCustom", tier, operators = args.Skip(1).ToArray() },
             "sell" when count == 1 => new { type = name, from = Cell(args[0]) },
             "move" when count == 2 => new { type = name, from = Cell(args[0]), to = Cell(args[1]), facing, expect },
             "refresh" or "upgrade" when count == 0 => new { type = name },

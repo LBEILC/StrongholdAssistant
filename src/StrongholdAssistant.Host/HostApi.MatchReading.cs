@@ -11,6 +11,7 @@ public sealed partial class HostApi
     private RoundEnemyReader _roundEnemyReader = null!;
     private CovenantBarReader _covenantBarReader = null!;
     private DateTimeOffset _covenantReadAt = DateTimeOffset.MinValue;
+    private int? _covenantReadRound;
     private (string? Match, int? Round) _enemyReadKey;
     private int _matchReadingGeneration;
     // 诊断包用：本局敌人面板弹出几次、其中读到名字几次
@@ -47,23 +48,22 @@ public sealed partial class HostApi
         if (reading is { IsRest: false, Round: not null }) return;
         string? match = _activeRecord;
         int generation = _matchReadingGeneration;
-        if (reading is not null)
+        if (reading is { IsRest: true, Round: int round })
         {
             bool read;
             lock (_historyGate)
             {
                 var now = DateTimeOffset.UtcNow;
-                read = now - _covenantReadAt >= TimeSpan.FromSeconds(3);
-                if (read) _covenantReadAt = now;
+                read = _covenantReadRound != round || now - _covenantReadAt >= TimeSpan.FromSeconds(3);
+                if (read) { _covenantReadAt = now; _covenantReadRound = round; }
             }
             if (read)
             {
-                int? round = Match.Economy?.Round;
                 var result = await _covenantBarReader.ReadAsync(frame, uiScale);
                 lock (_historyGate)
                 {
-                    if (generation == _matchReadingGeneration && match == _activeRecord && Match.Economy?.Round == round
-                        && !result.Skipped && result.Items.Length > 0)
+                    if (generation == _matchReadingGeneration && match == _activeRecord && _covenantReadRound == round
+                        && !result.Skipped && (result.Items.Length > 0 || Match.CovenantBar.Any(c => c.Round == round)))
                         ApplyCovenantBar(result.Items, round);
                 }
             }
@@ -72,6 +72,7 @@ public sealed partial class HostApi
         if (reading is not { IsRest: true })
         {
             var picks = await _customPickReader.ReadAsync(frame, width, height);
+            await ObserveOtherTurn(frame, width, height, picks, generation);
             if (generation == _matchReadingGeneration && match == _activeRecord && picks is { IsFinal: true })
             {
                 ApplyCustomPicks(picks.Cards.Where(c => c.Tier == 5).Select(c => c.Name!).ToArray(),
@@ -79,15 +80,11 @@ public sealed partial class HostApi
                 CollectOpening(frame, "info");
             }
         }
-        if (Match.StrategySource is null)
+        if (reading is { IsRest: true } && Match.StrategySource is null)
         {
-            string? id = reading is { IsRest: true } ? _strategyReader.ReadPortrait(frame, uiScale).Id
-                : await _strategyReader.ReadSelectionAsync(frame, width, height);
-            if (generation == _matchReadingGeneration && match == _activeRecord && id is not null)
-            {
+            var id = _strategyReader.ReadPortrait(frame, uiScale).Id;
+            if (generation == _matchReadingGeneration && match == _activeRecord && id != null)
                 ApplyRecognizedStrategy(id);
-                if (reading is not { IsRest: true }) CollectOpening(frame, "info");
-            }
         }
     }
 
@@ -115,6 +112,7 @@ public sealed partial class HostApi
         _enemyReadKey = default;
         _roundEnemyOrder.Clear();
         _covenantReadAt = DateTimeOffset.MinValue;
+        _covenantReadRound = null;
         _enemyPanelSeen = _enemyPanelRead = 0;
         Match = Match with { CovenantBar = [], AdaptAdvice = null };
     }
@@ -124,7 +122,8 @@ public sealed partial class HostApi
         lock (_historyGate)
         {
             string at = DateTimeOffset.UtcNow.ToString("O");
-            var merged = Match.CovenantBar.ToDictionary(c => c.Id);
+            // 同回合换位也会移除盟约，不能把上一帧已消失的层数当成本帧实读。
+            var merged = Match.CovenantBar.Where(c => c.Round != round).ToDictionary(c => c.Id);
             foreach (var item in items) merged[item.Id] = new(item.Id, item.Level, item.Layers, round, at);
             Match = Match with { CovenantBar = merged.Values.ToArray() };
             Changed?.Invoke("match", Match);

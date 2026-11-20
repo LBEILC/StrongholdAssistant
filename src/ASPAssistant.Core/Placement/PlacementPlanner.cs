@@ -393,6 +393,7 @@ public sealed class PlacementPlanner
         "伏击客" or "散射手" => new AttackPattern { Targets = 99 },
         "链术师" => new AttackPattern { ChainTargets = 4 },
         "剑豪" => new AttackPattern { HitsPerAttack = 2 },
+        "咒愈师" => new AttackPattern { HealFromDamage = 0.5 },
         "群愈师" or "链愈师" => new AttackPattern { HealTargets = 3 },
         "阵法术师" => new AttackPattern { SkillOnly = true },
         "吟游者" => new AttackPattern { HealAura = 0.1 },
@@ -417,6 +418,8 @@ public sealed class PlacementPlanner
         public required double Power;
         /// <summary>Attack, HP and defence of the piece (estimates without stats); used for 阿戈尔's devour.</summary>
         public required double Atk, Hp, Def;
+        public int RedeployCost, RedeploySeconds;
+        public double LateOutputScale = 1;
         public double Res;
         /// <summary>Seconds between attacks (interval ÷ attack speed) and whether it deals arts damage.</summary>
         public double AttackInterval = 1.2;
@@ -530,14 +533,14 @@ public sealed class PlacementPlanner
             SkillFactor = Math.Min(p.StatsFor(c.IsElite)?.SkillFactor ?? 1, MaxSkillFactor),
             AttackInterval = p.StatsFor(c.IsElite) is { } si ? si.Interval / Math.Max(0.1, si.AttackSpeed / 100) : 1.2,
             // Casters and supporters hit with arts, as do 术战者 guards; everyone else deals physical damage.
-            Arts = p.Profession is "术师" or "辅助" || p.SubProfession is "术战者" or "驭法铁卫",
+            Arts = c.Name == "塔露拉" || p.Profession == "术师" || p.Profession == "辅助" && p.SubProfession != "工匠" || p.SubProfession is "术战者" or "咒愈师" || p.SubProfession == "驭法铁卫" && c.Name != "车尔尼",
             Melee = p.IsMelee,
             Block = p.StatsFor(c.IsElite)?.Block ?? p.BlockCount, // elite pieces can block more (e.g. 艾丝黛尔 2 → 3)
             Offsets = offsets,
             Covenants = [.. op.CoreCovenants, .. op.AdditionalCovenants, .. c.Transforms.Where(t => !op.CoreCovenants.Contains(t) && !op.AdditionalCovenants.Contains(t))],
             Tier = op.Tier,
             Healer = p.IsHealer || p.Profession == "医疗",
-            Medic = p.Profession == "医疗",
+            Medic = p.Profession == "医疗" && p.SubProfession != "咒愈师",
             Trait = trait,
             Cap = cap,
             StacksLayers = !once && Regex.IsMatch(trait, @"层数\+\d|叠加"),
@@ -556,11 +559,20 @@ public sealed class PlacementPlanner
             StackPerRound = p.Stack?.PerRound ?? 0,
             StackAmount = p.Stack?.Amount ?? 0,
         };
+        if (p.Deployment?.For(c.IsElite) is { } deployment)
+        {
+            info.RedeployCost = deployment.Cost[Math.Clamp(potential, 0, 5)];
+            info.RedeploySeconds = deployment.Seconds[Math.Clamp(potential, 0, 5)];
+        }
+        var calibration = p.Calibration?.GetValueOrDefault(c.IsElite ? "elite" : "normal");
+        if (calibration is not null && calibration.Skill == skill?.Name) info.LateOutputScale = calibration.Scale;
         info.Transforms = [.. c.Transforms];
-        ApplyPotentialAndTalents(info, p, p.StatsFor(c.IsElite), potential);
+        ApplyPotentialAndTalents(info, p, p.StatsFor(c.IsElite), potential, c.Cultivation);
         info.Skill = SkillCycle(skill, info.SkillFactor, info.AttackInterval, p.StatsFor(c.IsElite));
         if (info.Skill is { } cycle && info.Talent is { InitSp: > 0 } ti)
             info.Skill = cycle with { Init = Math.Min(cycle.Cost, cycle.Init + ti.InitSp) };
+        if (info.Skill is { } cycleWithTalents && skill is not null)
+            info.Skill = ConfigureSkill(cycleWithTalents, skill.Name, c.IsElite, p, info.Block, potential);
         info.Pattern = PatternOf(p.SubProfession);
         if (info.Talent is { Targets: > 1 } multi)
             info.Pattern = info.Pattern with { Targets = Math.Max(info.Pattern.Targets, multi.Targets) };
@@ -575,6 +587,49 @@ public sealed class PlacementPlanner
         return info;
     }
 
+    // 通用面板将攻速、目标数等折算为平均输出。特殊技能分别设置每击倍率和实际出手方式。
+    private static SimSkill ConfigureSkill(SimSkill skill, string name, bool elite, OperatorProfile profile, int block, int potential)
+    {
+        string module = profile.SelectedModule ?? profile.DefaultModule;
+        if (profile.SubProfession == "决战者")
+            skill = skill with { BlockCharge = true, CastOnDamage = true, IdleSpRate = elite && module != "" ? .2 : 0 };
+        return name switch
+        {
+            "众恶的焚场" => skill with { Ammo = elite ? 21 : 18, Gain = elite ? 1.85 : 1.7,
+                BurnBonus = elite ? .7 : .6, BurstElement = elite ? 4.5 : 3.8, BurstHeal = elite ? .18 : .15,
+                SkillIntervalDelta = -1.3, Targets = 1 },
+            "直到终曲" => skill with { BurstDot = elite ? .3 : .15, GroupBoost = elite ? 1.25 : 1.15,
+                Gain = elite ? 1.6 : 1.3, Targets = 3, Zone = 0 },
+            "群山俯首" => skill with { Snow = true, OnlySkillAttacks = true, CastInSkillRange = true,
+                Gain = (elite ? 1.70 * 2.1 : 1.35 * 1.8), SkillAspd = 30, Targets = 99, ResIgnore = 10 },
+            "日冕重烈" => skill with { FireWave = elite ? 1.75 : 1.3, Gain = elite ? 2.20 : 2.08,
+                FireGauge = potential >= 4 ? .15 : .13, Damage = SkillDamage.Arts },
+            "火山" => skill with { Gain = elite ? 1.85 : 1.7, SkillIntervalDelta = -1.1, Targets = elite ? 5 : 4, CastInSkillRange = true },
+            "秘杖·反重力模式" => skill with { Gain = elite ? 2.05 : 1.9, Targets = elite ? 5 : 4, CastInSkillRange = true, OnlySkillAttacks = true },
+            "回流" => skill with { Gain = elite ? 1.2 : 1.15, Hits = 3 },
+            "回首，断舍" => skill with { Gain = elite ? 1.35 : 1.2, Hits = 2 },
+            "神工意匠" => skill with { Gain = elite ? 1.6 : 1.3, Hits = 2, Charges = elite ? 3 : 2 },
+            "未照耀的荣光" => skill with { Liberator = true, InitialRamp = elite && module == "uniequip_002_mlynar" ? 1 : 0,
+                Targets = 5, MarkDamage = elite ? .11 : .10, Reflect = potential >= 5 ? .18 : .15, Gain = elite ? 1.50 : 1.25 },
+            "钢铁意志" => skill with { EndStun = 5, SelfRegen = .03 },
+            "人工降雪" => skill with { Ammo = 9, Gain = elite ? 1.60 : 1.45, FrozenGain = elite ? 3 : 2.5 },
+            "战火淬炼" or "全自动造型仪" => skill with { StopsAttack = true },
+            "曲惊四座" => skill with { AtkPerHit = elite ? .24 : .20, EndBurst = elite ? 1.9 : 1.7, Targets = 1,
+                Gain = 1, CastOnDamage = true, ArtsEcho = .85, Damage = SkillDamage.Arts,
+                ArtsTrait = elite && module == "uniequip_002_pianst" ? .1 : 0 },
+            "隐狐之艺" => skill with { Gain = elite ? 1.8 : 1.65, DecayingAspd = elite ? 170 : 160 },
+            "阴晴圆缺" => skill with { Gain = elite ? 1.4 : 1.3, SelfBlock = 0, StanceAspd = elite ? 25 : 20, StanceDodge = elite ? .4 : .35 },
+            "荒芜回响" => skill with { RemnantDamage = elite ? 2 : 1.7, Gain = 1, Push = null },
+            "策略：熔毁" => skill with { MeleeDuringSkill = true, ReconstructHp = elite ? 5048 : 4292, ChainFalloff = elite && module == "uniequip_002_monstr" ? .85 : .75, Gain = elite ? 3.8 : 3.5, Targets = block + skill.SelfBlock },
+            "解构涌潮" => skill with { Charges = elite ? 2 : 1, FieldHeal = elite ? .15 : .12,
+                FieldSp = elite && module == "uniequip_002_thorn2" ? .1 : 0, FieldExtension = (elite ? 4 : 3) + (potential >= 4 ? 1 : 0) },
+            "迅捷打击·γ型" => skill with { Gain = elite ? 1.34 : 1.27, SkillAspd = elite ? 35 : 25 },
+            "\"潮涌，潮枯\"" => skill with { BardZone = elite ? .55 : .40, Inspire = elite ? .80 : .65 },
+            "编织重构现世" => skill with { ShareHp = true, InspireHp = elite ? .8 : .65, BardHeal = elite ? .75 : .65 },
+            _ => skill,
+        };
+    }
+
     /// <summary>
     /// Damage power: effective DPS (panel attack ÷ interval × speed, times the carried skill's average gain) over
     /// <see cref="ReferenceDps"/>, with a small per-tier allowance for what the stats do not cover yet.
@@ -585,7 +640,7 @@ public sealed class PlacementPlanner
     /// defence, resistance, block); the power and toughness estimates follow. Attack riders and auras are kept on
     /// <see cref="OpInfo.Talent"/> for the fight.
     /// </summary>
-    private static void ApplyPotentialAndTalents(OpInfo info, OperatorProfile p, ChessStats? st, int potential)
+    private static void ApplyPotentialAndTalents(OpInfo info, OperatorProfile p, ChessStats? st, int potential, int cultivation)
     {
         var tal = st?.TalentAt(potential);
         info.Talent = tal;
@@ -597,11 +652,22 @@ public sealed class PlacementPlanner
         if (st is null) return;
         if (tal?.Arts == true) info.Arts = true;
         double baseAtk = Math.Max(1, info.Atk), aspd = Math.Max(1, st.AttackSpeed);
-        double aspdUp = p.PotentialBonus("aspd", potential) + (tal?.Aspd ?? 0);
+        double aspdUp = p.PotentialBonus("aspd", potential) + (info.Name == "Mon3tr" && (p.NormalSkill?.Name == "策略：熔毁" || p.EliteSkill?.Name == "策略：熔毁") ? 0 : tal?.Aspd ?? 0);
         info.Atk = (info.Atk + p.PotentialBonus("atk", potential) + (tal?.AtkFlat ?? 0)) * (1 + (tal?.Atk ?? 0));
         info.AttackInterval = st.Interval / Math.Max(0.1, (aspd + aspdUp) / 100);
         info.Hp = (info.Hp + p.PotentialBonus("hp", potential)) * (1 + (tal?.Hp ?? 0));
         info.Def = Math.Max(0, (info.Def + p.PotentialBonus("def", potential) + (tal?.DefFlat ?? 0)) * (1 + (tal?.Def ?? 0)));
+        // V3_1 的 aceffect_char_1～4 给自持有干员的面板乘区，不改变攻速和法抗。
+        var (atkMul, defMul, hpMul) = cultivation switch
+        {
+            1 => (1.05, 1.05, 1.0),
+            2 => (1.10, 1.05, 1.05),
+            3 => (1.10, 1.10, 1.10),
+            _ => (1.0, 1.0, 1.0)
+        };
+        info.Atk *= atkMul;
+        info.Def *= defMul;
+        info.Hp *= hpMul;
         info.Res += p.PotentialBonus("res", potential) + (tal?.Res ?? 0);
         info.Block += (int)Math.Floor((tal?.Block ?? 0) + 0.01);
         double up = info.Atk / baseAtk * (aspd + aspdUp) / aspd * (1 + (tal?.Crit ?? 0)) * (1 + (tal?.Dmg ?? 0));
@@ -889,7 +955,7 @@ public sealed class PlacementPlanner
         }
 
         private List<(RoundStream Stream, double Weight, WaveScenario Scenario)> StreamRuns(double factor, bool collectDetails = false) =>
-            [.. _streams!.Select(s => (s.Stream, s.Weight, new WaveScenario { Spawns = s.Stream.Spawns, CollectDetails = collectDetails }.Tougher(factor)))];
+            [.. _streams!.Select(s => (s.Stream, s.Weight, new WaveScenario { Spawns = s.Stream.Spawns, TimeLimit = s.Stream.Type is "BOSS" ? null : WaveScenario.RoundLimit(_options.Round), CollectDetails = collectDetails }.Tougher(factor)))];
 
         private void SetStreamFactor(double factor)
         {
@@ -1090,31 +1156,61 @@ public sealed class PlacementPlanner
             ClearSimulator.Run(SimUnits(boardPl), SimLanes(), _scenario ?? BaseScenario(), Board.Map.Terrain);
 
         /// <summary>The placement as simulated operators (after devouring; with covenant buffs).</summary>
-        public List<SimUnit> SimUnits(Dictionary<string, (BoardCell Cell, Facing Facing)> boardPl)
+        public List<SimUnit> SimUnits(Dictionary<string, (BoardCell Cell, Facing Facing)> boardPl, bool includeReserves = true)
         {
             var cov = Covenants(boardPl.Keys);
             var atBoard = new Dictionary<BoardCell, string>();
             foreach (var (n, v) in boardPl) atBoard[v.Cell] = n;
             var (pl, info, _, _) = Devour(boardPl, atBoard, cov, (_, _) => { });
             info = WithCurrentLayers(info, boardPl.Keys, cov);
-            var units = new List<SimUnit>(_options.FixedSummons);
+            var extensions = _options.FixedSummons.Where(s => s.FixedSummonName is "重构体" or "斯卡蒂的海嗣").ToList();
+            var units = _options.FixedSummons.Except(extensions).ToList();
+            BoardCell? TakeSummon(string name, string key, BoardCell owner)
+            {
+                var token = extensions.Where(s => s.FixedSummonName == name && (s.FixedOwner is null || s.FixedOwner == key))
+                    .OrderBy(s => Math.Abs(s.Cell.Row - owner.Row) + Math.Abs(s.Cell.Col - owner.Col)).FirstOrDefault();
+                if (token is null) return null;
+                extensions.Remove(token);
+                return token.Cell;
+            }
             var auras = AurasOn(pl, info);
             var taken = new HashSet<BoardCell>(pl.Values.Select(v => v.Cell));
             taken.UnionWith(_options.OccupiedCells);
-            int eliteCount = _options.Strategy?.Kind == "eliteCount" ? pl.Keys.Count(n => _candidates[n].IsElite) : 0;
+            bool harmony = cov.Active.Contains("调和");
+            int CoreCount(string bond)
+            {
+                int count = cov.Counts.GetValueOrDefault(bond);
+                return count > 0 && harmony ? count + 1 : count;
+            }
+            // 绝技按开战阵容里的精锐棋子数激活，同名副本各计一次，吞噬发生在开战后。
+            int eliteCount = boardPl.Keys.Count(n => _candidates[n].IsElite);
+            int activeCount = cov.Active.Count + (eliteCount >= 2 && !cov.Active.Contains("绝技") ? 1 : 0);
             foreach (var (n, v) in pl)
             {
                 var I = info[n];
+                bool CoreMember(string bond) => CoreCount(bond) >= 3 &&
+                    (I.Covenants.Contains(bond) || I.Covenants.Contains("调和"));
                 var (atk, hp, def) = BaseCovenantBuffs(n, v.Cell, pl, cov);
+                bool elite = _candidates[n].IsElite;
+                if (elite && eliteCount >= 2) atk += .30;
                 var aura = auras.GetValueOrDefault(n) ?? new AuraSum();
                 var tal = I.Talent;
                 atk *= (1 + aura.Atk) * (1 + (tal?.Crit ?? 0));
                 hp *= 1 + aura.Hp;
                 double powerUp = Info[n].Power > 0 ? I.Power / Info[n].Power : 1;
+                // 面板已含规划估分的层数近似；实算盟约时先去掉同一笔倍率。
+                if (cov.Active.Contains("伊比利亚") && I.Covenants.Contains("伊比利亚"))
+                    powerUp /= 1 + .004 * _options.CovenantLayers.GetValueOrDefault("伊比利亚");
+                if (cov.Active.Contains("叙拉古") && I.Covenants.Contains("叙拉古"))
+                    powerUp /= 1 + .007 * _options.CovenantLayers.GetValueOrDefault("叙拉古");
+                if (CoreMember("卡西米尔"))
+                    atk *= 1 + Math.Min(.20 * boardPl.Count, .50 + .01 * _options.CovenantLayers.GetValueOrDefault("卡西米尔"));
+                if (cov.Active.Contains("卡西米尔") && I.Covenants.Contains("卡西米尔"))
+                    powerUp /= 1 + .006 * _options.CovenantLayers.GetValueOrDefault("卡西米尔");
                 double toughUp = Info[n].Ehp > 0 ? I.Ehp / Info[n].Ehp : 1;
                 var range = I.Offsets[(int)v.Facing].Select(o => new BoardCell(v.Cell.Col + o.Col, v.Cell.Row + o.Row)).ToList();
                 units.Add(new SimUnit(n, v.Cell, range,
-                    CanBlock: Board.Map.At(v.Cell) is BoardCellType.Ground or BoardCellType.Special, I.Block, I.AntiAir,
+                    CanBlock: Board.Map.At(v.Cell) is BoardCellType.Ground or BoardCellType.Special, I.Block, I.AntiAir || I.Skill is { Liberator: true },
                     Atk: I.Atk * I.SkillFactor * powerUp * atk, Interval: I.AttackInterval * 100 / (100 + aura.Aspd), Arts: I.Arts,
                     // In the fight only medics heal instead of attacking: 守护者 attack (their skill heals),
                     // 护佑者 attack and heal while their skill runs (their pattern), 吟游者 heal through an aura.
@@ -1123,7 +1219,38 @@ public sealed class PlacementPlanner
                     Res = I.Res + aura.Res, SkillFactor = I.SkillFactor, Skill = I.Skill, SkillRevealSeconds = I.SkillRevealSeconds,
                     BaseAttackInterval = (_candidates[n].Profile ?? _owner._operators[I.Name].Profile)?.StatsFor(_candidates[n].IsElite)?.Interval ?? 1,
                     DefIgnore = tal?.DefIgnore ?? 0, DefIgnoreRatio = Math.Min(0.9, tal?.DefIgnoreRatio ?? 0),
-                    ResIgnore = tal?.ResIgnore ?? 0, DamageScale = 1 + (tal?.Dmg ?? 0), ExtraArts = tal?.ExtraArts ?? 0,
+                    OutputScale = _options.Round is >= 11 and <= 13 ? I.LateOutputScale : 1,
+                    RedeployCost = I.RedeployCost, RedeploySeconds = I.RedeploySeconds,
+                    ReconstructAt = I.Skill is { MeleeDuringSkill: true } ? TakeSummon("重构体", n, v.Cell) : null,
+                    SeabornAt = I.Skill is { BardZone: > 0 } ? TakeSummon("斯卡蒂的海嗣", n, v.Cell) : null,
+                    ThrowCell = I.Skill?.GroundField is { Drift: > 0 }
+                        ? range.Where(cell => cell.Col >= Board.Map.FirstColumn && cell.Col < Board.Map.FirstColumn + Board.Map.ColumnCount &&
+                            cell.Row >= 0 && cell.Row < Board.Map.RowCount &&
+                            (cell.Col - v.Cell.Col) * Step(v.Facing).Row == (cell.Row - v.Cell.Row) * Step(v.Facing).Col)
+                            .OrderByDescending(cell => (cell.Col - v.Cell.Col) * Step(v.Facing).Col + (cell.Row - v.Cell.Row) * Step(v.Facing).Row)
+                            .Cast<BoardCell?>().FirstOrDefault() : null,
+                    Facing = v.Facing, BurnRatio = I.Skill?.FireGauge ?? 0,
+                    FieldBounds = (Board.Map.FirstColumn, Board.Map.FirstColumn + Board.Map.ColumnCount - 1, Board.Map.RowCount - 1),
+                    IberiaDot = CoreMember("伊比利亚") ? .11 + .0006 * _options.CovenantLayers.GetValueOrDefault("伊比利亚") : 0,
+                    UrsusBlockDamage = CoreMember("乌萨斯") && CoreCount("乌萨斯") >= 6
+                        ? .50 + .0025 * _options.CovenantLayers.GetValueOrDefault("乌萨斯") : 0,
+                    SiracusaAspd = CoreMember("叙拉古") ? 25 + .8 * _options.CovenantLayers.GetValueOrDefault("叙拉古") : 0,
+                    SiracusaWindow = 32 + .4 * _options.CovenantLayers.GetValueOrDefault("叙拉古"),
+                    SiracusaPulse = CoreMember("叙拉古") && CoreCount("叙拉古") >= 6
+                        ? 800 + 10 * _options.CovenantLayers.GetValueOrDefault("叙拉古") : 0,
+                    SiracusaStatusSeconds = 1 + .0018 * _options.CovenantLayers.GetValueOrDefault("叙拉古"),
+                    DocHeal = cov.Active.Contains("聚合") && I.Covenants.Contains("聚合")
+                        ? .16 + .0012 * _options.CovenantLayers.GetValueOrDefault("聚合") : 0,
+                    DocElement = .08 + .0006 * _options.CovenantLayers.GetValueOrDefault("聚合"),
+                    DocShelter = cov.Counts.GetValueOrDefault("聚合") >= 3
+                        ? .15 + .0008 * _options.CovenantLayers.GetValueOrDefault("聚合") : 0,
+                    KazimierzAlly = I.Covenants.Contains("卡西米尔") || I.Name is "野鬃" or "砾" or "瑕光" or "远牙" or "玛恩纳" or "焰尾" or "耀骑士临光",
+                    KazimierzUpper = CoreMember("卡西米尔") && CoreCount("卡西米尔") >= 6,
+                    IberiaUpper = CoreMember("伊比利亚") && CoreCount("伊比利亚") >= 6,
+                    RemnantCells = I.Skill is { RemnantDamage: > 0 }
+                        ? range.Where(cell => !taken.Contains(cell) && GarrisonMap.CanDeploy(Board.Map.At(cell), false)).ToArray() : [],
+                    ResIgnore = tal?.ResIgnore ?? 0, DamageScale = I.Skill is { RemnantDamage: > 0 } ? 1 : 1 + (tal?.Dmg ?? 0),
+                    ExtraArts = I.Skill is { RemnantDamage: > 0 } ? 0 : tal?.ExtraArts ?? 0,
                     DotDps = (tal?.DotDps ?? 0) + (tal?.DotScale ?? 0) * I.Atk * powerUp * atk, DotSeconds = tal?.DotSeconds ?? 3,
                     HitStuns = tal?.Control?.Kind == "stun", HitControlSeconds = tal?.Control?.Seconds ?? 0,
                     HitControlChance = tal?.Control?.Chance ?? 0,
@@ -1138,14 +1265,13 @@ public sealed class PlacementPlanner
                     // 奥术 with 3 different 奥术 operators: enemies in a 奥术 operator's range lose invisibility.
                     Reveals = cov.Active.Contains("奥术") && cov.Counts.GetValueOrDefault("奥术") >= 3 && Info[n].Covenants.Contains("奥术"),
                 });
-                var candidate = _candidates[n];
                 if (_equipment.TryGetValue(n, out var effect))
                 {
                     var step = Step(v.Facing);
                     bool emptyFront = !taken.Contains(new(v.Cell.Col + step.Col, v.Cell.Row + step.Row));
                     int shared = effect.SharedInitSp != 0
                         ? pl.Keys.Count(other => other != n && info[other].Covenants.Intersect(I.Covenants).Any()) : 0;
-                    units[^1] = effect.Apply(units[^1], cov.Active.Count, shared, emptyFront);
+                    units[^1] = effect.Apply(units[^1], activeCount, shared, emptyFront);
                 }
                 // 两侧光环按当前朝向计算，不能在候选池中预先固定。
                 double sideAspd = 0;
@@ -1160,8 +1286,28 @@ public sealed class PlacementPlanner
                 if (sideAspd != 0) units[^1] = units[^1] with { Interval = units[^1].BaseAttackInterval /
                     (units[^1].BaseAttackInterval / units[^1].Interval + sideAspd / 100) };
                 if (_options.Strategy is { Status: "simulated" } strategy)
-                    units[^1] = strategy.Apply(units[^1], cov.Active.Count, eliteCount, candidate.IsElite);
+                    units[^1] = strategy.Apply(units[^1], activeCount, eliteCount, elite);
+                if (elite && eliteCount >= 5 && units[^1].Skill is { } skill)
+                {
+                    double cost = Math.Floor(skill.Cost * .7);
+                    units[^1] = units[^1] with { Skill = skill with { Cost = cost, Init = Math.Min(skill.Init, cost * skill.Charges) } };
+                }
                 if (SummonUnit(n, I, v.Cell, v.Facing, taken) is { } summon) units.Add(summon);
+            }
+            if (includeReserves && CoreCount("卡西米尔") >= 6)
+            {
+                var reserves = _pool.Where(k => !boardPl.ContainsKey(k) && Info[k].Melee && Info[k].Covenants.Contains("卡西米尔")).Reverse().ToArray();
+                foreach (var (holder, pos) in pl.Where(kv => info[kv.Key].Melee &&
+                    (info[kv.Key].Covenants.Contains("卡西米尔") || info[kv.Key].Covenants.Contains("调和"))))
+                    foreach (var reserve in reserves)
+                    {
+                        var replacement = new Dictionary<string, (BoardCell Cell, Facing Facing)>(boardPl);
+                        replacement.Remove(holder);
+                        replacement[reserve] = pos;
+                        var fighter = SimUnits(replacement, includeReserves: false).FirstOrDefault(s => s.Key == reserve);
+                        if (fighter is not null)
+                            units.Add(fighter with { Key = holder + "·替补·" + reserve, ReserveFor = holder, ReservePiece = reserve });
+                    }
             }
             return units;
         }
@@ -1270,9 +1416,6 @@ public sealed class PlacementPlanner
             if (Has("维多利亚")) atk *= 1.25;
             if (Has("谢拉格")) atk *= 1.25;
             if (Has("阿戈尔")) hp *= 1.35;
-            if (Has("伊比利亚")) atk *= 1.25;   // stacking DoT, (11 %/s up to 10 stacks) averaged
-            if (Has("卡西米尔")) atk *= 1.30;   // +20 % per deploy up to 50 %
-            if (Has("叙拉古")) atk *= 1.20;     // +25 攻速 for most of the fight
             if (Has("萨尔贡")) atk *= 1.05;
             if (Has("奥术")) atk *= 1.20;
             if (Has("突袭")) { atk *= 1.12; hp *= 1.12; }

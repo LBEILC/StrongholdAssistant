@@ -16,9 +16,9 @@ internal static class ScanHudPixels
 
     // 顶栏金色敌人图标及左侧青底回合数同时可见时，取数字字形做签名。
     // 图标会浮动，比较颜色面积；回合数用固定在面板上的暗色笔画。
-    internal static byte[]? CombatRound(Bitmap image, out bool hasRoundBadge)
+    internal static byte[]? CombatRound(Bitmap image, out bool hasRoundBadge, double zoom = 1)
     {
-        double scale = Math.Min(image.Width / 1920d, image.Height / 1080d);
+        double scale = Math.Min(image.Width / 1920d, image.Height / 1080d) * zoom;
         int X(int x) => (int)(image.Width / 2d + x * scale);
         int Y(int y) => (int)(y * scale);
         int gold = 0, cyan = 0;

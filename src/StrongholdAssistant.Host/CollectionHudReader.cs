@@ -5,9 +5,18 @@ using System.Text.RegularExpressions;
 
 namespace StrongholdAssistant.Host;
 
-// 只在采集开启时使用；所有坐标以 1280×720 的录屏为基准。
+// 血量与结算也供局面接口使用；所有坐标以 1280×720 的录屏为基准。
 internal sealed class CollectionHudReader(IOcrEngine ocr)
 {
+    public async Task<int?> ReadCoveredMoney(byte[] frame, GameShopTheme theme)
+    {
+        if (theme != GameShopTheme.Closure) return null;
+        using var stream = new MemoryStream(frame);
+        using var bitmap = new System.Drawing.Bitmap(stream);
+        var money = await EconomyReader.ReadClosureMoneyAsync(ocr, bitmap);
+        return money is > 0 ? money : null;
+    }
+
     private static Rect Region(Mat image, int x, int y, int w, int h)
     {
         double s = Math.Min(image.Width / 1280d, image.Height / 720d);
@@ -52,8 +61,11 @@ internal sealed class CollectionHudReader(IOcrEngine ocr)
         Cv2.CvtColor(strip, hsv, ColorConversionCodes.BGR2HSV);
         using var mask = new Mat();
         Cv2.InRange(hsv, new Scalar(80, 140, dimmed ? 22 : 125), new Scalar(103, 255, 255), mask);
-        Cv2.FindContours(mask, out Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
         double s = region.Height / 28d;
+        // 终端主题的塔顶和塔身之间有一道窄缝。
+        using var kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(1, (int)Math.Ceiling(3 * s)));
+        Cv2.MorphologyEx(mask, mask, MorphTypes.Close, kernel);
+        Cv2.FindContours(mask, out Point[][] contours, out _, RetrievalModes.External, ContourApproximationModes.ApproxSimple);
         var towers = contours.Select(Cv2.BoundingRect).Where(b => b.Height >= 10 * s && b.Height <= 23 * s &&
             b.Width >= 5 * s && b.Width <= 17 * s).OrderByDescending(b => b.Height).ToArray();
         if (towers.Length == 0) return null;
@@ -167,7 +179,7 @@ internal sealed class CollectionHudReader(IOcrEngine ocr)
                 }
                 return new(reached, label == "模拟失败" ? false : null, null,
                     trophy.Contains("奖杯") ? Number(await Line(image, Region(image, 211, 506, 32, 35)), 999) : null,
-                    Stat("评分"), Stat("(?:名次|排名)"));
+                    Stat("评分"), Stat("(?:名次|排名)")) { RoundLeaks = Stat("本回合漏怪(?:数|数量)?") };
             }
         }
         var victory = Region(image, 523, 419, 235, 41);

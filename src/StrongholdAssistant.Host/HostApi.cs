@@ -56,6 +56,26 @@ public sealed partial class HostApi
         LoadIncomeTable();
     }
 
+    internal static async Task CheckStartupDataAsync(string directory, bool afterUpdate)
+    {
+        // 启动时加载的随包数据。有些通用加载器在缺文件时会返回空表。
+        string[] required = ["strategies.json", "operators.json", "equipment.json", "equipment_categories.json",
+            "covenants.json", "covenant_ids.json", "covenant_effects.json", "bosses.json", "enemy_types.json",
+            "enemies.json", "bounties.json", "codex_extra.json", "round_income.json", "garrison_routes.json",
+            "equipment_effects.json", "strategy_effects.json", "garrison_maps.json", "garrison_spawns.json",
+            "enemy_attack_parameters.json", "enemy_buffs.json", "summons.json"];
+        string? Missing() => Array.Find(required, name => !File.Exists(Path.Combine(directory, name)));
+
+        var missing = Missing();
+        if (missing != null && afterUpdate)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            missing = Missing();
+        }
+        if (missing != null)
+            throw new InvalidDataException($"安装文件不完整（缺 data\\{missing}）。如果刚更新或刚解压，等几秒再打开；还不行请重新下载安装包。");
+    }
+
     public static async Task<HostApi> CreateAsync(string dataDirectory, string userDirectory)
     {
         var store = new JsonDataStore(dataDirectory);

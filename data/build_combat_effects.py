@@ -33,7 +33,6 @@ UNSUPPORTED = {
     "蜂鸣器": "缺少装备嘲讽优先级",
     "伪装服": "缺少首次受伤后隐匿窗口",
     "卡西米尔竞技旗": "描述没有给出伤害衰减曲线",
-    "灼燃维式重锤": "缺少我方对敌人的元素损伤累计与爆发",
     "护盾无人机": "缺少治疗触发友方护盾机制",
     "M3茧甲": "缺少装备独立复活次数与触发机制",
     "莱塔尼亚小鼓": "缺少范围内友敌击倒的装备技力事件",
@@ -61,6 +60,7 @@ def equipment_effect(name, text):
     if "装备时" in text and "销毁" in text or name == "博士投影":
         return {"status": "noCombat", "reason": "获取、消耗或晋升结果由当前场上快照体现"}
     result = {"status": "simulated", **attributes(text)}
+    if name == "灼燃维式重锤": result["burnRatio"] = int(re.search(r"相当于(\d+)%伤害", text)[1]) / 100
     if name == "源石溶剂": result["lossFlat"] = 60
     if name == "虹彩活血饮料":
         result.update(noHeal=True, regenFlat=int(re.search(r"回复(\d+)点", text)[1]))

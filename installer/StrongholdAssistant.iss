@@ -57,7 +57,9 @@ Type: filesandordirs; Name: "{app}\ui"
 Type: filesandordirs; Name: "{app}\data"
 
 [Files]
-Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 覆盖安装期间即使有人点快捷方式，新宿主能被启动时也已复制完数据。
+Source: "{#PublishDir}\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PublishDir}\*"; Excludes: "\data\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "installed.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]

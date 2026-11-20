@@ -34,6 +34,21 @@ public sealed class BoardRouteStore
         _data.Battles.TryGetValue(mode ?? (solo ? "mode_single_20" : "mode_multi_normal"), out var rounds)
             ? rounds.Keys.Select(int.Parse).Max() : null;
 
+    public IEnumerable<(int Round, int SpawnRound, string[] Bosses)> Schedule(string mode)
+    {
+        if (!_data.Battles.TryGetValue(mode, out var rounds)) yield break;
+        var stages = _data.Battles["mode_multi_normal"];
+        foreach (var (key, battles) in rounds.OrderBy(p => int.Parse(p.Key)))
+        {
+            // 敌群表按常规关卡排列，极速第九回合已经使用第十四回合的首领关。
+            string level = battles[0].Level.Replace("_s", "");
+            var source = stages.FirstOrDefault(p => p.Value.Any(b => b.Level == level));
+            if (source.Key != null)
+                yield return (int.Parse(key), int.Parse(source.Key), battles.Where(b => b.BossId != null)
+                    .Select(b => _data.BossIds[b.BossId!]).ToArray());
+        }
+    }
+
     public bool IsBossRound(int round, bool solo, string? mode) =>
         _data.Battles.TryGetValue(mode ?? (solo ? "mode_single_20" : "mode_multi_normal"), out var rounds)
         && rounds.TryGetValue(round.ToString(), out var battles) && battles.Any(b => !string.IsNullOrEmpty(b.BossId));

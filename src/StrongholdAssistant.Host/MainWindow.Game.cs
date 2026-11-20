@@ -32,6 +32,7 @@ public partial class MainWindow
     private bool _overlayMode;
     private string _side = "right";
     private bool _collapsed;
+    private bool _stripAtClientRight;
     private double? _collapseUpHeight;
     private double _expandedWidth;
     private double _expandedHeight;
@@ -164,7 +165,9 @@ public partial class MainWindow
         _api.InitializeBoardRoutes(data);
         _api.InitializeField(data, scanOcr);
         _api.InitializeMatchReading(data, scanOcr);
+        _scanner.ObserveOtherTurn = _api.ObserveOtherTurn;
         _scanner.ObserveAdaptFrameAsync = _api.ObserveAdaptFrameAsync;
+        _scanner.HudObscured = () => _api.CoverMatchHud();
         _scanner.ObserveMatchFrameAsync = _api.ObserveMatchFrameAsync;
         _scanner.ObserveEnemyFrameAsync = _api.ObserveEnemyFrameAsync;
         _scanner.EnemyPanelSeen += _api.CountEnemyPanel;
@@ -282,6 +285,7 @@ public partial class MainWindow
             _scanner?.InvalidateShop();
             _lastGameRect = null;
             _lastClientRect = null;
+            _stripAtClientRight = false;
             _overlayMode = false;
             ApplyScale(null);
             _shopItems = [];
@@ -413,7 +417,6 @@ public partial class MainWindow
         offset = _side == "left" ? _dock.FollowLeftOffsetDip : _dock.FollowOffsetDip;
         // 跟随位置和尺寸只在下方统一应用，避免先写旧的展开宽度再写停靠宽度。
         ApplyScale(client.Value.Height, updateWindowSize: false);
-        PublishConnection();
         var expandedWidth = _dock.Width * _uiScale;
         var target = _overlayMode
             ? WindowGeometry.OverlayBounds(client.Value, scale, expandedWidth,
@@ -421,11 +424,52 @@ public partial class MainWindow
             : offset is null
             ? WindowGeometry.SidePanelBounds(game, gameMonitor.WorkArea, scale, expandedWidth, _dock.FollowHeightDip, false, _side)
             : WindowGeometry.FollowBounds(game, monitor.WorkArea, scale, expandedWidth, _dock.FollowHeightDip, false, offset, _side);
+        // 手动拖进游戏右侧的面板仍可能保存为左覆盖或外侧停靠。
+        _stripAtClientRight = _collapsed && _collapseUpHeight == null
+            && ((_overlayMode && _side == "right") || WindowGeometry.IsInsideRightHalf(target, client.Value));
+        if (_stripAtClientRight && target.Right != client.Value.Right)
+        {
+            target.Left = client.Value.Right - target.Width;
+            target.Right = client.Value.Right;
+            // 只改展开位置的横坐标。纵向保留用户的原始 DIP 偏移，不再次吸附。
+            if (_overlayMode)
+            {
+                var saved = _side == "right" ? _dock.OverlayRightOffsetDip : _dock.OverlayOffsetDip;
+                var aligned = new SidePanelOffset(_side == "right" ? 0 : (target.Left - client.Value.Left) / scale,
+                    saved?.Y ?? client.Value.Height * .15 / scale);
+                _dock = _side == "right" ? _dock with { OverlayRightOffsetDip = aligned } : _dock with { OverlayOffsetDip = aligned };
+            }
+            else
+            {
+                var x = (_side == "left" ? target.Right - game.Left : target.Left - game.Right) / scale;
+                var aligned = new SidePanelOffset(x, offset?.Y ?? 0);
+                _dock = _side == "left" ? _dock with { FollowLeftOffsetDip = aligned } : _dock with { FollowOffsetDip = aligned };
+            }
+        }
         if (_collapsed)
             target = WindowGeometry.CollapseBounds(target, (int)Math.Round(48 * _uiScale * scale),
                 _collapseUpHeight is { } height ? (int)Math.Round(height * _uiScale * scale) : null,
-                WindowGeometry.AnchorsRight(_overlayMode, _side));
+                _stripAtClientRight || WindowGeometry.AnchorsRight(_overlayMode, _side));
         User32.SetWindowBounds(hwnd, target);
+        PublishConnection();
+    }
+
+    private void RememberFollowOffset(RECT rect, RECT client, RECT game, double scale)
+    {
+        var expandedWidth = _dock.Width * _uiScale;
+        if (_overlayMode)
+        {
+            var offset = WindowGeometry.SnapOverlayOffset(new SidePanelOffset(
+                (_side == "right" ? rect.Right - client.Right : rect.Left - client.Left) / scale,
+                (rect.Top - client.Top) / scale), client, scale, expandedWidth, _side);
+            _dock = _side == "right" ? _dock with { OverlayRightOffsetDip = offset } : _dock with { OverlayOffsetDip = offset };
+        }
+        else
+        {
+            var placement = new SidePanelPlacement(rect.Left, rect.Top, rect.Width / scale, rect.Height / scale);
+            var offset = WindowGeometry.SnapOffset(WindowGeometry.CaptureFollowOffset(game, placement, scale, _side));
+            _dock = _side == "left" ? _dock with { FollowLeftOffsetDip = offset } : _dock with { FollowOffsetDip = offset };
+        }
     }
 
     private IntPtr OnWindowMessage(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -460,22 +504,16 @@ public partial class MainWindow
             var placement = new SidePanelPlacement(rect.Left, rect.Top, rect.Width / scale, rect.Height / scale);
             if (!_collapsed) _dock = _dock.WithWidth(placement.WidthDip / _uiScale);
             if (!_api.Settings.FollowGame) RememberFreeBounds();
-            else if (_overlayMode && _lastClientRect is { } client)
+            else if (_lastClientRect is { } client && _lastGameRect is { } game)
             {
                 if (!_collapsed && _resizingHeight)
-                    _dock = _dock with { OverlayHeightDip = WindowGeometry.SnapHeight(placement.HeightDip,
-                        WindowGeometry.OverlayBounds(client, scale, _dock.Width * _uiScale, null, _side).Height / scale) };
-                var offset = WindowGeometry.SnapOverlayOffset(new SidePanelOffset(
-                    (_side == "right" ? rect.Right - client.Right : rect.Left - client.Left) / scale,
-                    (rect.Top - client.Top) / scale), client, scale, _dock.Width * _uiScale, _side);
-                _dock = _side == "right" ? _dock with { OverlayRightOffsetDip = offset } : _dock with { OverlayOffsetDip = offset };
-            }
-            else if (_lastGameRect is { } game)
-            {
-                if (!_collapsed && _resizingHeight)
-                    _dock = _dock with { FollowHeightDip = WindowGeometry.SnapHeight(placement.HeightDip, game.Height / scale) };
-                var offset = WindowGeometry.SnapOffset(WindowGeometry.CaptureFollowOffset(game, placement, scale, _side));
-                _dock = _side == "left" ? _dock with { FollowLeftOffsetDip = offset } : _dock with { FollowOffsetDip = offset };
+                    _dock = _overlayMode
+                        ? _dock with { OverlayHeightDip = WindowGeometry.SnapHeight(placement.HeightDip,
+                            WindowGeometry.OverlayBounds(client, scale, _dock.Width * _uiScale, null, _side).Height / scale) }
+                        : _dock with { FollowHeightDip = WindowGeometry.SnapHeight(placement.HeightDip, game.Height / scale) };
+                if (_stripAtClientRight)
+                    rect.Left = rect.Right - (int)Math.Round(_dock.Width * _uiScale * scale);
+                RememberFollowOffset(rect, client, game, scale);
             }
             _api.SettingsStore.SaveDock(_dock);
             if (_api.Settings.FollowGame && _lastGameRect is { } currentGame) UpdateGame(currentGame);
@@ -561,13 +599,20 @@ public partial class MainWindow
             UpdateGame(game);
             return;
         }
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var bounds = User32.ReadWindowRect(hwnd);
+        var alignRight = _lastClientRect is { } client && WindowGeometry.IsInsideRightHalf(bounds, client)
+            && (collapsed && upHeight == null || _stripAtClientRight);
+        _stripAtClientRight = alignRight && collapsed && upHeight == null;
         ApplyScale(_lastClientRect?.Height);
         (Width, Height) = WindowGeometry.CollapsedSize(_expandedWidth, _expandedHeight, _uiScale, collapsed, upHeight);
+        if (alignRight)
+            Left += (_lastClientRect!.Value.Right - bounds.Left) / User32.GetWindowDpiScale(hwnd) - Width;
     }
 
     private void RememberFreeBounds()
     {
-        _dock = _dock with { FreeBounds = new(Left, Top,
+        _dock = _dock with { FreeBounds = new(_stripAtClientRight ? Left + Width - _expandedWidth : Left, Top,
             _collapsed ? _expandedWidth : Width, _collapsed ? _expandedHeight : Height) };
     }
 
@@ -606,8 +651,8 @@ public partial class MainWindow
         bool? gameElevated = connected ? state.Source == "pc" && ProcessElevation.ForWindow(state.Window) : null;
         RefreshRouteHotkey(gameElevated == true);
         _api.UpdateConnection(new(connected ? "connected" : "searching", resolution,
-            connected ? _tracker.IsFullscreen : null, connected && _overlayMode,
-            connected ? state.Source : null, state.Problem, connected ? _side : null, gameElevated));
+            connected ? _tracker.IsFullscreen : null, connected && (_overlayMode || _stripAtClientRight),
+            connected ? state.Source : null, state.Problem, connected ? (_stripAtClientRight ? "right" : _side) : null, gameElevated));
     }
 
     protected override async void OnClosing(CancelEventArgs e)

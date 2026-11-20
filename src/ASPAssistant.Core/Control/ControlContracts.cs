@@ -15,7 +15,11 @@ namespace ASPAssistant.Core.Control;
 [JsonDerivedType(typeof(PickStrategyAction), "pickStrategy")]
 [JsonDerivedType(typeof(PickAdaptAction), "pickAdapt")]
 [JsonDerivedType(typeof(PickCustomAction), "pickCustom")]
+[JsonDerivedType(typeof(StartSoloAction), "startSolo")]
+[JsonDerivedType(typeof(LeaveResultAction), "leaveResult")]
 public abstract record GameAction;
+public sealed record StartSoloAction(int Level) : GameAction;
+public sealed record LeaveResultAction : GameAction;
 public sealed record BuyAction(int Slot, string? Expect = null) : GameAction;
 public sealed record SellAction(FieldCell From, string? Expect = null) : GameAction;
 public sealed record RefreshAction : GameAction;
@@ -33,9 +37,15 @@ public sealed record DragStep(double X1, double Y1, double X2, double Y2, int Ho
 public sealed record KeyStep(string Key) : InputStep;
 public sealed record WaitStep(int Ms) : InputStep;
 public sealed record ControlFrame(byte[] Image, int Width, int Height, FieldState? Field, MatchState? State, bool Keyboard);
-public sealed record CompiledAction(GameAction Action, string Text, IReadOnlyList<InputStep> Steps, int SettleMs);
+public sealed record CompiledAction(GameAction Action, string Text, IReadOnlyList<InputStep> Steps, int SettleMs)
+{
+    public bool Continue { get; init; }
+}
 public sealed record CompileResult(CompiledAction? Plan, string? Reason, string? Problem);
-public sealed record VerifyResult(bool? Ok, string? Problem);
+public sealed record VerifyResult(bool? Ok, string? Problem)
+{
+    public bool Complete { get; init; }
+}
 public interface IActionCompiler
 {
     CompileResult Compile(GameAction action, ControlFrame now);

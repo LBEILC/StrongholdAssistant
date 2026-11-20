@@ -21,7 +21,7 @@ public sealed class CovenantBarReader(IOcrEngine ocr, string dataDirectory, IRea
     {
         using var stream = new MemoryStream(frame);
         using var image = new Bitmap(stream);
-        double s = image.Height / 1080d * uiScale;
+        double s = BarScale(image, uiScale);
         var area = new RectangleF((float)(image.Width / 2d - 420 * s), (float)(70 * s), (float)(860 * s), (float)(125 * s));
         if (area.Left < 0 || area.Right > image.Width || area.Bottom > image.Height) return new(false, []);
         using var bar = new Bitmap(860, 125);
@@ -32,6 +32,39 @@ public sealed class CovenantBarReader(IOcrEngine ocr, string dataDirectory, IRea
             g.DrawImage(image, new Rectangle(0, 0, 860, 125), area, GraphicsUnit.Pixel);
         }
         return await ReadBarAsync(bar);
+    }
+
+    // 收店或商品很少时，卡距测不准。用盟约外圈左上弧的蓝边和外侧暗底量顶栏自己的缩放。
+    private static double BarScale(Bitmap image, double shopScale)
+    {
+        double unit = image.Height / 1080d, best = 0, result = unit * shopScale;
+        bool Blue(int x, int y)
+        {
+            var p = image.GetPixel(x, y);
+            return p.B > 100 && p.B > p.R * 1.4 && p.B > p.G * 1.05;
+        }
+        var angles = Enumerable.Range(0, 10).Select(i => (174 + i * 8) * Math.PI / 180)
+            .Select(a => (X: Math.Cos(a), Y: Math.Sin(a))).ToArray();
+        foreach (double scale in new[] { 1, 100 / 90d, shopScale }.Concat(Enumerable.Range(1, 4).Select(i => (90 + 2 * i) / 90d)).Distinct())
+        {
+            double s = unit * scale;
+            int y = (int)Math.Round(119 * s);
+            int half = Math.Min(image.Width / 2 - (int)Math.Ceiling(42 * s), (int)(380 * s));
+            for (int x = image.Width / 2 - half; x <= image.Width / 2 + half; x += Math.Max(1, (int)s))
+            {
+                if (!Blue(x - (int)Math.Round(32 * s), y)) continue;
+                int hits = 0;
+                foreach (var a in angles)
+                {
+                    bool At(double radius) => Blue(x + (int)Math.Round(radius * s * a.X), y + (int)Math.Round(radius * s * a.Y));
+                    if (At(39) || !At(32)) continue;
+                    hits += 1 + (At(31) ? 1 : 0) + (At(34) ? 1 : 0);
+                }
+                if (hits == 30) return s;
+                if (hits >= 24 && hits > best) { best = hits; result = s; }
+            }
+        }
+        return result;
     }
 
     // 顶栏标准裁片入口，离线测试与整帧读取共用同一算法。

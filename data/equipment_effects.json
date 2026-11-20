@@ -383,12 +383,14 @@
   },
   "灼燃维式重锤": {
     "normal": {
-      "status": "unsupported",
-      "reason": "缺少我方对敌人的元素损伤累计与爆发"
+      "status": "simulated",
+      "atk": 0.3,
+      "burnRatio": 0.1
     },
     "elite": {
-      "status": "unsupported",
-      "reason": "缺少我方对敌人的元素损伤累计与爆发"
+      "status": "simulated",
+      "atk": 0.5,
+      "burnRatio": 0.1
     }
   },
   "护盾无人机": {

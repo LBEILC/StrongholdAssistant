@@ -60,7 +60,10 @@ public partial class MainWindow : Window
     {
         var userDirectory = _userDirectory ?? AssistantProfile.Current.DirectoryPath;
         Trace.Listeners.Add(new HostTraceListener());
-        _api = await HostApi.CreateAsync(Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data"), userDirectory);
+        var dataDirectory = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data");
+        await HostApi.CheckStartupDataAsync(dataDirectory, App.StartupResult.IsPending
+            || Environment.GetCommandLineArgs().Contains("--keep-identity"));
+        _api = await HostApi.CreateAsync(dataDirectory, userDirectory);
         _ = _api.DownloadIncomeTableAsync();
         _api.DialogOwner = this;
         _api.UpdateReady += () => Dispatcher.BeginInvoke(LaunchPreparedUpdate);

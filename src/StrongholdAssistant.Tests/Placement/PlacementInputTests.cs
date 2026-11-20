@@ -26,6 +26,24 @@ public class PlacementInputTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task OwnedCultivationChangesTheRecommendedOutcome()
+    {
+        var adapter = await PlacementAdapter.LoadAsync(Data);
+        var input = Input() with
+        {
+            Field = new("m10", "test", [new("board", 2, 1, "斯卡蒂", "sure", true, [])]),
+        };
+        var owned = adapter.Compute(input)!;
+        var standIn = adapter.Compute(input with
+        {
+            Roster = new("read", [new("斯卡蒂", null, null, null, null, "read", Prototype: "Sharp")], []),
+        })!;
+        Assert.Contains("按你的干员都练满估算（助手读不到精英化和等级）", owned.Assumptions);
+        Assert.True(owned.Recommended!.Leaked < standIn.Recommended!.Leaked,
+            $"自持有与补位的预计漏怪分别为 {owned.Recommended.Leaked} 和 {standIn.Recommended.Leaked}");
+    }
+
+    [Fact]
     public async Task SkillAndModuleSelectionsChangeUnitsAndRecommendation()
     {
         var (ops, planner, map) = await Fixture();
@@ -46,6 +64,8 @@ public class PlacementInputTests(ITestOutputHelper output)
         var adapter = await PlacementAdapter.LoadAsync(Data);
         PlacementResult Run(string skill, string module) => adapter.Compute(Input() with
         {
+            // 满练度下第 6 回合的漏数相同，换一批敌人验证模组对推荐结果的影响。
+            Round = 7,
             Skills = new Dictionary<string, string?> { ["银灰"] = skill },
             Modules = new Dictionary<string, string?> { ["银灰"] = module },
         })!;

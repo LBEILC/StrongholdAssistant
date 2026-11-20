@@ -25,6 +25,20 @@ public sealed class JsonDataStore(string _dataDirectory)
         if (wrapper?.Operators is not { Count: > 0 } profiles)
             return;
 
+        var deploymentPath = Path.Combine(_dataDirectory, "operator_deployment.json");
+        if (File.Exists(deploymentPath))
+        {
+            var data = JsonSerializer.Deserialize<DeploymentFile>(await File.ReadAllTextAsync(deploymentPath), JsonOptions)!;
+            foreach (var (name, deployment) in data.Entries)
+                if (profiles.TryGetValue(name, out var profile)) profile.Deployment = deployment;
+        }
+        var calibrationPath = Path.Combine(_dataDirectory, "operator_output_calibration.json");
+        if (File.Exists(calibrationPath))
+        {
+            var data = JsonSerializer.Deserialize<CalibrationFile>(await File.ReadAllTextAsync(calibrationPath), JsonOptions)!;
+            foreach (var (name, forms) in data.Entries)
+                if (profiles.TryGetValue(name, out var profile)) profile.Calibration = forms;
+        }
         var ranges = wrapper.Ranges.ToDictionary(p => p.Key,
             p => new AttackRange(p.Key, p.Value.Where(c => c.Length == 2).Select(c => (c[0], c[1]))));
         foreach (var profile in profiles.Values)
@@ -48,6 +62,9 @@ public sealed class JsonDataStore(string _dataDirectory)
             op.Elite.Skill = profile.EliteSkill ?? profile.NormalSkill;
         }
     }
+
+    private sealed record CalibrationFile(Dictionary<string, Dictionary<string, OutputCalibration>> Entries);
+    private sealed record DeploymentFile(Dictionary<string, ProfileChoices<DeployStats>> Entries);
 
     private class OperatorProfileDataFile
     {

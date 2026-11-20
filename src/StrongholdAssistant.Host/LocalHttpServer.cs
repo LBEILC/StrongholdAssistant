@@ -8,8 +8,9 @@ using ASPAssistant.Core;
 
 namespace StrongholdAssistant.Host;
 
-internal sealed class LocalApiError(int status, string message) : Exception(message)
+internal sealed class LocalApiError(int status, string message, int? index = null) : Exception(message)
 {
+    public int? Index => index;
     public int Status => status;
 }
 
@@ -118,11 +119,12 @@ internal sealed class LocalHttpServer : IDisposable
                     LocalApiError or InvalidOperationException or RecognitionException or ArgumentException => e.Message,
                     _ => "助手处理请求失败"
                 };
-                result = new { error = message };
+                result = e is LocalApiError { Index: int index } ? new { error = message, index } : new { error = message };
             }
             var png = result as byte[];
             byte[] bytes = png ?? JsonSerializer.SerializeToUtf8Bytes(result, HostApi.JsonOptions);
-            var header = $"HTTP/1.1 {status} {((HttpStatusCode)status)}\r\nContent-Type: {(png is null ? "application/json; charset=utf-8" : "image/png")}\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\n\r\n";
+            var source = path == "/v1/schedule" && status == 200 ? "X-Data-Source: inferred\r\n" : "";
+            var header = $"HTTP/1.1 {status} {((HttpStatusCode)status)}\r\n{source}Content-Type: {(png is null ? "application/json; charset=utf-8" : "image/png")}\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\n\r\n";
             await stream.WriteAsync(Encoding.ASCII.GetBytes(header), token);
             await stream.WriteAsync(bytes, token);
         }

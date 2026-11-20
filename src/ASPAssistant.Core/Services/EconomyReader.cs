@@ -8,6 +8,10 @@ namespace ASPAssistant.Core.Services;
 
 public sealed record EconomyReading(int? Round, int? Money, int? Level, int? UpgradeCost, bool IsRest)
 {
+    public int? RemainingDeploy { get; init; }
+    public int? RefreshCost { get; init; }
+    public bool? Frozen { get; init; }
+    public int? UpgradeProgress { get; init; }
     public bool IsFinalRound { get; init; }
     public RectangleF? UpgradeButton { get; init; }
 }
@@ -71,15 +75,18 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
         }
         int? round = Number(roundText);
         RoundRawText = string.Join(" | ", top.Select(t => t.Text)) + $"; digits={roundText}";
-        if (round > 20) round = null;
+        if (round is < 1 or > 20) round = null;
         // 动画标牌会让顶部文字漏检；只用本帧就绪控件补证，不沿用上一帧阶段。
         bool isRest = heading.Contains("休息") || heading.Contains("休整")
             || (mainScreen ?? await new BoardSurfaceReader(ocr).IsMainScreenAsync(png, width, height));
         bool isFinalRound = isRest && Regex.IsMatch(roundText.Trim(), @"^[?？﹖](\s*[?？﹖])?$");
         if (!readUpgrade) return new(round, null, null, null, isRest) { IsFinalRound = isFinalRound };
-        var moneyText = await Read((int)(width - 130 * scale),
-            (int)(height - 273 * scale), (int)(65 * scale), (int)(38 * scale), true);
-        int? money = Number(string.Join("", moneyText.Select(t => t.Text)));
+        var moneyBox = new Rectangle((int)(width - 130 * scale), (int)(height - 273 * scale),
+            (int)(65 * scale), (int)(38 * scale));
+        // 可露希尔的收店背景会透过资金牌。以金色边框定位，只给识别器数字笔画。
+        int? money = theme == GameShopTheme.Closure
+            ? await ReadClosureMoneyAsync(ocr, bitmap)
+            : Number(string.Concat((await Read(moneyBox.X, moneyBox.Y, moneyBox.Width, moneyBox.Height, true)).Select(t => t.Text)));
         // 卡面动画也在底部大框里。已有定位时只核对标签和按钮，等级、价格仍各读本帧。
         if (_labelBounds.IsEmpty || !_labelPixels.Unchanged(bitmap, _labelBounds))
         {
@@ -98,11 +105,33 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
         }
         var panel = _panelText;
         var label = _levelLabel;
+        bool? frozen = null;
+        int? refreshCost = null, progress = null, remaining = null;
+        if (isRest)
+        {
+            var controls = await Read((int)(width - 475 * scale), (int)(height - 525 * scale),
+                (int)(475 * scale), (int)(235 * scale));
+            var labels = controls.Select(t => t.Text.Replace(" ", "")).ToArray();
+            var deploy = Regex.Match(string.Concat(labels), @"剩余可放置角色[：:]?(\d+)");
+            if (deploy.Success) remaining = Number(deploy.Groups[1].Value);
+            frozen = labels.Any(t => t.Contains("解冻")) ? true : labels.Any(t => t.Contains("冻结")) ? false : null;
+            if (labels.Any(t => Regex.IsMatch(t, @"^(?:免费|FREE)(?:[×x]?[1-9]\d*)?$", RegexOptions.IgnoreCase))) refreshCost = 0;
+            else if (controls.FirstOrDefault(t => t.Text.Replace(" ", "") == "刷新") is { } refresh)
+            {
+                // 刷新键正上方的独立费用牌，避开右上方的剩余人数。
+                var digits = await Read(refresh.Box.X - (int)(12 * scale), refresh.Box.Y - (int)(32 * scale),
+                    (int)(24 * scale), (int)(27 * scale), true);
+                refreshCost = Number(string.Concat(digits.Select(t => t.Text)));
+            }
+        }
         int? level = null, cost = null;
         RectangleF? button = null;
         if (label is not null)
         {
             int center = label.Box.X + label.Box.W / 2;
+            var fraction = panel.Where(t => Math.Abs(t.Box.X + t.Box.W / 2 - center) < 65 * scale)
+                .Select(t => Regex.Match(t.Text.Replace(" ", ""), @"^(\d+)/(\d+)$")).FirstOrDefault(m => m.Success);
+            if (fraction != null) progress = Number(fraction.Groups[1].Value);
             // 三主题均为 150px 宽面板；可露希尔上缘比另两款低 12px。
             int buttonTop = theme == GameShopTheme.Closure ? 817 : 805;
             button = new RectangleF((float)((center - 75 * scale) / width),
@@ -114,7 +143,8 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
                 _upgradeLabelRegion = new(center - (int)(55 * scale), upgradeLabel.Box.Y - 4, (int)(110 * scale), upgradeLabel.Box.H + 8);
             if (maxLabel is not null || (_upgradeLabelRegion is { } max &&
                 (await Read(max.X, max.Y, max.Width, max.Height)).Any(t => t.Text.Contains("已满级"))))
-                return new(round, money, 6, null, isRest) { IsFinalRound = isFinalRound, UpgradeButton = button };
+                return new(round, money, 6, null, isRest) { IsFinalRound = isFinalRound, UpgradeButton = button,
+                    Frozen = frozen, RefreshCost = refreshCost, UpgradeProgress = progress, RemainingDeploy = remaining };
             bool closure = theme == GameShopTheme.Closure;
             // 可露希尔未检出 LEVEL 时，从底部定位完整等级字形，并避开两侧箭头。
             bool bottomLabel = label.Text is "升级" or "已满级";
@@ -129,7 +159,28 @@ public sealed class EconomyReader(IOcrEngine ocr, GameShopTheme theme = GameShop
                 (int)(height - 273 * scale), (int)(52 * scale), (int)(38 * scale), true);
             cost = level == 6 ? null : Number(string.Join("", price.Select(t => t.Text)));
         }
-        return new(round, money, level, cost, isRest) { IsFinalRound = isFinalRound, UpgradeButton = button };
+        if (theme == GameShopTheme.Closure && isRest && ClosureUpgradeCard.Locate(bitmap) is { } card)
+        {
+            // 确认升级时卡上预览的是下一级；按钮文字来自同一帧。
+            var caption = card.Caption;
+            var words = string.Concat((await Read(caption.X, caption.Y, caption.Width, caption.Height, true))
+                .Select(t => t.Text)).Replace(" ", "");
+            level = words.Contains("确认") ? card.Level - 1 : words.Contains("升级") || card.Level == 1 ? card.Level : level;
+            if (level < 1) level = null;
+            cost = level == 6 ? null : await ShopBadge.ReadAsync(ocr, bitmap, card.PriceArea, money: false) ?? cost;
+            button ??= new RectangleF((float)((card.Center - 75 * card.Scale) / width),
+                (float)((height - 263 * card.Scale) / height), (float)(150 * card.Scale / width), (float)(253 * card.Scale / height));
+        }
+        return new(round, money, level, cost, isRest) { IsFinalRound = isFinalRound, UpgradeButton = button,
+                    Frozen = frozen, RefreshCost = refreshCost, UpgradeProgress = progress, RemainingDeploy = remaining };
+    }
+
+    public static async Task<int?> ReadClosureMoneyAsync(IOcrEngine ocr, Bitmap bitmap)
+    {
+        int width = bitmap.Width, height = bitmap.Height;
+        double s = Math.Min(width / 1920d, height / 1080d);
+        var area = new Rectangle(width - (int)(235 * s), height - (int)(330 * s), (int)(216 * s), (int)(109 * s));
+        return await ShopBadge.ReadAsync(ocr, bitmap, area, money: true);
     }
 
     private async Task<IReadOnlyList<OcrTextResult>> ReadRegionAsync(Bitmap bitmap, byte[] png, Rectangle region, bool line)

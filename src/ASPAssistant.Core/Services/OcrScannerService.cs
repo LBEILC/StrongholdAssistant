@@ -164,8 +164,10 @@ public class OcrScannerService : IDisposable
     private (int, int) _boardSurfaceSize;
     public bool BoardShopVisible => _shopReader.HasVisibleCards;
     public bool BoardDetailVisible { get; private set; }
+    public Func<byte[], int, int, Task>? ObserveOtherTurn { get; set; }
     public Func<byte[], DateTimeOffset, EconomyReading?, bool, bool, IReadOnlyList<ShopItem>, Task>? ObserveFieldAsync { get; set; }
     public Func<byte[], int, int, Task<bool>>? ObserveAdaptFrameAsync { get; set; }
+    public Action? HudObscured { get; set; }
     public Func<byte[], int, int, EconomyReading?, double, Task>? ObserveMatchFrameAsync { get; set; }
 
     // 敌人面板是悬停弹出的，只停 1～2 秒，而一轮扫描要 2～3 秒：主扫描忙时探针每 300 ms 只截面板那一小块看一眼，
@@ -385,8 +387,9 @@ public class OcrScannerService : IDisposable
             _fingerprint = null;
             return;
         }
+        Task OtherTurn() => ObserveOtherTurn?.Invoke(screenshot, width, height) ?? Task.CompletedTask;
         bool panel = RoundEnemyReader.PanelVisible(bitmap);
-        if (await ReadEnemyPanelAsync(screenshot, panel)) return;
+        if (await ReadEnemyPanelAsync(screenshot, panel)) { await OtherTurn(); return; }
         if (ManualWaiting) return;
         var theme = _shopReader.Theme;
         var key = (width, height, theme);
@@ -404,6 +407,7 @@ public class OcrScannerService : IDisposable
             BoardFrameReady?.Invoke(null, null);
             PublishShopItems([], false, capturedAt);
             SetIdleInterval(2000);
+            await OtherTurn();
             return;
         }
         var previousRound = _combatRound;
@@ -467,6 +471,7 @@ public class OcrScannerService : IDisposable
             UpdateScanInterval(false);
             BoardFrameReady?.Invoke(null, null);
             PublishShopItems([], false, capturedAt);
+            await OtherTurn();
             return;
         }
         if (ManualWaiting) return;
@@ -482,10 +487,12 @@ public class OcrScannerService : IDisposable
         }
         if (fieldSurface.Obscured || confirmation)
         {
+            HudObscured?.Invoke();
             BoardMainScreenVisible = false;
             _boardSurfacePixels = null;
             UpdateScanInterval(false);
             BoardFrameReady?.Invoke(null, null);
+            await OtherTurn();
             return;
         }
         if (ManualWaiting) return;

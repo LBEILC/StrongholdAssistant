@@ -233,7 +233,7 @@ public sealed class EconomyHistoryTests : IDisposable
             new IncomeSource("见钱眼开玩偶", "equipment", "once", 2, 4),
             new IncomeSource("波登可", "sell", "once", 1, 2)
         }, api.Catalog.GetProperty("incomeSources").Deserialize<IncomeSource[]>(HostApi.JsonOptions));
-        Open(api);
+        // 收入命令只需要当前回合；录入开局还会异步发布与收入无关的策略建议事件。
         Read(api, 1, 4);
         int events = 0;
         api.Changed += (name, _) => { if (name == "match") events++; };

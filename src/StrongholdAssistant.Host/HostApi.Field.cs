@@ -64,6 +64,33 @@ public sealed partial class HostApi
 
     public FieldState? Field { get { lock (_fieldGate) return _fieldTracker.State; } }
 
+    private static readonly TimeSpan FirstFieldWait = TimeSpan.FromSeconds(4);
+    private const string FieldTimeout = "等待场上识别超时，尚未取得本回合的棋盘结果";
+    private TaskCompletionSource<FieldState?>? _nextField;
+    private int _fieldWaiters;
+
+    private async Task<FieldState?> WaitForFieldAsync(int? round, TimeSpan timeout, CancellationToken token)
+    {
+        TaskCompletionSource<FieldState?> next;
+        lock (_fieldGate)
+        {
+            if (Field is { } field && (round == null || field.Round == round)) return field;
+            next = _nextField ??= new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _fieldWaiters++;
+        }
+        try
+        {
+            var field = await next.Task.WaitAsync(timeout, token);
+            return round == null || field?.Round == round ? field : null;
+        }
+        catch (TimeoutException) { return null; }
+        finally
+        {
+            lock (_fieldGate)
+                if (--_fieldWaiters == 0) _nextField = null;
+        }
+    }
+
     public void InitializeField(string directory, IOcrEngine ocr)
     {
         _fieldReader?.Dispose();
@@ -92,13 +119,16 @@ public sealed partial class HostApi
     public async Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
         bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop)
     {
-        lock (_fieldGate)
-            _matchRest = economy is { IsRest: true } && mainScreen ? new(economy, shopVisible
-                ? shop.Where(c => c.SlotIndex is >= 0 and <= 5 && c.Name.Length > 0)
-                    .Select(c => (c.SlotIndex, c.Name, c.Price)).ToArray() : []) : null;
-        if (!Settings.FieldAuto && !Settings.Collect) return;
+        if (economy is { IsFinalRound: true, Round: null } && Match.Mode is { } mode)
+            economy = economy with { Round = _boardRouteStore.LastRound(Match.Solo, mode.Id) };
+        shopVisible |= _shopReader?.EmptySlots.Length == 6;
+        await ObserveBoardTurn(frame, at, economy, mainScreen, shopVisible, shop);
+        // 命令等待首份结果时消费下一张正常扫描的休整帧；自动认人设置可以保持关闭。
+        bool requested;
+        lock (_fieldGate) requested = _fieldReader != null && _nextField != null && economy is { IsRest: true } && mainScreen;
+        if (!Settings.FieldAuto && !Settings.Collect && !requested) return;
         if (!await _fieldScanGate.WaitAsync(0)) return;
-        try { await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false); }
+        try { await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false, requested); }
         finally { _fieldScanGate.Release(); }
     }
 
@@ -117,7 +147,7 @@ public sealed partial class HostApi
     }
 
     private async Task ReadFieldCoreAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
-        bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop, bool force)
+        bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop, bool force, bool requested = false)
     {
         var collectionClock = Settings.Collect ? System.Diagnostics.Stopwatch.StartNew() : null;
         var capturedEconomy = economy;
@@ -149,15 +179,20 @@ public sealed partial class HostApi
             FieldState? changed = null;
             lock (_fieldGate)
             {
-                if (generation != _fieldGeneration) return;
-                if (rest is not null) _matchHp = (rest.Round, rest.Vitals.Hp);
+                if (generation != _fieldGeneration || at < _actionsAppliedAt) return;
+                if (observation.MainScreen && observation.IsRest && (force || requested || Settings.FieldAuto)) _inferredState = null;
                 _fieldTracker.ConfigureCandidatePool(match.BannedOperators, match.CustomPicks is null ? null : custom);
                 _fieldTracker.SeedRoster(strategy, custom, observation.Round, at);
                 var before = Settings.Collect ? _fieldTracker.State : null;
                 _comparingObservation = observation;
                 _collectionComparisons = Settings.Collect ? [] : null;
                 using (FieldRecognitionTiming.Measure("tracker"))
-                    if (_fieldTracker.Observe(observation, Settings.FieldAuto || force, force)) changed = _fieldTracker.State;
+                    if (_fieldTracker.Observe(observation, Settings.FieldAuto || force || requested, force || requested)) changed = _fieldTracker.State;
+                if (observation.MainScreen && observation.IsRest && _fieldTracker.State is { } current && current.Round == observation.Round)
+                {
+                    _nextField?.TrySetResult(current);
+                    _nextField = null;
+                }
                 if (Settings.Collect) CollectObservation(frame, observation, before, _fieldTracker.State,
                     _collectionComparisons?.ToArray() ?? [], force, collectionClock?.Elapsed.TotalMilliseconds ?? 0, rest);
                 _collectionComparisons = null; _comparingObservation = null;
@@ -213,8 +248,19 @@ public sealed partial class HostApi
         lock (_fieldGate)
         {
             _fieldGeneration++;
+            _nextField?.TrySetResult(null);
+            _nextField = null;
+            _inferredState = null;
+            _actionsAppliedAt = default;
             _matchRest = null;
+            _coveredHud = null;
             _matchHp = null;
+            _lastRound = null;
+            _battleRound = null;
+            _turnShop.Reset();
+            _decision = null;
+            _turnId = null;
+            SetPhase("unknown");
             hadState = _fieldTracker.State is not null;
             _fieldTracker.Reset();
         }

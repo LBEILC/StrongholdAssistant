@@ -34,9 +34,10 @@ public sealed class RoundProgressTests : IDisposable
         }
         api.ApplyRecognizedMatch(api.Match with { Mode = new(mode, mode), BossId = "enemy_9017_achunt" }, [], opening: !solo);
         var ocr = new Mock<IOcrEngine>();
-        ocr.SetupSequence(o => o.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync([new("回合", (800, 20, 50, 30)), new("休息一下", (950, 20, 100, 30))])
-            .ReturnsAsync([]);
+        ocr.Setup(o => o.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync((byte[] image, int x, int y, int width, int height) => y == 0
+                ? [new OcrTextResult("回合", (800, 20, 50, 30)), new OcrTextResult("休息一下", (950, 20, 100, 30))]
+                : Array.Empty<OcrTextResult>());
         ocr.SetupSequence(o => o.RecognizeLineAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync([new(question, (855, 20, 50, 30))]).ReturnsAsync([]);
         var frame = Frame;

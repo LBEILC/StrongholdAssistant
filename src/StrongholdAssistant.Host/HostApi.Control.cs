@@ -89,6 +89,9 @@ public sealed partial class HostApi
                 { throw new ControlScreenException(e.Message); }
             }
             else await Read();
+            // 第一次下发时可能还没有场上快照，用首次动作前识别补齐基线。
+            lock (_fieldGate)
+                if (_beforeActions == null && field != null) _beforeActions = field;
             CheckTarget();
             token.ThrowIfCancellationRequested();
             using var stream = new MemoryStream(bytes!);

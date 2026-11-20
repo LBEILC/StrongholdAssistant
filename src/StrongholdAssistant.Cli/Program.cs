@@ -46,7 +46,7 @@ internal static class Program
             using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
             {
                 BaseAddress = new Uri($"http://127.0.0.1:{endpoint.Port}/v1/"),
-                Timeout = TimeSpan.FromSeconds(135)
+                Timeout = TimeSpan.FromSeconds(command.Path.StartsWith("turn?") ? 615 : 135)
             };
             http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.Token);
             while (true)
@@ -59,7 +59,7 @@ internal static class Program
                 {
                     var message = await response.Content.ReadAsStringAsync();
                     using var problem = JsonDocument.Parse(message);
-                    await error.WriteLineAsync(problem.RootElement.GetProperty("error").GetString());
+                    await error.WriteLineAsync((int)response.StatusCode == 422 ? message : problem.RootElement.GetProperty("error").GetString());
                     return 1;
                 }
                 if (command.FileName != null)

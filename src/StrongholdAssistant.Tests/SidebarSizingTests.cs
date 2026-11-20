@@ -13,6 +13,45 @@ namespace StrongholdAssistant.Tests;
 public class SidebarSizingTests
 {
     [Theory]
+    [InlineData("left")]
+    [InlineData("right")]
+    public void OverlayDraggedToRightCollapsesAtClientEdgeAndExpandsLeft(string side) => OnSta(() =>
+    {
+        var directory = Directory.CreateTempSubdirectory("SidebarPosition-");
+        var api = HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), directory.FullName)
+            .GetAwaiter().GetResult();
+        var window = new MainWindow(false, directory.FullName);
+        var hwnd = new WindowInteropHelper(window).EnsureHandle();
+        var dpi = User32.GetWindowDpiScale(hwnd);
+        var game = User32.GetMonitorGeometry(0, 0).Bounds;
+        var tracker = (WindowTrackerService)Get(window, "_tracker")!;
+        try
+        {
+            Set(window, "_api", api);
+            typeof(WindowTrackerService).GetField("_getViewport", Private)!
+                .SetValue(tracker, (Func<IntPtr, RECT?>)(_ => game));
+            typeof(HostApi).GetProperty(nameof(HostApi.Settings))!.SetValue(api,
+                api.Settings with { FollowGame = true, OverlaySide = side, UiScale = JsonSerializer.SerializeToElement(1) });
+            Set(window, "_dock", new DockSettings(380, OverlayOffsetDip: new(game.Width / dpi - 400, 73),
+                OverlayRightOffsetDip: new(-20, 73)));
+            Call(window, "UpdateGame", game);
+            var expanded = User32.ReadWindowRect(hwnd);
+            Call(window, "SetCollapse", true, null);
+            var strip = User32.ReadWindowRect(hwnd);
+            Assert.Equal((game.Right, expanded.Top, (int)Math.Round(48 * dpi)), (strip.Right, strip.Top, strip.Width));
+            Call(window, "SetCollapse", false, null);
+            var restored = User32.ReadWindowRect(hwnd);
+            Assert.Equal((game.Right, expanded.Top, expanded.Width), (restored.Right, restored.Top, restored.Width));
+        }
+        finally
+        {
+            tracker.Dispose();
+            ((Window)Get(window, "_overlay")!).Close();
+            directory.Delete(true);
+        }
+    });
+
+    [Theory]
     [InlineData(1.25)]
     [InlineData(1.5)]
     public void FollowingCollapseAndHeightReportsNeverRestoreStaleWidth(double scale) => OnSta(() =>

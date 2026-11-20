@@ -44,6 +44,10 @@ public sealed class PlacementAdapter
     private readonly GarrisonSpawnStore _spawns;
     private readonly PlacementPlanner _planner;
     private SummonDefinition[] _summons = [];
+    private HashSet<string> _prototypePicks = [];
+
+    public string[] PossibleEnemies(int round, string mode, string[] types, string[] bosses, string? selectedBoss)
+        => _spawns.PossibleEnemies(round, mode, types, bosses, selectedBoss);
 
     public string[]? GetCells(string mapId) => _board.Find(mapId)?.CellRows;
 
@@ -72,9 +76,15 @@ public sealed class PlacementAdapter
         var (covenants, transforms) = await store.LoadCovenantsAsync();
         var ids = JsonSerializer.Deserialize<Dictionary<string, string>>(
             await File.ReadAllTextAsync(Path.Combine(directory, "covenant_ids.json")))!;
+        using var codex = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "codex_extra.json")));
+        var entries = codex.RootElement.GetProperty("operators");
+        // 自选原型按角色 ID 匹配，避免把同名的自选 Pith 当成补位原型。
+        var prototypePicks = new PrototypeCatalog(directory).Prototypes
+            .Where(p => entries.TryGetProperty(p.Name, out var op) && op.GetProperty("charId").GetString() == p.CharId)
+            .Select(p => p.Name).ToHashSet();
         return new(operators, ids, transforms, await CombatEffectStore.LoadAsync(directory), (await GarrisonBoardStore.LoadAsync(directory))!,
             EnemyRouteStore.Load(directory), GarrisonSpawnStore.Load(directory)!, new(operators, covenants))
-            { _summons = SummonCatalog.Load(directory) };
+            { _summons = SummonCatalog.Load(directory), _prototypePicks = prototypePicks };
     }
 
     public PlacementResult? Compute(PlacementInput input, CancellationToken cancel = default)
@@ -143,6 +153,7 @@ public sealed class PlacementAdapter
             var candidate = new PlacementCandidate(name, unit.Elite ?? false, pool.Count(c => c.Name == name))
             {
                 Transforms = transforms, Profile = profile.Select(skill, module), Equipment = effects,
+                Cultivation = roster?.Prototype is null && !_prototypePicks.Contains(name) ? 3 : 0,
             };
             pool.Add(candidate);
             origins[candidate.Key] = unit;
@@ -153,6 +164,7 @@ public sealed class PlacementAdapter
             if (roster?.Potential is null) missingPotential++;
         }
         if (pool.Count == 0) return null;
+        assumptions.Add("按你的干员都练满估算（助手读不到精英化和等级）");
         if (missingElite) assumptions.Add("精锐按没有算");
         if (missingPotential > 0) assumptions.Add($"{missingPotential} 人潜能按 1 算（没读过我的干员）");
         if (defaultSkill > 0) assumptions.Add($"{defaultSkill} 人的技能按默认算");
@@ -212,7 +224,7 @@ public sealed class PlacementAdapter
                     var d = p.Definition!;
                     // TODO(design): 动态阻挡缺少实例状态字段；暂用基础值，狼影数量和流形复制对象需另定协议。
                     return new SimUnit($"summon:{p.Summon.Col},{p.Summon.Row}", new(p.Summon.Col, p.Summon.Row), [],
-                        d.BaseBlock > 0, d.BaseBlock, false, 0, 1, false, d.Hp, d.Defense, false) { Res = d.Resistance };
+                        d.BaseBlock > 0, d.BaseBlock, false, 0, 1, false, d.Hp, d.Defense, false) { Res = d.Resistance, FixedSummonName = d.Name };
                 }).ToArray(),
         };
         cancel.ThrowIfCancellationRequested();

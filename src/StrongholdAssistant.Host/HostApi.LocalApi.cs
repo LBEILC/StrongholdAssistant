@@ -55,10 +55,12 @@ public sealed partial class HostApi
         {
             if (!_jobs.TryGetValue(job.Id, out var entry))
             {
+                if (job.Mode != "dryRun") BeginFieldActions();
                 if (_jobs.Count == 20) _jobs.Remove(_jobs.Values.MinBy(x => x.Latest.StartedAt)!.Latest.Id);
                 _jobs[job.Id] = entry = new(job);
             }
             _latestJob = job.Id;
+            if (entry.Latest.State != "done" && job.State == "done" && job.Mode != "dryRun") CompleteFieldActions(job);
             entry.Latest = job;
             if (job.EndedAt != null) entry.Finished.TrySetResult();
         }
@@ -109,8 +111,13 @@ public sealed partial class HostApi
                 return new { profile = ApiProfile, version = typeof(HostApi).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion.Split('+')[0],
                     source = game?.State.Source, window = game?.State.Source == "pc" ? (long?)game.State.Window : null,
                     serial = game?.ConnectedDevice?.Serial, control = new { control.Enabled, control.External, control.Mode } };
+            case ("GET", "/v1/schedule"): return GetSchedule();
+            case ("GET", "/v1/turn"): return await ReadTurnAsync(uri, token);
+            case ("GET", "/v1/page"): return await ReadMenuPageAsync();
             case ("GET", "/v1/state"): return GetMatchState();
-            case ("GET", "/v1/field"): return Field;
+            case ("GET", "/v1/field"):
+                return (object?)await WaitForFieldAsync(_matchRest?.Economy.Round, FirstFieldWait, token)
+                    ?? new { source = "unknown", reason = FieldTimeout };
             case ("POST", "/v1/field/recognize"): return await RecognizeFieldAsync();
             case ("GET", "/v1/placement"): return Placement;
             case ("GET", "/v1/screenshot"):
@@ -144,13 +151,48 @@ public sealed partial class HostApi
                     if (path.EndsWith("/run")) return run(PlacementMoves(Placement, Field), mode, "api");
                     if (!root.TryGetProperty("actions", out var a) || a.ValueKind != JsonValueKind.Array)
                         throw new LocalApiError(400, "请提供 actions 动作数组");
-                    return run(a.EnumerateArray().Select(ReadAction).ToArray(), mode, "api");
+                    var actions = a.EnumerateArray().Select(ReadAction).ToArray();
+                    // 策略确认后可能已经跳到自选，后台扫描仍在处理上一张策略帧。
+                    var openingPage = actions is [PickCustomAction] && _phase == "strategy" && _controlCapture != null
+                        ? (await ReadMenuPageAsync()).Page : null;
+                    lock (_fieldGate)
+                    {
+                        var state = GetMatchState();
+                        var projected = new ActionState(state, Field?.Round == state.Round.Value ? Field : null,
+                            _matchRest?.Economy.RemainingDeploy);
+                        for (int i = 0; i < actions.Length; i++)
+                        {
+                            if (actions[i] is PickStrategyAction pick &&
+                                _openingStrategies.FirstOrDefault(s => s.Name == pick.StrategyId) is { } named)
+                                actions[i] = new PickStrategyAction(named.Id);
+                            if (projected.Apply(actions[i], openingPage ?? _phase, true) is { } problem)
+                                throw new LocalApiError(422, $"第 {i + 1} 个动作：{problem}", i);
+                        }
+                    }
+                    return run(actions, mode, "api");
                 }
         }
         if (method == "GET" && path.StartsWith("/v1/jobs/", StringComparison.Ordinal))
             return await ReadJobAsync(path[9..], System.Web.HttpUtility.ParseQueryString(uri.Query)["wait"], token);
         throw new LocalApiError(404, "找不到这个接口");
     }
+
+    private async Task<MenuPage> ReadMenuPageAsync()
+    {
+        if (Connection.State != "connected" || _controlCapture is null) throw new InvalidOperationException("还没连上游戏");
+        var connection = _controlCapture.Connection;
+        var bytes = connection.IsAdb ? connection.CaptureAdbScreen(int.MaxValue) : _controlCapture.CaptureWindowScreen();
+        if (bytes == null) throw new InvalidOperationException("游戏截图失败");
+        using var ocr = new ASPAssistant.Core.Services.MaaOcrEngine(Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data"));
+        return await MenuPages.IdentifyAsync(ocr, bytes);
+    }
+
+    private static (Type, string[]) MenuContract(string? type) => type switch
+    {
+        "startSolo" => (typeof(StartSoloAction), ["level"]),
+        "leaveResult" => (typeof(LeaveResultAction), []),
+        _ => throw new LocalApiError(400, "未知动作类型")
+    };
 
     // 构造参数缺失时反序列化会补零，不能把残缺的动作当作第一张卡或第一个选项。
     private static GameAction ReadAction(JsonElement action)
@@ -170,7 +212,7 @@ public sealed partial class HostApi
             "refresh" => (typeof(RefreshAction), []),
             "ready" => (typeof(ReadyAction), []),
             "upgrade" => (typeof(UpgradeAction), []),
-            _ => throw new LocalApiError(400, "未知动作类型")
+            _ => MenuContract(t.GetString())
         };
         foreach (var name in contract.Required)
         {

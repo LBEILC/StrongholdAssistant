@@ -37,6 +37,35 @@ public sealed partial class FieldTracker
         _summons.Clear();
     }
 
+    public bool ApplyInferredChanges(FieldState before, IReadOnlyList<FieldUnit> projected, DateTimeOffset at)
+    {
+        var previous = before.Units.ToDictionary(u => u.Cell);
+        var next = projected.ToDictionary(u => u.Cell);
+        bool changed = false;
+        foreach (var cell in previous.Keys.Union(next.Keys))
+        {
+            var old = previous.GetValueOrDefault(cell);
+            var unit = next.GetValueOrDefault(cell);
+            if (old == unit) continue;
+            var observed = _units.GetValueOrDefault(cell);
+            // 动作核对期间也会识别。新认出的名字或明确腾出的目标优先。
+            if (observed?.Operator != null && observed.Operator != old?.Operator
+                || observed == null && old != null && unit != null) continue;
+            if (unit == null) changed |= _units.Remove(cell);
+            else { _units[cell] = unit; changed = true; }
+            _manualOnly.Remove(cell);
+            _missing.Remove(cell);
+            _pictures.Remove(cell);
+            _gainSources.Remove(cell);
+        }
+        if (changed)
+        {
+            _pendingTrigger = true;
+            Publish(before.MapId, before.Round, at);
+        }
+        return changed;
+    }
+
     public bool SetOperator(FieldCell cell, string? name, DateTimeOffset at)
     {
         if (!(cell.Zone == "bench" && cell.Col is >= 1 and <= 10 && cell.Row == 0

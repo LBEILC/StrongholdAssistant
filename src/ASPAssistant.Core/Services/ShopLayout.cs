@@ -51,27 +51,28 @@ public static class ShopLayout
     /// <summary>两侧长直边的明暗差确认卡身仍在，不用 OCR 空结果判断收店。</summary>
     public static bool HasCards(Bitmap image, double k, GameShopTheme theme)
     {
+        return Enumerable.Range(0, 6).Any(slot => HasCard(image, k, theme, slot));
+    }
+
+    public static bool HasCard(Bitmap image, double k, GameShopTheme theme, int slot)
+    {
         double scale = Math.Min(image.Width / 1920.0, image.Height / 1080.0) * k;
         int delta = Math.Max(2, (int)Math.Round(3 * scale));
-        for (int slot = 0; slot < 6; slot++)
+        var card = Card(slot, image.Width, image.Height, k, theme);
+        bool Edge(double x)
         {
-            var card = Card(slot, image.Width, image.Height, k, theme);
-            bool Edge(double x)
+            int cx = (int)Math.Round(x);
+            if (cx - delta < 0 || cx + delta >= image.Width) return false;
+            int hits = 0;
+            for (int n = 0; n < 20; n++)
             {
-                int cx = (int)Math.Round(x);
-                if (cx - delta < 0 || cx + delta >= image.Width) return false;
-                int hits = 0;
-                for (int n = 0; n < 20; n++)
-                {
-                    int y = (int)(card.Top + card.Height * (.2 + n * .025));
-                    var a = image.GetPixel(cx - delta, y);
-                    var b = image.GetPixel(cx + delta, y);
-                    if (Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B) > 24) hits++;
-                }
-                return hits >= 14;
+                int y = (int)(card.Top + card.Height * (.2 + n * .025));
+                var a = image.GetPixel(cx - delta, y);
+                var b = image.GetPixel(cx + delta, y);
+                if (Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B) > 24) hits++;
             }
-            if (Edge(card.Left) && Edge(card.Right)) return true;
+            return hits >= 14;
         }
-        return false;
+        return Edge(card.Left) && Edge(card.Right);
     }
 }

@@ -25,6 +25,8 @@ public static class PlacementRoleText
 /// </summary>
 public sealed record PlacementCandidate(string Name, bool IsElite, int Copy = 0)
 {
+    // 自持有干员的练度档（0～3），独立于棋子的精锐形态。未知时不加成。
+    public int Cultivation { get; init; }
     public OperatorProfile? Profile { get; init; }
     public IReadOnlyList<CombatEffect> Equipment { get; init; } = [];
     public string Key => PlacementKeys.Of(Name, Copy);

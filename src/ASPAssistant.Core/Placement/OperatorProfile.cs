@@ -279,16 +279,25 @@ public sealed class SummonData
     [JsonIgnore] public AttackRange? RangeShape { get; set; }
 }
 
+internal sealed record OutputCalibration(string Skill, double Scale, int Fields);
+
+internal sealed record DeployStats(int[] Cost, int[] Seconds);
+
 public class OperatorProfile
 {
     [JsonPropertyName("skills")] public Dictionary<string, ProfileChoices<SkillChoice>> Skills { get; set; } = [];
     [JsonPropertyName("modules")] public Dictionary<string, ProfileChoices<ModuleChoice>> Modules { get; set; } = [];
     [JsonPropertyName("defaultModule")] public string DefaultModule { get; set; } = "";
 
+    [JsonIgnore] internal Dictionary<string, OutputCalibration>? Calibration { get; set; }
+    [JsonIgnore] internal ProfileChoices<DeployStats>? Deployment { get; set; }
+    [JsonIgnore] internal string? SelectedModule { get; private set; }
+
     // 每次计算使用独立面板，不能修改共享目录或其他副本。
     public OperatorProfile Select(string? skill, string? module)
     {
         var result = (OperatorProfile)MemberwiseClone();
+        result.SelectedModule = module ?? DefaultModule;
         foreach (bool elite in new[] { false, true })
         {
             var original = StatsFor(elite)!;

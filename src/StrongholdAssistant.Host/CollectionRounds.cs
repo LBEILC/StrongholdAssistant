@@ -6,7 +6,10 @@ namespace StrongholdAssistant.Host;
 
 internal sealed record RoundVitals(int? Hp, int? Money, int? Level);
 internal sealed record CollectedResult(int? ReachedRound, bool? Cleared, int? FinalHp, int? Trophies,
-    int? Score = null, int? Rank = null);
+    int? Score = null, int? Rank = null)
+{
+    internal int? RoundLeaks { get; init; }
+}
 internal sealed record RoundUnit(string Zone, int Col, int Row, string? Operator, int Tier, bool? Elite,
     FieldEquipment[]? Equipment, bool Confirmed);
 

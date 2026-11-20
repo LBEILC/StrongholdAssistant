@@ -1,0 +1,93 @@
+{
+  "source": "371、375 固定原场第 11～13 回合。380 修正面板移速、练度和绝技后，暂去除 378 系数，按原有形态与技能重新计算；保留至少 30 个不同原场且本方伤害比偏离 1 超过 0.40 的原条目。",
+  "entries": {
+    "乌有": {
+      "normal": {
+        "skill": "阴晴圆缺",
+        "scale": 0.3168,
+        "fields": 74
+      },
+      "elite": {
+        "skill": "阴晴圆缺",
+        "scale": 0.3219,
+        "fields": 39
+      }
+    },
+    "历阵锐枪芬": {
+      "normal": {
+        "skill": "执守阵线",
+        "scale": 0.6979,
+        "fields": 31
+      },
+      "elite": {
+        "skill": "执守阵线",
+        "scale": 0.4675,
+        "fields": 69
+      }
+    },
+    "幽灵鲨": {
+      "normal": {
+        "skill": "攻击力强化·γ型",
+        "scale": 1.7956,
+        "fields": 39
+      }
+    },
+    "极光": {
+      "normal": {
+        "skill": "人工降雪",
+        "scale": 0.6423,
+        "fields": 123
+      }
+    },
+    "森蚺": {
+      "normal": {
+        "skill": "钢铁意志",
+        "scale": 0.3625,
+        "fields": 272
+      },
+      "elite": {
+        "skill": "钢铁意志",
+        "scale": 0.3522,
+        "fields": 151
+      }
+    },
+    "海沫": {
+      "normal": {
+        "skill": "回首，断舍",
+        "scale": 1.8136,
+        "fields": 83
+      }
+    },
+    "艾丝黛尔": {
+      "normal": {
+        "skill": "攻击力强化·β型",
+        "scale": 0.4514,
+        "fields": 138
+      },
+      "elite": {
+        "skill": "攻击力强化·β型",
+        "scale": 0.486,
+        "fields": 424
+      }
+    },
+    "艾雅法拉": {
+      "normal": {
+        "skill": "火山",
+        "scale": 3.6969,
+        "fields": 115
+      }
+    },
+    "车尔尼": {
+      "normal": {
+        "skill": "曲惊四座",
+        "scale": 0.7029,
+        "fields": 83
+      },
+      "elite": {
+        "skill": "曲惊四座",
+        "scale": 0.4481,
+        "fields": 90
+      }
+    }
+  }
+}

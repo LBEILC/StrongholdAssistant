@@ -15,7 +15,24 @@ public sealed class EconomyReaderTests(ASPAssistant.Tests.Services.EnemyRecognit
             "TestData", "shop-closure-round1-1600x1024.png"));
         var result = await new EconomyReader(_ocr, GameShopTheme.Closure).ReadAsync(bytes, 1600, 1024);
         Assert.NotNull(result.UpgradeButton);
-        Assert.Equal(new EconomyReading(1, 4, 1, 5, true), result with { UpgradeButton = null });
+        Assert.Equal((1, 4, 1, 5, true), (result.Round, result.Money, result.Level, result.UpgradeCost, result.IsRest));
+    }
+
+    public sealed class CollapsedShopFrameAttribute : FactAttribute
+    {
+        public CollapsedShopFrameAttribute()
+        {
+            if (!File.Exists(Environment.GetEnvironmentVariable("STRONGHOLD_COLLAPSED_SHOP_FRAME")))
+                Skip = "未提供收店资金为 2 的现场帧（STRONGHOLD_COLLAPSED_SHOP_FRAME）";
+        }
+    }
+
+    [CollapsedShopFrame]
+    public async Task ReadsTwoOnCollapsedClosureShop()
+    {
+        var bytes = await File.ReadAllBytesAsync(Environment.GetEnvironmentVariable("STRONGHOLD_COLLAPSED_SHOP_FRAME")!);
+        var result = await new EconomyReader(_ocr, GameShopTheme.Closure).ReadAsync(bytes, 1920, 1080);
+        Assert.Equal(2, result.Money);
     }
 
     [Theory]
@@ -27,7 +44,7 @@ public sealed class EconomyReaderTests(ASPAssistant.Tests.Services.EnemyRecognit
         var bytes = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "TestData", file));
         var result = await new EconomyReader(_ocr, file.Contains("terminal") ? GameShopTheme.Terminal : file.Contains("ursus") ? GameShopTheme.Ursus : GameShopTheme.Closure).ReadAsync(bytes, 2000, 1125);
         Assert.NotNull(result.UpgradeButton);
-        Assert.Equal(new EconomyReading(1, 4, 1, 5, true), result with { UpgradeButton = null });
+        Assert.Equal((1, 4, 1, 5, true), (result.Round, result.Money, result.Level, result.UpgradeCost, result.IsRest));
     }
 
     [Theory]

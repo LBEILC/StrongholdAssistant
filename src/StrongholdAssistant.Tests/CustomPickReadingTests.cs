@@ -46,7 +46,7 @@ public sealed class CustomPickReadingTests(EnemyRecognitionFixture fixture, ITes
         Assert.Equal(rest, economy.IsRest);
         if (rest)
         {
-            Assert.Equal(new EconomyReading(1, 4, 1, 5, true), economy with { UpgradeButton = null });
+            Assert.Equal((1, 4, 1, 5, true), (economy.Round, economy.Money, economy.Level, economy.UpgradeCost, economy.IsRest));
             Assert.Null(api.Match.CustomPicks);
         }
         else

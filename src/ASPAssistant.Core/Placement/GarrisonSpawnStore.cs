@@ -22,6 +22,9 @@ public sealed class GarrisonSpawnStore
 
     private const string DefaultMode = "mode_multi_normal";
 
+    // 敌人表的 moveSpeed 是面板值；每个战斗秒走过的格数为面板值的一半。
+    public static double TilesPerSecond(double moveSpeed) => moveSpeed * 0.5;
+
     private sealed record Enemy(string Name, double Hp, double Atk, double Def, double Res, double Speed, double Interval,
         double Range, bool Flying, bool Arts, string Rank, int LifePoints, TraitsDto? Traits, int? Weight);
     private sealed record EmberDto(int Hits, double Seconds);
@@ -49,6 +52,9 @@ public sealed class GarrisonSpawnStore
 
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
     private readonly Data _data;
+    private sealed record AttackData(EnemyAttackClip? Clip, bool? Arts, bool NoAttack);
+    private sealed record AttackFile(Dictionary<string, AttackData> Entries);
+    private Dictionary<string, AttackData> _attackData = [];
 
     private GarrisonSpawnStore(Data data) => _data = data;
 
@@ -59,6 +65,9 @@ public sealed class GarrisonSpawnStore
         var path = Path.Combine(dataDirectory, "garrison_spawns.json");
         if (!File.Exists(path)) return null;
         var store = Parse(File.ReadAllText(path));
+        var attackPath = Path.Combine(dataDirectory, "enemy_attack_parameters.json");
+        if (File.Exists(attackPath))
+            store._attackData = JsonSerializer.Deserialize<AttackFile>(File.ReadAllText(attackPath), Options)!.Entries;
         // 与参照逐项比较一致，统一使用本项目 166 敌人加成表。
         using var buffs = JsonDocument.Parse(File.ReadAllText(Path.Combine(dataDirectory, "enemy_buffs.json")));
         foreach (var mode in buffs.RootElement.EnumerateObject())
@@ -126,6 +135,28 @@ public sealed class GarrisonSpawnStore
         return result;
     }
 
+    public string[] PossibleEnemies(int round, string mode, string[] types, string[] bosses, string? selectedBoss)
+    {
+        IEnumerable<Act> acts;
+        if (_data.Endgame.TryGetValue(round.ToString(), out var stages))
+        {
+            var available = stages.Where(s => s.BossKey != null &&
+                bosses.Any(b => s.BossKey == b || s.BossKey == b + "_2"));
+            var selected = available.Where(s => selectedBoss != null &&
+                (s.BossKey == selectedBoss || s.BossKey == selectedBoss + "_2")).ToArray();
+            acts = (selected.Length > 0 ? selected.AsEnumerable() : available).SelectMany(s => s.Actions);
+        }
+        else
+        {
+            var off = _data.Inactive?.GetValueOrDefault(mode) ?? [];
+            var codes = types.Select(TypeCode).OfType<string>().ToHashSet();
+            acts = (_data.Rounds.GetValueOrDefault(round.ToString()) ?? [])
+                .Where(g => !off.Contains(g.Key) && (codes.Count == 0 || codes.Contains(g.Type))).SelectMany(g => g.Acts);
+        }
+        return acts.Select(a => _data.Enemies.GetValueOrDefault(a.Enemy)?.Name).OfType<string>()
+            .Distinct().Order(StringComparer.Ordinal).ToArray();
+    }
+
     /// <summary>An enemy with the round's buff and its mechanics (what it spawns on death too).</summary>
     public EnemyProfile? Profile(string key, double atk, double hp, double move) =>
         Profile(key, (atk, hp, 0, move));
@@ -183,11 +214,12 @@ public sealed class GarrisonSpawnStore
             LineCooldown = t.Line?.Cooldown ?? 0,
             LineScale = t.Line?.Scale ?? 0,
         };
+        var attack = _attackData.GetValueOrDefault(key);
         return new EnemyProfile(e.Hp * buff.Hp * (t?.RefractionHp ?? 1), e.Def, e.Res, e.Atk * buff.Atk,
-            e.Interval / (1 + buff.AttackSpeedAdd / 100), e.Speed * buff.Move)
+            e.Interval / (1 + buff.AttackSpeedAdd / 100), TilesPerSecond(e.Speed * buff.Move))
         {
-            Name = e.Name, Range = e.Range, Arts = e.Arts, Rank = e.Rank, LifePoints = Math.Max(1, e.LifePoints), Traits = traits,
-            Weight = e.Weight ?? 1,
+            Name = e.Name, Range = e.Range, Arts = attack?.Arts ?? e.Arts, Rank = e.Rank, LifePoints = Math.Max(1, e.LifePoints), Traits = traits,
+            Weight = e.Weight ?? 1, AttackClip = attack?.Clip, NoAttack = attack?.NoAttack == true,
         };
     }
 

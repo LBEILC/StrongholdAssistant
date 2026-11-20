@@ -15,6 +15,8 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
     private readonly string[] _operators;
     private readonly string[] _cards;
     private readonly GarrisonBoardData _maps;
+    private readonly BoardProjection _expandedCamera;
+    private readonly BoardProjection _collapsedCamera;
     private readonly HashSet<string> _melee;
     private readonly ASPAssistant.Core.Data.BoardRouteStore _routes;
     private readonly Dictionary<string, string> _strategies;
@@ -40,6 +42,11 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
             .Where(p => p.Value.GetProperty("position").GetString() == "近战").Select(p => p.Name).ToHashSet();
         using var maps = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(_data, "garrison_maps.json")));
         _maps = GarrisonBoardStore.Parse(maps.RootElement);
+        BoardProjection Camera(string name) => new(maps.RootElement.GetProperty("cameras").GetProperty(name)
+            .EnumerateArray().Select(v => ((v[0][0].GetDouble(), v[0][1].GetDouble()),
+                (v[1][0].GetDouble(), v[1][1].GetDouble()))).ToArray());
+        _expandedCamera = Camera("expanded");
+        _collapsedCamera = Camera("collapsed");
         _routes = new(_data);
     }
 
@@ -54,11 +61,14 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
         public double K = 1;
         public GameShopTheme Theme;
         public bool Board, Shop;
+        public TapStep? ReadyConfirmation;
+        public bool UpgradePending, Battle;
         public bool? Ready, Frozen;
         public string Heading = "";
         public EconomyReading? Economy;
         public int? Remaining, Free;
         public Dictionary<int, string> Cards = [];
+        public int[] EmptySlots = [];
         public FieldOverlayGeometry? Geometry;
         public FieldObservation? Observation;
         public CustomPickReading? Custom;
@@ -101,6 +111,21 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
         }
 
         var surface = FieldReader.InspectSurface(bmp);
+        if (action is ReadyAction)
+        {
+            var title = Join(Region(v, (int)(v.W * .32), (int)(v.H * .33), (int)(v.W * .36), (int)(v.H * .17)));
+            if (title.Contains("确认准备"))
+            {
+                var button = Region(v, v.W / 2, (int)(v.H * .58), v.W / 2, (int)(v.H * .16))
+                    .FirstOrDefault(t => t.Text.Replace(" ", "") == "确认");
+                if (button != null) v.ReadyConfirmation = new((button.Box.X + button.Box.W * .5) / v.W,
+                    (button.Box.Y + button.Box.H * .5) / v.H);
+                return v;
+            }
+            var top = Join(Region(v, v.W / 3, 0, v.W / 4, v.H / 10));
+            v.Battle = top.Contains("作战") || top.Contains("战斗") || ScanHudPixels.CombatRound(bmp, out _) != null
+                || ScanHudPixels.CombatRound(bmp, out _, 100d / 90) != null;
+        }
         if (surface.Obscured || surface.Detail) return v;
         if (surface.ConfirmationCandidate && Join(Region(v, (int)(650 * v.S), (int)(400 * v.S),
             (int)(620 * v.S), (int)(150 * v.S))).Contains("确认准备")) return v;
@@ -113,6 +138,8 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
         if (!v.Board && ready is "不足" or "资金不足")
             v.Board = new EconomyReader(_ocr).ReadFieldAsync(image, v.W, v.H, false).GetAwaiter().GetResult().IsRest;
         if (!v.Board) return v;
+        if (action is ReadyAction or SellAction)
+            v.UpgradePending = Join(Region(v, 0, (int)(v.H * .85), (int)(v.W * .65), (int)(v.H * .12))).Contains("确认升级");
         v.Theme = new GameThemeDetector(_ocr).ReadAsync(image, v.W, v.H).GetAwaiter().GetResult()?.Theme ?? GameShopTheme.Terminal;
         v.K = GameUiScale.Shop(bmp);
         v.Shop = ShopLayout.HasCards(bmp, v.K, v.Theme);
@@ -121,10 +148,17 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
             v.Economy = new EconomyReader(_ocr, v.Theme).ReadAsync(image, v.W, v.H, v.K).GetAwaiter().GetResult();
             v.Shop |= v.Economy.UpgradeButton is not null;
         }
+        if (!v.Shop && action is BuyAction or RefreshAction or UpgradeAction or FreezeAction)
+        {
+            // 已购的空卡位会让卡边检测漏判；人物卡底部的「收起」仍然可见。
+            v.Shop = Join(Region(v, (int)(v.W * .84), (int)(v.H * .88),
+                (int)(v.W * .16), (int)(v.H * .12))).Contains("收起");
+        }
         if (action is BuyAction or RefreshAction && v.Shop)
         {
             var reader = new ShopReader(_ocr, _cards) { Theme = v.Theme, ReadUntracked = true };
             reader.ReadAsync(image, v.W, v.H, [], bmp).GetAwaiter().GetResult();
+            v.EmptySlots = reader.EmptySlots;
             v.Cards = reader.AllItems.GroupBy(c => c.SlotIndex).Where(g => g.Count() == 1)
                 .ToDictionary(g => g.Key, g => g.Single().Name);
         }
@@ -173,6 +207,8 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
 
     public CompileResult Compile(GameAction action, ControlFrame now)
     {
+        if (action is StartSoloAction or LeaveResultAction) return CompileMenu(action, now);
+        if (action is FaceAction) return Mismatch("实机不能原地转身，挪位时用 move --facing 定朝向");
         var v = Read(action, now);
         List<InputStep> steps = [];
         static bool Inside(double x, double y) => x is >= 0 and <= 1 && y is >= 0 and <= 1;
@@ -183,6 +219,8 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
             _ => false
         }) ? Mismatch("目标在画面外") : new(new(action, text, steps, steps.Count == 0 ? 0 : 650), null, null);
         if (Opening(action)) return CompileOpening(action, v, steps, Plan);
+        if (action is ReadyAction { On: true } && v.ReadyConfirmation is { } confirm)
+            return new(new(action, "确认准备", [confirm], 2200), null, null);
         if (!v.Board || v.Ready == true && action is not ReadyAction) return WrongScreen();
         void Button(string key, TapStep point) => steps.Add(now.Keyboard ? new KeyStep(key) : point);
         void OpenShop()
@@ -206,7 +244,7 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
         }
         void Aim(TapStep at, FieldCell cell, string facing)
         {
-            // 落格后选择菱形方向；单独转身按同一方向菜单推断，待实机。
+            // 落格后沿棋盘投影方向拖动。
             var projection = v.Geometry!.Projection;
             int dc = facing == "left" ? -1 : facing == "right" ? 1 : 0;
             int dr = facing == "up" ? -1 : facing == "down" ? 1 : 0;
@@ -221,8 +259,10 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
         {
             case ReadyAction a:
                 if (v.Ready is null) return Mismatch("读不到准备状态");
+                if (v.UpgradePending && a.On) { steps.Add(v.Hud(120, 155, false)); steps.Add(new WaitStep(400)); }
                 if (v.Ready != a.On) Button("C", v.Hud(120, 155, false));
-                return Plan(a.On ? "准备就绪" : "取消准备");
+                var ready = Plan(a.On ? "准备就绪" : "取消准备");
+                return a.On && ready.Plan != null ? ready with { Plan = ready.Plan with { Continue = true } } : ready;
             case FreezeAction a:
                 if (v.Frozen is null) return Mismatch("读不到冻结状态");
                 if (v.Frozen != a.On) { OpenShop(); Button("S", v.Hud(320, 352)); }
@@ -239,6 +279,8 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
                 var firstCard = ShopLayout.Card(first, v.W, v.H, v.K, v.Theme);
                 Button("G", box is { } b ? new(b.X + b.Width / 2, b.Y + b.Height / 2) :
                     new((firstCard.Left - 85 * v.S * v.K) / v.W, 1 - 140 * v.S * v.K / v.H));
+                var confirmUpgrade = steps[^1];
+                steps.Add(new WaitStep(400)); steps.Add(confirmUpgrade);
                 return Plan("升级商店");
             case BuyAction a:
                 if (a.Slot is < 0 or > 5 || Card(v, a.Slot) is not { } name || a.Expect is not null && a.Expect != name)
@@ -250,21 +292,30 @@ public sealed partial class ActionCompiler : IActionCompiler, IDisposable
                 return Plan($"买第 {a.Slot + 1} 张卡（{name}）");
             case SellAction a:
                 if (!Source(a.From, a.Expect)) return Mismatch("出售格没有目标干员");
-                steps.Add(Drag(v.Position(a.From, true)!, v.Hud(118, 140)));
+                // 挂起的升级卡会吃掉下一次触摸，先点棋盘的空白边缘收起。
+                if (v.UpgradePending) { steps.Add(v.Center(440, 660)); steps.Add(new WaitStep(400)); }
+                var origin = v.Position(a.From, true)!;
+                var sale = v.Hud(120, 105);
+                steps.Add(new DragStep(origin.X, origin.Y, sale.X, sale.Y, 350, 800, 350));
                 return Plan($"卖出{Cell(a.From)}的{v.Unit(a.From)!.Operator ?? "干员"}");
             case MoveAction a:
                 if (!Source(a.From, a.Expect) || v.Position(a.To, false) is not { } target ||
                     a.Facing is not null && Direction(a.Facing) is null || !CanPlace(a))
                     return Mismatch("起点、目标格或可上场人数不符");
+                // 从展开的整备区上场，按住后镜头会放大；松手和选朝向都用切换后的落点。
+                if (a.From.Zone == "bench" && a.To.Zone == "board" &&
+                    v.Observation?.Geometry is { Camera: BoardCamera.Expanded, BossRound: false } &&
+                    v.W * 9 == v.H * 16)
+                {
+                    double col = a.To.Col + .5, row = a.To.Row + .5;
+                    var expanded = _expandedCamera.Project(col, row);
+                    var collapsed = _collapsedCamera.Project(col, row);
+                    target = new(target.X + collapsed.X - expanded.X, target.Y + collapsed.Y - expanded.Y);
+                }
                 steps.Add(Drag(v.Position(a.From, true)!, target));
                 if (a.To.Zone == "board") Aim(target, a.To, a.Facing ?? "right");
                 return Plan($"把 {v.Unit(a.From)!.Operator ?? "干员"} 从{Cell(a.From)}拖到{Cell(a.To)}" +
                     (a.To.Zone == "board" ? $"，朝{Direction(a.Facing ?? "right")}" : ""));
-            case FaceAction a:
-                if (a.At.Zone != "board" || !Source(a.At, null) || Direction(a.Facing) is null)
-                    return Mismatch("朝向或目标格不符");
-                var at = v.Position(a.At, true)!;
-                steps.Add(at); Aim(at, a.At, a.Facing); return Plan($"把{Cell(a.At)}的干员转向{Direction(a.Facing)}");
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
     }

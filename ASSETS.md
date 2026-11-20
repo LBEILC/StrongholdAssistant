@@ -89,3 +89,4 @@
 | `src/StrongholdAssistant.Tests/TestData/equipment-panel-2139.png`、`equipment-panel-2298.png`、`equipment-panel-263.png`、`equipment-panel-269.png` | 用户录屏里干员详情面板的装备列表，用来测试读装备；只裁面板一块，不含昵称，只用于测试，不进发布包 | 用户于 2026-11-15 录制；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/board-enemy-panel.png`、`shop-wide-ui100.png`、`shop-terminal-frozen-1610.png` | 诊断包中的敌人面板、宽屏商店和冻结商店截图；商店图只保留底部区域，只用于测试，不进发布包 | 用户于 2026-11-13 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |
+| `src/StrongholdAssistant.Tests/TestData/live398/*.jpg` | 49 张局面读数回归帧，仅供离线测试 | 2026-11-20 的三局实机截图和用户于 2026-11-14、11-15 录制的整局视频；游戏画面归上海鹰角网络所有 |

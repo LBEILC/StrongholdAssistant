@@ -7,8 +7,25 @@ public sealed partial class ActionCompiler
 {
     public VerifyResult Verify(GameAction action, ControlFrame before, ControlFrame after)
     {
+        if (action is StartSoloAction or LeaveResultAction) return VerifyMenu(action, before, after);
         var b = Read(action, before);
         var a = Read(action, after);
+        if (action is ReadyAction { On: true })
+        {
+            if (a.ReadyConfirmation != null) return new(b.Board && b.ReadyConfirmation == null, "游戏正在等待确认进入战斗");
+            if (a.Battle || a.Ready == true) return new(true, null) { Complete = true };
+            return new(false, "未确认进入战斗或已就绪");
+        }
+        if (action is UpgradeAction && a.Board &&
+            Join(Region(a, 0, (int)(a.H * .85), (int)(a.W * .65), (int)(a.H * .12))).Contains("确认升级"))
+            return new(false, "游戏正在等待确认升级");
+        if (action is PickAdaptAction adapt)
+        {
+            if (!AdaptPage(b)) return new(false, "操作前未认出机变页");
+            if (!AdaptPage(a)) return new(a.Heading.Contains("回合") ? true : null, null) { Complete = true };
+            if (AdaptConfirm(b, adapt.Index) == null) return new(AdaptConfirm(a, adapt.Index) != null, null);
+            return new(AdaptConfirm(a, adapt.Index) == null && AdaptMarked(a, adapt.Index), null) { Complete = true };
+        }
         bool? ok = Check();
         return new(ok, ok switch { true => null, false => "前后画面的变化与动作不符", null => "未能从画面核对结果" });
 
@@ -23,8 +40,6 @@ public sealed partial class ActionCompiler
                 if (StrategyPage(a)) return false;
                 return after.State?.StrategyId.Value is { } current ? current == strategy.StrategyId : null;
             }
-            if (action is PickAdaptAction)
-                return !AdaptPage(b) ? false : AdaptPage(a) ? false : a.Heading.Length > 0 ? true : null;
             if (action is PickCustomAction custom)
             {
                 if (b.Custom is null || b.Custom.IsFinal) return false;
@@ -58,6 +73,8 @@ public sealed partial class ActionCompiler
                     return Matches(dest, original) && Matches(src, oldDest) && move.From != move.To &&
                         !(Matches(original, oldDest) && Matches(oldDest, original));
                 case FaceAction face:
+                    if (before.Field != null && after.Field != null && b.Unit(face.At) != null && a.Unit(face.At) == null)
+                        return false;
                     string? dir = after.State?.Units.Value?.FirstOrDefault(u =>
                         u.Zone.Value == face.At.Zone && u.Col.Value == face.At.Col && u.Row.Value == face.At.Row)?.Dir.Value;
                     return dir is null ? null : dir == face.Facing;
@@ -66,19 +83,16 @@ public sealed partial class ActionCompiler
                     return b.Unit(sell.From) is { } sold && (sell.Expect is null || sold.Operator == sell.Expect)
                         && a.Unit(sell.From) is null && a.Money > b.Money;
                 case BuyAction buy:
-                    if (buy.Slot is < 0 or > 5 || !a.Shop) return null;
+                    if (buy.Slot is < 0 or > 5) return false;
                     string? name = Card(b, buy.Slot);
                     if (name is null || buy.Expect is not null && name != buy.Expect) return false;
-                    if (StateCard(a, buy.Slot)?.Bought.Value == true && StateCard(b, buy.Slot)?.Bought.Value != true) return true;
-                    if (Card(a, buy.Slot) is not null) return false;
-                    bool gained = after.Field?.Units.Any(u => u.Zone == "bench" && u.Operator == name && b.Unit(u.Cell)?.Operator != name) == true;
-                    if (gained) return true;
-                    if (before.Field is not null && after.Field is not null)
-                    {
-                        int Equipment(FieldState field) => field.Units.Sum(u => u.Equipment?.Count(e => e.Name == name) ?? 0);
-                        if (Equipment(after.Field) > Equipment(before.Field)) return true;
-                    }
-                    return b.Money.HasValue && a.Money.HasValue ? a.Money < b.Money : null;
+                    bool? empty = a.Cards.ContainsKey(buy.Slot) ? false : a.EmptySlots.Contains(buy.Slot) ? true :
+                        StateCard(a, buy.Slot)?.Bought.Value == true ? true : null;
+                    bool? spent = a.Money.HasValue && b.Money.HasValue ? a.Money < b.Money : null;
+                    bool? gained = before.Field != null && after.Field != null ?
+                        after.Field.Units.Count(u => u.Zone == "bench") > before.Field.Units.Count(u => u.Zone == "bench") : null;
+                    bool?[] signals = [empty, spent, gained];
+                    return signals.Count(v => v == true) >= 2 ? true : signals.Count(v => v == false) >= 2 ? false : null;
                 case RefreshAction:
                     if (!a.Shop) return null;
                     bool changed = Enumerable.Range(0, 6).Any(i => Card(a, i) is { } card && card != Card(b, i));
@@ -88,13 +102,10 @@ public sealed partial class ActionCompiler
                     return before.State?.RefreshCost.Value is > 0 and var fee
                         ? b.Money - a.Money == fee : a.Money < b.Money;
                 case UpgradeAction:
-                    var level = before.State?.Level.Value ?? b.Economy?.Level;
-                    var next = after.State?.Level.Value ?? a.Economy?.Level;
-                    var progress = before.State?.UpgradeProgress.Value;
-                    var nextProgress = after.State?.UpgradeProgress.Value;
-                    if ((!level.HasValue || !next.HasValue) && (!progress.HasValue || !nextProgress.HasValue)) return null;
-                    if (!a.Money.HasValue || !b.Money.HasValue) return null;
-                    return (next > level || nextProgress > progress) && a.Money < b.Money;
+                    var level = b.Economy?.Level ?? before.State?.Level.Value;
+                    var next = a.Economy?.Level ?? after.State?.Level.Value;
+                    if (level.HasValue && next == level + 1 || a.Money < b.Money) return true;
+                    return level.HasValue && next.HasValue || a.Money.HasValue && b.Money.HasValue ? false : null;
                 default: throw new ArgumentOutOfRangeException(nameof(action));
             }
         }

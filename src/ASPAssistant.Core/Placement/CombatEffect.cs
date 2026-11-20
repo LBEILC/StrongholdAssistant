@@ -16,6 +16,7 @@ public sealed class CombatEffect
     public double Regen { get; set; }
     public double RegenFlat { get; set; }
     public double Sp { get; set; }
+    public double BurnRatio { get; set; }
     public double ExtraArts { get; set; }
     public double ExtraTrue { get; set; }
     public double Crit { get; set; }
@@ -38,6 +39,7 @@ public sealed class CombatEffect
         Atk = effects.Sum(e => e.Atk), Hp = effects.Sum(e => e.Hp), Def = effects.Sum(e => e.Def),
         Res = effects.Sum(e => e.Res), Aspd = effects.Sum(e => e.Aspd), Block = effects.Sum(e => e.Block),
         Regen = effects.Sum(e => e.Regen), RegenFlat = effects.Sum(e => e.RegenFlat), Sp = effects.Sum(e => e.Sp),
+        BurnRatio = effects.Sum(e => e.BurnRatio),
         ExtraArts = effects.Sum(e => e.ExtraArts), ExtraTrue = effects.Sum(e => e.ExtraTrue), Crit = effects.Sum(e => e.Crit),
         LossFlat = effects.Sum(e => e.LossFlat), LossRatio = effects.Sum(e => e.LossRatio),
         NonlethalLoss = effects.Any(e => e.NonlethalLoss), NoHeal = effects.Any(e => e.NoHeal), Weakness = effects.Any(e => e.Weakness),
@@ -56,6 +58,7 @@ public sealed class CombatEffect
             Res = unit.Res + Res, Block = Math.Max(0, unit.Block + Block),
             Interval = unit.BaseAttackInterval / Math.Max(.1, unit.BaseAttackInterval / unit.Interval + Aspd / 100),
             Regen = unit.Regen + hp * Regen + RegenFlat, SpPerSecond = unit.SpPerSecond + Sp,
+            BurnRatio = unit.BurnRatio + BurnRatio,
             EquipmentExtraArts = unit.EquipmentExtraArts + ExtraArts, ExtraTrue = unit.ExtraTrue + ExtraTrue,
             NoHeal = unit.NoHeal || NoHeal, Weakness = unit.Weakness || Weakness,
             LossPerSecond = unit.LossPerSecond + LossFlat + (NonlethalLoss ? 0 : hp * LossRatio),

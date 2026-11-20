@@ -54,12 +54,14 @@ public class ActionCompilerTests(EnemyRecognitionFixture fixture)
         {
             var r = compiler.Compile(action, frame);
             Assert.True(r.Plan is not null, r.Problem);
-            var tap = Assert.IsType<TapStep>(Assert.Single(r.Plan.Steps));
+            var tap = Assert.IsType<TapStep>(r.Plan.Steps[0]);
+            if (action is UpgradeAction) Assert.Equal(new InputStep[] { tap, new WaitStep(400), tap }, r.Plan.Steps);
+            else Assert.Single(r.Plan.Steps);
             Assert.True(box.Contains((int)(tap.X * frame.Width), (int)(tap.Y * frame.Height)),
                 $"{file} {key} 点 ({tap.X * frame.Width:F0},{tap.Y * frame.Height:F0})，预期 {box}");
             Preview(label + "-" + key, frame, r.Plan);
             var keyboard = compiler.Compile(action, frame with { Keyboard = true });
-            Assert.Equal(new KeyStep(key), Assert.Single(keyboard.Plan!.Steps));
+            Assert.All(keyboard.Plan!.Steps.OfType<KeyStep>(), step => Assert.Equal(new KeyStep(key), step));
             Preview(label + "-key-" + key, frame, keyboard.Plan);
         }
         double s = frame.Width / 1920d;

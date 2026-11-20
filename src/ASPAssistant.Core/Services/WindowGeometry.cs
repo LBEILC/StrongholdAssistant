@@ -76,6 +76,13 @@ public static class WindowGeometry
 
     public static bool AnchorsRight(bool overlay, string side) => overlay ? side == "right" : side == "left";
 
+    public static bool IsInsideRightHalf(RECT panel, RECT client)
+    {
+        var center = panel.Left + panel.Width / 2;
+        return center >= client.Left + client.Width / 2 && center < client.Right
+            && panel.Top < client.Bottom && panel.Bottom > client.Top;
+    }
+
     public static RECT CollapseBounds(RECT expanded, int width, int? upHeight, bool anchorRight)
     {
         if (upHeight is { } height) expanded.Bottom = expanded.Top + height;

@@ -90,17 +90,22 @@ public sealed class ControlRunner(string directory, IActionCompiler compiler, Fu
                 input = beginInput();
                 if (input is PcGameInput pc) pc.Activate();
             }
+            ControlFrame? nextFrame = null;
+            int stage = 0;
             for (; i < job.Steps.Length; i++)
             {
                 token.ThrowIfCancellationRequested();
                 var step = job.Steps[i] with { State = "running" };
                 Update(i, step);
-                var before = await capture(step.Action, token);
+                if (nextFrame == null) stage = 0;
+                var before = nextFrame ?? await capture(step.Action, token);
+                nextFrame = null;
                 var result = compiler.Compile(step.Action, before);
                 if (result.Plan is not { } plan) { failure = result.Reason; problem = result.Problem; break; }
-                var path = Path.Combine(folder.FullName, $"{i + 1}.png");
+                var file = stage == 0 ? $"{i + 1}.png" : $"{i + 1}-{stage + 1}.png";
+                var path = Path.Combine(folder.FullName, file);
                 await File.WriteAllBytesAsync(path, render(before, plan), token);
-                step = step with { Text = plan.Text, Preview = $"https://control.local/{job.Id}/{i + 1}.png" };
+                step = step with { Text = plan.Text, Preview = $"https://control.local/{job.Id}/{file}" };
                 Update(i, step);
                 if (job.Mode == "confirm")
                 {
@@ -152,6 +157,13 @@ public sealed class ControlRunner(string directory, IActionCompiler compiler, Fu
                         Update(i, step with { Verified = verification.Ok });
                         failure = "verify"; problem = verification.Problem ?? "画面核对未通过。"; break;
                     }
+                }
+                if (plan.Continue && verification.Ok == true && !verification.Complete)
+                {
+                    nextFrame = after;
+                    stage++;
+                    i--;
+                    continue;
                 }
                 Update(i, step with { State = "done", Verified = verification.Ok, Problem = verification.Problem });
             }

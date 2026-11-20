@@ -18,9 +18,16 @@ public sealed partial class HostApi
         var page = await _adaptReader.ReadAsync(frame, width, height,
             Match.Solo || Match.Mode?.Id.StartsWith("mode_single_") == true);
         if (page == null) return false;
+        var turnPage = page;
+        if (Match.Mode == null && page.Cards.Length == 6 && page.Cards.Skip(3).All(c => c == null))
+            turnPage = await _adaptReader.ReadAsync(frame, width, height, true) ?? page;
+        var money = await _collectionHud!.ReadCoveredMoney(frame, Theme(Settings.GameTheme));
         lock (_historyGate)
         {
             if (generation != _matchReadingGeneration || previous != (_observedRound ?? Match.Economy?.Round)) return true;
+            CoverMatchHud(previous + 1, money);
+            SetPhase("adapt", previous + 1, new { adapt = turnPage.Cards.Take(3).Select((c, index) =>
+                new { index, id = c?.Id, name = c?.Name, desc = c?.Desc }).ToArray() });
             // 若直接在机变页启动，等休整 HUD 确认回合后再发布。
             if (previous == null) _pendingAdapt = page;
             else PublishAdaptAdvice(BuildAdaptAdvice(GetMatchState(), page, previous.Value + 1));

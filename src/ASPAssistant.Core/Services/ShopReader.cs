@@ -21,6 +21,8 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
     private byte[]? _lastNameInput;
     private IReadOnlyList<OcrTextResult> _lastNameTexts = [];
     internal void InvalidateNames() => _lastNameInput = null;
+    public bool ReadPrices { get; set; }
+    public int[] EmptySlots { get; private set; } = [];
     internal bool NeedsEmptyConfirmation => _emptyReadings == 1;
     private readonly string[] _names = catalogNames.OrderByDescending(n => n.Length).ToArray();
     private volatile GameShopTheme _theme = GameShopTheme.Terminal;
@@ -37,6 +39,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         Failure = null;
         UiScale = null;
         AllItems = [];
+        EmptySlots = [];
     }
 
     public async Task<IReadOnlyList<ShopItem>> ReadAsync(
@@ -248,6 +251,31 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
         AllItems = ShopLayout.Snap(items, width, height, k, theme);
         // 卡片少时长边检测会漏掉整个商店；已读到收起控件和槽内名称也能确认展开。
         HasVisibleCards |= AllItems.Count > 0;
+        // 本分支已经确认“收起”控件；全买空仍是展开的商店。
+        EmptySlots = Enumerable.Range(0, 6).Where(slot => AllItems.All(i => i.SlotIndex != slot)
+            && !ShopLayout.HasCard(workingImage, k, theme, slot)).ToArray();
+        if (ReadPrices)
+        {
+            double priceScale = Math.Min(source.Width / 1920d, source.Height / 1080d) * k;
+            foreach (var card in AllItems)
+            {
+                var box = card.CardRegion;
+                int center = (int)((box.X + box.Width / 2) * source.Width);
+                if (theme == GameShopTheme.Closure)
+                {
+                    double screenScale = Math.Min(source.Width / 1920d, source.Height / 1080d);
+                    var region = Rectangle.Intersect(new(0, 0, source.Width, source.Height),
+                        new(center - (int)(45 * priceScale), source.Height - (int)(313 * screenScale),
+                            (int)(150 * priceScale), (int)(92 * screenScale)));
+                    card.Price = await ShopBadge.ReadAsync(engine, source, region, money: false) ?? 0;
+                    continue;
+                }
+                var price = await engine.RecognizeLineAsync(screenshot, center - (int)(13 * priceScale),
+                    (int)(source.Height - 273 * priceScale), (int)(26 * priceScale), (int)(38 * priceScale));
+                if (int.TryParse(string.Concat(price.Select(t => t.Text)), out int amount) && amount is > 0 and < 100)
+                    card.Price = amount;
+            }
+        }
         return AllItems.Where(i => trackedNames.Contains(i.Name)).ToArray();
     }
 

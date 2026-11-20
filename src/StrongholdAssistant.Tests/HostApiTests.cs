@@ -12,6 +12,24 @@ public sealed class HostApiTests : IDisposable
     private Task<HostApi> CreateApi() => HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"), _directory);
 
     [Fact]
+    public async Task StartupDataReportsMissingFileAndAcceptsCompletedUpdate()
+    {
+        var data = Path.Combine(_directory, "data");
+        var missing = await Assert.ThrowsAsync<InvalidDataException>(() => HostApi.CheckStartupDataAsync(data, false));
+        Assert.Contains(@"安装文件不完整（缺 data\strategies.json）", missing.Message);
+
+        Directory.CreateDirectory(data);
+        var source = Path.Combine(AppContext.BaseDirectory, "data");
+        foreach (var path in Directory.EnumerateFiles(source, "*.json"))
+            if (Path.GetFileName(path) != "operators.json") File.Copy(path, Path.Combine(data, Path.GetFileName(path)));
+        missing = await Assert.ThrowsAsync<InvalidDataException>(() => HostApi.CheckStartupDataAsync(data, false));
+        Assert.Contains(@"缺 data\operators.json", missing.Message);
+        var startup = HostApi.CheckStartupDataAsync(data, true);
+        File.Copy(Path.Combine(source, "operators.json"), Path.Combine(data, "operators.json"));
+        await startup;
+    }
+
+    [Fact]
     public async Task ListFontsReturnsDistinctNonVerticalFamilies()
     {
         var api = await CreateApi();
