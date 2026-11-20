@@ -58,6 +58,8 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
+    /* 角标的层级只在头像内部比，滚到吸顶筛选区下面时不会盖上去 */
+    isolation: isolate;
     width: var(--s);
   }
   .pic {

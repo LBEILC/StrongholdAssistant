@@ -309,7 +309,7 @@
           {#if grp.label}<div class="mgh" class:bad={grp.bad}>{grp.label}<b class="term">{grp.list.length}</b></div>{/if}
           <div class="members">
             {#each grp.list as o (o.name)}
-              <OpTile name={o.name} size={40} onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+              <OpTile name={o.name} size={40} tier onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
             {:else}
               <span class="mnone">全被禁用了</span>
             {/each}
