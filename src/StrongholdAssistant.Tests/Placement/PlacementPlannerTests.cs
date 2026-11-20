@@ -53,6 +53,31 @@ public class PlacementPlannerTests
     }
 
     [Fact]
+    public async Task ExploreFromScratchIsNeverWorseThanCurrentOnly()
+    {
+        var (planner, board) = await LoadAsync();
+        var map = board.Find("m12")!;
+        var pool = UrsusPool.Select(n => new PlacementCandidate(n, false)).ToList();
+        // 故意摆烂：8 个人挤在最左边那几格、全都朝左，让「照现状改」没有好起点。
+        var cells = map.AllCells()
+            .Where(c => c.Cell.Col is >= 0 and <= 6 && c.Type is BoardCellType.Ground or BoardCellType.Special)
+            .Select(c => c.Cell).Take(8).ToArray();
+        cells.Should().HaveCount(8);
+        var start = pool.Take(8).Select((p, i) => (p.Key, Cell: cells[i]))
+            .ToDictionary(p => p.Key, p => (new BoardCell(p.Cell.Col, p.Cell.Row), Facing.Left));
+        var options = new PlacementOptions
+        {
+            FieldCount = 8, Start = start, Iterations = 2000, Restarts = 2, Seed = 7, Simulate = false
+        };
+        double Best(bool explore) => planner.Plan(map, pool, options with { ExploreFromScratch = explore }).Total;
+        // 链 0 与「只从现状」完全相同，链 1 只能把最好值抬高，所以多链不会更差。
+        Best(true).Should().BeGreaterThanOrEqualTo(Best(false));
+        // 关着时是老行为，并且同 seed 可复现。
+        Best(false).Should().Be(Best(false));
+        Best(true).Should().Be(Best(true));
+    }
+
+    [Fact]
     public async Task Plan_PicksEightFromTwelveAndHoldsBothRoutes()
     {
         var (planner, board) = await LoadAsync();

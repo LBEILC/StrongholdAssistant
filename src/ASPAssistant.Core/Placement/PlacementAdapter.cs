@@ -31,9 +31,14 @@ public sealed record PlacementResult(string BasedOn, string ComputedAt, string G
 
 public sealed class PlacementAdapter
 {
+    /// <summary>部署上限：卫戍协议·规程 共通「部署上限：8」（PRTS 战场一览），联机同值。</summary>
+    public const int DeployLimit = 8;
+
     public static PlacementOptions ProductBudget => new()
     {
-        Iterations = 5000, Restarts = 1, SimulationIterations = 1000, MaxStreams = 6, Simulate = true
+        // 快搜跑两条链（现状 / 从零，各 3500 步），模拟轮仍是 1 条：模拟一步就是一整场战斗。
+        Iterations = 3500, Restarts = 2, SimulationIterations = 1000, MaxStreams = 6, Simulate = true,
+        ExploreFromScratch = true
     };
     private readonly Dictionary<string, Operator> _operators;
     private readonly Dictionary<string, string> _ids;
@@ -196,9 +201,12 @@ public sealed class PlacementAdapter
         assumptions.Add("现在的朝向按最好的算");
         // TODO(design): 候选总数不足原上场人数时，先算可用的人；确认是否应整次不推荐。
         if (pool.Count < count) assumptions.Add("有场上干员没认出或缺少计算资料，上场人数按可计算人数算");
+        // 按部署上限补满，不跟着「现在站了几个」走：场上不满 8 人时也会建议把整备区的人补上场。
+        int fieldLimit = Math.Min(DeployLimit, pool.Count);
+        if (fieldLimit > count) assumptions.Add($"部署上限 {DeployLimit} 人：推荐把整备区的 {fieldLimit - count} 人补上场");
         var options = ProductBudget with
         {
-            FieldCount = count, Mode = input.Goal switch { "leak" => PlacementMode.Combat, "layers" => PlacementMode.Stacking, _ => PlacementMode.Balanced },
+            FieldCount = Math.Max(count, fieldLimit), Mode = input.Goal switch { "leak" => PlacementMode.Combat, "layers" => PlacementMode.Stacking, _ => PlacementMode.Balanced },
             Round = input.Round, TotalRounds = _routes.RoundCount(routeMode), Routes = routes,
             Streams = streams, CovenantLayers = layers, Potentials = potentials, Potential = 0, Start = current,
             Strategy = strategy,

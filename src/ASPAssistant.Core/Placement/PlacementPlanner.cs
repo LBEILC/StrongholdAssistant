@@ -27,6 +27,11 @@ public sealed record PlacementOptions
     public int Seed { get; init; } = 1;
     public int Iterations { get; init; } = 5000;
     public int Restarts { get; init; } = 5;
+    /// <summary>
+    /// 有当前站位时，除了「照现在的站位改」那条链，再从零排一条链、取更好的（产品默认开）。
+    /// 关着时与 v1.3.4 一致：只从玩家现状起步、只跑 1 条链。
+    /// </summary>
+    public bool ExploreFromScratch { get; init; }
 
     /// <summary>
     /// The real enemy routes of the round being planned (garrison_routes.json). Null: the map's two fixed ground
@@ -2047,11 +2052,14 @@ public sealed class PlacementPlanner
             if (_pool.Count == 0) return [];
 
             // With the simulation each step plays a whole fight: one run from the fast plan, at a lower temperature.
-            int restarts = start is not null ? 1 : Math.Max(1, _options.Restarts);
+            // 有当前站位时默认只跑 1 条链；开着 ExploreFromScratch 时再加一条「从零开始」的链，取更好的。
+            int restarts = simulate ? 1 : start is null || _options.ExploreFromScratch ? Math.Max(1, _options.Restarts) : 1;
             double heat = simulate ? 3.0 : 8.0;
             for (int restart = 0; restart < restarts; restart++)
             {
-                var pl = start is not null ? start.Where(p => !Board.Bombarded(p.Value.Cell) && !_options.OccupiedCells.Contains(p.Value.Cell)).ToDictionary(p => p.Key, p => p.Value)
+                // 链 0 从玩家的现状起步，后面的链从零开始：只从现状起步会停在现状附近，换不动需要整体重排的摆法。
+                var seed = restart == 0 ? start : null;
+                var pl = seed is not null ? seed.Where(p => !Board.Bombarded(p.Value.Cell) && !_options.OccupiedCells.Contains(p.Value.Cell)).ToDictionary(p => p.Key, p => p.Value)
                     : new Dictionary<string, (BoardCell Cell, Facing Facing)>();
                 foreach (var (n, p) in pins) pl[n] = (p.Cell, p.Facing);
                 var used = pl.Values.Select(v => v.Cell).ToHashSet();
@@ -2112,6 +2120,10 @@ public sealed class PlacementPlanner
                     if (sc >= cur || rnd.NextDouble() < Math.Exp((sc - cur) / T)) { pl = cand; cur = sc; }
                     if (cur > bestScore) { bestScore = cur; best = new(pl); }
                 }
+                // 诊断：诊断包里能看出「从零」这条链有没有找到比「现状」更好的摆法。
+                if (restarts > 1)
+                    ASPAssistant.Core.AppLogger.Info("Placement",
+                        $"搜索链 {restart}（{(restart == 0 && start is not null ? "从现状" : "从零")}）得分 {cur:0.0}，最佳 {bestScore:0.0}");
             }
             return best!.ToDictionary(kv => kv.Key, kv => kv.Value);
         }

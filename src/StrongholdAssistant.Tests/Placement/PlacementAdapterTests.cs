@@ -152,6 +152,64 @@ public class PlacementAdapterTests(ITestOutputHelper output)
         Assert.True(after.Total >= before.Total);
     }
 
+    // 场上 n 人 + 整备区 m 人，都是能计算的干员：验「按部署上限补满」用。
+    private static async Task<PlacementInput> BoardAndBenchFixture(int board, int bench)
+    {
+        var store = new ASPAssistant.Core.Placement.JsonDataStore(Data);
+        var ops = (await store.LoadOperatorsAsync()).ToDictionary(o => o.Name);
+        var (covenants, _) = await store.LoadCovenantsAsync();
+        var planner = new PlacementPlanner(ops, covenants);
+        var map = (await GarrisonBoardStore.LoadAsync(Data))!.Find("m10")!;
+        string[] names = ["塔露拉", "Mon3tr", "机械师", "乌啾", "维伊", "冻河", "折桠", "奥尔佳", "烈夏", "夏栎"];
+        Assert.True(board + bench <= names.Length);
+        var occupied = new HashSet<BoardCell>();
+        var units = new List<FieldUnit>();
+        for (int i = 0; i < board; i++)
+        {
+            var cell = map.AllCells().First(c => c.Cell.Col is >= 0 and <= 6 && !occupied.Contains(c.Cell)
+                && GarrisonMap.CanDeploy(c.Type, planner.IsMelee(names[i]))).Cell;
+            occupied.Add(cell);
+            units.Add(new FieldUnit("board", cell.Col, cell.Row, 3, names[i], "manual"));
+        }
+        for (int i = 0; i < bench; i++)
+            units.Add(new FieldUnit("bench", i + 1, 0, 3, names[board + i], "manual"));
+        var field = new FieldState("m10", 5, "2026-11-20T00:00:00Z", units.ToArray(), []);
+        var json = JsonSerializer.SerializeToNode(field, HostApi.JsonOptions)!;
+        for (int i = 0; i < units.Count; i++) json["units"]![i]!["status"] = "sure";
+        return new(json.Deserialize<PlacementField>(HostApi.JsonOptions)!, 5, "mode_multi_normal", false,
+            null, ["SPECIAL", "ELEMENT", "DOT"], null, null, null, null, new Dictionary<string, string?>(), "balanced");
+    }
+
+    [Fact]
+    public async Task PlanFillsToDeployLimitNotTheCurrentCount()
+    {
+        var input = await BoardAndBenchFixture(board: 4, bench: 5);
+        var adapter = await PlacementAdapter.LoadAsync(Data);
+        var plan = adapter.Compute(input);
+        Assert.NotNull(plan);
+        // 卫戍协议·规程 部署上限 8：场上 4 人时推荐要把整备区的人补到 8 人，而不是只排场上那 4 个。
+        var deployed = plan.Moves.Where(m => m.To.Zone == "board").ToArray();
+        Assert.Equal(PlacementAdapter.DeployLimit, deployed.Length);
+        Assert.Equal(deployed.Length, deployed.Select(m => m.To).Distinct().Count());
+        Assert.True(plan.Moves.Count(m => m.From.Zone == "bench" && m.To.Zone == "board") >= 4);
+        Assert.Contains(plan.Assumptions, a => a.Contains("部署上限"));
+        // 同一输入算两次结果一致（固定种子）。
+        var again = adapter.Compute(input)!;
+        Assert.Equal(JsonSerializer.Serialize(plan with { ComputedAt = "" }, HostApi.JsonOptions),
+            JsonSerializer.Serialize(again with { ComputedAt = "" }, HostApi.JsonOptions));
+    }
+
+    [Fact]
+    public async Task FullFieldKeepsTheOldPlacementContract()
+    {
+        var (input, _, _) = await Fixture();
+        var plan = (await PlacementAdapter.LoadAsync(Data)).Compute(input);
+        Assert.NotNull(plan);
+        Assert.Equal(9, plan.Moves.Length);
+        Assert.Equal(8, plan.Moves.Count(m => m.To.Zone == "board"));
+        Assert.DoesNotContain(plan.Assumptions, a => a.Contains("部署上限"));
+    }
+
     [Fact]
     public async Task SoloStillComputesWithExplicitAssumption()
     {
