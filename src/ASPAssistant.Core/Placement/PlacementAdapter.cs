@@ -36,7 +36,9 @@ public sealed class PlacementAdapter
 
     public static PlacementOptions ProductBudget => new()
     {
-        Iterations = 5000, Restarts = 1, SimulationIterations = 1000, MaxStreams = 6, Simulate = true
+        // 快搜跑两条链（现状 / 从零，各 3500 步），模拟轮仍是 1 条：模拟一步就是一整场战斗。
+        Iterations = 3500, Restarts = 2, SimulationIterations = 1000, MaxStreams = 6, Simulate = true,
+        ExploreFromScratch = true
     };
     private readonly Dictionary<string, Operator> _operators;
     private readonly Dictionary<string, string> _ids;
