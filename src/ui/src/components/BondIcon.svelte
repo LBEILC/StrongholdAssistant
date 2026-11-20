@@ -14,9 +14,12 @@
     /** 0–1，画外圈进度；不传不画 */
     progress?: number
     name?: boolean
+    /** 详情页的徽章：盟约名显示在图标右边。 */
+    badge?: boolean
     onclick?: () => void
+    oncontext?: (e: MouseEvent) => void
   }
-  let { id, size = 44, on = false, incomplete = false, progress, name = false, onclick }: Props = $props()
+  let { id, size = 44, on = false, incomplete = false, progress, name = false, badge = false, onclick, oncontext }: Props = $props()
   const cov = $derived(app.cov(id))
   const focus = $derived(app.focusCovs.has(id))
   const R = 47
@@ -27,11 +30,12 @@
   class="bond"
   class:on
   class:focus
+  class:badge
   class:clickable={!!onclick}
   style:--s="{size}px"
   style:--disc-on="url({asset.skin('bond_on')})"
   style:--disc-off="url({asset.skin('bond_off')})"
-  {onclick} oncontextmenu={(e) => openMenu(e, covenantMenu(id))} title={name ? undefined : cov.name}>
+  {onclick} oncontextmenu={oncontext ?? ((e) => openMenu(e, covenantMenu(id)))} title={name ? undefined : cov.name}>
   <span class="disc">
     {#if progress !== undefined}
       <svg class="ring" viewBox="0 0 100 100">
@@ -45,7 +49,7 @@
       <img class="mark" src={asset.stage('img_bond_banned')} alt="阵容不完整" />
     {/if}
   </span>
-  {#if name}<span class="name">{cov.name}</span>{/if}
+  {#if name || badge}<span class="name">{cov.name}</span>{/if}
 </button>
 
 <style>
@@ -59,6 +63,18 @@
   }
   .clickable {
     cursor: pointer;
+  }
+  .badge {
+    flex-direction: row;
+    padding: 1px 7px 1px 2px;
+    background: var(--bg-3);
+    border-radius: var(--r-pill);
+  }
+  .badge.clickable:is(:hover, :focus-visible) {
+    background: var(--bg-4);
+  }
+  .badge .name {
+    max-width: none;
   }
   .disc {
     position: relative;
