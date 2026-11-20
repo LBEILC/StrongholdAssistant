@@ -388,12 +388,16 @@ aside.sheet > .scroll {
     linear-gradient(var(--win-btn), var(--win-btn)) 0 0 / 14px 14px no-repeat,
     linear-gradient(var(--win-pink), var(--win-pink)) 17px 0 / 14px 14px no-repeat;
 }
-/* 关闭：青色方块。点击区比方块大一圈，方块本身用内阴影画 */
-:root[data-skin='closure'] .win > header > .x {
+:root[data-skin='closure'] .win > header.with-back::after {
+  display: none;
+}
+/* 关闭用青色方块，返回用品红方块。点击区比方块大一圈。 */
+:root[data-skin='closure'] .win > header > :is(.x, .back) {
+  --win-control: var(--win-cyan);
   position: absolute;
   top: 0;
   right: 2px;
-  width: 22px;
+  width: var(--win-bar);
   height: var(--win-bar);
   margin: 0;
   padding: 0;
@@ -403,17 +407,22 @@ aside.sheet > .scroll {
   background: none;
   border-radius: 0;
 }
-:root[data-skin='closure'] .win > header > .x::before {
+:root[data-skin='closure'] .win > header > .back {
+  --win-control: var(--win-pink);
+  right: calc(2px + var(--win-bar));
+  color: var(--win-frame-in);
+}
+:root[data-skin='closure'] .win > header > :is(.x, .back)::before {
   content: '';
   position: absolute;
   inset: 4px;
-  background: var(--win-cyan);
+  background: var(--win-control);
 }
-:root[data-skin='closure'] .win > header > .x:hover::before {
+:root[data-skin='closure'] .win > header > :is(.x, .back):hover::before {
   background: var(--fg-0);
-  box-shadow: 0 0 6px var(--win-cyan);
+  box-shadow: 0 0 6px var(--win-control);
 }
-:root[data-skin='closure'] .win > header > .x svg {
+:root[data-skin='closure'] .win > header > :is(.x, .back) svg {
   position: relative;
   width: 12px;
   height: 12px;
@@ -607,8 +616,9 @@ aside.sheet > .scroll {
   top: 12px;
   right: 18px;
 }
-/* 窗口的关闭按钮：和分组标题的折叠按钮一样是斜切块，深色底米白叉，悬停变铁锈红 */
-:root[data-skin='ursus'] .win > header > .x {
+/* 关闭和详情返回按钮共用斜切块，深色底米白图标，悬停变铁锈红 */
+:root[data-skin='ursus'] .win > header > .x,
+:root[data-skin='ursus'] aside.sheet > header.bar > .back {
   width: 28px;
   height: 22px;
   border-radius: 0;
@@ -616,7 +626,8 @@ aside.sheet > .scroll {
   color: var(--cream);
   background: rgb(var(--rust-rgb) / 0.3);
 }
-:root[data-skin='ursus'] .win > header > .x:hover {
+:root[data-skin='ursus'] .win > header > .x:hover,
+:root[data-skin='ursus'] aside.sheet > header.bar > .back:hover {
   color: var(--cream);
   background: var(--rust);
 }

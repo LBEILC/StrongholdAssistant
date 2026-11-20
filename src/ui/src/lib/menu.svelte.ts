@@ -81,7 +81,7 @@ export function textMenu(e: MouseEvent, el: TextField) {
 
 const tierName = (t: number) => `${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][t]} 阶`
 
-export function operatorMenu(name: string): Omit<MenuState, 'x' | 'y'> {
+export function operatorMenu(name: string, showDetail = () => { app.detail = { kind: 'operator', name } }): Omit<MenuState, 'x' | 'y'> {
   const o = app.op(name)
   const inTarget = !!app.active?.members.some((m) => m.name === name)
   const items: MenuEntry[] = []
@@ -93,7 +93,7 @@ export function operatorMenu(name: string): Omit<MenuState, 'x' | 'y'> {
       'sep',
     )
   items.push(
-    { label: '查看详情', icon: 'arrowRight', run: () => (app.detail = { kind: 'operator', name }) },
+    { label: '查看详情', icon: 'arrowRight', run: showDetail },
     'sep',
     { label: '追踪', icon: 'star', on: app.tracked.has(name), run: () => app.toggleTracked(name) },
   )
@@ -112,10 +112,10 @@ export function equipmentMenu(name: string): Omit<MenuState, 'x' | 'y'> {
   return { title: name, sub: `装备 · ${tierName(e.tier)}`, items }
 }
 
-export function covenantMenu(id: string): Omit<MenuState, 'x' | 'y'> {
+export function covenantMenu(id: string, showDetail = () => { app.detail = { kind: 'covenant', id } }): Omit<MenuState, 'x' | 'y'> {
   const c = app.cov(id)
   const mc = app.matchCovenant(id)
-  const items: MenuEntry[] = [{ label: '查看详情', icon: 'arrowRight', run: () => (app.detail = { kind: 'covenant', id }) }, 'sep']
+  const items: MenuEntry[] = [{ label: '查看详情', icon: 'arrowRight', run: showDetail }, 'sep']
   if (mc) items.push({ label: '本局阵容不完整', icon: 'forbid', on: mc.incomplete, tone: 'danger', run: () => app.toggleCovenantIncomplete(id) })
   items.push({ label: '特别关注', icon: 'heart', on: app.focusCovs.has(id), run: () => app.toggleFocusCov(id) })
   return { title: c.name, sub: c.kind === 'core' ? '核心盟约' : '附加盟约', items }

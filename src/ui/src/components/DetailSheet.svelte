@@ -2,6 +2,7 @@
   import { sheet } from '../lib/sheet'
   import { fade } from 'svelte/transition'
   import { app } from '../lib/state.svelte'
+  import { covenantMenu, openMenu, operatorMenu } from '../lib/menu.svelte'
   import { asset, ROMAN, fmtHp } from '../lib/assets'
   import BondIcon from './BondIcon.svelte'
   import TierBadge from './TierBadge.svelte'
@@ -15,8 +16,11 @@
   // 底部详情面板：点击打开，固定不随鼠标消失；Esc 或点遮罩关闭
   const d = $derived(app.detail)
   const close = () => (app.detail = null)
-  const showEq = (name: string) => (app.detail = { kind: 'equipment', name })
-  const showOp = (name: string) => (app.detail = { kind: 'operator', name })
+  const showEq = (name: string) => app.pushDetail({ kind: 'equipment', name })
+  const showOp = (name: string) => app.pushDetail({ kind: 'operator', name })
+  const showCov = (id: string) => app.pushDetail({ kind: 'covenant', id })
+  const showOpMenu = (event: MouseEvent, name: string) => openMenu(event, operatorMenu(name, () => showOp(name)))
+  const showCovMenu = (event: MouseEvent, id: string) => openMenu(event, covenantMenu(id, () => showCov(id)))
   // 我的默认（v0.7.0）：加干员进阵容时按这个预填，已存的阵容不变
   const my = $derived(app.settings.operatorDefaults)
   function setDef(o: Operator, patch: { skill?: string; module?: string } | null) {
@@ -56,9 +60,14 @@
 {#if d}
   <div class="scrim dock" transition:fade={{ duration: 160 }} onclick={close} role="presentation"></div>
   <aside class="sheet win" transition:sheet={{ y: 320, duration: 240 }}>
-    <!-- 详情的标题块：拖动条、关闭和头像、名字一起固定在上面，下面的说明自己滚；可露希尔下顶上是窗口标题栏 -->
-    <header class="bar">
+    <!-- 详情的标题块：拖动条、返回、关闭和头像、名字一起固定在上面，下面的说明自己滚；可露希尔下顶上是窗口标题栏 -->
+    <header class="bar" class:with-back={app.canGoBackDetail}>
       <span class="grip"></span>
+      {#if app.canGoBackDetail}
+        <button class="back" onclick={() => app.backDetail()} aria-label="返回上一级" title="返回上一级">
+          <Icon name="arrowLeft" size={16} />
+        </button>
+      {/if}
       <button class="x" onclick={close} aria-label="关闭">
         <Icon name="close" size={16} />
       </button>
@@ -73,8 +82,12 @@
         <div class="meta">
           <div class="nm"><TierBadge tier={o.tier} size={20} /><h3>{o.name}</h3></div>
           <div class="bonds">
-            {#each o.core as c (c)}<span class="bchip core"><BondIcon id={c} size={18} on />{app.cov(c).name}</span>{/each}
-            {#each o.extra as c (c)}<span class="bchip"><BondIcon id={c} size={18} />{app.cov(c).name}</span>{/each}
+            {#each o.core as c (c)}
+              <BondIcon id={c} size={18} badge on onclick={() => showCov(c)} oncontext={(event) => showCovMenu(event, c)} />
+            {/each}
+            {#each o.extra as c (c)}
+              <BondIcon id={c} size={18} badge onclick={() => showCov(c)} oncontext={(event) => showCovMenu(event, c)} />
+            {/each}
           </div>
           {#if o.obtain}<span class="obtain">不可招募 · {o.obtain}</span>{/if}
           {#if o.diy}<span class="obtain">自选干员 · 开局选好后会在商店刷出</span>{/if}
@@ -101,7 +114,7 @@
       {@const mc = app.matchCovenant(c.id)}
       {@const members = app.catalog.operators.filter((o) => o.core.includes(c.id) || o.extra.includes(c.id)).sort((a, b) => a.tier - b.tier)}
       <div class="hero">
-        <BondIcon id={c.id} size={56} on={!mc?.incomplete} incomplete={mc?.incomplete} />
+        <BondIcon id={c.id} size={56} on={!mc?.incomplete} incomplete={mc?.incomplete} oncontext={(event) => showCovMenu(event, c.id)} />
         <div class="meta">
           <div class="nm"><h3>{c.name}</h3><span class="kind">{c.kind === 'core' ? '核心盟约' : '附加盟约'}</span></div>
           <div class="sub">激活：{c.thresholds.map((t) => `${t} 人`).join(' / ')}</div>
@@ -268,15 +281,16 @@
           </div>
         {/if}
         {#if e.transformBond}
+          {@const id = e.transformBond}
           <div class="rel">
             <span class="tt">变形</span>
-            <span class="rr"><i>+</i><span class="tag">变形同构体</span><i>→</i><button class="eqc" onclick={() => (app.detail = { kind: 'covenant', id: e.transformBond! })}><BondIcon id={e.transformBond} size={16} on />{app.cov(e.transformBond).name}</button></span>
+            <span class="rr"><i>+</i><span class="tag">变形同构体</span><i>→</i><button class="eqc" onclick={() => showCov(id)}><BondIcon id={id} size={16} on oncontext={(event) => showCovMenu(event, id)} />{app.cov(id).name}</button></span>
           </div>
         {/if}
         {#if e.sources?.length}
           <div class="rel">
             <span class="tt">来源</span>
-            <span class="rr">{#each e.sources as n (n)}<OpTile name={n} size={32} onclick={() => showOp(n)} />{/each}</span>
+            <span class="rr">{#each e.sources as n (n)}<OpTile name={n} size={32} onclick={() => showOp(n)} oncontext={(event) => showOpMenu(event, n)} />{/each}</span>
           </div>
         {/if}
       </div>
@@ -309,7 +323,7 @@
           {#if grp.label}<div class="mgh" class:bad={grp.bad}>{grp.label}<b class="term">{grp.list.length}</b></div>{/if}
           <div class="members">
             {#each grp.list as o (o.name)}
-              <OpTile name={o.name} size={40} tier onclick={() => (app.detail = { kind: 'operator', name: o.name })} />
+              <OpTile name={o.name} size={40} tier onclick={() => showOp(o.name)} oncontext={(event) => showOpMenu(event, o.name)} />
             {:else}
               <span class="mnone">全被禁用了</span>
             {/each}
@@ -439,7 +453,8 @@
   .bar .hero {
     margin-top: 8px;
   }
-  .x {
+  .x,
+  .back {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -449,15 +464,26 @@
     place-items: center;
     color: var(--fg-3);
   }
-  .x:hover {
+  .x:hover,
+  .back:hover {
     color: var(--fg-1);
     background: var(--bg-4);
+  }
+  .back {
+    right: 38px;
+  }
+  :global([data-skin='ursus']) .back {
+    top: 12px;
+    right: 46px;
   }
   .hero {
     display: flex;
     gap: 12px;
     align-items: center;
     padding-right: 28px;
+  }
+  .with-back .hero {
+    padding-right: 60px;
   }
   .pic {
     width: 76px;
@@ -503,19 +529,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-  }
-  .bchip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: var(--fs-base);
-    padding: 1px 7px 1px 2px;
-    background: var(--bg-3);
-    color: var(--fg-2);
-    border-radius: var(--r-pill);
-  }
-  .bchip.core {
-    color: var(--fg-1);
   }
   .warn {
     font-size: var(--fs-sm);
