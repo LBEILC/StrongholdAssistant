@@ -21,7 +21,7 @@ public sealed partial class HostApi
 
     public async Task<object> CheckUpdateAsync()
     {
-        if (AssistantProfile.Current.Name is not null) return new { state = "latest" };
+        if (!AssistantProfile.Current.CanUpdate) return new { state = "latest" };
         if (Volatile.Read(ref _downloadStatus) is { } downloading) return downloading;
         if (UpdatePrepared && _availableUpdate is { } prepared) return ReportUpdate(new { state = "ready", version = prepared.Version });
         Updater.GetUpdateProxy = () => Settings.UpdateProxy;
@@ -68,6 +68,7 @@ public sealed partial class HostApi
     /// <summary>玩家点「更新」：没下就下、在下就等，下好了马上安装并重启。</summary>
     public Task ApplyUpdateAsync()
     {
+        if (AssistantProfile.Current.IsPortable) throw new ArgumentException("便携版请手动更新程序文件，并保留 UserData 文件夹。");
         if (AssistantProfile.Current.Name is not null) throw new ArgumentException("请在默认配置中安装更新。");
         _installWhenReady = true;
         if (UpdatePrepared) { UpdateReady?.Invoke(); return Task.CompletedTask; }
@@ -77,7 +78,7 @@ public sealed partial class HostApi
     /// <summary>后台下载新版本，下好推送 ready，等玩家点安装（v1.0.4）。</summary>
     public Task DownloadUpdateAsync()
     {
-        if (_availableUpdate is not { } info || UpdatePrepared) return Task.CompletedTask;
+        if (AssistantProfile.Current.IsPortable || _availableUpdate is not { } info || UpdatePrepared) return Task.CompletedTask;
         var status = new { state = "downloading", version = info.Version, progress = 0d };
         if (Interlocked.CompareExchange(ref _downloadStatus, status, null) is not null) return Task.CompletedTask;
         Updater.GetUpdateProxy = () => Settings.UpdateProxy;
