@@ -1,17 +1,33 @@
+using ASPAssistant.Core;
 using ASPAssistant.Core.Data;
+using ASPAssistant.Core.Services;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace StrongholdAssistant.Host;
 
-internal sealed record AssistantProfile(string Root, string? Name)
+internal sealed record AssistantProfile(string Root, string? Name, bool IsPortable = false)
 {
     internal const string TestRootVariable = "STRONGHOLD_STARTUP_CHECK_ROOT";
-    public static AssistantProfile Current { get; set; } = new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant"), null);
+    internal const string PortableMarker = "portable.flag";
+    public static AssistantProfile Current { get; set; } = ForPackage(PackageLayout.Root);
+
+    internal static AssistantProfile ForPackage(string packageDirectory)
+    {
+        var root = Path.GetFullPath(packageDirectory);
+        if (File.Exists(Path.Combine(root, PortableMarker)))
+            return new AssistantProfile(Path.Combine(root, "UserData"), null, true);
+
+        return new AssistantProfile(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "StrongholdAssistant"), null);
+    }
+
     public string DirectoryPath => Name is null ? Root : Path.Combine(Root, "profiles", Name);
-    public string KernelName(string purpose) => @"Local\StrongholdAssistant" + purpose
+    public bool CanUpdate => !IsPortable && Name is null;
+    private string InstanceName => IsPortable ? $"StrongholdAssistant.Portable.{UpdateService.InstallationId(Root)}" : "StrongholdAssistant";
+    public string DeepLinkName => InstanceName + ".DeepLink";
+    public string KernelName(string purpose) => @"Local\" + InstanceName + purpose
         + (Name is null ? "" : ".Profile." + Name.ToUpperInvariant());
 
     private static bool Valid(string? name) => name is not null && Regex.IsMatch(name, @"\A[A-Za-z0-9-]{1,24}\z")
@@ -54,7 +70,7 @@ internal sealed record AssistantProfile(string Root, string? Name)
     {
         var target = name is null ? this with { Name = null } : Named(name);
         if (name is not null && !Directory.Exists(target.DirectoryPath)) throw new ArgumentException("这个配置不存在。");
-        var start = new ProcessStartInfo(ASPAssistant.Core.PackageLayout.Launcher) { UseShellExecute = false };
+        var start = new ProcessStartInfo(PackageLayout.Launcher) { UseShellExecute = false };
         if (name is not null) { start.ArgumentList.Add("--profile"); start.ArgumentList.Add(target.Name!); }
         else start.ArgumentList.Add("--default-profile");
         if (Environment.GetCommandLineArgs().Contains("--no-game"))

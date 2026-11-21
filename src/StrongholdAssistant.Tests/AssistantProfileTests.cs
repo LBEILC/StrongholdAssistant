@@ -21,6 +21,34 @@ public class AssistantProfileTests
         Assert.Throws<ArgumentException>(() => AssistantProfile.Current.Named(name));
 
     [Fact]
+    public void PortableMarkerUsesLocalUserDataAndSeparateInstance()
+    {
+        var package = Directory.CreateTempSubdirectory();
+        var marker = Path.Combine(package.FullName, AssistantProfile.PortableMarker);
+        try
+        {
+            var installed = AssistantProfile.ForPackage(package.FullName);
+            Assert.False(installed.IsPortable);
+            Assert.True(installed.CanUpdate);
+
+            File.WriteAllText(marker, "");
+            var portable = AssistantProfile.ForPackage(package.FullName);
+            Assert.True(portable.IsPortable);
+            Assert.False(portable.CanUpdate);
+            Assert.Equal(Path.Combine(package.FullName, "UserData"), portable.DirectoryPath);
+            Assert.Equal(Path.Combine(portable.DirectoryPath, "profiles", "agent"), portable.Named("Agent").DirectoryPath);
+            Assert.NotEqual(installed.KernelName(""), portable.KernelName(""));
+            Assert.NotEqual(installed.DeepLinkName, portable.DeepLinkName);
+            Assert.Equal(portable.KernelName(""), AssistantProfile.ForPackage(package.FullName).KernelName(""));
+        }
+        finally
+        {
+            File.Delete(marker);
+            package.Delete();
+        }
+    }
+
+    [Fact]
     public void ProfilesSeedSettingsOnceAndKeepSeparateLogs()
     {
         var root = Directory.CreateTempSubdirectory();

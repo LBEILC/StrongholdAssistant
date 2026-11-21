@@ -19,7 +19,7 @@ public partial class App : Application
     private RegisteredWaitHandle? _updateWait;
     private bool _ownsInstance;
     private EventWaitHandle? _ownerMarker;
-    private readonly DeepLinkChannel _deepLinks = new("StrongholdAssistant.DeepLink");
+    private DeepLinkChannel? _deepLinks;
     private Task? _deepLinkListener;
     private string _logDirectory = null!;
     private int _failureDialogShown;
@@ -51,7 +51,8 @@ public partial class App : Application
         if (noGame)
         {
             var root = Environment.GetEnvironmentVariable(AssistantProfile.TestRootVariable)
-                ?? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"));
+                ?? (profile.IsPortable ? profile.Root
+                    : Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N")));
             profile = profile with { Root = root };
         }
         _instance = new Mutex(true, profile.KernelName(""), out _ownsInstance);
@@ -67,6 +68,7 @@ public partial class App : Application
             }
         }
         AssistantProfile.Current = profile;
+        var deepLinks = _deepLinks = new DeepLinkChannel(profile.DeepLinkName);
         var settingsPath = Path.Combine(profile.DirectoryPath, "settings.json");
         _activation = new EventWaitHandle(false, EventResetMode.AutoReset, profile.KernelName(".Activate"));
         _activated = new EventWaitHandle(false, EventResetMode.AutoReset, profile.KernelName(".Activated"));
@@ -85,7 +87,7 @@ public partial class App : Application
             var sent = true;
             try
             {
-                if (DeepLinkChannel.IsValid(deepLink)) await _deepLinks.SendAsync(deepLink!);
+                if (DeepLinkChannel.IsValid(deepLink)) await deepLinks.SendAsync(deepLink!);
                 else _activation.Set();
             }
             catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException)
@@ -99,7 +101,7 @@ public partial class App : Application
             Shutdown();
             return;
         }
-        if (profile.Name is not null)
+        if (profile.Name is not null && !profile.IsPortable)
         {
             try { _profileLock = UpdateService.OpenProfileLock(FileShare.Read); }
             catch (IOException ex) when ((ex.HResult & 0xffff) == 32)
@@ -107,7 +109,25 @@ public partial class App : Application
                 MessageBox.Show("助手正在安装更新，请稍后再打开配置。"); Shutdown(); return;
             }
         }
-        profile.Create(true);
+        try
+        {
+            profile.Create(true);
+            if (profile.IsPortable)
+            {
+                Directory.CreateDirectory(profile.DirectoryPath);
+                var probe = Path.Combine(profile.DirectoryPath, $".write-{Guid.NewGuid():N}");
+                using var writable = new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                    bufferSize: 1, options: FileOptions.DeleteOnClose);
+            }
+        }
+        catch (Exception ex) when (profile.IsPortable && (ex is IOException or UnauthorizedAccessException))
+        {
+            var message = $"便携版无法写入用户数据目录：\n{profile.DirectoryPath}\n\n请把整个程序文件夹放到可以写入的位置。";
+            StartupResult.ReportFailure(message);
+            MessageBox.Show(message, "高效雅雅·卫戍协议助手", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(2);
+            return;
+        }
         if (!noGame && !ProcessElevation.Current && !e.Args.Contains("--keep-identity")
             && new HostSettingsStore(settingsPath).LoadSettings().RunAsAdmin)
         {
@@ -115,7 +135,7 @@ public partial class App : Application
             catch (ArgumentException) { /* 取消授权后继续普通运行，不重试。 */ }
         }
         // 无游戏模式供打包验收使用，不启动窗口跟踪或截图。
-        if (profile.Name is null) new UpdateService().CleanupStaleStagingDirs();
+        if (profile.CanUpdate) new UpdateService().CleanupStaleStagingDirs();
         var userDirectory = profile.DirectoryPath;
         _logDirectory = Path.Combine(userDirectory, "logs");
         AppLogger.Initialize(_logDirectory);
@@ -143,7 +163,7 @@ public partial class App : Application
         }
         MainWindow = new MainWindow(!noGame, userDirectory);
         if (DeepLinkChannel.IsValid(deepLink)) ((MainWindow)MainWindow).ReceiveDeepLink(deepLink!);
-        if (profile.Name is null) _deepLinkListener = _deepLinks.ListenAsync(url => Dispatcher.BeginInvoke(() =>
+        if (profile.Name is null) _deepLinkListener = deepLinks.ListenAsync(url => Dispatcher.BeginInvoke(() =>
         {
             ActivateMainWindow();
             (MainWindow as MainWindow)?.ReceiveDeepLink(url);
@@ -151,7 +171,7 @@ public partial class App : Application
                 _activated.Set();
         }));
         MainWindow.Show();
-        if (profile.Name is not null)
+        if (profile.Name is not null && !profile.IsPortable)
         {
             _updateClose = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceRecovery.UpdateCloseName(Environment.ProcessId));
             ProcessElevation.AllowSameUser(_updateClose.SafeWaitHandle);
@@ -171,7 +191,7 @@ public partial class App : Application
     {
         if (MessageBox.Show("高效雅雅·卫戍协议助手已经在运行，但没有响应，可能卡住了。\n要结束它并重新打开吗？",
                 "高效雅雅·卫戍协议助手", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-        AppLogger.Initialize(noGame
+        AppLogger.Initialize(noGame && !AssistantProfile.Current.IsPortable
             ? Path.Combine(Path.GetTempPath(), "StrongholdAssistant-StartupCheck", Guid.NewGuid().ToString("N"), "logs")
             : Path.Combine(Path.GetDirectoryName(settingsPath)!, "logs"));
         try
@@ -250,7 +270,7 @@ public partial class App : Application
         // 记一笔正常退出，日志里没有这行就是闪退（v1.2.5）。
         AppLogger.Info("Host", $"正常退出 code={e.ApplicationExitCode}");
         CrashGuard.NormalExit();
-        _deepLinks.Dispose();
+        _deepLinks?.Dispose();
         _wait?.Unregister(null);
         _activation?.Dispose();
         _activated?.Dispose();

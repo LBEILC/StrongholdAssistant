@@ -1,4 +1,9 @@
-﻿param([Parameter(Mandatory = $true, Position = 0)][string]$Version, [switch]$ForceTests, [switch]$ReuseOnly)
+﻿param(
+    [Parameter(Mandatory = $true, Position = 0)][string]$Version,
+    [switch]$ForceTests,
+    [switch]$ReuseOnly,
+    [switch]$Portable
+)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $root
@@ -14,7 +19,8 @@ function Run([scriptblock]$Command) {
 }
 # 只记录已提交且干净的产品输入；测试文件不影响包指纹。
 $release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
-$zip = Join-Path $release "StrongholdAssistant-v$Version-win-x64.zip"
+$zipName = if ($Portable) { "StrongholdAssistant-v$Version-win-x64-portable.zip" } else { "StrongholdAssistant-v$Version-win-x64.zip" }
+$zip = Join-Path $release $zipName
 $setup = Join-Path $release "StrongholdAssistant-v$Version-setup.exe"
 $packageCache = Join-Path $release "package-$Version.json"
 $paths = @('scripts/package.ps1', 'scripts/package-zip.ps1', 'src', 'data', 'installer', 'branding', 'Directory.Build.props', 'LICENSE', 'LICENSE.upstream', 'NOTICE', 'ASSETS.md', ':(exclude)src/StrongholdAssistant.Tests')
@@ -24,15 +30,15 @@ $sha = [Security.Cryptography.SHA256]::Create()
 try { $fingerprint = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($entries -join "`n"))) } finally { $sha.Dispose() }
 $clean = !(& git status --porcelain --untracked-files=all -- $paths)
 if ($LASTEXITCODE -ne 0) { throw '读取打包工作区状态失败。' }
-$previous = if (Test-Path -LiteralPath $packageCache) { Get-Content -LiteralPath $packageCache -Raw -Encoding UTF8 | ConvertFrom-Json }
-$reusable = $clean -and $previous.fingerprint -eq $fingerprint -and (Test-Path -LiteralPath $zip) -and (Test-Path -LiteralPath $setup)
+$previous = if (!$Portable -and (Test-Path -LiteralPath $packageCache)) { Get-Content -LiteralPath $packageCache -Raw -Encoding UTF8 | ConvertFrom-Json }
+$reusable = !$Portable -and $clean -and $previous.fingerprint -eq $fingerprint -and (Test-Path -LiteralPath $zip) -and (Test-Path -LiteralPath $setup)
 # 供发版脚本查询是否连包检查也可复用；未通过检查的包仍须 Check。
 if ($ReuseOnly) { return ($reusable -and $previous.checked -eq $true) }
 $timer = [Diagnostics.Stopwatch]::StartNew()
 & (Join-Path $PSScriptRoot 'test-all.ps1') -ForceTests:$ForceTests
 Write-Output "测试阶段：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
 if ($reusable) { Write-Output '产品没变，复用已有的包'; return }
-if (Test-Path -LiteralPath $packageCache) { Remove-Item -LiteralPath $packageCache }
+if (!$Portable -and (Test-Path -LiteralPath $packageCache)) { Remove-Item -LiteralPath $packageCache }
 $timer.Restart()
 $lockHash = (Get-FileHash -LiteralPath 'src/ui/package-lock.json' -Algorithm SHA256).Hash
 $npmCache = 'out/npm-lock.txt'
@@ -45,7 +51,6 @@ if (!(Test-Path 'src/ui/node_modules') -or !(Test-Path $npmCache) -or (Get-Conte
 Run { npm --prefix src/ui run build }
 Write-Output "界面构建：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
 $timer.Restart()
-$release = [IO.Path]::GetFullPath((Join-Path $root 'out/release'))
 $publish = Join-Path $release ('publish-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $publish -Force | Out-Null
 Write-Output "发布中间目录（成功后删除，失败时保留）：$publish"
@@ -95,8 +100,17 @@ foreach ($item in $unused) {
     }
     Remove-Item -LiteralPath $target -Recurse -Force
 }
-$zip = Join-Path $release "StrongholdAssistant-v$Version-win-x64.zip"
 Write-Output "发布目录：$($timer.Elapsed.TotalSeconds.ToString('F1')) 秒"
+if ($Portable) {
+    New-Item -ItemType File -Path (Join-Path $publish 'portable.flag') | Out-Null
+    $temporaryZip = "$publish.zip"
+    & (Join-Path $PSScriptRoot 'package-zip.ps1') -Publish $publish -Zip $temporaryZip
+    Move-Item -LiteralPath $temporaryZip -Destination $zip -Force
+    Write-Output "便携版打包完成：$zip ($((Get-Item -LiteralPath $zip).Length) bytes)"
+    Remove-Item -LiteralPath $publish -Recurse -Force
+    return
+}
+
 $timer.Restart()
 $zipJob = Start-Job -ScriptBlock {
     param($script, $publish, $zip)
