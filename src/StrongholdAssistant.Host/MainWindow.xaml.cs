@@ -231,11 +231,9 @@ public partial class MainWindow : Window
         {
             ShowUi();
             ReportStartupReady(windowCommand, App.StartupResult);
-            if (_api.Updater.FullOnly)
-            {
-                await _api.CheckUpdateAsync();
-                await _api.ApplyUpdateAsync();
-            }
+            await _requests.WaitAsync();
+            try { await _api.RecoverUpdateOnStartupAsync(); }
+            finally { _requests.Release(); }
         }
         if (windowCommand == "workbench") SetWorkbench(true);
         if (windowCommand == "sidebar") SetWorkbench(false);

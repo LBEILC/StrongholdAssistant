@@ -51,7 +51,7 @@
     { v: 2, label: '200%' },
   ]
   const REPO = 'https://github.com/LBEILC/StrongholdAssistant'
-  const QQ = 'https://qm.qq.com/q/AuRBCSxWEg'
+  const QQ = 'https://qm.qq.com/q/F5F2akHgQ0' // 一群 1132134217 已满，2026-11-20 起指向二群
   const close = () => (app.settingsOpen = false)
   const set = <K extends keyof typeof app.settings>(k: K, v: (typeof app.settings)[K]) => {
     app.settings[k] = v
@@ -1340,7 +1340,7 @@
 
     <section class="about">
       <button class="link" onclick={() => api.openUrl(REPO)}>GitHub 开源地址</button>
-      <button class="link" onclick={() => api.openUrl(QQ)}>QQ 交流群 1132134217</button>
+      <button class="link" onclick={() => api.openUrl(QQ)}>QQ 交流群 1131280375</button>
       <p>非官方玩家自制工具，与鹰角网络无关。游戏美术与数据归上海鹰角网络所有。</p>
     </section>
     {/if}

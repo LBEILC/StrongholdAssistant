@@ -1,4 +1,5 @@
 using ASPAssistant.Core.Services;
+using ASPAssistant.Core;
 using System.Net.Http;
 
 namespace StrongholdAssistant.Host;
@@ -17,6 +18,17 @@ public sealed partial class HostApi
     {
         Changed?.Invoke("update", status);
         return status;
+    }
+
+    internal async Task RecoverUpdateOnStartupAsync()
+    {
+        if (AssistantProfile.Current.Name is not null) return;
+        if (Updater.PreviousInstallFailure is { } reason)
+            ReportUpdate(UpdateFailure("上次更新没装上：" + reason));
+        if (!Updater.RetryFullOnStartup) return;
+        AppLogger.Info("Update", "开始全量回退检查");
+        await CheckUpdateAsync();
+        if (_availableUpdate is not null) await ApplyUpdateAsync();
     }
 
     public async Task<object> CheckUpdateAsync()
@@ -98,6 +110,7 @@ public sealed partial class HostApi
         var lastProgress = -0.05;
         try
         {
+            AppLogger.Info("Update", $"开始下载 {info.AssetName}");
             if (info.Source == "mirrorchyan")
             {
                 var refreshed = await Updater.ReadMirrorChyanAsync(Settings.MirrorChyanCdk);
@@ -122,6 +135,7 @@ public sealed partial class HostApi
                 ReportUpdate(status);
             }));
             UpdatePrepared = true;
+            AppLogger.Info("Update", $"更新已准备好 v{info.Version}");
             ReportUpdate(new { state = "ready", version = info.Version });
             if (_installWhenReady) UpdateReady?.Invoke();
         }
@@ -137,6 +151,7 @@ public sealed partial class HostApi
 
     private Dictionary<string, object> UpdateFailure(string message)
     {
+        AppLogger.Warn("Update", message);
         var status = new Dictionary<string, object> { ["state"] = "failed", ["message"] = message };
         if (Updater.CdkProblem) status["cdkProblem"] = true;
         if (Updater.TokenProblem) status["githubTokenProblem"] = true;

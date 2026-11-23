@@ -209,7 +209,7 @@ public partial class App : Application
         }
         if (!UiReady)
             ShowFailureAndExit($"助手启动失败：{exception.Message.Split(['\r', '\n'])[0]}\n\n" +
-                "点「是」打开日志文件夹，把 host.log 发到 QQ 群 1132134217 或 GitHub Issues，方便我们排查。", _logDirectory);
+                "点「是」打开日志文件夹，把 host.log 发到 QQ 交流群 1131280375 或 GitHub Issues，方便我们排查。", _logDirectory);
     }
 
     private void ReportOutdatedWebView2()

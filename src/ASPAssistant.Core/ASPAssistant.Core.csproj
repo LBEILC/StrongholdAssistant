@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Services/EnemyPanelTitle.png" LogicalName="EnemyPanelTitle.png" />
+    <EmbeddedResource Include="Services/UpdateFileLock.ps1" LogicalName="UpdateFileLock.ps1" />
     <InternalsVisibleTo Include="FieldEval" />
     <InternalsVisibleTo Include="StrongholdAssistant.Tests" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />

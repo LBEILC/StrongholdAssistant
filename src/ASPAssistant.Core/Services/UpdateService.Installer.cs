@@ -28,5 +28,23 @@ public partial class UpdateService
     }
 
     private string DeltaName(Version version) => $"StrongholdAssistant-v{version}-from-v{CurrentVersion.ToString(3)}-delta.zip";
-    public bool FullOnly { get; } = Environment.GetCommandLineArgs().Contains("--retry-full-update");
+    // 按安装目录和旧版本区分，成功启动的新版本不会接手旧版本的回退任务。
+    internal static string FailurePath(string directory, Version version) =>
+        Path.ChangeExtension(ProfileLockPath(directory), $"v{version.ToString(3)}.failure");
+
+    private string? _lastInstallFailure;
+    private string FailureRecord => _lastInstallFailure ??= ReadFailureRecord();
+
+    private string ReadFailureRecord()
+    {
+        var path = FailurePath(_appDirectory, CurrentVersion);
+        try { return File.Exists(path) ? File.ReadAllText(path) : ""; }
+        catch (IOException) { return ""; }
+        catch (UnauthorizedAccessException) { return ""; }
+    }
+
+    public string? PreviousInstallFailure => FailureRecord.Split('\n', 2) is [_, var reason] ? reason : null;
+    public bool RetryFullOnStartup => Environment.GetCommandLineArgs().Contains("--retry-full-update")
+        || FailureRecord.StartsWith("delta\n", StringComparison.Ordinal);
+    public bool FullOnly => RetryFullOnStartup || PreviousInstallFailure is not null;
 }

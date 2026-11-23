@@ -19,7 +19,8 @@ public class UpdateDownloadTests
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
-    public async Task LocalFeed_ChecksDownloadsVerifiesAndPreparesWithoutLaunching(bool wrapped, bool wrongHash)
+    [InlineData(false, false, true)]
+    public async Task LocalFeed_ChecksDownloadsVerifiesAndPreparesWithoutLaunching(bool wrapped, bool wrongHash, bool recover = false)
     {
         using var zipStream = new MemoryStream();
         using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
@@ -37,9 +38,10 @@ public class UpdateDownloadTests
         using var server = new TcpListener(IPAddress.Loopback, 0);
         server.Start();
         var url = $"http://127.0.0.1:{((IPEndPoint)server.LocalEndpoint).Port}/";
+        var deltaAsset = recover ? """{"name":"StrongholdAssistant-v99.0.0-from-v0.1.0-delta.zip","browser_download_url":"http://localhost/unexpected-delta"},""" : "";
         var release = Encoding.UTF8.GetBytes($$"""
             {"tag_name":"v99.0.0","html_url":"https://example.org/releases/v99.0.0","body":"isolated test","assets":[
-              {"name":"{{asset}}","browser_download_url":"{{url}}package"},
+              {{deltaAsset}}{"name":"{{asset}}","browser_download_url":"{{url}}package"},
               {"name":"SHA256SUMS.txt","browser_download_url":"{{url}}checksums"}]}
             """);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
@@ -68,9 +70,13 @@ public class UpdateDownloadTests
         });
         string? job = null;
         var beforeJobs = Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").ToHashSet();
+        var installation = Directory.CreateTempSubdirectory();
+        var version = new Version(0, 1, 0);
+        var failurePath = UpdateService.FailurePath(installation.FullName, version);
         try
         {
-            var service = new UpdateService(new Version(0, 1, 0), feedUrl: url);
+            if (recover) await File.WriteAllTextAsync(failurePath, "delta\n模拟占用");
+            var service = new UpdateService(version, installation.FullName, feedUrl: url);
             var api = await HostApi.CreateAsync(Path.Combine(AppContext.BaseDirectory, "data"),
                 Path.Combine(Path.GetTempPath(), "StrongholdAssistant-BridgeTest-" + Guid.NewGuid().ToString("N")));
             api.Updater = service;
@@ -83,10 +89,21 @@ public class UpdateDownloadTests
                 events.Add(status);
                 if (status.GetProperty("state").GetString() is "ready" or "failed") finished.TrySetResult();
             };
-            var status = JsonSerializer.SerializeToElement(await api.CheckUpdateAsync());
-            status.GetProperty("state").GetString().Should().Be("available");
-            status.GetProperty("notesUrl").GetString().Should().Be("https://example.org/releases/v99.0.0");
-            await api.ApplyUpdateAsync();
+            if (recover)
+            {
+                var install = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                api.UpdateReady += () => install.TrySetResult();
+                await api.RecoverUpdateOnStartupAsync();
+                await install.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.Equal("上次更新没装上：模拟占用", events.First().GetProperty("message").GetString());
+            }
+            else
+            {
+                var status = JsonSerializer.SerializeToElement(await api.CheckUpdateAsync());
+                status.GetProperty("state").GetString().Should().Be("available");
+                status.GetProperty("notesUrl").GetString().Should().Be("https://example.org/releases/v99.0.0");
+                await api.ApplyUpdateAsync();
+            }
             await finished.Task.WaitAsync(TimeSpan.FromSeconds(10));
             if (wrongHash)
             {
@@ -94,6 +111,9 @@ public class UpdateDownloadTests
                 api.UpdatePrepared.Should().BeFalse();
                 service.PendingScriptPath.Should().BeNull();
                 service.LastError.Should().Contain("校验不通过");
+                var incomplete = Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").Except(beforeJobs).Single();
+                Assert.True(File.Exists(Path.Combine(incomplete, "package.zip.part")));
+                Assert.False(File.Exists(Path.Combine(incomplete, "package.zip")));
             }
             else if (wrapped)
             {
@@ -121,6 +141,8 @@ public class UpdateDownloadTests
         {
             timeout.Cancel();
             server.Stop();
+            File.Delete(failurePath);
+            installation.Delete();
             foreach (var directory in Directory.GetDirectories(Path.GetTempPath(), "StrongholdAssistant-Update-*").Except(beforeJobs))
             {
                 Path.GetDirectoryName(Path.GetFullPath(directory))!.TrimEnd('\\')

@@ -133,8 +133,9 @@ try {
             $previous = & gh release list --repo $repo --exclude-drafts --exclude-pre-releases --limit 4 --json tagName
             if ($LASTEXITCODE -ne 0) { throw '读取已发布版本失败。' }
             $tags = @($previous | ConvertFrom-Json | ForEach-Object { $_ } | Where-Object {
-                # 1.3.3 起才是拆开发布的新结构，更早的版本用老更新器、用不上差量包，不下载
-                $_.tagName -match '^v\d+\.\d+\.\d+$' -and [version]$_.tagName.Substring(1) -lt [version]$Version -and [version]$_.tagName.Substring(1) -ge [version]'1.3.3'
+                # 只给 1.3.7 起的版本出差量包：1.3.3～1.3.6 的更新脚本在宿主刚退出时文件还被占用就放弃（400），
+                # 不给它们差量包，它们会直接下全量包；更早的版本用老更新器，本来就用不上差量包
+                $_.tagName -match '^v\d+\.\d+\.\d+$' -and [version]$_.tagName.Substring(1) -lt [version]$Version -and [version]$_.tagName.Substring(1) -ge [version]'1.3.7'
             } | Select-Object -First 3 -ExpandProperty tagName)
             $deltas = @()
             foreach ($tag in $tags) {

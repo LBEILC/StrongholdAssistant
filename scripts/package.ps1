@@ -73,7 +73,7 @@ foreach ($dir in @('data','ui')) {
 # 用 SDK 自带的 Roslyn 和 Windows 自带的 .NET Framework 引用编译稳定的小启动器。
 $sdk = (dotnet --list-sdks | Select-Object -Last 1) -replace '^([^ ]+) \[(.+)\]$', '$2/$1'
 $framework = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319'
-Run { dotnet "$sdk/Roslyn/bincore/csc.dll" /nologo /noconfig /nostdlib /target:winexe /platform:x64 /optimize+ /deterministic+ "/reference:$framework/mscorlib.dll" "/reference:$framework/System.dll" /win32icon:branding/icon.ico "/out:$publish/StrongholdAssistant.exe" src/Launcher/Launcher.cs }
+Run { dotnet "$sdk/Roslyn/bincore/csc.dll" /nologo /noconfig /nostdlib /target:winexe /platform:x64 /optimize+ /deterministic+ "/reference:$framework/mscorlib.dll" "/reference:$framework/System.dll" "/reference:$framework/System.Windows.Forms.dll" /win32icon:branding/icon.ico "/out:$publish/StrongholdAssistant.exe" src/Launcher/Launcher.cs }
 
 foreach ($name in @('LICENSE','LICENSE.upstream','NOTICE','ASSETS.md')) {
     Copy-Item -LiteralPath (Join-Path $root $name) -Destination $publish

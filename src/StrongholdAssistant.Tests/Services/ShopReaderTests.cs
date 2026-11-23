@@ -14,6 +14,41 @@ namespace ASPAssistant.Tests.Services;
 public class ShopReaderTests(ShopReaderFixture fixture, EnemyRecognitionFixture recognition, Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
+    public async Task AlternatingEmptySlotsKeepBaidurenMarkerOnSecondCard()
+    {
+        const string file = "shop-closure-empty-1920x1080.png";
+        fixture.SelectTheme(file);
+        using var image = new Bitmap(fixture.Sample(file));
+        var items = await fixture.Reader.ReadAsync(File.ReadAllBytes(fixture.Sample(file)), image.Width, image.Height, ["摆渡人"]);
+        double k = fixture.Reader.UiScale!.Value;
+        bool visible = ShopLayout.HasCards(image, k, GameShopTheme.Closure);
+        var card = Assert.Single(items);
+        var box = card.CardRegion;
+        double left = box.X * image.Width, right = (box.X + box.Width) * image.Width;
+        double top = box.Y * image.Height, bottom = (box.Y + box.Height) * image.Height;
+        output.WriteLine($"k={k:F5} 卡边可见={visible} 槽位={card.SlotIndex} 框=({left:F1},{top:F1})–({right:F1},{bottom:F1})");
+        Assert.Equal(1d, k);
+        Assert.True(visible);
+        Assert.Equal("1:摆渡人", card.Id);
+        // 样图第二格彩色卡身约为 (581,809)～(791,1069)，忽略顶部突起和边缘晕色。
+        Assert.InRange(left, 579, 583);
+        Assert.InRange(right, 789, 793);
+        Assert.InRange(top, 807, 811);
+        Assert.InRange(bottom, 1067, 1071);
+    }
+
+    [Fact]
+    public void MumuUi100KeepsScaleAfterTwoPurchases()
+    {
+        // 396 同一局：第 3～6 格有货，购买后只剩第 3、6 格。
+        using var before = new Bitmap(fixture.Sample("live398/05.jpg"));
+        using var after = new Bitmap(fixture.Sample("live398/11.jpg"));
+        double scale = GameUiScale.Shop(before);
+        Assert.InRange(scale, 1.10, 1.11);
+        Assert.Equal(scale, GameUiScale.Shop(after));
+    }
+
+    [Fact]
     public async Task Closure1600x1024_TracksFourCardsInTheirSlots()
     {
         const string file = "shop-closure-round1-1600x1024.png";

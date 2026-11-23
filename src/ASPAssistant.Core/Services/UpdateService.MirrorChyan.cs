@@ -65,6 +65,7 @@ public partial class UpdateService
             var tag = "v" + version;
             if (data.UpdateType is not (null or "full" or "incremental")) { LastError = "Mirror酱 返回的更新类型无效"; return null; }
             var incremental = data.UpdateType == "incremental";
+            if (incremental && (fullOnly || FullOnly)) { LastError = "Mirror酱 未返回请求的全量包"; return null; }
             var asset = incremental ? DeltaName(version) : $"StrongholdAssistant-{tag}-win-x64.zip";
             var root = $"https://github.com/LBEILC/StrongholdAssistant/releases/download/{tag}/";
             var mirror = !string.IsNullOrWhiteSpace(data.Url);

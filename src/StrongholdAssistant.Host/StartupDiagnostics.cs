@@ -52,7 +52,7 @@ internal static class StartupDiagnostics
         steps.Insert(IsWindowsUpdateNeeded(windowsVersion) ? 0 : steps.Count, update);
         return "助手的界面组件（Microsoft Edge WebView2）没能启动。可以按顺序试：\n" +
             string.Join("\n", steps.Select((step, index) => $"{index + 1}. {step}")) +
-            "\n还是不行请把日志文件夹里的 host.log 发到 QQ 群 1132134217。";
+            "\n还是不行请把日志文件夹里的 host.log 发到 QQ 交流群 1131280375。";
     }
 
     internal static (WebView2Availability Status, string? Version) IsWebView2Available(Func<string>? getVersion = null)

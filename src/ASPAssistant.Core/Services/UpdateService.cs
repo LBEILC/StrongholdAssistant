@@ -209,6 +209,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
     private async Task PreparePackageAsync(UpdateInfo info, string tempDir, IProgress<double>? progress, CancellationToken ct)
     {
         var zipPath = Path.Combine(tempDir, "package.zip");
+        var partialPath = zipPath + ".part";
 
         // Download with progress reporting
         using (var response = await _http.GetAsync(
@@ -218,7 +219,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;
             await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
-            await using var fileStream = File.Create(zipPath);
+            await using var fileStream = File.Create(partialPath);
             var buffer = new byte[65536];
             long downloaded = 0;
             int bytesRead;
@@ -234,7 +235,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         progress?.Report(0.87);
 
         // Integrity check against the published SHA256SUMS.txt (fail closed).
-        var actualHash = await ComputeSha256Async(zipPath, ct);
+        var actualHash = await ComputeSha256Async(partialPath, ct);
         string expectedHash;
         if (info.Source == "mirrorchyan")
         {
@@ -256,6 +257,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             throw IntegrityFailure(
                 $"安装包校验不通过（期望 {expectedHash[..12]}…，实际 {actualHash[..12]}…），已停止更新");
 
+        File.Move(partialPath, zipPath);
         progress?.Report(0.92);
 
         progress?.Report(0.96);
@@ -278,7 +280,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             Path.Combine(appDir, AppExecutableName),
             Path.Combine(parentDir, $"StrongholdAssistant-Staging-{stamp}"),
             Path.Combine(parentDir, $"StrongholdAssistant-backup-{stamp}"),
-            Path.Combine(tempDir, "update.log"), IsInstalled ? info.Version : null, info.Incremental);
+            Path.Combine(tempDir, "update.log"), IsInstalled ? info.Version : null, info.Incremental, CurrentVersion);
 
         await File.WriteAllTextAsync(scriptPath, scriptContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
 
@@ -439,7 +441,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         string exePath,
         string stagingDir,
         string backupDir,
-        string logPath, string? installedVersion = null, bool incremental = false)
+        string logPath, string? installedVersion = null, bool incremental = false, Version? currentVersion = null)
     {
         static string Q(string value) => "'" + (value ?? "").Replace("'", "''") + "'";
 
@@ -452,6 +454,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine($"$backupDir = {Q(backupDir)}");
         sb.AppendLine($"$exePath = {Q(exePath)}");
         sb.AppendLine($"$logPath = {Q(logPath)}");
+        sb.AppendLine($"$failurePath = {Q(FailurePath(appDir, currentVersion ?? typeof(UpdateService).Assembly.GetName().Version!))}");
         sb.AppendLine("$silent = ($env:STRONGHOLD_UPDATE_SILENT -eq '1')");
         sb.AppendLine();
         sb.AppendLine("function Write-Log([string]$message) {");
@@ -462,7 +465,6 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("function Show-Failure([string]$message) {");
-        sb.AppendLine("    Write-Log \"FAILED: $message\"");
         sb.AppendLine("    if ($silent) { return }");
         sb.AppendLine("    try {");
         sb.AppendLine("        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue");
@@ -470,6 +472,8 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    } catch { }");
         sb.AppendLine("}");
         sb.AppendLine();
+        using var lockScript = new StreamReader(typeof(UpdateService).Assembly.GetManifestResourceStream("UpdateFileLock.ps1")!);
+        sb.AppendLine(lockScript.ReadToEnd());
         sb.AppendLine("function Start-Version([string]$path, [string]$resultPath) {");
         sb.AppendLine("    $start = New-Object System.Diagnostics.ProcessStartInfo");
         sb.AppendLine("    $hostPath = Join-Path $appDir 'app/StrongholdAssistant.exe'");
@@ -521,13 +525,13 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    if (Get-Process -Id $appPid -ErrorAction SilentlyContinue) {");
         sb.AppendLine("        throw '辅助仍在运行，请完全退出辅助（含托盘图标）后重新检查更新。'");
         sb.AppendLine("    }");
-        sb.AppendLine($"    $profileLock = [IO.File]::Open({Q(ProfileLockPath(appDir))}, 'OpenOrCreate', 'Read', 'None')");
+        sb.AppendLine($"    $profileLock = Open-UpdateFile {Q(ProfileLockPath(appDir))} 'OpenOrCreate' 'Read' 'None'");
         sb.AppendLine("    Start-Sleep -Milliseconds 800");
         if (incremental)
         {
             sb.AppendLine("    foreach ($name in (Get-Content -LiteralPath (Join-Path (Split-Path -Parent $sourceDir) 'affected.txt') -Encoding UTF8)) {");
             sb.AppendLine("        $path = Join-Path $appDir $name");
-            sb.AppendLine("        if ([IO.File]::Exists($path)) { [IO.File]::Open($path, 'Open', 'ReadWrite', 'ReadWrite, Delete').Dispose() }");
+            sb.AppendLine("        if ([IO.File]::Exists($path)) { (Open-UpdateFile $path 'Open' 'ReadWrite' 'ReadWrite, Delete').Dispose() }");
             sb.AppendLine("    }");
         }
         sb.AppendLine();
@@ -573,17 +577,8 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             sb.AppendLine("        throw '安装目录仍被占用，未替换任何旧版文件。请完全退出辅助（含托盘图标），并关闭该目录的终端或预览后重试。'");
             sb.AppendLine("    }");
             sb.AppendLine();
-            sb.AppendLine("    try {");
-            sb.AppendLine("        Rename-Item -LiteralPath $stagingDir -NewName (Split-Path -Leaf $appDir)");
-            sb.AppendLine("        Write-Log \"activated new version\"");
-            sb.AppendLine("    } catch {");
-            sb.AppendLine("        Write-Log \"activation failed, rolling back: $($_.Exception.Message)\"");
-            sb.AppendLine("        if ($renamedOld) { Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir) }");
-            sb.AppendLine("        $renamedOld = $false");
-            sb.AppendLine("        Start-OldVersion");
-            if (!incremental) sb.AppendLine("        Show-Failure \"无法切换新版本，已回滚到旧版本：$($_.Exception.Message)\"");
-            sb.AppendLine("        exit 1");
-            sb.AppendLine("    }");
+            sb.AppendLine("    Rename-Item -LiteralPath $stagingDir -NewName (Split-Path -Leaf $appDir)");
+            sb.AppendLine("    Write-Log \"activated new version\"");
             sb.AppendLine();
         }
         sb.AppendLine("    Start-Sleep -Milliseconds 400");
@@ -616,6 +611,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
             sb.AppendLine("    }");
         }
         sb.AppendLine("    Write-Log 'new version confirmed ready'");
+        sb.AppendLine("    Remove-Item -LiteralPath $failurePath -ErrorAction SilentlyContinue");
         sb.AppendLine();
         sb.AppendLine("    try {");
         sb.AppendLine("        Remove-Item -LiteralPath $backupDir -Recurse -Force");
@@ -625,6 +621,7 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("    }");
         sb.AppendLine("} catch {");
         sb.AppendLine("    $message = $_.Exception.Message");
+        sb.AppendLine("    Write-Log \"FAILED: $message\"");
         sb.AppendLine("    if ($renamedOld -and $null -ne $newProcess -and -not $newProcess.HasExited) {");
         sb.AppendLine("        $newProcess.Kill()");
         sb.AppendLine("        $newProcess.WaitForExit()");
@@ -650,6 +647,10 @@ public partial class UpdateService(Version? currentVersion = null, string? appDi
         sb.AppendLine("            Write-Log \"ROLLBACK FAILED: $($_.Exception.Message)\"");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
+        sb.AppendLine($"    $mode = {Q(incremental ? "delta" : "full")}");
+        sb.AppendLine("    if ($renamedOld) { $mode = 'full' }");
+        sb.AppendLine("    try { [IO.File]::WriteAllText($failurePath, \"$mode`n$message\") }");
+        sb.AppendLine("    catch { Write-Log \"cannot save update failure: $($_.Exception.Message)\" }");
         sb.AppendLine("    if ($renamedOld) {");
         sb.AppendLine("        Show-Failure \"更新未完成且自动恢复失败：$message。请保留备份目录 $backupDir。\"");
         sb.AppendLine("    } else {");

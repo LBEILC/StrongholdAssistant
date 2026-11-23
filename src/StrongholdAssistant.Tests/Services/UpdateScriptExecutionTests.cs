@@ -94,12 +94,43 @@ public class UpdateScriptExecutionTests
                 }
 
                 """;
-            var result = await RunUpdateAsync(root, app, source, prefix: interrupt, installedDelta: true);
+            var affected = Path.Combine(app, "data", "value");
+            using var held = File.Open(affected, FileMode.Open, FileAccess.Read, FileShare.None);
+            var update = RunUpdateAsync(root, app, source, prefix: interrupt, installedDelta: true);
+            var log = Path.Combine(root, "update.log");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            while (!File.Exists(log) || !File.ReadAllText(log).Contains("waiting for file:"))
+                await Task.Delay(50, timeout.Token);
+            held.Dispose();
+            var result = await update;
             Assert.Equal(1, result.ExitCode);
             Assert.Equal("old", File.ReadAllText(Path.Combine(app, "data", "value")));
             Assert.True(Directory.Exists(Path.Combine(app, "ui")));
             Assert.Equal("uninstall", File.ReadAllText(Path.Combine(app, "unins000.dat")));
-            Assert.Contains("rolled back to previous version", File.ReadAllText(Path.Combine(root, "update.log")));
+            Assert.Contains("rolled back to previous version", File.ReadAllText(log));
+            Assert.Contains("FAILED: 模拟安装中断", File.ReadAllText(log));
+            var restarted = new UpdateService(appDirectory: app);
+            Assert.Equal("模拟安装中断", restarted.PreviousInstallFailure);
+            Assert.True(restarted.RetryFullOnStartup);
+        }
+        finally { DeleteTestDirectory(root); }
+    }
+
+    [Fact]
+    public async Task PersistentProfileLockReportsPathAndOwner()
+    {
+        var root = Directory.CreateTempSubdirectory("StrongholdAssistant-UpdateTests-").FullName;
+        try
+        {
+            var (app, source) = await PrepareFilesAsync(root, "locked");
+            var path = Path.Combine(Path.GetTempPath(), $"StrongholdAssistant-{UpdateService.InstallationId(app)}.lock");
+            using var held = File.Open(path, FileMode.OpenOrCreate, FileAccess.Read, FileShare.Read);
+            var result = await RunUpdateAsync(root, app, source, installedDelta: true);
+            Assert.Equal(1, result.ExitCode);
+            var reason = new UpdateService(appDirectory: app).PreviousInstallFailure;
+            Assert.Contains(path, reason);
+            Assert.Contains($"PID {Environment.ProcessId}", reason);
+            Assert.Contains("FAILED: " + reason, File.ReadAllText(Path.Combine(root, "update.log")));
         }
         finally { DeleteTestDirectory(root); }
     }

@@ -29,8 +29,8 @@ export const LINKS = {
   assets: REPO + '/blob/main/ASSETS.md',
   // source 只给 Mirror酱 做来源统计，不影响分成归属
   mirror: 'https://mirrorchyan.com/zh/projects?rid=StrongholdAssistant&source=sa-website',
-  qq: 'https://qm.qq.com/q/AuRBCSxWEg',
-  qqGroup: '1132134217',
+  qq: 'https://qm.qq.com/q/F5F2akHgQ0', // 一群 1132134217 已满，2026-11-20 起指向二群
+  qqGroup: '1131280375',
   plaza: '/plaza',
   webview2: 'https://developer.microsoft.com/microsoft-edge/webview2/',
 }

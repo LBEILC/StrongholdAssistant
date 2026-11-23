@@ -51,7 +51,7 @@ public static class GameUiScale
         double scale = Math.Min(bitmap.Width / 1920.0, bitmap.Height / 1080.0);
         var edges = new double[bitmap.Width];
         int delta = Math.Max(1, (int)(2 * scale));
-        // 卡片两侧的竖线在整段高度上重复，按间距做相关性比较，不依赖卡面或出售状态。
+        // 沿卡身高度累加每列的竖边强度。
         int top = (int)(bitmap.Height - 280 * scale), bottom = (int)(bitmap.Height - 130 * scale);
         if (bottom <= top) return 1;
         var bits = bitmap.LockBits(new(0, top, bitmap.Width, bottom - top), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
@@ -72,11 +72,14 @@ public static class GameUiScale
         finally { bitmap.UnlockBits(bits); }
         int pitch = (int)(220 * scale);
         double best = 0;
+        int left = (int)(bitmap.Width * .35), right = (int)(bitmap.Width * .86);
         for (int p = (int)(218 * scale); p <= (int)(246 * scale); p++)
         {
             double score = 0;
-            for (int x = (int)(bitmap.Width * .35); x < (int)(bitmap.Width * .86) - p; x++)
-                score += edges[x] * edges[x + p];
+            // 六格中剩下的实卡可能并不相邻。把相隔整数个卡距的竖边都计入得分。
+            for (int gap = 1; gap < 6; gap++)
+                for (int x = left; x < right - gap * p; x++)
+                    score += edges[x] * edges[x + gap * p];
             if (score <= best) continue;
             best = score;
             pitch = p;

@@ -15,3 +15,4 @@ src/ui/dev/samples/
 
 # 玩家自愿采集的对局数据
 collect/
+__pycache__/

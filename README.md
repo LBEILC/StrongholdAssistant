@@ -5,7 +5,7 @@
   <a href="LICENSE"><img src=".github/readme/button-license.png" alt="许可：Apache-2.0" height="36"></a>
   <a href="#安装"><img src=".github/readme/button-platform.png" alt="平台：Windows x64" height="36"></a>
   <a href="https://github.com/LBEILC/StrongholdAssistant/issues"><img src=".github/readme/button-feedback.png" alt="问题反馈" height="36"></a>
-  <a href="https://qm.qq.com/q/AuRBCSxWEg"><img src=".github/readme/button-qq.png" alt="QQ 交流群 1132134217" height="36"></a>
+  <a href="https://qm.qq.com/q/F5F2akHgQ0"><img src=".github/readme/button-qq.png" alt="QQ 交流群 1131280375" height="36"></a>
   <br>
   <sub>GitHub 下不动？已有 Mirror酱 CDK 可以 <a href="https://mirrorchyan.com/zh/projects?rid=StrongholdAssistant">前往 Mirror酱 高速下载</a></sub>
 </p>
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  QQ 交流群 <b>1132134217</b> · <a href="https://qm.qq.com/q/AuRBCSxWEg">点击链接加入群聊【卫戍小助手StrongholdAssistant交流群】</a>
+  QQ 交流群 <b>1131280375</b> · <a href="https://qm.qq.com/q/F5F2akHgQ0">点击链接加入群聊【高效雅雅·卫戍协议助手交流2群】</a>（一群 1132134217 已满）
 </p>
 
 <br>
@@ -220,7 +220,7 @@ dotnet run --project src/StrongholdAssistant.Host
 </tr>
 <tr>
 <td><img src=".github/readme/chip-community.png" alt="交流" width="112"></td>
-<td>QQ 交流群 <b>1132134217</b>：<a href="https://qm.qq.com/q/AuRBCSxWEg">点击链接加入群聊【卫戍小助手StrongholdAssistant交流群】</a>。使用问题和建议也可以在 <a href="https://github.com/LBEILC/StrongholdAssistant/issues">Issues</a> 提；识别不了的话，附上设置里导出的诊断包最好。</td>
+<td>QQ 交流群 <b>1131280375</b>：<a href="https://qm.qq.com/q/F5F2akHgQ0">点击链接加入群聊【高效雅雅·卫戍协议助手交流2群】</a>（一群 1132134217 已满）。使用问题和建议也可以在 <a href="https://github.com/LBEILC/StrongholdAssistant/issues">Issues</a> 提；识别不了的话，附上设置里导出的诊断包最好。</td>
 </tr>
 <tr>
 <td><img src=".github/readme/chip-license.png" alt="许可" width="112"></td>
