@@ -1,10 +1,12 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
 using StrongholdAssistant.Host;
+using Shapes = System.Windows.Shapes;
 
 namespace StrongholdAssistant.Tests;
 
@@ -163,6 +165,56 @@ public sealed class OverlayBoardTests : IDisposable
             Assert.False(window.HasOverlayContent);
         }
         finally { window.Close(); }
+    });
+
+    [Fact]
+    public void RetreatAndRefillOnOneCellStaySeparate() => OnSta(() =>
+    {
+        var projection = new BoardProjection([((0, 0), (.2, .2)), ((7, 0), (.8, .2)), ((7, 5), (.8, .7)), ((0, 5), (.2, .7))]);
+        var cell = new FieldCell("board", 2, 2);
+        var field = new FieldState("m01", 6, "now",
+            [new("board", 2, 2, 1, "芬", null), new("bench", 3, 0, 1, "Mon3tr", null)], []);
+        // 一个下场（芬 → 整备区）+ 一个顶到他那一格（Mon3tr → 芬那格）：换人最常见的样子。
+        var plan = new OverlayPlacementPlan("now",
+            [new("Mon3tr", new("bench", 3, 0), cell, "up"), new("芬", cell, new("bench", 1, 0), null)]);
+        var placement = new PlacementLayer();
+        placement.Update(plan, field, projection, true, 1920, 1080);
+        var children = placement.Children.Cast<UIElement>().ToList();
+        var polygons = children.OfType<Shapes.Polygon>().ToList();
+        var labels = children.OfType<Border>().ToList();
+        Assert.Equal(2, labels.Count);
+        static Rect Bounds(Shapes.Polygon polygon) => new(polygon.Points.Min(p => p.X), polygon.Points.Min(p => p.Y),
+            polygon.Points.Max(p => p.X) - polygon.Points.Min(p => p.X), polygon.Points.Max(p => p.Y) - polygon.Points.Min(p => p.Y));
+        var byWidth = polygons.OrderByDescending(p => Bounds(p).Width).ToList();
+        var arrival = Bounds(byWidth[0]);
+        var tag = Bounds(byWidth[1]);
+        // 上场占满整格，下场缩到左上角那一小块，两者不再互相盖住。
+        Assert.True(arrival.Width > tag.Width * 1.5);
+        Assert.True(tag.Width < arrival.Width * .6 && tag.Height < arrival.Height * .6);
+        Assert.InRange(tag.X - arrival.X, -2, 2);
+        Assert.InRange(tag.Y - arrival.Y, -2, 2);
+        // 上场元素排在下场之后，z 序上不会被盖住。
+        Assert.True(children.IndexOf(byWidth[0]) > children.IndexOf(byWidth[1]));
+        // 两个标签上下分开，不是同一个位置。
+        Assert.True(Math.Abs(Canvas.GetTop(labels[0]) - Canvas.GetTop(labels[1])) > 10);
+    });
+
+    [Fact]
+    public void DepartureOnlyStillUsesTheWholeCell() => OnSta(() =>
+    {
+        var projection = new BoardProjection([((0, 0), (.2, .2)), ((7, 0), (.8, .2)), ((7, 5), (.8, .7)), ((0, 5), (.2, .7))]);
+        var cell = new FieldCell("board", 2, 2);
+        var field = new FieldState("m01", 6, "now", [new("board", 2, 2, 1, "芬", null)], []);
+        var plan = new OverlayPlacementPlan("now", [new("芬", cell, new("bench", 1, 0), null)]);
+        var placement = new PlacementLayer();
+        placement.Update(plan, field, projection, true, 1920, 1080);
+        var children = placement.Children.Cast<UIElement>().ToList();
+        // 没有别人顶这一格时，下场仍是满格虚线框 + 一个「下场」标签。
+        Assert.Equal(2, children.Count);
+        var polygon = Assert.Single(children.OfType<Shapes.Polygon>());
+        var label = Assert.Single(children.OfType<Border>());
+        Assert.EndsWith("下场", ((TextBlock)label.Child).Text);
+        Assert.True(polygon.Points.Max(p => p.X) - polygon.Points.Min(p => p.X) > 20);
     });
 
     private static void OnSta(Action action)
