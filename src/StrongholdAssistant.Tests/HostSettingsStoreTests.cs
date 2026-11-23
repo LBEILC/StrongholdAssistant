@@ -19,6 +19,21 @@ public sealed class HostSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void HideFromTaskbarDefaultsOffAndSurvivesBothSwitches()
+    {
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{}");
+        var store = new HostSettingsStore(path);
+        Assert.False(store.LoadSettings().HideFromTaskbar);
+        foreach (bool hide in new[] { true, false })
+        {
+            store.SaveSettings(store.LoadSettings() with { HideFromTaskbar = hide });
+            Assert.Equal(hide, new HostSettingsStore(path).LoadSettings().HideFromTaskbar);
+        }
+    }
+
+    [Fact]
     public void HideCaptureBorderDefaultsOffAndSurvivesReload()
     {
         Directory.CreateDirectory(_directory);

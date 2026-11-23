@@ -899,6 +899,14 @@
         <button class:on={app.settings.startupMode === 'workbench'} onclick={() => set('startupMode', 'workbench')}>工作台</button>
       </div>
     </section>
+
+    <section>
+      <h4>任务栏 <small>助手一直置顶，Alt+Tab 切到它就切不走时用</small></h4>
+      <label class="row">
+        <span class="lbl"><b>不在任务栏和 Alt+Tab 里显示</b><small>打开后从右下角托盘图标打开助手</small></span>
+        <input type="checkbox" class="sw" checked={app.settings.hideFromTaskbar} onchange={(e) => set('hideFromTaskbar', e.currentTarget.checked)} />
+      </label>
+    </section>
     {/if}
     {#if tab === 'keys'}
     <section class="keyrows">

@@ -459,6 +459,8 @@ public sealed partial class HostApi
 
     public async Task<object?> InvokeAsync(string method, JsonElement[] args)
     {
+        if (RecognitionError is { } error && method is ("rescan" or "startRosterScan" or "recognizeField" or "runActions" or "runPlacement"))
+            throw new RecognitionException(error);
         T Read<T>(int index) => args[index].Deserialize<T>(JsonOptions)!;
         switch (method)
         {

@@ -313,6 +313,7 @@ let settings: Settings = {
   adbAddress: '',
   hideCaptureBorder: false,
   multiInstance: location.search.includes('multi'),
+  hideFromTaskbar: false,
   focusCovenants: ['sargon', 'visi'],
   focusOperators: autoBanned().slice(0, 2),
   toggleHotkey: 'Alt+S',

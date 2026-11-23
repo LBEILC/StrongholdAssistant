@@ -14,6 +14,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Using Include="System.IO" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <Resource Include="../../branding/icon.ico" Link="icon.ico" />
     <ProjectReference Include="../ASPAssistant.Core/ASPAssistant.Core.csproj" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />

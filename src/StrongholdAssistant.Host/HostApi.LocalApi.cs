@@ -102,6 +102,8 @@ public sealed partial class HostApi
         Func<GameAction[], string?, string, ControlJob> run)
     {
         var path = uri.AbsolutePath;
+        if (RecognitionError is { } error && path is ("/v1/page" or "/v1/field/recognize" or "/v1/actions" or "/v1/placement/run" or "/v1/field" or "/v1/turn"))
+            throw new LocalApiError(503, error);
         var control = Settings.Control;
         switch ((method, path))
         {

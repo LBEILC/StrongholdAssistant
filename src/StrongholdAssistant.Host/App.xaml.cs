@@ -18,6 +18,7 @@ public partial class App : Application
     private EventWaitHandle? _updateClose;
     private RegisteredWaitHandle? _updateWait;
     private bool _ownsInstance;
+    private System.Windows.Forms.NotifyIcon? _tray;
     private EventWaitHandle? _ownerMarker;
     private readonly DeepLinkChannel _deepLinks = new("StrongholdAssistant.DeepLink");
     private Task? _deepLinkListener;
@@ -151,6 +152,18 @@ public partial class App : Application
                 _activated.Set();
         }));
         MainWindow.Show();
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("打开助手", null, (_, _) => ActivateMainWindow());
+        menu.Items.Add("退出", null, (_, _) => MainWindow.Close());
+        _tray = new System.Windows.Forms.NotifyIcon
+        {
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!),
+            Text = MainWindow.Title, ContextMenuStrip = menu, Visible = true
+        };
+        _tray.MouseClick += (_, args) =>
+        {
+            if (args.Button == System.Windows.Forms.MouseButtons.Left) ActivateMainWindow();
+        };
         if (profile.Name is not null)
         {
             _updateClose = new EventWaitHandle(false, EventResetMode.AutoReset, InstanceRecovery.UpdateCloseName(Environment.ProcessId));
@@ -240,6 +253,7 @@ public partial class App : Application
     private void ActivateMainWindow()
     {
         if (MainWindow is null) return;
+        if (!MainWindow.IsVisible) MainWindow.Show();
         if (MainWindow.WindowState == WindowState.Minimized) MainWindow.WindowState = WindowState.Normal;
         MainWindow.Activate();
         SetForegroundWindow(new WindowInteropHelper(MainWindow).Handle);
@@ -247,6 +261,9 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _tray?.ContextMenuStrip?.Dispose();
+        _tray?.Icon?.Dispose();
+        _tray?.Dispose();
         // 记一笔正常退出，日志里没有这行就是闪退（v1.2.5）。
         AppLogger.Info("Host", $"正常退出 code={e.ApplicationExitCode}");
         CrashGuard.NormalExit();

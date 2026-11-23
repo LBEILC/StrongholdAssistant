@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
+using ASPAssistant.Core.Interop;
 using Microsoft.Web.WebView2.Core;
 
 namespace StrongholdAssistant.Host;
@@ -25,13 +27,23 @@ public partial class MainWindow : Window
         _userDirectory = userDirectory;
         _tracker = new(findWindow: _capture.Connection.FindGameWindow, getViewport: _capture.Connection.GetViewport);
         InitializeComponent();
-        ApplySplashTheme();
-    }
-
-    private void ApplySplashTheme()
-    {
         var directory = _userDirectory ?? AssistantProfile.Current.DirectoryPath;
         var settings = new HostSettingsStore(Path.Combine(directory, "settings.json")).LoadSettings();
+        ShowInTaskbar = !settings.HideFromTaskbar;
+        if (settings.HideFromTaskbar) SourceInitialized += (_, _) => SetToolWindow(true);
+        ApplySplashTheme(settings);
+    }
+
+    private void SetToolWindow(bool hide)
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var style = User32.GetWindowLong(hwnd, User32.GWL_EXSTYLE);
+        User32.SetWindowLong(hwnd, User32.GWL_EXSTYLE,
+            hide ? style | User32.WS_EX_TOOLWINDOW : style & ~User32.WS_EX_TOOLWINDOW);
+    }
+
+    private void ApplySplashTheme(SettingsDto settings)
+    {
         var light = settings.UiScheme == "light";
         if (settings.UiScheme == "system")
         {
@@ -130,7 +142,7 @@ public partial class MainWindow : Window
         {
             // 初始化完成后再按已连接窗口定位，避免停留在启动尺寸与位置。
             RefreshScale();
-            _scanner.Start();
+            _scanner?.Start();
         }
     }
 
@@ -293,6 +305,7 @@ public partial class MainWindow : Window
         Browser.Visibility = Visibility.Visible;
         Splash.Visibility = Visibility.Collapsed;
         _uiReady = true;
+        PublishRecognitionError();
         PublishMaximized();
         while (_pendingDeepLinks.TryDequeue(out var url)) ReceiveDeepLink(url);
     }
@@ -318,10 +331,10 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _tracker.Dispose();
-        _scanner.Dispose();
+        _scanner?.Dispose();
         _capture.Connection.Dispose();
-        _ocr.Dispose();
-        _iconMatcher.Dispose();
+        _ocr?.Dispose();
+        _iconMatcher?.Dispose();
         Browser.Dispose();
         base.OnClosed(e);
     }

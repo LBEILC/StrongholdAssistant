@@ -25,6 +25,7 @@ public sealed record BanCovenantReadResult(
     public static readonly BanCovenantReadResult Empty = new([], [], [], []);
     // 网格漏行时，OCR 名称不能悄悄丢弃后再被判为完整。
     internal bool HasUnmatchedNames { get; init; }
+    internal bool UsedLineOcr { get; init; }
 }
 
 /// <summary>
@@ -122,13 +123,14 @@ public static class BanCovenantReader
             core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
             core.Slots, additional.Slots, core.SawHeader, additional.SawHeader)
         {
-            HasUnmatchedNames = core.HasUnmatchedNames || additional.HasUnmatchedNames
+            HasUnmatchedNames = core.HasUnmatchedNames || additional.HasUnmatchedNames,
+            UsedLineOcr = core.UsedLineOcr || additional.UsedLineOcr
         };
     }
 
     private sealed record SectionRead(
         IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed,
-        int Slots = 0, bool SawHeader = false, bool HasUnmatchedNames = false);
+        int Slots = 0, bool SawHeader = false, bool HasUnmatchedNames = false, bool UsedLineOcr = false);
 
     private static async Task<SectionRead> ReadSectionAsync(
         IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
@@ -151,11 +153,6 @@ public static class BanCovenantReader
             $"{group} raw OCR ({ocrResults.Count}): [{string.Join(", ", ocrResults.Select(r => r.Text))}]");
 
         var sawHeader = ocrResults.Any(r => NormalizeHeader(r.Text).Contains(headerText));
-        if (!sawHeader)
-        {
-            AppLogger.Warn("BanAnalyzer",
-                $"{group}: header '{headerText}' missing from region {region.Name} (page may be scrolled)");
-        }
 
         var slots = pixels is null
             ? BanIconGrid.Detect(screenshot, imgWidth, imgHeight, region.YPercent, region.YPercent + region.HeightPercent)
@@ -163,17 +160,36 @@ public static class BanCovenantReader
 
         var candidates = MatchCandidates(ocrResults, knownNames, imgWidth);
 
+        // 区域检测全空但仍找到图标时，按实际列距和首个图标定位标题，确认分组。
+        if (ocrResults.Count == 0 && slots.Count >= 2)
+        {
+            var first = slots[0];
+            var scale = (slots[1].CenterX - first.CenterX) / 117;
+            var x = (int)(first.CenterX + 15 * scale);
+            var y = (int)(first.CenterY - 142 * scale);
+            int w = (int)(140 * scale), h = (int)(40 * scale);
+            if (x >= 0 && y >= 0 && x + w <= imgWidth && y + h <= imgHeight)
+            {
+                var title = await ocr.RecognizeLineAsync(screenshot, x, y, w, h);
+                sawHeader = title.Any(t => NormalizeHeader(t.Text).Contains(headerText));
+            }
+        }
+        bool readLines = ocrResults.Count == 0 && sawHeader;
+        if (!sawHeader)
+            AppLogger.Warn("BanAnalyzer", $"{group}: header '{headerText}' missing from region {region.Name} (page may be scrolled)");
+
         // 整行 OCR 偶尔读不出名字（缩放过、被暗化、字体发糊），但图标位置是稳定的。
         // 这时逐个槽位裁剪名字框，只做“候选名匹配”，比整行识别稳得多。
         if (slots.Count > 0 && candidates.Count < slots.Count)
         {
-            candidates = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, knownNames, candidates);
+            candidates = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, knownNames, candidates,
+                readLines);
             AppLogger.Info("BanAnalyzer", $"{group}: slot OCR recovered {candidates.Count}/{slots.Count} names");
         }
 
         if (slots.Count > 0)
             return BindToSlots(candidates, slots, group, greenThreshold)
-                with { Slots = slots.Count, SawHeader = sawHeader };
+                with { Slots = slots.Count, SawHeader = sawHeader, UsedLineOcr = readLines };
 
         if (candidates.Count == 0)
             return new SectionRead([], [], 0, sawHeader);
@@ -191,7 +207,7 @@ public static class BanCovenantReader
     /// </summary>
     private static async Task<List<Candidate>> FillNamesBySlotAsync(
         IOcrEngine ocr, byte[] screenshot, int imgWidth, int imgHeight,
-        IReadOnlyList<BanIconSlot> slots, IReadOnlyList<string> knownNames, List<Candidate> existing)
+        IReadOnlyList<BanIconSlot> slots, IReadOnlyList<string> knownNames, List<Candidate> existing, bool readLines)
     {
         if (slots.Count == 0 || knownNames.Count == 0) return existing;
 
@@ -216,7 +232,14 @@ public static class BanCovenantReader
             if (boxX < 0 || boxY < 0 || boxX + boxWidth > imgWidth || boxY + boxHeight > imgHeight)
                 continue;
 
-            pending.Add((slot, boxX, boxY, boxWidth, boxHeight));
+            if (readLines)
+            {
+                var line = await ocr.RecognizeLineAsync(screenshot, boxX, boxY, boxWidth, boxHeight);
+                var name = line.Select(t => MatchLineInText(t.Text, knownNames)).FirstOrDefault(n => n is not null);
+                if (name is not null)
+                    existing.Add(new(new(name, (boxX, boxY, boxWidth, boxHeight)), name, 3));
+            }
+            else pending.Add((slot, boxX, boxY, boxWidth, boxHeight));
         }
 
         if (pending.Count == 0) return existing;

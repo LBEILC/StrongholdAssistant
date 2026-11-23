@@ -20,9 +20,9 @@ public partial class MainWindow
         method = _capture.Connection.WindowCapture.Method,
         lastFallbackReason = _capture.Connection.WindowCapture.LastFallbackReason
     };
-    private MaaOcrEngine _ocr = null!;
-    private MaaBanIconMatcher _iconMatcher = null!;
-    private OcrScannerService _scanner = null!;
+    private MaaOcrEngine? _ocr;
+    private MaaBanIconMatcher? _iconMatcher;
+    private OcrScannerService? _scanner;
     private DockSettings _dock = new(380, null);
     private readonly OverlayWindow _overlay = new();
     private IReadOnlyList<ShopItem> _shopItems = [];
@@ -88,7 +88,7 @@ public partial class MainWindow
                     JsonSerializer.Serialize(new { @event = name, data = value }, HostApi.JsonOptions)));
                 return;
             }
-            if (value is ScanStatus status)
+            if (value is ScanStatus status && _scanner is not null)
             {
                 _scanner.SetBanScreenDetectionPaused(status.Busy || _closing);
                 if (status.Ok == true) _scanner.MarkInformationRecorded();
@@ -122,11 +122,31 @@ public partial class MainWindow
     private async Task InitializeGameAsync()
     {
         var data = Path.Combine(ASPAssistant.Core.PackageLayout.Root, "data");
-        _ocr = await Task.Run(() => new MaaOcrEngine(data));
-        await _ocr.WarmUpAsync();
-        var matcherLoad = System.Diagnostics.Stopwatch.StartNew();
-        _iconMatcher = await Task.Run(() => new MaaBanIconMatcher(data));
-        ASPAssistant.Core.AppLogger.Info("MaaBanIconMatcher", $"初始化完成，耗时 {matcherLoad.ElapsedMilliseconds} ms");
+        _api.InitializeBoardRoutes(data);
+        try
+        {
+            _ocr = await Task.Run(() => new MaaOcrEngine(data));
+            await _ocr.WarmUpAsync();
+            var matcherLoad = System.Diagnostics.Stopwatch.StartNew();
+            _iconMatcher = await Task.Run(() => new MaaBanIconMatcher(data));
+            ASPAssistant.Core.AppLogger.Info("MaaBanIconMatcher", $"初始化完成，耗时 {matcherLoad.ElapsedMilliseconds} ms");
+        }
+        catch (Exception ex)
+        {
+            var controller = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "MaaCustomControlUnit.dll");
+            _api.RecognitionError = ex.GetBaseException() switch
+            {
+                DllNotFoundException or BadImageFormatException =>
+                    "识别功能用不了：助手的识别组件加载不起来。重新装一次完整安装包；还不行，装一下微软的 Visual C++ 运行库（x64）。",
+                MaaFramework.Binding.MaaJobStatusException job when job.Message.Contains("NullController") =>
+                    "识别功能用不了：识别组件 MaaCustomControlUnit.dll 不见了，多半是被杀毒软件隔离了。在杀毒软件里把它恢复并加信任，或者重新装一次完整安装包。",
+                _ => "识别功能用不了：识别组件没能启动。重启助手试试，还不行就导出诊断包发到群里。"
+            };
+            ASPAssistant.Core.AppLogger.Error("OCR",
+                $"{_api.RecognitionError} 资源目录={data}；控制器组件={controller}；文件存在={File.Exists(controller)}", ex);
+            PublishRecognitionError();
+            return;
+        }
         var scanOcr = new DiagnosticOcrEngine(_ocr);
         _scanner = new OcrScannerService(_capture, new GarrisonOcrStrategy(), _api.CreateShopReader(scanOcr),
             scanOcr, new ASPAssistant.Core.GameState.GameState(),
@@ -162,7 +182,6 @@ public partial class MainWindow
         });
         _scanner.EconomyRead += reading => Dispatcher.Invoke(() => _api.ObserveEconomy(reading));
         _scanner.ThemeDetected += reading => Dispatcher.Invoke(() => _api.ObserveTheme(reading));
-        _api.InitializeBoardRoutes(data);
         _api.InitializeField(data, scanOcr);
         _api.InitializeMatchReading(data, scanOcr);
         _scanner.ObserveOtherTurn = _api.ObserveOtherTurn;
@@ -203,7 +222,7 @@ public partial class MainWindow
                 dpi = state.Window == 0 ? 96 : User32.GetWindowDpiScale(state.Window) * 96 };
         };
         // 和开局识别同一个截图方法：点助手里的「识别」时前台是助手，也能截；侧栏挡着游戏时先藏一下（v1.0.2 玩家反馈）
-        _api.InitializeControl(_capture, _scanner);
+        _api.InitializeControl(_capture, _scanner, _ocr, data);
         _api.ReadCurrentField = () => _scanner.ReadCurrentFieldAsync(CaptureInformationScreenAsync, _api.RecognizeFieldFrameAsync);
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
         _scanner.BoardFrameReady += (frame, reading) =>
@@ -267,6 +286,13 @@ public partial class MainWindow
         _scanner.AwaitingDetail = () => _api.Match.AwaitingDetail;
         _scanner.BanScreenDetected += solo => _automaticScan = Dispatcher.InvokeAsync(() => RecordAutomaticallyAsync(solo)).Task.Unwrap();
         _scanner.DetailScreenDetected += () => _automaticScan = Dispatcher.InvokeAsync(RecordDetailAutomaticallyAsync).Task.Unwrap();
+    }
+
+    private void PublishRecognitionError()
+    {
+        if (_uiReady && _api.RecognitionError is { } message)
+            Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(
+                new { @event = "scan", data = new ScanStatus(false, message, false) }, HostApi.JsonOptions));
     }
 
     // 跟随定位不等待 OCR 预热；首次发现和后续移动共用 UpdateGame。
@@ -618,6 +644,13 @@ public partial class MainWindow
 
     private async Task RefreshSettingsAsync(bool followedBefore)
     {
+        var showInTaskbar = !_api.Settings.HideFromTaskbar;
+        if (ShowInTaskbar != showInTaskbar)
+        {
+            // WPF 切换 ShowInTaskbar 会重新向外壳显示窗口，先同步 Alt+Tab 样式。
+            SetToolWindow(!showInTaskbar);
+            ShowInTaskbar = showInTaskbar;
+        }
         _refreshKey = HotkeyParser.Parse(_api.Settings.RefreshKey);
         RefreshRouteHotkey(_api.Connection.GameElevated == true);
         if (_connectGame)
@@ -681,8 +714,11 @@ public partial class MainWindow
         _overlay.Hide();
         await _initialization;
         _tracker.Stop();
-        _scanner.SetBanScreenDetectionPaused(true);
-        await _scanner.WaitForIdleAsync();
+        if (_scanner is not null)
+        {
+            _scanner.SetBanScreenDetectionPaused(true);
+            await _scanner.WaitForIdleAsync();
+        }
         await _automaticScan;
         await _api!.WaitForRecordingAsync();
         await _api.FinishCollectionsAsync();

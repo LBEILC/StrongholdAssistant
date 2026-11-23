@@ -871,6 +871,11 @@ export interface Settings {
    * 命令行 --profile 名字 不受这个开关限制，agent 和脚本随时可以拉起指定配置
    */
   multiInstance: boolean
+  /**
+   * 不在任务栏和 Alt+Tab 里显示（v1.3.8，默认 false）：打开后助手窗口不占任务栏按钮、Alt+Tab 切不到它，
+   * 从右下角托盘图标打开；改了马上生效。托盘图标始终都在
+   */
+  hideFromTaskbar: boolean
   /** 特别关注（跨局保留）：熟悉的盟约和关键叠层干员。只做醒目提示，不影响商店标记 */
   focusCovenants: CovenantId[]
   focusOperators: string[]

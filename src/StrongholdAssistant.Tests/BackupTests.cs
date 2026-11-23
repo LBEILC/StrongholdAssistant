@@ -61,7 +61,7 @@ public sealed class BackupTests : IDisposable
         var lineup = await AddLineup(api, "原阵容");
         var settings = new SettingsDto("closure", false, false)
         {
-            AlwaysOnTop = true, UiScale = JsonSerializer.SerializeToElement(1.5),
+            AlwaysOnTop = true, HideFromTaskbar = true, UiScale = JsonSerializer.SerializeToElement(1.5),
             FollowGame = false, CollapseMode = "up",
             FocusCovenants = ["yan"], FocusOperators = ["折光"]
         };

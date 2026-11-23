@@ -58,6 +58,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     public MarkerStyles MarkerStyles { get; init; } = new();
     public bool GameThemeAuto { get; init; } = true;
     public bool MultiInstance { get; init; }
+    public bool HideFromTaskbar { get; init; }
     public bool RunAsAdmin { get; init; } = true;
     public RouteOverlaySettings Routes { get; init; } = new();
     public OverlayLayerSettings OverlayLayers { get; init; } = new();

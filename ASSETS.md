@@ -76,6 +76,7 @@
 | `src/StrongholdAssistant.Tests/TestData/user-ban-4-1920x1080.png` | 用户提供的禁用信息页截图，只用于测试 | 用户于 2026-11-11 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/prep-ready-1920x1080.png`、`info-scrolled-new-match-1920x1080.png` | 用户提供的准备就绪与第二局滚动信息页截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/info-user-window-1648x933.png` | 用户提供的窗口模式信息页截图，含两行附加盟约，只用于测试，不进发布包 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
+| `src/StrongholdAssistant.Tests/TestData/info-diagnostic-89-1920x1080.png` | 窗口化对局详情页，用于离线验证盟约与敌方领袖识别 | 玩家提供的 2026-11-21 卫戍协议诊断截图；游戏画面归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/info-1610-*-1600x1024.png` | 用户提供的高画面信息页顶部及禁用列表截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/shop-closure-li-user-1665x1012.jpg` | 用户提供的可露希尔商店截图，只用于测试，不进发布包 | 用户于 2026-11-12 提供；游戏画面内容归上海鹰角网络所有 |
 | `src/StrongholdAssistant.Tests/TestData/shop-closure-empty-1920x1080.png` | PC 终极模拟第 9 回合的商店追踪框错位截图，由 WebP 转为 PNG，保留原始坐标和商店区域，只用于测试 | 用户于 2026-11-20 提供；游戏画面归上海鹰角网络所有 |

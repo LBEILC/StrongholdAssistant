@@ -7,6 +7,7 @@ namespace StrongholdAssistant.Host;
 public sealed partial class HostApi
 {
     private readonly SemaphoreSlim _scanGate = new(1, 1);
+    internal string? RecognitionError { get; set; }
     private BanScreenAnalyzer _analyzer = null!;
     private InformationScreenDetector _informationDetector = null!;
     private BanAvatarRecognizer _avatars = null!;

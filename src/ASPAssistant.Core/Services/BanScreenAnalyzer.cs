@@ -159,7 +159,9 @@ public sealed class BanScreenAnalyzer
             // 2026-11-14：网格本身也会漏掉整行，不能用检测到的槽数作为盟约总数。
             // 全量池按数据总数核对；样图确认的标准模拟小池必须名称、槽数都完整对应。
             var fullPool = read.Core.Count == _coreCovenantNames.Count
-                && read.Additional.Count == _additionalCovenantNames.Count;
+                && read.Additional.Count == _additionalCovenantNames.Count
+                && read.Core.Select(c => c.Name).ToHashSet().SetEquals(_coreCovenantNames)
+                && read.Additional.Select(c => c.Name).ToHashSet().SetEquals(_additionalCovenantNames);
             var standardPool = read.CoreSlots == 8 && read.AdditionalSlots == 10
                 && read.Core.Count == 8 && read.Additional.Count == 10
                 && new HashSet<string>(read.Core.Select(c => c.Name)).SetEquals(
@@ -172,6 +174,8 @@ public sealed class BanScreenAnalyzer
                 AnalysisFailed?.Invoke($"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
                 return;
             }
+            if (enemy is null && read.UsedLineOcr)
+                enemy = await _enemyRecognizer.ReadInformationLinesAsync(shot, imgWidth, imgHeight);
             var hasEnemy = enemy is not null && enemy.BossName.Length > 0 && enemy.EnemyTypes.Count > 0;
             var enemyFaction = hasEnemy ? enemy!.BossName : null;
 

@@ -26,11 +26,11 @@ public sealed partial class HostApi
     private EmulatorDevice? _controlDevice;
     internal string ControlDirectory => Path.Combine(DataDirectory, "control");
 
-    internal void InitializeControl(ScreenCaptureService capture, OcrScannerService scanner)
+    internal void InitializeControl(ScreenCaptureService capture, OcrScannerService scanner, IOcrEngine ocr, string data)
     {
         _controlCapture = capture;
         _controlScanner = scanner;
-        SetControlCompiler(new ActionCompiler(), ControlPreview.Render);
+        SetControlCompiler(new ActionCompiler(ocr, data), ControlPreview.Render);
         capture.Connection.Changed += state =>
         {
             if (_controlTarget is { } target && (target.Window != state.Window || target.Source != state.Source

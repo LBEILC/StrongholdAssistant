@@ -4,6 +4,7 @@ using ASPAssistant.Core.GameModes.GarrisonProtocol;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
 using FluentAssertions;
+using Moq;
 using Xunit;
 
 namespace ASPAssistant.Tests.Services;
@@ -187,6 +188,43 @@ public sealed class BanScreenSamplesTests(ASPAssistant.Tests.Services.EnemyRecog
         enemy.Should().NotBeNull();
         enemy!.BossName.Should().Be(expected.Boss);
         enemy.EnemyTypes.Should().Equal(expected.Types);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WindowedDiagnosticPublishesCovenantsAndBoss(bool regionOcrEmpty)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "info-diagnostic-89-1920x1080.png"));
+        IOcrEngine ocr = _ocr;
+        if (regionOcrEmpty)
+        {
+            // 重放 89 号现场：区域检测始终为空，单行直读仍走真实模型。
+            var replay = new Mock<IOcrEngine>(MockBehavior.Strict);
+            replay.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync([]);
+            replay.Setup(e => e.RecognizeLineAsync(It.IsAny<byte[]>(), It.IsAny<int>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+                .Returns((byte[] frame, int x, int y, int w, int h) => _ocr.RecognizeLineAsync(frame, x, y, w, h));
+            ocr = replay.Object;
+        }
+        var strategy = new GarrisonOcrStrategy();
+        var analyzer = new BanScreenAnalyzer(() => Task.FromResult<byte[]?>(bytes), ocr, strategy,
+            new EnemyRecognizer(ocr, strategy, fixture.Bosses), [], Names.Core, Names.Additional);
+        BanScreenResult? result = null;
+        EnemyResult? enemy = null;
+        string? failure = null;
+        analyzer.AnalysisCompleted += read => result = read;
+        analyzer.EnemyDetected += read => enemy = read;
+        analyzer.AnalysisFailed += message => failure = message;
+
+        await analyzer.RunAnalysisAsync();
+
+        failure.Should().BeNull();
+        result!.CoreCovenants.Select(c => c.Name).Should().BeEquivalentTo(Names.Core);
+        result.AdditionalCovenants.Select(c => c.Name).Should().BeEquivalentTo(Names.Additional);
+        result.EnemyFaction.Should().Be("假想敌：铳");
+        enemy!.EnemyTypes.Should().Equal("特训敌人·隐匿", "特训敌人·元素", "特训敌人·折射");
     }
 
     [Fact]

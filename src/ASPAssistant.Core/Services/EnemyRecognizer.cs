@@ -24,6 +24,49 @@ public sealed class EnemyRecognizer(IOcrEngine ocr, IOcrStrategy ocrStrategy, Bo
         var texts = await ocr.RecognizeRegionAsync(screenshot,
             (int)(region.XPercent * imgWidth), (int)(region.YPercent * imgHeight),
             (int)(region.WidthPercent * imgWidth), (int)(region.HeightPercent * imgHeight));
+        return ReadPanel(texts, imgWidth);
+    }
+
+    // 完整盟约面板已经确认，区域检测却读不到首领时，直读右栏的标题、名字及三行特训。
+    internal async Task<EnemyResult?> ReadInformationLinesAsync(byte[] screenshot, int width, int height)
+    {
+        using var pixels = BanScreenPixels.Load(screenshot);
+        if (pixels is null) return null;
+        double scale = GameUiScale.InformationBaseScale(width, height) * GameUiScale.Information(pixels);
+        // 只在地图下方、头像右侧找金色或白色字行，保留换行的首领名字。
+        int left = Math.Max(0, (int)(width / 2d + 532 * scale));
+        int right = Math.Min(width, (int)(width / 2d + 830 * scale));
+        int top = (int)(432 * scale), bottom = Math.Min(height, (int)(810 * scale));
+        int pad = Math.Max(1, (int)(3 * scale));
+        var lines = new List<OcrTextResult>();
+        int xMin = right, xMax = left, start = top;
+        for (int y = top; y <= bottom; y++)
+        {
+            bool ink = false;
+            for (int x = left; y < bottom && x < right; x++)
+            {
+                if (pixels.Luma(x, y) < 155) continue;
+                ink = true;
+                xMin = Math.Min(xMin, x);
+                xMax = Math.Max(xMax, x);
+            }
+            if (ink) continue;
+            if (y - start >= 12 * scale && xMax > xMin)
+            {
+                int x = Math.Max(0, xMin - pad), first = Math.Max(0, start - pad);
+                lines.AddRange(await ocr.RecognizeLineAsync(screenshot, x, first,
+                    Math.Min(width, xMax + pad + 1) - x, Math.Min(height, y + pad) - first));
+            }
+            start = y + 1;
+            xMin = right;
+            xMax = left;
+        }
+        var enemy = ReadPanel(lines, width);
+        return enemy is { EnemyTypes.Count: 3 } && bossData.Lookup(enemy.BossName) is not null ? enemy : null;
+    }
+
+    private EnemyResult? ReadPanel(IReadOnlyList<OcrTextResult> texts, int imgWidth)
+    {
         // 禁用列表样图中，金色标题的「方」被 OCR 读成「万」。
         var anchor = texts.FirstOrDefault(t => Regex.Replace(t.Text, @"\s+", "")
             .Replace("敌万领袖", "敌方领袖").Contains("敌方领袖"));

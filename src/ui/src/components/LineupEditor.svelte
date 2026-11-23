@@ -153,7 +153,8 @@
   }
   const removeUpgrade = (r: number) => (e!.upgrades = upgrades.filter((u) => u.round !== r))
   const levelOf = (id: string) => e?.goals.find((g) => g.id === id)?.level
-  const useGoals = $derived(!!e?.goals.length && goalOnly)
+  // 点了某个盟约就按它看，不再被「只看目标盟约」挡成空列表（群 90：目标里没有阿戈尔，点阿戈尔下面一个人都没有）
+  const useGoals = $derived(!!e?.goals.length && goalOnly && !bond)
   const pool = $derived.by(() => {
     if (!e) return []
     const base = useGoals ? rankForGoals(e.goals, app.catalog.operators) : [...app.catalog.operators].sort((a, b) => b.tier - a.tier)
@@ -552,6 +553,11 @@
         <div class="pool">
           {#each pool as o (o.name)}
             <span class="pi"><OpTile name={o.name} size={44} tier owned={inLineup(o.name)} menu={false} onclick={() => add(o.name)} /></span>
+          {:else}
+            <div class="none">
+              <span>没有符合{[q.trim() && `「${q.trim()}」`, bond && app.cov(bond).name, tiers.length && tiers.map((t) => ROMAN[t]).join('、') + ' 阶', useGoals && '目标盟约'].filter(Boolean).join(' + ')}的干员</span>
+              <button onclick={() => ((q = ''), (bond = null), (tiers = []), (goalOnly = false))}>清除筛选</button>
+            </div>
           {/each}
         </div>
       {:else if poolKind === 'st'}
@@ -1160,6 +1166,27 @@
     justify-items: center;
     align-content: start;
     padding: 4px 0 12px;
+  }
+  .none {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 8px;
+    color: var(--fg-3);
+    font-size: 12px;
+    text-align: center;
+  }
+  .none button {
+    padding: 4px 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--fg-1);
+  }
+  .none button:hover {
+    border-color: var(--mint);
+    color: var(--mint);
   }
   .err {
     margin: 0;
