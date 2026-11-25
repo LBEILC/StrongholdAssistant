@@ -52,6 +52,7 @@ public sealed record SettingsDto(string GameTheme, bool ShopMarkers, bool AutoCh
     // TODO(design): 将 placementGoal 加入前端云同步 PREF_KEYS 和 CloudPrefsData。
     public string PlacementGoal { get; init; } = "balanced";
     public bool Collect { get; init; }
+    public bool ShopAdvice { get; init; }
     public bool FieldAuto { get; init; }
     public ControlSettings Control { get; init; } = new();
     public string FieldHotkey { get; init; } = "Alt+F";

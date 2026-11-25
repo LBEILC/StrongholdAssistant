@@ -253,7 +253,7 @@ public partial class App : Application
     private void ActivateMainWindow()
     {
         if (MainWindow is null) return;
-        if (!MainWindow.IsVisible) MainWindow.Show();
+        ((MainWindow)MainWindow).ShowAfterMinimize();
         if (MainWindow.WindowState == WindowState.Minimized) MainWindow.WindowState = WindowState.Normal;
         MainWindow.Activate();
         SetForegroundWindow(new WindowInteropHelper(MainWindow).Handle);

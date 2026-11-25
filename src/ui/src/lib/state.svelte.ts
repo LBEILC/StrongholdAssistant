@@ -7,7 +7,7 @@ import { cloud } from './sync.svelte'
 import { untrack } from 'svelte'
 import { currentStage, stageView, editStage } from './stages'
 import { ELITE_COVENANT, fillDefaults, defaultsFromLineup } from './opconfig'
-import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupGroup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, UpdateStatus } from './api'
+import type { AppInfo, Catalog, Connection, Covenant, CovenantGoal, Equipment, Lineup, LineupGroup, LineupMember, MatchInfo, Operator, ScanStatus, Session, Settings, ShopAdvice, UpdateStatus } from './api'
 
 export type Tab = 'match' | 'lineup' | 'codex' | 'history'
 export type LineupView = 'target' | 'mine' | 'plaza' | 'skland'
@@ -63,6 +63,8 @@ export class AppState {
   catalog: Catalog = catalog
   connection = $state<Connection>(connection)
   match = $state<MatchInfo>(match)
+  /** 单人规程商店建议（409），设置 shopAdvice 关着时宿主不推 */
+  shopAdvice = $state<ShopAdvice | null>(null)
   lineups = $state<Lineup[]>(lineups)
   session = $state<Session>(session)
   tab = $state<Tab>((location.hash.slice(1) as Tab) || 'match')
@@ -178,6 +180,10 @@ export class AppState {
     // 宿主识别到新的开局信息页时推送
     api.onMatch((m) => (this.match = m))
     api.onConnection((c) => (this.connection = c))
+    // 单人规程商店建议（409）：按 stateRevision 只留最新一条
+    api.onShopAdvice((a) => {
+      if (!this.shopAdvice || a.stateRevision > this.shopAdvice.stateRevision) this.shopAdvice = a
+    })
     api.onScan((s) => {
       this.scanning = s.busy
       if (s.message) this.scanNote = s

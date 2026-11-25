@@ -62,6 +62,8 @@
   let bonds = $state<string[]>([])
   /** 选了几个盟约时：false = 全部符合（默认），true = 符合其一（v1.2.8 群友要） */
   let bondAny = $state(false)
+  /** 只看没有核心盟约的（空弦、青枳这类，issue #9） */
+  let noCore = $state(false)
   const hasBond = (o: { core: string[]; extra: string[] }, b: string) => o.core.includes(b) || o.extra.includes(b)
   let onlyTracked = $state(false)
   // 从顶栏追踪的「N 项」点进来：切到干员、只看追踪中
@@ -101,6 +103,7 @@
         opMatches(o.name, q) &&
         (!tiers.length || tiers.includes(o.tier)) &&
         (!bonds.length || (bondAny ? bonds.some((b) => hasBond(o, b)) : bonds.every((b) => hasBond(o, b)))) &&
+        (!noCore || !o.core.length) &&
         (!timings.length || timings.some((t) => hasTiming(o.name, t))) &&
         (!onlyTracked || app.tracked.has(o.name)) &&
         (!onlyFocus || app.focusOps.has(o.name)) &&
@@ -220,7 +223,7 @@
         <button class="chip" class:on={hideBanned} onclick={() => (hideBanned = !hideBanned)}>隐藏禁用</button>
         <!-- 时机和盟约收进「更多筛选」，默认收起、记住开合，免得筛选区占半屏（v1.2.7 群友反馈太长） -->
         <button class="chip more" class:open={moreOpen} aria-expanded={moreOpen} onclick={() => app.toggleFold('codex.more')}>
-          更多筛选{#if timings.length + bonds.length}<em>{timings.length + bonds.length}</em>{/if}<span class="chev"><Icon name="arrowDown" size={11} /></span>
+          更多筛选{#if timings.length + bonds.length + +noCore}<em>{timings.length + bonds.length + +noCore}</em>{/if}<span class="chev"><Icon name="arrowDown" size={11} /></span>
         </button>
       {/if}
     </div>
@@ -235,17 +238,19 @@
         </div>
         <BondPick state={(id) => ({ on: bonds.includes(id) })} onpick={(id) => (bonds = toggle(bonds, id))}>
           {#snippet coreAside()}
+            <button class="nocore" class:on={noCore} title="只看没有核心盟约的干员" onclick={() => (noCore = !noCore)}>无核心盟约</button>
             <span class="anyall" role="group" aria-label="多个盟约怎么筛">
               <button class:on={!bondAny} onclick={() => (bondAny = false)}>全部符合</button>
               <button class:on={bondAny} onclick={() => (bondAny = true)}>符合其一</button>
             </span>
           {/snippet}
         </BondPick>
-      {:else if timings.length + bonds.length}
+      {:else if timings.length + bonds.length + +noCore}
         <!-- 收起时也看得到筛了什么，点 × 单个去掉 -->
         <div class="chips picked">
           {#each timings as t (t)}<button class="chip on" title="去掉这个时机" onclick={() => (timings = toggle(timings, t))}>{t === OTHER ? t : `<${t}>`}<Icon name="close" size={10} /></button>{/each}
           {#each bonds as b (b)}<button class="chip on" title="去掉这个盟约" onclick={() => (bonds = toggle(bonds, b))}>{app.cov(b).name}<Icon name="close" size={10} /></button>{/each}
+          {#if noCore}<button class="chip on" title="去掉这个筛选" onclick={() => (noCore = false)}>无核心盟约<Icon name="close" size={10} /></button>{/if}
         </div>
       {/if}
     {:else}
@@ -563,6 +568,17 @@
     margin-right: 2px;
   }
   /* 多个盟约「全部符合 / 符合其一」，放在盟约组标题右边 */
+  .nocore {
+    margin-left: auto;
+    padding: 2px 7px;
+    font-size: var(--fs-xs);
+    color: var(--fg-4);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .nocore.on {
+    color: var(--mint-ink);
+    background: var(--mint);
+  }
   .anyall {
     display: inline-flex;
     box-shadow: inset 0 0 0 1px var(--line);

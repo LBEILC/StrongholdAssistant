@@ -287,6 +287,7 @@ let settings: Settings = {
   uiScheme: (new URLSearchParams(location.search).get('scheme') as Settings['uiScheme'] | null) ?? 'system', // ?scheme=light
   uiAccent: new URLSearchParams(location.search).get('accent') ?? '', // ?accent=%2322c55e
   shopMarkers: true,
+  shopAdvice: location.search.includes('advice'),
   shopScanSpeed: 'normal',
   routes: { enabled: false, display: 'always', peekSeconds: 6, hotkey: 'Alt+R', overlap: 'cycle', cycleSeconds: 2.2, fly: 'main', side: 'auto' },
   overlayLayers: { placement: true, pending: true, upgrade: true },
@@ -670,6 +671,15 @@ export const mockApi: Api = {
     boardListeners.add(cb)
     return () => boardListeners.delete(cb)
   },
+  // ?advice 演示商店建议：买第 2 格；?advice=off 演示没追踪阵容时的暂停原因
+  onShopAdvice: (cb) => {
+    const q = new URLSearchParams(location.search).get('advice')
+    if (q === null) return () => {}
+    const t = setTimeout(() => cb(q === 'off'
+      ? { stateRevision: 1, modelId: 'garrison-sp3', status: 'unavailable', missingInputs: ['hand', 'targetCovenant'], action: null, preference: null }
+      : { stateRevision: 1, modelId: 'garrison-sp3', status: 'ready', missingInputs: ['hand'], action: { kind: 'buy', shopSlot: 1, targetId: catalog.operators[3].charId }, preference: { topShare: 0.62, logitGap: 1.4, legalCount: 6 } }), 300)
+    return () => clearTimeout(t)
+  },
   onPlacement: (cb) => {
     placementListeners.add(cb)
     return () => placementListeners.delete(cb)
@@ -752,6 +762,7 @@ export const mockApi: Api = {
     if (cmd === 'maximize' || cmd === 'restore') for (const cb of maxListeners) cb(cmd === 'maximize')
   },
   resizeWindow: async () => {},
+  logUiError: async (text) => console.error(text),
   onMaximized: (cb) => {
     maxListeners.add(cb)
     return () => maxListeners.delete(cb)

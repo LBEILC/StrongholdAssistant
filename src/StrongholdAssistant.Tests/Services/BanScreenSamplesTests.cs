@@ -88,6 +88,39 @@ public sealed class BanScreenSamplesTests(ASPAssistant.Tests.Services.EnemyRecog
     private static Sample Expect(string file) => Samples.Single(s => s.File == file);
 
     [Theory]
+    [InlineData(85, "萨尔贡 维多利亚 叙拉古 卡西米尔 莱塔尼亚 炎 谢拉格 阿戈尔 乌萨斯 伊比利亚")]
+    [InlineData(94, "萨尔贡 维多利亚 阿戈尔 卡西米尔 乌萨斯 炎 谢拉格 叙拉古 伊比利亚 莱塔尼亚")]
+    [InlineData(86, "炎 维多利亚 叙拉古 伊比利亚 莱塔尼亚 萨尔贡 谢拉格 阿戈尔 卡西米尔 乌萨斯")]
+    public async Task MergedCoreNamesKeepTheirSlots(int sample, string expected)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", $"info-420-{sample}.png"));
+        using var bitmap = new System.Drawing.Bitmap(new MemoryStream(bytes));
+        var (png, width, height) = ScreenshotNormalizer.EnsureAnalysable(bytes, bitmap.Width, bitmap.Height);
+        var engine = _ocr;
+        if (sample != 86)
+        {
+            // 两个诊断包只留有文字。按样图列距重建文字框，逐格裁图和附加区仍走真实 OCR。
+            var core = sample == 85
+                ? new OcrTextResult[] { new("萨尔贡 维多利亚 叙拉古 卡西尔 莱塔尼亚", (145,390,529,19)),
+                    new("炎谢拉格阿戈尔乌萨斯伊比利亚", (696,390,545,19)) }
+                : new OcrTextResult[] { new("萨尔贡 维多利亚 阿戈尔 卡西米尔 乌萨斯 炎", (144,390,690,19)),
+                    new("谢拉格 叙拉古 伊比利亚 莱塔尼亚", (842,390,418,19)) };
+            var replay = new Mock<IOcrEngine>();
+            replay.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<int>(), It.IsAny<int>())).Returns((byte[] image, int x, int y, int w, int h) =>
+                    ReferenceEquals(image, png) && y < 300
+                        ? Task.FromResult<IReadOnlyList<OcrTextResult>>(core)
+                        : _ocr.RecognizeRegionAsync(image, x, y, w, h));
+            engine = replay.Object;
+        }
+        var read = await BanCovenantReader.ReadAsync(engine, new GarrisonOcrStrategy(), png, width, height,
+            Names.Core, Names.Additional);
+        read.Additional.Select(c => c.Name).Should().BeEquivalentTo(Names.Additional);
+        read.Core.Select(c => c.Name).Should().Equal(expected.Split(' '));
+        read.UnnamedCore.Should().BeEmpty();
+    }
+
+    [Theory]
     [InlineData("ban-sample-1920x1080.png", 10, 16, true)]
     [InlineData("ban-sample-2-1920x1080.png", 10, 16, true)]
     [InlineData("ban-ui100-2000x1125.png", 1, 0, false)]

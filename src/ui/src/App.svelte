@@ -24,7 +24,7 @@
   import WhatsNew from './components/WhatsNew.svelte'
   import PlazaPasswordGate from './components/PlazaPasswordGate.svelte'
   import Tooltip from './components/Tooltip.svelte'
-  import { api } from './lib/api'
+  import { api, reportUiError } from './lib/api'
   import { skin, plainSkin, modernSkin } from './lib/skin.svelte'
   import type { ResizeEdge } from './lib/api/types'
   import { accentTokens, ACCENT_KEYS } from './lib/accent'
@@ -180,7 +180,7 @@
         <!-- 历史页在工作台里左右两栏各自滚动，需要撑满滚动区的高度 -->
         <div class:fill={app.tab === 'history' || (app.workbench && app.tab === 'lineup')} in:fly={{ x: 28 * dir, duration: 240, easing: cubicOut }}>
           <!-- 一页渲染出错只挡住这一页，别的页照常能切 -->
-          <svelte:boundary onerror={(e) => console.error(e)}>
+          <svelte:boundary onerror={(e) => reportUiError(`${app.tab} 页出错`, e)}>
             {#if app.tab === 'match'}
               <MatchPage />
             {:else if app.tab === 'lineup'}

@@ -183,6 +183,7 @@ public sealed partial class HostApi
         var previous = newMatch ? new HashSet<string>() : Match.BannedOperators.ToHashSet();
         if (newMatch)
         {
+            lock (_fieldGate) ResetShopHistory();
             lock (_historyGate) CompleteHistory();
             _avatarBans.Clear();
             _manualBans.Clear();

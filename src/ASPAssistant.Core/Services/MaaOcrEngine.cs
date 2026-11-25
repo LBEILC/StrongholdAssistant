@@ -66,6 +66,9 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
     private readonly MaaImageBuffer _image = new();
     private byte[]? _imageSource;
     private readonly MaaTasker _tasker;
+    // 任务、节点和识别详情由同一个 Tasker 缓存。清理时要等并行标题识别都读完详情。
+    private readonly ReaderWriterLockSlim _jobs = new();
+    private int _completedJobs;
     private readonly NullController _nullController;
 
     /// <param name="resourcePath">
@@ -202,6 +205,7 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
         byte[] pngBytes, int x, int y, int width, int height,
         IReadOnlyList<string>? textFilter, bool onlyRecognition)
     {
+        _jobs.EnterReadLock();
         try
         {
             // 两条标题带可能并行提交。忙时沿用独立输入，避免一条 OCR 阻塞另一条。
@@ -226,6 +230,16 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
         catch
         {
             return [];
+        }
+        finally
+        {
+            _jobs.ExitReadLock();
+            if (Interlocked.Increment(ref _completedJobs) % 64 == 0)
+            {
+                _jobs.EnterWriteLock();
+                try { _tasker.ClearCache(); }
+                finally { _jobs.ExitWriteLock(); }
+            }
         }
     }
 
@@ -341,6 +355,7 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
     {
         _image.Dispose();
         _tasker.Dispose();
+        _jobs.Dispose();
         _nullController.Dispose();
     }
 

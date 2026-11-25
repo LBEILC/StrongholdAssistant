@@ -137,6 +137,7 @@ public sealed partial class HostApi
         api._gameDataVersion = store.StrategySeason?.Replace('/', '@');
         api._openingStrategies = strategies;
         api._adaptModel = new(() => LoadAdaptModel(dataDirectory));
+        api._shopPolicy = new(() => new ShopPolicy(Path.Combine(dataDirectory, "models", "garrison-sp3")));
         api._strategyModel = new(() => LoadStrategyModel(Path.Combine(dataDirectory, "decision", "strategy.json")));
         api._multiStrategyModel = new(() => LoadStrategyModel(Path.Combine(dataDirectory, "decision", "strategy-multi.json")));
         using var roundIncome = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(dataDirectory, "round_income.json")));
@@ -464,6 +465,10 @@ public sealed partial class HostApi
         T Read<T>(int index) => args[index].Deserialize<T>(JsonOptions)!;
         switch (method)
         {
+            case "logUiError":
+                var text = args[0].GetString() ?? throw new ArgumentException("错误文本不能为空。");
+                ASPAssistant.Core.AppLogger.Error("UI", text[..Math.Min(text.Length, 4000)]);
+                return null;
             case "currentProfile": return AssistantProfile.Current.Name;
             case "listProfiles": return AssistantProfile.Current.List();
             case "createProfile": AssistantProfile.Current.Named(args[0].GetString()).Create(false); return null;

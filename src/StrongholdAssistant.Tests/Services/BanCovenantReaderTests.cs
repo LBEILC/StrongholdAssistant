@@ -354,6 +354,29 @@ public class BanCovenantReaderTests
         read.UnnamedAdditional.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("炎", 10)]
+    [InlineData("乌萨斯", 9)]
+    public async Task DuplicateNameReopensTheDisplacedSlot(string croppedName, int expectedCount)
+    {
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        var core = Sample1Core();
+        // 第六格的偏心错读与第十格的正中读数同名，整行的候选数量仍是十。
+        var wrong = Text("乌萨斯", 5, CoreNameTop);
+        core[5] = wrong with { Box = (wrong.Box.X + 25, wrong.Box.Y, wrong.Box.W, wrong.Box.H) };
+        var ocr = new StubOcrEngine(core, Sample1Additional(), [new(croppedName, (5, 5, 40, 20))]);
+        var read = await BanCovenantReader.ReadAsync(ocr, new GarrisonOcrStrategy(),
+            LoadSample("ban-sample-1920x1080.png"), Width, Height, coreNames, additionalNames);
+
+        read.Core.Should().HaveCount(expectedCount).And.OnlyHaveUniqueItems(c => c.Name);
+        if (croppedName == "炎")
+        {
+            read.Core[5].Name.Should().Be("炎");
+            read.Core.Last().Name.Should().Be("乌萨斯");
+        }
+        else read.UnnamedCore.Should().ContainSingle();
+    }
+
     [Fact]
     public async Task SectionTitlesAndFragmentsAreNotMatchedAsCovenants()
     {
@@ -418,11 +441,11 @@ public class BanCovenantReaderTests
     /// </summary>
     private sealed class StubOcrEngine(
         IReadOnlyList<OcrTextResult> core,
-        IReadOnlyList<OcrTextResult> additional) : IOcrEngine
+        IReadOnlyList<OcrTextResult> additional, IReadOnlyList<OcrTextResult>? composite = null) : IOcrEngine
     {
         public Task<IReadOnlyList<OcrTextResult>> RecognizeRegionAsync(
             byte[] pngBytes, int x, int y, int width, int height) =>
-            Task.FromResult(y < 300 ? core : additional);
+            Task.FromResult(y == 0 && composite is not null ? composite : y < 300 ? core : additional);
 
         public Task<string?> FindCandidateInRegionAsync(
             byte[] pngBytes, int x, int y, int width, int height, IReadOnlyList<string> candidates) =>

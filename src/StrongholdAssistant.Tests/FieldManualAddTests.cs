@@ -6,19 +6,85 @@ using StrongholdAssistant.Host;
 
 namespace StrongholdAssistant.Tests;
 
-public sealed class FieldManualAddTests
+public sealed class FieldManualAddTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     private static readonly DateTimeOffset Start = DateTimeOffset.Parse("2026-11-17T00:00:00Z");
     private static readonly FieldCell Board = new("board", 2, 2);
-    private static FieldTracker Tracker()
+    private static FieldTracker Tracker(Action<string>? log = null)
     {
-        var tracker = new FieldTracker();
+        var tracker = new FieldTracker { RecognitionLog = log };
         tracker.ConfigureIdentity([new() { Name = "甲", Tier = 2 }, new() { Name = "乙", Tier = 3 }],
             (_, tier, _) => new([new(tier == 2 ? "甲" : "乙", .9)], .9));
         return tracker;
     }
     private static FieldObservation Frame(FieldCell cell, int tier, int seconds = 0) =>
         new(Start.AddSeconds(seconds), true, "m01", 1, new Dictionary<FieldCell, int> { [cell] = tier });
+
+    private static FieldObservation Recognized(params FieldCell[] cells)
+    {
+        using var image = new OpenCvSharp.Mat(204, 180, OpenCvSharp.MatType.CV_8UC3, new OpenCvSharp.Scalar(40, 80, 120));
+        return Frame(cells[0], 2, 1) with
+        {
+            Cells = cells.ToDictionary(c => c, _ => 2),
+            Sprites = cells.ToDictionary(c => c, c => FieldReader.CropSprite(image, 90,
+                c.Zone == "bench" ? 180 : 156, c.Zone == "bench")!)
+        };
+    }
+
+    [Fact]
+    public void ManualAdditionMovesToPreviouslyUnidentifiedOccupiedCell()
+    {
+        var tracker = Tracker();
+        var bench = new FieldCell("bench", 1, 0);
+        var scan = Recognized(bench);
+        var cells = new Dictionary<FieldCell, int> { [bench] = 2, [Board] = 0 };
+        tracker.Observe(scan with { At = Start, Cells = cells, Sprites = null });
+        tracker.SetOperator(Board, "甲", Start);
+        tracker.Observe(scan with { Cells = cells }, force: true);
+        var unit = Assert.Single(tracker.State!.Units);
+        Assert.Equal((bench, "甲", "manual"), (unit.Cell, unit.Operator, unit.Source));
+        Assert.Contains(tracker.State.Log, e => e.Kind == "move" && e.From == Board && e.To == bench);
+    }
+
+    [Fact]
+    public void TwoVisibleCopiesReplaceTheUnseenPreviousPosition()
+    {
+        var logs = new List<string>();
+        var tracker = Tracker(logs.Add);
+        var bench = new FieldCell("bench", 1, 0);
+        var other = new FieldCell("board", 3, 2);
+        tracker.Observe(Recognized(bench, Board), force: true);
+        tracker.SetOperator(Board, "甲", Start.AddSeconds(2));
+        var seen = Recognized(Board, other);
+        var scan = seen with { At = Start.AddSeconds(3), Cells = new Dictionary<FieldCell, int>(seen.Cells) { [bench] = 0 } };
+        tracker.Observe(scan, force: true);
+        var units = tracker.State!.Units;
+        Assert.Equal(new[] { Board, other }, units.Select(u => u.Cell));
+        Assert.All(units, u => Assert.Equal("甲", u.Operator));
+        Assert.Equal("manual", units[0].Source);
+        Assert.Contains("场上(2,2)=甲(手动, —)", logs[^1]);
+        output.WriteLine("[Field] " + logs[^1]);
+        var score = units[1].Candidates.Single(c => c.Operator == "甲").Score;
+        Assert.Contains(FormattableString.Invariant($"场上(3,2)=甲(识别, {score:F3})"), logs[^1]);
+        Assert.Contains("整备(1)=空", logs[^1]);
+        tracker.Observe(scan with { At = Start.AddSeconds(4) }, force: true);
+        Assert.Equal(2, logs.Count);
+        // 只看到整备区是空的、场上两格看不到时，场上两份照留
+        tracker.Observe(Frame(bench, 0, 5), force: true);
+        Assert.Equal(2, tracker.State.Units.Count());
+    }
+
+    [Fact]
+    public void CopyInHiddenCellIsKept()
+    {
+        var bench = new FieldCell("bench", 1, 0);
+        var other = new FieldCell("board", 3, 2);
+        var tracker = Tracker(_ => { });
+        tracker.Observe(Recognized(bench, Board), force: true);
+        // 整备区被商店面板挡住时不在 Cells 里，看不到不等于空，同名的那份要留着
+        tracker.Observe(Recognized(Board, other) with { At = Start.AddSeconds(3) }, force: true);
+        Assert.Contains(tracker.State!.Units, u => u.Cell == bench && u.Operator == "甲");
+    }
 
     [Theory]
     [InlineData("board", 2, 2)]

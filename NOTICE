@@ -99,3 +99,4 @@ Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.
 Data and image source references are retained in data/fetch_spdatabase.py.
 This project is not affiliated with or endorsed by Hypergryph / 鹰角网络.
+单人规程商店策略使用 CarlosDJY 的 garrison-rl sp3 模型（v0.1），经作者授权集成。https://github.com/CarlosDJY/garrison-rl

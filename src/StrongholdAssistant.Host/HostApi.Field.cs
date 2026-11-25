@@ -32,7 +32,7 @@ public sealed partial class HostApi
     }
 
     public void PublishFieldHotkey() => Changed?.Invoke("fieldHotkey", null!);
-    private readonly FieldTracker _fieldTracker = new();
+    private readonly FieldTracker _fieldTracker = new() { RecognitionLog = line => ASPAssistant.Core.AppLogger.Info("Field", line) };
     private FieldReader? _fieldReader;
     private int _fieldGeneration;
     private int _fieldReaderGeneration;
@@ -116,19 +116,29 @@ public sealed partial class HostApi
         _shopReader!.ReadUntracked = true;
     }
 
-    public async Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
-        bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop)
+    public Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
+        bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop) =>
+        ObserveFieldAsync(frame, at, economy, mainScreen, shopVisible, shop, true);
+
+    internal async Task ObserveFieldAsync(byte[] frame, DateTimeOffset at, EconomyReading? economy,
+        bool mainScreen, bool shopVisible, IReadOnlyList<ShopItem> shop, bool adviceSurface)
     {
         if (economy is { IsFinalRound: true, Round: null } && Match.Mode is { } mode)
             economy = economy with { Round = _boardRouteStore.LastRound(Match.Solo, mode.Id) };
+        bool advice = AdviceMode && adviceSurface && mainScreen && shopVisible && economy is { IsRest: true };
         shopVisible |= _shopReader?.EmptySlots.Length == 6;
         await ObserveBoardTurn(frame, at, economy, mainScreen, shopVisible, shop);
         // 命令等待首份结果时消费下一张正常扫描的休整帧；自动认人设置可以保持关闭。
         bool requested;
         lock (_fieldGate) requested = _fieldReader != null && _nextField != null && economy is { IsRest: true } && mainScreen;
-        if (!Settings.FieldAuto && !Settings.Collect && !requested) return;
+        if (!advice) LeaveAdviceShop();
+        if (!Settings.FieldAuto && !Settings.Collect && !requested && !advice) return;
         if (!await _fieldScanGate.WaitAsync(0)) return;
-        try { await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false, requested); }
+        try
+        {
+            await ReadFieldCoreAsync(frame, at, economy, mainScreen, shopVisible, shop, false, requested);
+            if (advice) _ = UpdateShopAdviceAsync();
+        }
         finally { _fieldScanGate.Release(); }
     }
 
@@ -187,7 +197,7 @@ public sealed partial class HostApi
                 _comparingObservation = observation;
                 _collectionComparisons = Settings.Collect ? [] : null;
                 using (FieldRecognitionTiming.Measure("tracker"))
-                    if (_fieldTracker.Observe(observation, Settings.FieldAuto || force || requested, force || requested)) changed = _fieldTracker.State;
+                    if (_fieldTracker.Observe(observation, Settings.FieldAuto || AdviceMode || force || requested, force || requested)) changed = _fieldTracker.State;
                 if (observation.MainScreen && observation.IsRest && _fieldTracker.State is { } current && current.Round == observation.Round)
                 {
                     _nextField?.TrySetResult(current);
@@ -255,6 +265,7 @@ public sealed partial class HostApi
             _matchRest = null;
             _coveredHud = null;
             _matchHp = null;
+            ResetShopHistory();
             _lastRound = null;
             _battleRound = null;
             _turnShop.Reset();

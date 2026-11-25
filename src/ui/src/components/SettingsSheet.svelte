@@ -613,6 +613,16 @@
 
     <section>
       <label class="row">
+        <span class="lbl"><b>商店建议 <span class="beta">测试</span></b><small>单人规程里，本局页告诉你这一步该买谁、刷新还是升级</small></span>
+        <input type="checkbox" class="sw" checked={app.settings.shopAdvice} onchange={(e) => set('shopAdvice', e.currentTarget.checked)} />
+      </label>
+      {#if app.settings.shopAdvice}
+        <p class="note">按你正在追踪的阵容的核心盟约当本局目标，没追踪阵容时不给建议。模型来自 garrison-rl（作者 CarlosDJY），只按单人规程训练过，仅供参考。</p>
+      {/if}
+    </section>
+
+    <section>
+      <label class="row">
         <span class="lbl"><b>商店标记</b><small>在游戏商店里给追踪的干员打标记</small></span>
         <input type="checkbox" class="sw" checked={app.settings.shopMarkers} onchange={(e) => set('shopMarkers', e.currentTarget.checked)} />
       </label>
@@ -1596,6 +1606,15 @@
   }
   .inst {
     margin-top: 8px;
+  }
+  .beta {
+    margin-left: 4px;
+    padding: 0 4px;
+    border: 1px solid var(--mint);
+    border-radius: 3px;
+    color: var(--mint);
+    font-size: 10px;
+    font-weight: 400;
   }
   .note {
     margin: 6px 0 0;

@@ -10,6 +10,7 @@
   import LineupCard from '../components/LineupCard.svelte'
   import Icon from '../components/Icon.svelte'
   import EconomyBar from '../components/EconomyBar.svelte'
+  import ShopAdviceBar from '../components/ShopAdviceBar.svelte'
   import FieldBoard from '../components/FieldBoard.svelte'
   import StrategyGrid from '../components/StrategyGrid.svelte'
   import ErrorNote from '../components/ErrorNote.svelte'
@@ -20,8 +21,10 @@
 
   // 本局：开局识别到的信息，排版仿游戏「确认本局信息」页；可手动修正；后面接本局能用的已存阵容
   const m = $derived(app.match)
-  const core = $derived(m.covenants.filter((c) => app.cov(c.id).kind === 'core'))
-  const extra = $derived(m.covenants.filter((c) => app.cov(c.id).kind === 'extra'))
+  // 识别偶尔把同一个盟约读两次（任务 420），列表按 id 做键，重复会让整页崩，这里只留第一个
+  const covenants = $derived(m.covenants.filter((c, i, all) => all.findIndex((x) => x.id === c.id) === i))
+  const core = $derived(covenants.filter((c) => app.cov(c.id).kind === 'core'))
+  const extra = $derived(covenants.filter((c) => app.cov(c.id).kind === 'extra'))
   const boss = $derived(app.catalog.bosses.find((b) => b.id === m.bossId))
   // 本局模式读到了才显示血量（开局页左上角的「规程等级16」「险境模拟」）
   const bossHp = $derived(boss && m.mode ? boss.hp.find((h) => h.mode === m.mode!.id) : undefined)
@@ -181,7 +184,7 @@
   const diyBanned = $derived(m.bannedOperators.filter((n) => app.op(n).diy && (!pool || pool.names.has(n))))
   const listedBans = $derived(m.bannedOperators.filter((n) => !app.op(n).diy).length)
   const bannedGroups = $derived.by(() => {
-    const banned = m.bannedOperators.filter((n) => !app.op(n).diy)
+    const banned = [...new Set(m.bannedOperators)].filter((n) => !app.op(n).diy)
     const groups: { id: string | null; names: string[] }[] = [
       ...core.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).core.includes(c.id)) })),
       ...extra.filter((c) => c.incomplete).map((c) => ({ id: c.id, names: banned.filter((n) => app.op(n).extra.includes(c.id)) })),
@@ -207,6 +210,7 @@
 
 {#snippet bInfo()}
   <EconomyBar />
+  <ShopAdviceBar />
   {#if m.awaitingDetail}
     <div class="solo-guide">
       <div class="sg-h">单人模式 · 开局页不识别</div>

@@ -92,3 +92,4 @@
 | `src/StrongholdAssistant.Tests/TestData/board-enemy-panel.png`、`shop-wide-ui100.png`、`shop-terminal-frozen-1610.png` | 诊断包中的敌人面板、宽屏商店和冻结商店截图；商店图只保留底部区域，只用于测试，不进发布包 | 用户于 2026-11-13 提供；画面内容归上海鹰角网络所有 |
 | `src/ui/src/lib/mock/catalog.json` | 盟约、干员、装备、首领、敌人类型、策略的当期数据 | 同上 `data/*.json`；盟约 id 与激活人数取自 [PRTS](https://prts.wiki) 的 `activity_table.json`（`act3autochess` / `V3_1`） |
 | `src/StrongholdAssistant.Tests/TestData/live398/*.jpg` | 49 张局面读数回归帧，仅供离线测试 | 2026-11-20 的三局实机截图和用户于 2026-11-14、11-15 录制的整局视频；游戏画面归上海鹰角网络所有 |
+| `data/models/garrison-sp3/` | 单人规程商店决策，FP32 单局 ONNX 与训练编号目录。目录补充 V3_1 的产品 ID、商店布局和盟约阈值。 | CarlosDJY 授权集成。权重取自 [garrison-rl v0.1](https://github.com/CarlosDJY/garrison-rl/releases/tag/v0.1)，编码和索引依据 [06d6bf9](https://github.com/CarlosDJY/garrison-rl/tree/06d6bf9f77c7627ab1f5c7956242f3696c0669f6)。游戏数据归上海鹰角网络所有。 |

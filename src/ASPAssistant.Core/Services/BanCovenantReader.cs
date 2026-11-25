@@ -180,16 +180,25 @@ public static class BanCovenantReader
 
         // 整行 OCR 偶尔读不出名字（缩放过、被暗化、字体发糊），但图标位置是稳定的。
         // 这时逐个槽位裁剪名字框，只做“候选名匹配”，比整行识别稳得多。
-        if (slots.Count > 0 && candidates.Count < slots.Count)
-        {
-            candidates = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, knownNames, candidates,
-                readLines);
-            AppLogger.Info("BanAnalyzer", $"{group}: slot OCR recovered {candidates.Count}/{slots.Count} names");
-        }
-
         if (slots.Count > 0)
-            return BindToSlots(candidates, slots, group, greenThreshold)
+        {
+            var bound = AssignSlots(candidates, slots);
+            var filled = new HashSet<BanIconSlot>();
+            // 补读可能把已有名字定位到更合适的槽；让刚腾出的槽也得到一次独立补读。
+            while (true)
+            {
+                var pending = slots.Where(s => s.StateKnown && !bound.ContainsKey(s) && filled.Add(s)).ToList();
+                if (pending.Count == 0) break;
+                var recovered = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, pending,
+                    knownNames, readLines);
+                candidates.AddRange(recovered);
+                bound = AssignSlots(candidates, slots);
+            }
+            if (filled.Count > 0)
+                AppLogger.Info("BanAnalyzer", $"{group}: slot OCR recovered {bound.Count}/{slots.Count} names");
+            return ReadBoundSlots(bound, candidates, slots, group, greenThreshold)
                 with { Slots = slots.Count, SawHeader = sawHeader, UsedLineOcr = readLines };
+        }
 
         if (candidates.Count == 0)
             return new SectionRead([], [], 0, sawHeader);
@@ -207,9 +216,9 @@ public static class BanCovenantReader
     /// </summary>
     private static async Task<List<Candidate>> FillNamesBySlotAsync(
         IOcrEngine ocr, byte[] screenshot, int imgWidth, int imgHeight,
-        IReadOnlyList<BanIconSlot> slots, IReadOnlyList<string> knownNames, List<Candidate> existing, bool readLines)
+        IReadOnlyList<BanIconSlot> slots, IReadOnlyList<BanIconSlot> missing, IReadOnlyList<string> knownNames, bool readLines)
     {
-        if (slots.Count == 0 || knownNames.Count == 0) return existing;
+        var recovered = new List<Candidate>();
 
         double pitch = slots.Count > 1
             ? slots.Zip(slots.Skip(1), (a, b) => Math.Abs(b.CenterX - a.CenterX)).Where(d => d > 1).DefaultIfEmpty(0).Min()
@@ -217,13 +226,8 @@ public static class BanCovenantReader
         if (pitch <= 1) pitch = Math.Max(40, imgWidth * 0.06);
 
         var pending = new List<(BanIconSlot Slot, int X, int Y, int W, int H)>();
-        foreach (var slot in slots)
+        foreach (var slot in missing)
         {
-            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35
-                && CenterY(c.Ocr) >= slot.CenterY
-                && CenterY(c.Ocr) <= slot.Bottom + (slot.Bottom - slot.Top) * .8))
-                continue;
-
             int iconHeight = Math.Max(24, slot.Bottom - slot.Top);
             int boxWidth = (int)(pitch * 0.95);
             int boxHeight = (int)(iconHeight * 0.45);
@@ -237,17 +241,13 @@ public static class BanCovenantReader
                 var line = await ocr.RecognizeLineAsync(screenshot, boxX, boxY, boxWidth, boxHeight);
                 var name = line.Select(t => MatchLineInText(t.Text, knownNames)).FirstOrDefault(n => n is not null);
                 if (name is not null)
-                    existing.Add(new(new(name, (boxX, boxY, boxWidth, boxHeight)), name, 3));
+                    recovered.Add(new(new(name, (boxX, boxY, boxWidth, boxHeight)), name, 3));
             }
             else pending.Add((slot, boxX, boxY, boxWidth, boxHeight));
         }
 
-        if (pending.Count == 0) return existing;
-
-        var recovered = await RecognizeCompositeAsync(ocr, screenshot, pending, knownNames);
-        if (recovered.Count == 0) return existing;
-
-        return [.. existing, .. recovered];
+        return pending.Count == 0 ? recovered
+            : await RecognizeCompositeAsync(ocr, screenshot, pending, knownNames);
     }
 
     /// <summary>把多个名字框拼成一张竖图，一次 OCR，再按纵向带回到各自的槽。</summary>
@@ -335,15 +335,14 @@ public static class BanCovenantReader
     /// Primary path: every name is snapped to the nearest icon slot and the ban state is read
     /// from the icon itself. Slots without a name are returned as unnamed icons.
     /// </summary>
-    private static SectionRead BindToSlots(
-        List<Candidate> candidates, IReadOnlyList<BanIconSlot> slots, string group, double greenThreshold)
+    private static Dictionary<BanIconSlot, Candidate> AssignSlots(
+        List<Candidate> candidates, IReadOnlyList<BanIconSlot> slots)
     {
         var tolerances = slots
             .GroupBy(s => s.Row)
             .ToDictionary(g => g.Key, g => SlotTolerance(g.Select(s => s.CenterX).ToList()));
 
         var bound = new Dictionary<BanIconSlot, Candidate>();
-        var unbound = new List<Candidate>();
 
         foreach (var candidate in candidates)
         {
@@ -362,15 +361,27 @@ public static class BanCovenantReader
                 .FirstOrDefault();
 
             if (slot == null)
-            {
-                unbound.Add(candidate);
                 continue;
-            }
 
-            if (!bound.TryGetValue(slot, out var existing) || IsBetter(candidate, existing))
+            if (!bound.TryGetValue(slot, out var existing) || candidate.Score > existing.Score
+                || (candidate.Score == existing.Score
+                    && Math.Abs(cx - slot.CenterX) < Math.Abs(CenterX(existing.Ocr) - slot.CenterX)))
                 bound[slot] = candidate;
         }
 
+        // 同名只能占一个槽；先看名字框与槽中心的距离，再按匹配质量破同分。
+        foreach (var duplicates in bound.GroupBy(p => p.Value.Name).Where(g => g.Count() > 1).ToList())
+        {
+            foreach (var other in duplicates.OrderBy(p => Math.Abs(CenterX(p.Value.Ocr) - p.Key.CenterX))
+                         .ThenByDescending(p => p.Value.Score).Skip(1))
+                bound.Remove(other.Key);
+        }
+        return bound;
+    }
+
+    private static SectionRead ReadBoundSlots(Dictionary<BanIconSlot, Candidate> bound, List<Candidate> candidates,
+        IReadOnlyList<BanIconSlot> slots, string group, double greenThreshold)
+    {
         var states = new List<CovenantBanState>(bound.Count);
         foreach (var (slot, candidate) in bound)
         {
@@ -387,13 +398,6 @@ public static class BanCovenantReader
             .OrderBy(p => p.Y)
             .ThenBy(p => p.X)
             .ToList();
-
-        if (unbound.Count > 0)
-        {
-            AppLogger.Warn("BanAnalyzer",
-                $"{group}: {unbound.Count} name(s) matched no icon slot: " +
-                $"[{string.Join(", ", unbound.Select(c => $"{c.Name}@{CenterX(c.Ocr):F0}"))}]");
-        }
 
         if (unnamed.Count > 0)
         {
@@ -432,7 +436,8 @@ public static class BanCovenantReader
             states.Add(new CovenantBanState(candidates[i].Name, banned, cx));
         }
 
-        return new SectionRead(states.OrderBy(s => s.X).ToList(), []);
+        var unique = states.DistinctBy(s => s.Name).OrderBy(s => s.X).ToList();
+        return new SectionRead(unique, [], HasUnmatchedNames: unique.Count != states.Count);
     }
 
     /// <summary>
@@ -558,6 +563,18 @@ public static class BanCovenantReader
         var contained = FindContainedNames(clean, knownNames);
         if (contained.Count > 0)
         {
+            // 整框只含相邻名字时，名字中心按列距等分，不能按字数分配列宽。
+            if (contained.Count > 1 && contained.Sum(c => c.Name.Length) == clean.Count(c => !char.IsWhiteSpace(c)))
+            {
+                double first = ocr.Box.X + ocr.Box.H * contained[0].Name.Length / 2.0;
+                double last = ocr.Box.X + ocr.Box.W - ocr.Box.H * contained[^1].Name.Length / 2.0;
+                return contained.Select((c, i) =>
+                {
+                    int width = ocr.Box.H * c.Name.Length;
+                    int x = (int)Math.Round(first + (last - first) * i / (contained.Count - 1) - width / 2.0);
+                    return new Candidate(ocr with { Box = (x, ocr.Box.Y, width, ocr.Box.H) }, c.Name, 2);
+                }).ToList();
+            }
             return contained
                 .Select(c => new Candidate(
                     contained.Count == 1 && c.Name.Length == clean.Length
@@ -604,7 +621,7 @@ public static class BanCovenantReader
             string? bestName = null;
             foreach (var name in knownNames)
             {
-                if (name.Length < 2) continue;
+                if (name.Length == 0) continue;
                 if (text.AsSpan(index).StartsWith(name, StringComparison.Ordinal)
                     && (bestName == null || name.Length > bestName.Length))
                 {
@@ -622,6 +639,8 @@ public static class BanCovenantReader
             index += bestName.Length;
         }
 
+        if (found.Sum(c => c.Name.Length) != text.Count(c => !char.IsWhiteSpace(c)))
+            found.RemoveAll(c => c.Name.Length == 1);
         return found;
     }
 

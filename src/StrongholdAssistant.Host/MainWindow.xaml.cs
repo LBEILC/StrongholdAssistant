@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private readonly bool _connectGame;
     private readonly string? _userDirectory;
     private Task _initialization = Task.CompletedTask;
+    private bool _hiddenByMinimize;
+    private readonly Queue<long> _rendererReloads = new();
 
     public MainWindow() : this(true) { }
 
@@ -65,6 +67,22 @@ public partial class MainWindow : Window
         Browser.DefaultBackgroundColor = System.Drawing.Color.FromArgb(background.R, background.G, background.B);
     }
 
+    private void MinimizeAssistant()
+    {
+        if (ShowInTaskbar) WindowState = WindowState.Minimized;
+        else
+        {
+            _hiddenByMinimize = true;
+            Hide();
+        }
+    }
+
+    internal void ShowAfterMinimize()
+    {
+        _hiddenByMinimize = false;
+        if (!IsVisible) Show();
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
         => await (_initialization = InitializeAsync());
 
@@ -89,9 +107,15 @@ public partial class MainWindow : Window
         var web = Browser.CoreWebView2;
         web.ProcessFailed += (_, args) =>
         {
+            var action = "";
+            var rendererFailed = args.ProcessFailedKind is CoreWebView2ProcessFailedKind.RenderProcessExited
+                or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive;
+            var reload = rendererFailed && TryReserveRendererReload(_rendererReloads, Environment.TickCount64);
+            if (rendererFailed) action = reload ? "；自动重载界面" : "；一分钟内已重载三次，跳过本次重载";
             ASPAssistant.Core.AppLogger.Error("WebView2",
                 $"ProcessFailed: ProcessFailedKind={args.ProcessFailedKind}; Reason={args.Reason}; " +
-                $"ExitCode={args.ExitCode}; ProcessDescription={args.ProcessDescription}");
+                $"ExitCode={args.ExitCode}; ProcessDescription={args.ProcessDescription}{action}");
+            if (reload) web.Reload();
             if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.GpuProcessExited) ASPAssistant.Core.Services.CrashGuard.GpuCrashed();
         };
         ApplyScale(null);
@@ -235,7 +259,7 @@ public partial class MainWindow : Window
             resizeEdge = null;
         }
         finally { if (locked) _requests.Release(); }
-        if (windowCommand == "minimize") WindowState = WindowState.Minimized;
+        if (windowCommand == "minimize") MinimizeAssistant();
         if (windowCommand == "close") Close();
         if (windowCommand == "collapse") SetCollapsed(true);
         if (windowCommand == "expand") SetCollapsed(false);
@@ -325,13 +349,14 @@ public partial class MainWindow : Window
         Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { @event = "window", data = e }, HostApi.JsonOptions));
 
     private void OnSplashDrag(object sender, System.Windows.Input.MouseButtonEventArgs e) => DragMove();
-    private void OnSplashMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void OnSplashMinimize(object sender, RoutedEventArgs e) => MinimizeAssistant();
     private void OnSplashClose(object sender, RoutedEventArgs e) => Close();
 
     protected override void OnClosed(EventArgs e)
     {
         _tracker.Dispose();
         _scanner?.Dispose();
+        _api?.CloseShopAdvice();
         _capture.Connection.Dispose();
         _ocr?.Dispose();
         _iconMatcher?.Dispose();
@@ -340,6 +365,14 @@ public partial class MainWindow : Window
     }
 
     private sealed record BridgeRequest(int Id, string Method, JsonElement[] Params);
+
+    internal static bool TryReserveRendererReload(Queue<long> reloads, long now)
+    {
+        while (reloads.TryPeek(out var oldest) && now - oldest >= 60_000) reloads.Dequeue();
+        if (reloads.Count >= 3) return false;
+        reloads.Enqueue(now);
+        return true;
+    }
 
     private sealed class HostTraceListener : TraceListener
     {

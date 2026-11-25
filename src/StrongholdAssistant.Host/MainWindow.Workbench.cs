@@ -63,7 +63,7 @@ public partial class MainWindow
                 ApplyScale(_lastClientRect?.Height);
                 ApplyBounds(_api.Settings.FollowGame ? _sidebarBounds! : _dock.FreeBounds ?? _sidebarBounds!);
                 if (_api.Settings.FollowGame && _lastGameRect is { } game) UpdateGame(game);
-                if (_api.Settings.FollowGame && _tracker.IsGameMinimized) WindowState = WindowState.Minimized;
+                if (_api.Settings.FollowGame && _tracker.IsGameMinimized) MinimizeAssistant();
             }
         }
         finally { _switchingLayout = false; }

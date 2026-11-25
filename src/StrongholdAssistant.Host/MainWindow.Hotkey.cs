@@ -79,9 +79,10 @@ public partial class MainWindow
 
     private void ToggleFromHotkey()
     {
-        if (WindowState == System.Windows.WindowState.Minimized)
+        if (_hiddenByMinimize || WindowState == System.Windows.WindowState.Minimized)
         {
-            WindowState = _workbench ? _stateBeforeMinimize : System.Windows.WindowState.Normal;
+            if (_hiddenByMinimize) ShowAfterMinimize();
+            else WindowState = _workbench ? _stateBeforeMinimize : System.Windows.WindowState.Normal;
             Activate();
             User32.SetForegroundWindow(new WindowInteropHelper(this).Handle);
         }

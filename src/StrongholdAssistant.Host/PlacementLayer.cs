@@ -19,7 +19,9 @@ public sealed class PlacementLayer : Canvas
         if (!double.IsFinite(width) || !double.IsFinite(height) || width <= 0 || height <= 0) return;
         // 新输入计算期间保留上一份推荐；离局、无棋盘和主动关闭仍由宿主清除。
         if (!enabled || plan is null || field is null || projection is null) return;
-        foreach (var move in plan.Moves.Where(m => m.From != m.To))
+        var moves = plan.Moves.Where(m => m.From != m.To).ToArray();
+        var arrivals = moves.Select(m => m.To).Where(cell => cell.Zone == "board").ToHashSet();
+        foreach (var move in moves.OrderByDescending(m => m.To.Zone == "bench"))
         {
             bool leaving = move.To.Zone == "bench";
             var cell = leaving ? move.From : move.To;
@@ -34,6 +36,16 @@ public sealed class PlacementLayer : Canvas
                 Project(cell.Col + .92, cell.Row + .92), Project(cell.Col + .08, cell.Row + .92)];
             var color = leaving ? Color.FromRgb(0xFF, 0x8A, 0x80) : Color.FromRgb(0x22, 0xE3, 0xB2);
             var brush = new SolidColorBrush(color);
+            if (leaving && arrivals.Contains(cell))
+            {
+                var badge = new Border { Background = new SolidColorBrush(Color.FromArgb(153, 0, 0, 0)),
+                    Padding = new Thickness(height * .004, 0, height * .004, 0),
+                    Child = new TextBlock { Text = "撤 " + move.Operator, Foreground = brush, FontSize = height * .013 } };
+                SetLeft(badge, points[0].X);
+                SetTop(badge, points[0].Y);
+                Children.Add(badge);
+                continue;
+            }
             Children.Add(new Polygon { Points = new(points), Stroke = brush, StrokeThickness = height * .0015,
                 Fill = new SolidColorBrush(Color.FromArgb((byte)(255 * .12), color.R, color.G, color.B)),
                 StrokeDashArray = leaving ? new DoubleCollection { 4, 3 } : null });

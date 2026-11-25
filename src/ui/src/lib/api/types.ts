@@ -726,6 +726,23 @@ export type UiSkin = 'follow' | SkinId
 /** 拖边改大小的边或角：上下左右、左上右上左下右下 */
 export type ResizeEdge = 'n' | 's' | 'w' | 'e' | 'nw' | 'ne' | 'sw' | 'se'
 
+/** 单人规程普通商店的建议。stateRevision 单调递增，unavailable 清除上一条。 */
+export interface ShopAdvice {
+  stateRevision: number
+  modelId: string
+  status: 'ready' | 'unavailable'
+  /** 使用默认值、依据不足或导致暂停的项目。 */
+  missingInputs: string[]
+  action: null | {
+    kind: 'buy' | 'refresh' | 'upgrade'
+    /** 买干员时为 MatchState 原始槽位 0～5 及商品 ID。 */
+    shopSlot: number | null
+    targetId: string | null
+  }
+  /** 当前合法集内的 softmax 占比、前两项 logit 差及候选数。 */
+  preference: null | { topShare: number; logitGap: number | null; legalCount: number }
+}
+
 export interface Settings {
   /**
    * 游戏主题。gameThemeAuto 为 true 时是宿主最近一次认到的主题（宿主认到新主题就改这一项并保存，下次启动先用它）；
@@ -754,6 +771,7 @@ export interface Settings {
   /** 界面字重（v0.9.5）：'normal' 标准（默认）、'medium' 稍粗、'bold' 加粗。宿主只存 */
   uiFontWeight: 'normal' | 'medium' | 'bold'
   shopMarkers: boolean // 是否在游戏商店里给追踪的干员打标记
+  shopAdvice: boolean // 单人规程商店建议，默认关闭
   /** 三种商店标记各自的开关和颜色、框上的文字标签（v0.9.5）。shopMarkers 是总开关 */
   markerStyles: MarkerStyles
   /**
@@ -1770,6 +1788,11 @@ export interface Api {
    * 拖完记住，贴着游戏、盖在画面、自由放置各记各的，见任务 165
    */
   resizeWindow(edge: ResizeEdge): Promise<void>
+  /**
+   * 界面报错写进宿主日志（v1.3.9，任务 421）：一页渲染出错、未捕获异常、未处理的 Promise 拒绝时发，
+   * text 是错误信息和调用栈；宿主写 `[UI]` 错误一条（截到 4000 字），诊断包里就能看到
+   */
+  logUiError(text: string): Promise<void>
   /** 后端推送：工作台最大化 / 还原（v0.9.8，含双击标题栏、Win+↑、拖标题栏离开最大化）；进工作台时也推一次当前状态 */
   onMaximized(cb: (maximized: boolean) => void): () => void
   /**
@@ -1790,6 +1813,7 @@ export interface Api {
   onDeepLink(cb: (url: string) => void): () => void
   /** 后端推送：识别到新的开局信息 */
   onMatch(cb: (m: MatchInfo) => void): () => void
+  onShopAdvice(cb: (advice: ShopAdvice) => void): () => void
   /** 后端推送：游戏窗口找到 / 丢失 / 尺寸或全屏变化 */
   onConnection(cb: (c: Connection) => void): () => void
   /** 后端推送：识别开始、结束 */

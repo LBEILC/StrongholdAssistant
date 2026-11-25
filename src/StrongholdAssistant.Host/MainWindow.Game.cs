@@ -81,7 +81,7 @@ public partial class MainWindow
         // 识别事件只会在 InitializeGameAsync 完成后出现，那时 _scanner 已就绪
         _api.Changed += (name, value) =>
         {
-            if (name == "controlJob")
+            if (name is "controlJob" or "shopAdvice")
             {
                 // 执行线程发布不可变快照；停止键和 UI 查询都不能等待 UI 线程回调。
                 Dispatcher.BeginInvoke(() => Browser.CoreWebView2.PostWebMessageAsJson(
@@ -164,6 +164,7 @@ public partial class MainWindow
             var generation = _scanner.ShopGeneration;
             // 卡槽变了立即移除（093）；淡出照常播（150 ms，从移除那一刻开始，不拖慢移除）
             bool removing = _scanner.RemovingChangedShopItems;
+            if (removing) _api.LeaveAdviceShop();
             var capturedAt = _scanner.ChangedShopCapturedAt;
             Dispatcher.BeginInvoke(() =>
             {
@@ -200,7 +201,8 @@ public partial class MainWindow
             return new System.Drawing.RectangleF((point.X - viewport.Left - 8f) / viewport.Width,
                 (point.Y - viewport.Top - 8f) / viewport.Height, 48f / viewport.Width, 64f / viewport.Height);
         };
-        _scanner.ObserveFieldAsync = _api.ObserveFieldAsync;
+        _scanner.ObserveFieldAsync = (frame, at, economy, main, visible, shop) =>
+            _api.ObserveFieldAsync(frame, at, economy, main, visible, shop, !_scanner.BoardDetailVisible);
         void ConfigureCollection()
         {
             _scanner.CollectionFrame = _api.Settings.Collect ? _api.ObserveCollectionFrame : null;
@@ -227,6 +229,8 @@ public partial class MainWindow
         _scanner.BoardRoutesRequested = () => _api.BoardRoutesEnabled;
         _scanner.BoardFrameReady += (frame, reading) =>
         {
+            if (frame == null || !_scanner.BoardMainScreenVisible || !_scanner.BoardShopVisible
+                || _scanner.BoardDetailVisible || reading is not { IsRest: true }) _api.LeaveAdviceShop();
             var upgradeButton = frame is not null && _scanner.BoardMainScreenVisible
                 && _scanner.BoardShopVisible && !_scanner.BoardDetailVisible
                 && reading is { IsRest: true } ? reading.UpgradeButton : null;
@@ -302,6 +306,7 @@ public partial class MainWindow
         _capture.Connection.Changed += _ =>
         {
             _scanner?.InvalidateShop();
+            _api.LeaveAdviceShop();
             Dispatcher.BeginInvoke(PublishConnection);
         };
         _tracker.GameWindowMoved += rect => Dispatcher.BeginInvoke(() => UpdateGame(rect));
@@ -309,6 +314,7 @@ public partial class MainWindow
         _tracker.GameWindowLost += () => Dispatcher.BeginInvoke(() =>
         {
             _scanner?.InvalidateShop();
+            _api.LeaveAdviceShop();
             _lastGameRect = null;
             _lastClientRect = null;
             _stripAtClientRight = false;
@@ -329,7 +335,12 @@ public partial class MainWindow
         });
         _tracker.GameWindowMinimizedChanged += minimized => Dispatcher.BeginInvoke(() =>
         {
-            if (!_workbench && _api.Settings.FollowGame) WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
+            if (!_closing && !_workbench && _api.Settings.FollowGame)
+            {
+                if (minimized) MinimizeAssistant();
+                else if (_hiddenByMinimize) ShowAfterMinimize();
+                else WindowState = WindowState.Normal;
+            }
             if (minimized) _overlay.Hide();
             if (!minimized && _tracker.CurrentGameRect is { } rect) UpdateGame(rect);
         });
@@ -390,7 +401,7 @@ public partial class MainWindow
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                if (!before.Hidden || _closing) return;
+                if (!before.Hidden || _closing || _hiddenByMinimize) return;
                 var activated = ShowActivated;
                 ShowActivated = false;
                 Show();

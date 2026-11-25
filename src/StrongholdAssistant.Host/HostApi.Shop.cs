@@ -71,6 +71,7 @@ public sealed partial class HostApi
         var theme = Theme(settings.GameTheme);
         SettingsStore.SaveSettings(settings);
         lock (_fieldGate) Settings = settings;
+        if (!settings.ShopAdvice) ClearShopAdvice();
         if (!settings.Control.Enabled) StopControl("disabled");
         ConfigureLocalApi();
         ConfigureCollectionEnabled();
@@ -128,6 +129,7 @@ public sealed partial class HostApi
             && !names.Contains(o.Name)).Select(o => o.Name).ToArray();
         Volatile.Write(ref _trackedNames, names);
         Volatile.Write(ref _secondaryNames, secondary);
+        if (Settings.ShopAdvice) _ = UpdateShopAdviceAsync();
         ShopChanged?.Invoke();
     }
 

@@ -20,6 +20,7 @@ public sealed partial class HostApi
         lock (_fieldGate)
         {
             _matchRest = null;
+            LeaveAdviceShop();
             _coveredHud = (round, money);
         }
     }

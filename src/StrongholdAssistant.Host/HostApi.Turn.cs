@@ -65,6 +65,7 @@ public sealed partial class HostApi
                 ReachedRound = result.ReachedRound ?? priorResult?.ReachedRound
             };
             _phase = phase;
+            if (phase != "rest") LeaveAdviceShop();
             _options = options;
         }
     }
@@ -104,7 +105,7 @@ public sealed partial class HostApi
         }
     }
 
-    private async Task ObserveBoardTurn(byte[] frame, DateTimeOffset at, EconomyReading? economy, bool main, bool visible, IReadOnlyList<ShopItem> shop)
+    internal async Task ObserveBoardTurn(byte[] frame, DateTimeOffset at, EconomyReading? economy, bool main, bool visible, IReadOnlyList<ShopItem> shop)
     {
         var cards = visible ? shop.Where(c => c.SlotIndex is >= 0 and <= 5 && c.Name.Length > 0)
             .OrderBy(c => c.SlotIndex).Select(c => (c.SlotIndex, c.Name, c.Price)).ToArray() : [];
@@ -119,6 +120,7 @@ public sealed partial class HostApi
             _matchRest = rest;
             if (rest?.Economy.Round is not int round)
             {
+                LeaveAdviceShop();
                 if (economy is { IsRest: false, Round: not null }) SetPhase("battle", economy.Round);
                 else if (economy is { IsRest: true }) SetPhase("unknown");
                 return;
@@ -129,6 +131,12 @@ public sealed partial class HostApi
                 && previous?.Economy.Round == round && previous.Economy.Money == rest.Economy.Money
                 && previous.Cards.SequenceEqual(cards) && cards.Length + rest.Empty.Length == 6;
             if (!stable) SetPhase("unknown");
+            _shopEconomyStable = stable && _priorAdviceMode == Match.Mode?.Id && previous != null && ReferenceEquals(_priorAdviceRest, previous) && previous.Economy.Level == rest.Economy.Level
+                && previous.Economy.UpgradeCost == rest.Economy.UpgradeCost && previous.Economy.Frozen == rest.Economy.Frozen
+                && previous.Economy.RefreshCost == rest.Economy.RefreshCost && previous.Empty.SequenceEqual(rest.Empty);
+            if (!_shopEconomyStable) ClearShopAdvice();
+            _priorAdviceRest = rest;
+            _priorAdviceMode = Match.Mode?.Id;
             _previousShop = rest;
             if (_matchHp?.Round == round && _matchHp.Value.Hp != null)
             {

@@ -18,6 +18,7 @@
     <Resource Include="../../branding/icon.ico" Link="icon.ico" />
     <ProjectReference Include="../ASPAssistant.Core/ASPAssistant.Core.csproj" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.1" />
     <Content Include="../../data/**/*" Link="data/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../ui/dist/**/*" Link="ui/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- 两名同名干员的新增素材由数据层提供；覆盖旧构建中的 Pith 头像，不改前端源码。 -->

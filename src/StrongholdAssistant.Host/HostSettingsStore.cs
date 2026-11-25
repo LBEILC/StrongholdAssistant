@@ -67,6 +67,7 @@ public sealed class HostSettingsStore(string path)
                 && weightValue.TryGetValue<string>(out var weight) && weight is ("normal" or "medium" or "bold") ? weight : "normal",
             PlazaNotices = json["plazaNotices"]?.GetValue<bool>() ?? true,
             Routes = RouteOverlaySettings.Load(json["routes"]),
+            ShopAdvice = json["shopAdvice"]?.GetValue<bool>() ?? false,
             OverlayLayers = json["overlayLayers"]?.Deserialize<OverlayLayerSettings>(HostApi.JsonOptions) ?? new(),
             MarkerStyles = MarkerStyles.Load(json["markerStyles"]),
             ShopScanSpeed = json["shopScanSpeed"] is JsonValue speedValue

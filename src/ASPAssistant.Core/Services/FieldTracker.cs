@@ -35,6 +35,7 @@ public sealed partial class FieldTracker
         _money = _dragMoney = null; _battle = false;
         _manualOnly.Clear();
         _summons.Clear();
+        _lastRecognitionLog = null;
     }
 
     public bool ApplyInferredChanges(FieldState before, IReadOnlyList<FieldUnit> projected, DateTimeOffset at)
@@ -267,11 +268,74 @@ public sealed partial class FieldTracker
                     && o.Cells.TryGetValue(u.Cell, out int tier) && tier == 0) == 2)
                 _units[cell] = unit with { Equipment = old.Equipment };
         ResolveIdentity(o, before, force, merged);
+        if (o.Cells.Count > 0) ReconcileUnseenCopies(o, before);
         ApplyEquipment(o);
         _battle = false; _money = o.Money ?? _money;
         bool published = Publish(o.MapId ?? State?.MapId, o.Round, o.At);
         if (force && State is not null) State = State with { UpdatedAt = o.At.ToString("O") };
+        LogRecognition(o, force);
         return published || force || pruned;
+    }
+
+    private void ReconcileUnseenCopies(FieldObservation o, Dictionary<FieldCell, FieldUnit> before)
+    {
+        var copies = _units.Values.Where(u => u.Operator is not null).ToLookup(u => u.Operator);
+        foreach (var group in copies.Where(g => g.Count() > 1))
+        {
+            // 只认这一帧明确看到是空的格子；被挡住或在画面外的格子不在 Cells 里，不能当空格删
+            var stale = group.Where(u => o.Cells.TryGetValue(u.Cell, out int tier) && tier == 0).ToArray();
+            // 只有起点和新认出的终点都唯一时才能把手动确认及装备带过去。
+            if (stale is [var manual] && manual.Source == "manual")
+            {
+                var seen = group.Where(u => o.Cells.GetValueOrDefault(u.Cell) > 0).ToArray();
+                var targets = seen.Where(u => u.Source == "sprite" && (seen.Length == 1
+                    || before.GetValueOrDefault(u.Cell)?.Operator != manual.Operator)).ToArray();
+                if (targets is [var target])
+                {
+                    _units[target.Cell] = target with { Source = "manual", Status = "sure", Candidates = [],
+                        Equipment = target.Equipment ?? manual.Equipment };
+                    Add(o.At, "move", manual.Operator, manual.Cell, target.Cell);
+                }
+            }
+            foreach (var old in stale)
+            {
+                _units.Remove(old.Cell);
+                _manualOnly.Remove(old.Cell);
+                _missing.Remove(old.Cell);
+                _pictures.Remove(old.Cell);
+                _gainSources.Remove(old.Cell);
+                _gains.RemoveAll(g => g.Cell == old.Cell);
+            }
+        }
+    }
+
+    public Action<string>? RecognitionLog { private get; init; }
+    private string? _lastRecognitionLog;
+
+    private void LogRecognition(FieldObservation o, bool force)
+    {
+        if (RecognitionLog is null) return;
+        string Describe(FieldCell cell)
+        {
+            var unit = _units.GetValueOrDefault(cell);
+            if (unit?.Operator is null) return o.Cells.GetValueOrDefault(cell, -1) == 0 ? "空" : "?";
+            bool matched = unit.Source == "sprite" && o.Sprites?.ContainsKey(cell) == true
+                && (force || !_moved.Contains(cell) && !_returned.Contains(cell));
+            string source = unit.Source == "manual" ? "手动" : matched || unit.Source == "drag" ? "识别" : "推测";
+            string score = matched ? unit.Candidates.FirstOrDefault(c => c.Operator == unit.Operator)?.Score
+                .ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "—" : "—";
+            return $"{unit.Operator}({source}, {score})";
+        }
+        var cells = new List<string>();
+        for (int row = 0; row < 5; row++)
+            for (int col = 0; col < 7; col++)
+                cells.Add($"场上({col},{row})={Describe(new("board", col, row))}");
+        for (int col = 1; col <= 10; col++)
+            cells.Add($"整备({col})={Describe(new("bench", col, 0))}");
+        string line = $"回合={o.Round?.ToString() ?? "?"} {string.Join(" ", cells)}";
+        if (line == _lastRecognitionLog) return;
+        _lastRecognitionLog = line;
+        RecognitionLog(line);
     }
 
     private bool ApplyEquipment(FieldObservation o)

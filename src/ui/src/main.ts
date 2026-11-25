@@ -3,8 +3,11 @@ import './app.css'
 import './modern.css'
 import App from './App.svelte'
 
-import { api } from './lib/api'
+import { api, reportUiError } from './lib/api'
 import { app } from './lib/state.svelte'
+
+window.addEventListener('error', (e) => reportUiError('未捕获异常', e.error ?? e.message))
+window.addEventListener('unhandledrejection', (e) => reportUiError('未处理的 Promise 拒绝', e.reason))
 
 mount(App, { target: document.getElementById('app')! })
 // 挂载后立刻让宿主把原生骨架换成网页（此时只有标题栏，和骨架一致）。网页在宿主里先是隐藏的，

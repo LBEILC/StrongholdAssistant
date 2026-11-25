@@ -243,7 +243,8 @@ public sealed partial class FieldTracker
             foreach (var missing in _missing.Values.ToArray())
                 Add(o.At, "sell", missing.Unit.Operator, missing.Unit.Cell, null);
         }
-        var origins = removed.Where(c => !merged.Contains(c)).Select(c => before[c])
+        // 手补的空格缺少占用证据，先认目标名字，不能仅按同阶配给新格。
+        var origins = removed.Where(c => !merged.Contains(c) && !_manualOnly.Contains(c)).Select(c => before[c])
             .Concat(_missing.Values.Select(m => m.Unit)).DistinctBy(u => u.Cell).ToArray();
         // 同阶全部边按相似度排序，每个起点和终点只用一次；单对无需图像门槛。
         var pairs = (from origin in origins

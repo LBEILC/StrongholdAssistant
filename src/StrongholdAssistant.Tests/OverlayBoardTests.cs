@@ -2,6 +2,8 @@
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using Polygon = System.Windows.Shapes.Polygon;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
 using StrongholdAssistant.Host;
@@ -89,6 +91,32 @@ public sealed class OverlayBoardTests : IDisposable
         pending.Update(field, null, true, 1920, 1080);
         placement.Update(plan, field, null, true, 1920, 1080);
         Assert.Empty(pending.Children.Cast<UIElement>()); Assert.Empty(placement.Children.Cast<UIElement>());
+    });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ReplacementDrawsRetreatBadgeBeforeArrivalFrameNameAndFacing(bool arrivalFirst) => OnSta(() =>
+    {
+        var projection = new BoardProjection([((0, 0), (.2, .2)), ((7, 0), (.8, .2)), ((7, 5), (.8, .7)), ((0, 5), (.2, .7))]);
+        var cell = new FieldCell("board", 1, 1);
+        var bench = new FieldCell("bench", 0, 0);
+        var arrival = new OverlayPlacementMove("芬", bench, cell, "right");
+        var departure = new OverlayPlacementMove("红", cell, bench, null);
+        var layer = new PlacementLayer();
+        layer.Update(new("now", arrivalFirst ? [arrival, departure] : [departure, arrival]),
+            new("m01", 6, "now", [], []), projection, true, 1920, 1080);
+        Assert.Collection(layer.Children.Cast<UIElement>(),
+            child => {
+                var badge = Assert.IsType<Border>(child);
+                Assert.Equal("撤 红", Assert.IsType<TextBlock>(badge.Child).Text);
+                var corner = projection.Project(cell.Col + .08, cell.Row + .08);
+                Assert.Equal(corner.X * 1920, Canvas.GetLeft(badge));
+                Assert.Equal(corner.Y * 1080, Canvas.GetTop(badge));
+            },
+            child => Assert.Equal(4, Assert.IsType<Polygon>(child).Points.Count),
+            child => Assert.Equal("芬", Assert.IsType<TextBlock>(Assert.IsType<Border>(child).Child).Text),
+            child => Assert.Equal(3, Assert.IsType<Polygon>(child).Points.Count));
     });
 
     [Theory]
