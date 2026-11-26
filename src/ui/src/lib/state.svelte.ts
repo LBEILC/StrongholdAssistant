@@ -17,7 +17,8 @@ export type Detail =
   | { kind: 'covenant'; id: string }
   | { kind: 'boss'; id: string }
   | { kind: 'enemy'; id: string }
-  | null
+
+const detailKey = (detail: Detail) => 'id' in detail ? detail.id : detail.name
 
 const [catalog, connection, match, lineups, session, settings, appInfo] = await Promise.all([
   api.catalog(),
@@ -71,7 +72,25 @@ export class AppState {
   /** 顶栏追踪的「N 项」点进图鉴时置 true，图鉴页打开「追踪中」后清掉（v1.2.7） */
   codexTracked = $state(false)
   lineupView = $state<LineupView>('target')
-  detail = $state<Detail>(null)
+  private detailStack = $state<Detail[]>([])
+  get detail(): Detail | null {
+    return this.detailStack.at(-1) ?? null
+  }
+  // 从面板外打开或关闭详情时，结束之前的浏览路径。
+  set detail(detail: Detail | null) {
+    this.detailStack = detail ? [detail] : []
+  }
+  get canGoBackDetail() {
+    return this.detailStack.length > 1
+  }
+  pushDetail(detail: Detail) {
+    const current = this.detail
+    if (current?.kind === detail.kind && detailKey(current) === detailKey(detail)) return
+    this.detailStack.push(detail)
+  }
+  backDetail() {
+    if (this.canGoBackDetail) this.detailStack.pop()
+  }
   /** 正在编辑的阵容草稿；新建时 id 为空串 */
   editing = $state<Lineup | null>(null)
   matchEdit = $state(false)
