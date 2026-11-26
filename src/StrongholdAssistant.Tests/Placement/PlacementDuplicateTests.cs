@@ -84,7 +84,7 @@ public class PlacementDuplicateTests
             5, "mode_multi_normal", false, null, ["SPECIAL", "ELEMENT", "DOT"],
             null, null, null, null, new Dictionary<string, string?>(), "balanced");
 
-        // 适配器使用 PlacementOptions 默认固定种子 1，并按场上两个格子决定名额。
+        // 适配器使用 PlacementOptions 默认固定种子 1；名额按部署上限算，候选 4 人全部上场。
         var result = adapter.Compute(input)!;
 
         result.Should().NotBeNull();
@@ -97,7 +97,8 @@ public class PlacementDuplicateTests
         copies.Should().ContainSingle(m => m.From == units[0].Cell);
         copies.Should().ContainSingle(m => m.From == units[2].Cell);
         copies.Select(m => m.To).Should().OnlyHaveUniqueItems();
-        result.Moves.Count(m => m.To.Zone == "board").Should().Be(2);
+        // 部署上限 8（PRTS 卫戍协议·规程 共通）：场上 2 人、整备区 2 人时，推荐把 4 个人都摆上场。
+        result.Moves.Count(m => m.To.Zone == "board").Should().Be(4);
     }
 
     [Fact]
